@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.unstable", "dom"],
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
+  },
+  "lint": {
+    "files": {
+      "exclude": ["public/js"]
+    }
+  },
+  "fmt": {
+    "files": { "exclude": ["public/js"] }
+  }
+}

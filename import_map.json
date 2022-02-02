@@ -1,0 +1,8 @@
+{
+    "imports": {
+        "preact": "https://esm.sh/preact?pin=v58",
+        "preact/hooks": "https://esm.sh/preact/hooks?pin=v58",
+        "std/": "https://deno.land/std@0.119.0/",
+        "yup": "https://esm.sh/yup@0.32.11?pin=v64"
+    }
+}
