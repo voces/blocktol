@@ -1,15 +1,10 @@
+import { Message } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
+import { offsets } from "./constants.ts";
 import type { Player } from "./Player.ts";
 import { isLeader } from "./trackLeadership.ts";
 
 type Status = "idle" | "build" | "run";
-
-const offsets = [
-  [0, 0],
-  [1, 0],
-  [0, 1],
-  [1, 1],
-];
 
 class Game {
   #players = new Set<Player>();
@@ -19,7 +14,7 @@ class Game {
   #grid = Array.from(Array(20), () => Array<boolean>(20).fill(false));
 
   start() {
-    if (this.#started || this.#status !== "idle") return;
+    if (this.#started || this.#status !== "idle" || !isLeader()) return;
 
     this.#queuedPlayers.forEach((player) => this.#players.add(player));
     this.#queuedPlayers.clear();
@@ -81,19 +76,27 @@ class Game {
     const power = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
     const bricks = power + Math.floor(Math.random() * Math.random() * 20) + 3;
 
-    const message = {
-      kind: "start" as const,
+    for (const player of this.#players) {
+      player.grid = this.#grid;
+      player.bricks = bricks;
+      player.power = power;
+    }
+
+    this.broadcast({
+      kind: "start",
       checkpoint,
       thunders,
       blocks,
       power,
       bricks,
-    };
-    for (const player of this.#players) {
-      player.send(message);
-    }
+    });
 
     setTimeout(() => this.#startRunners(), 60_000);
+  }
+
+  broadcast(message: Message) {
+    for (const player of this.#players) player.send(message);
+    for (const player of this.#queuedPlayers) player.send(message);
   }
 
   #startRunners() {

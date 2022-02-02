@@ -1,4 +1,13 @@
-export type NewNodeMessage = Readonly<{ kind: "newNode" }>;
-export type RootIdentifyMessage = Readonly<{ kind: "root" }>;
+import type { StartMessage } from "../common/serverToClientMessage.ts";
 
-export type ServerMessage = NewNodeMessage | RootIdentifyMessage;
+// Leadership election
+type ElectionMessage = Readonly<{ kind: "election"; value: number }>;
+type HeartbeatMessage = Readonly<{ kind: "heartbeat" }>;
+type VetoMessage = Readonly<{ kind: "veto" }>;
+
+export type ServerMessage =
+  | ElectionMessage
+  | HeartbeatMessage
+  | VetoMessage
+  | StartMessage;
+export { StartMessage };

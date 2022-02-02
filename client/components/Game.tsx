@@ -93,7 +93,15 @@ export const Game = () => {
   useEffect(() => {
     const callback = (e: MouseEvent) => {
       setPlacingBlock((pb) => {
-        if (pb.placing) console.log(pb);
+        if (!pb.placing) return pb;
+
+        const x = pb.x / 5 + 1;
+        const y = pb.y / 5 + 1;
+
+        connection.send({ kind: "block", x, y });
+        setBlocks((blocks) => [...blocks, { x, y }]);
+        setBricks((bricks) => bricks - 1);
+
         return ({ ...pb, placing: false });
       });
     };
@@ -101,7 +109,7 @@ export const Game = () => {
     globalThis.addEventListener("mousedown", callback);
 
     return () => globalThis.removeEventListener("mousedown", callback);
-  });
+  }, []);
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", display: "flex" }}>
@@ -184,6 +192,7 @@ export const Game = () => {
                 stroke="black"
                 stroke-width={0.5}
                 opacity={0.4}
+                style={{ transition: "x 100ms, y 100ms" }}
               />
             )}
           </svg>

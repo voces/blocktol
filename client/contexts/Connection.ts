@@ -1,4 +1,5 @@
 import { createContext } from "preact";
+import { ClientToServerMessage } from "../../common/clientToServerMessage.ts";
 import { isMessage, MessageMap } from "../../common/serverToClientMessage.ts";
 import { Emitter, emitter } from "../util/emitter.ts";
 
@@ -42,7 +43,7 @@ class Connection implements Emitter<MessageMap> {
     });
   }
 
-  send<T extends Record<string, unknown>>(value: T) {
+  send(value: ClientToServerMessage) {
     this.#ws.send(JSON.stringify(value));
   }
 }

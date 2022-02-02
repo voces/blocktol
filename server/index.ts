@@ -1,29 +1,11 @@
 import { serve } from "std/http/server.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
-import { game } from "./Game.ts";
-import { trackLeadership } from "./trackLeadership.ts";
+import "./channel.ts";
 
-const channel = new BroadcastChannel("global");
-trackLeadership(channel, () => {
-  game.start();
-});
+const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 
-// const serverHandlers = {
-//   newNode: (_message: NewNodeMessage) => {
-//     if (rootStatus === "root") channel.postMessage({ kind: "root" });
-//   },
-//   root: (_message: RootIdentifyMessage) => {
-//     rootStatus = "not-root";
-//   },
-// };
-
-// channel.addEventListener("message", (e) => {
-//   const message = e.data as ServerMessage;
-//   serverHandlers[message.kind](message as any);
-// });
-
-console.log(new Date(), "Listening on", 3000);
+console.log(new Date(), "Listening on", port);
 
 serve((req) => {
   const upgrade = req.headers.get("upgrade") || "";
@@ -39,8 +21,13 @@ serve((req) => {
       if (isMessage(message)) {
         // deno-lint-ignore no-explicit-any
         clientHandlers[message.kind](socket, message as any);
-      } else socket.close();
-    } catch {
+      } else {
+        console.log(new Date(), "Closing bad message");
+        socket.close();
+      }
+    } catch (err) {
+      console.error(err);
+      console.log(new Date(), "Closing error");
       socket.close();
     }
   };
@@ -50,4 +37,4 @@ serve((req) => {
   socket.onclose = () => console.log(new Date(), "Socket closed");
 
   return response;
-}, { port: 3000 });
+}, { port });

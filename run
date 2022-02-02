@@ -3,6 +3,7 @@ deno run \
     --config deno.jsonc \
     --no-check=remote \
     --allow-net \
+    --allow-env=PORT \
     --unstable \
     "$@" \
     server/index.ts
