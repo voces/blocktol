@@ -26,7 +26,7 @@ const _trackLeadership = (
     };
   };
 
-  let autoStart = setTimeout(startElection, 2000);
+  let autoStart = setTimeout(startElection, .2000);
   const stallElection = () => {
     clearTimeout(autoStart);
     autoStart = setTimeout(startElection, 2000);

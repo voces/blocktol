@@ -22,7 +22,6 @@ class Connection implements Emitter<MessageMap> {
     this.#ws = new WebSocket(`${protocol}://${location.hostname}:3000`);
 
     this.#ws.addEventListener("open", () => {
-      console.log("Connected");
       this.dispatchEvent("connect", undefined as never);
     });
 
@@ -45,6 +44,10 @@ class Connection implements Emitter<MessageMap> {
 
   send(value: ClientToServerMessage) {
     this.#ws.send(JSON.stringify(value));
+  }
+
+  get connected() {
+    return this.#ws.readyState === WebSocket.OPEN;
   }
 }
 

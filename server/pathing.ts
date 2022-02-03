@@ -1,0 +1,191 @@
+import { Point } from "../common/types.ts";
+import { BinaryHeap } from "./BinaryHeap.ts";
+import { MMap } from "./MMap.ts";
+
+export const newGrid = () => {
+  const grid = Array.from(Array(20), () => Array<boolean>(20).fill(false));
+  for (let i = 0; i < 9; i++) {
+    grid[0][i] = true;
+    grid[0][19 - i] = true;
+    grid[19][i] = true;
+    grid[19][19 - i] = true;
+
+    grid[i + 1][0] = true;
+    grid[18 - i][0] = true;
+    grid[i + 1][19] = true;
+    grid[18 - i][19] = true;
+  }
+  return grid;
+};
+
+type Node = {
+  x: number;
+  y: number;
+  gScore: number;
+  parent: Node | undefined;
+};
+
+// const lineOfSight = (from: Node, to: Node, grid: boolean[][]) => {
+//   return false;
+//   if (from === to) return true;
+
+//   const current = from;
+//   const destination = to;
+//   const delta = {
+//     x: Math.abs(to.x - from.x),
+//     y: Math.abs(to.y - from.y),
+//   };
+//   const direction = {
+//     /* 1 if positive, -1 otherwise */
+//     x: (to.x - from.x > 0) ? 1 : -1,
+//     y: (to.y - from.y > 0) ? 1 : -1,
+//   };
+
+//   const primaryAxis = delta.x > delta.y ? "x" : "y"; // The axis along which the current point mainly moves
+//   const secondaryAxis = delta.x > delta.y ? "y" : "x";
+
+//   const deltaErrorHalf = Math.abs(delta[secondaryAxis] / delta[primaryAxis]) /
+//     2; // delta[primaryAxis] cannot be 0
+//   let error = -deltaErrorHalf; // Distance between the center of the tile and the ideal line
+
+//   while (
+//     current[primaryAxis] !== destination[primaryAxis] + direction[primaryAxis]
+//   ) {
+//     if (grid[current.y]?.[current.x] !== false) return false;
+
+//     error += deltaErrorHalf * 2; // Error at the end of the tile
+//     if (error >= 0.5) {
+//       current[secondaryAxis] += direction[secondaryAxis];
+//       if (error > 0.5) {
+//         if (grid[current.y]?.[current.y] !== false) return false;
+//       }
+//       error--;
+//     }
+//     current[primaryAxis] += direction[primaryAxis];
+//   }
+
+//   return true;
+// };
+
+const euclideanDistance = (s: Node, e: Node) =>
+  Math.abs(s.x - e.x) + Math.abs(s.y - e.y);
+
+const updateNode = (
+  current: Node,
+  neighbor: Node,
+  open: BinaryHeap<Node>,
+  // grid: boolean[][],
+) => {
+  // This part of the algorithm is the main difference between A* and Theta*
+  // if (lineOfSight(current.parent!, neighbor, grid)) {
+  //   // If there is line-of-sight between parent(s) and neighbor
+  //   // then ignore s and use the path from parent(s) to neighbor
+  //   const newGScore = current.parent!.gScore +
+  //     euclideanDistance(current.parent!, neighbor);
+  //   if (newGScore < neighbor.gScore) {
+  //     neighbor.gScore = newGScore;
+  //     neighbor.parent = current.parent;
+  //     open.remove(neighbor);
+  //     open.push(neighbor);
+  //   }
+  // } else {
+  // If the length of the path from start to s and from s to
+  // neighbor is shorter than the shortest currently known distance
+  // from start to neighbor, then update node with the new distance
+  const newGScore = current.gScore + euclideanDistance(current, neighbor);
+  if (newGScore < neighbor.gScore) {
+    neighbor.gScore = newGScore;
+    neighbor.parent = current;
+    open.remove(neighbor);
+    open.push(neighbor);
+  }
+  // }
+};
+
+const reconstructPath = (s: Node) => {
+  const path: Point[] = [];
+  let cur: Node | undefined = s;
+  while (cur) {
+    path.push({ x: cur.x, y: cur.y });
+    if (cur === cur.parent) break;
+    cur = cur.parent;
+  }
+  return path.reverse();
+};
+
+const _findPath = (start: Point, end: Point, grid: boolean[][]) => {
+  const nodes = new MMap<[x: number, y: number], Node>((
+    x: number,
+    y: number,
+  ) => ({
+    x,
+    y,
+    gScore: Infinity,
+    parent: undefined,
+  }));
+
+  const endNode = nodes.getOrSet(end.x, end.y);
+
+  const heuristic = (node: Node) =>
+    Math.sqrt((endNode.x - node.x) ** 2 + (endNode.y + node.y) ** 2);
+
+  const getNeighbors = (node: Node) => {
+    const neighbors: Node[] = [];
+    if (node.x > 0 && !grid[node.y][node.x - 1]) {
+      neighbors.push(nodes.getOrSet(node.x - 1, node.y));
+    }
+    if (node.y > 0 && !grid[node.y - 1][node.x]) {
+      neighbors.push(nodes.getOrSet(node.x, node.y - 1));
+    }
+    if (node.x < 19 && !grid[node.y][node.x + 1]) {
+      neighbors.push(nodes.getOrSet(node.x + 1, node.y));
+    }
+    if (node.y < 19 && !grid[node.y + 1][node.x]) {
+      neighbors.push(nodes.getOrSet(node.x, node.y + 1));
+    }
+    return neighbors;
+  };
+
+  const startNode = nodes.getOrSet(start.x, start.y);
+
+  startNode.gScore = 0;
+  startNode.parent = startNode;
+
+  // Initializing open and closed sets. The open set is initialized
+  // with the start node and an initial cost
+  const open = new BinaryHeap((node: Node) => node.gScore + heuristic(node));
+  open.push(startNode);
+  const closed = new Set<Node>();
+
+  // This main loop is the same as A*
+  while (open.length) {
+    const cur = open.pop();
+    if (cur === endNode) return reconstructPath(cur);
+    closed.add(cur);
+    for (const neighbor of getNeighbors(cur)) {
+      if (closed.has(neighbor)) continue;
+      updateNode(cur, neighbor, open);
+    }
+  }
+};
+
+export const findPath = (grid: boolean[][], checkpoint: Point) => {
+  const checkpointCell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
+  grid[checkpointCell.y][checkpointCell.x] = false;
+
+  const pathA = _findPath({ x: 9, y: 19 }, checkpointCell, grid);
+  if (!pathA) {
+    grid[checkpointCell.y][checkpointCell.x] = true;
+    return;
+  }
+
+  const pathB = _findPath(checkpointCell, { x: 10, y: 0 }, grid);
+  if (!pathB) {
+    grid[checkpointCell.y][checkpointCell.x] = true;
+    return;
+  }
+
+  grid[checkpointCell.y][checkpointCell.x] = true;
+
+  return [...pathA, ...pathB.slice(1)];
+};

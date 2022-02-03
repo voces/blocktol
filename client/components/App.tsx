@@ -1,6 +1,7 @@
 import { ComponentChildren, Fragment, h } from "preact";
-import { useContext, useEffect, useState } from "preact/hooks";
+import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { ConnectionContext } from "../contexts/Connection.ts";
+import { useConnectionState } from "../hooks/useConnectionState.ts";
 import { getId } from "../util/id.ts";
 import { Game } from "./Game.tsx";
 import { Login } from "./Login.tsx";
@@ -15,34 +16,26 @@ const Shell = ({ children }: { children: ComponentChildren }) => (
 export const App = () => {
   const id = getId();
   const [username, setUsername] = useState<string>();
-  const [connected, setConnected] = useState(false);
   const connection = useContext(ConnectionContext);
+  const connected = useConnectionState();
+  const logInTimeout = useRef<number>();
 
   useEffect(() => {
-    const disconnectCallback = () => setConnected(false);
-    connection.addEventListener("disconnect", disconnectCallback);
-
-    const connectCallback = () => {
-      setConnected(true);
-      if (username) connection.send({ kind: "login", username, id });
-    };
-    connection.addEventListener("connect", connectCallback);
-
-    return () => {
-      connection.removeEventListener("disconnect", disconnectCallback);
-      connection.removeEventListener("connect", connectCallback);
-    };
-  }, [username]);
+    if (connected && username) {
+      clearTimeout(logInTimeout.current);
+      connection.send({ kind: "login", username, id });
+    }
+  }, [connected]);
 
   return (
     <Shell>
       {(username?.length ?? 0) > 0 ? <Game /> : (
         <Login
-          connected={connected}
+          connected={connection.connected}
           onLogin={(username) => {
             setUsername(username);
-            if (connected) {
-              setTimeout(
+            if (connection.connected) {
+              logInTimeout.current = setTimeout(
                 () => connection.send({ kind: "login", username, id }),
                 250,
               );

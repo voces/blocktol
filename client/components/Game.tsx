@@ -31,6 +31,16 @@ export const Game = () => {
   const [thunders, setThunders] = useState<ReadonlyArray<Point>>([]);
   const [bricks, setBricks] = useState(0);
   const [power, setPower] = useState(0);
+  const [time, setTime] = useState(-1);
+
+  useEffect(() => {
+    const interval = setInterval(
+      () => setTime((time) => time > 0 ? time - 1 : time),
+      1_000,
+    );
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const startCallback = (event: StartMessage) => {
@@ -39,10 +49,14 @@ export const Game = () => {
       setThunders(event.thunders);
       setBricks(event.bricks);
       setPower(event.power);
+      setTime(60);
     };
     connection.addEventListener("start", startCallback);
 
-    const disconnectCallback = () => setDisconnected(true);
+    const disconnectCallback = () => {
+      setDisconnected(true);
+      setTime(-1);
+    };
     connection.addEventListener("disconnect", disconnectCallback);
 
     const connectCallback = () => {
@@ -95,8 +109,8 @@ export const Game = () => {
       setPlacingBlock((pb) => {
         if (!pb.placing) return pb;
 
-        const x = pb.x / 5 + 1;
-        const y = pb.y / 5 + 1;
+        const x = pb.x / 5;
+        const y = pb.y / 5;
 
         connection.send({ kind: "block", x, y });
         setBlocks((blocks) => [...blocks, { x, y }]);
@@ -131,7 +145,7 @@ export const Game = () => {
             />
           </span>
           <span>
-            <span style={{ padding: 4 }}>55 seconds to build!</span>
+            <span style={{ padding: 4 }}>{time} seconds to build!</span>
             <Action
               name="Ready"
               hotkey="R"
@@ -153,8 +167,8 @@ export const Game = () => {
             <text x={17} y={4} font-size={4} fill="white">⚡{power}</text>
             {blocks.map(({ x, y }) => (
               <rect
-                x={(x - 1) * 5}
-                y={(y - 1) * 5}
+                x={x * 5}
+                y={y * 5}
                 width={10}
                 height={10}
                 fill="#edb9d8"
@@ -164,8 +178,8 @@ export const Game = () => {
             ))}
             {thunders.map(({ x, y }) => (
               <rect
-                x={(x - 1) * 5}
-                y={(y - 1) * 5}
+                x={x * 5}
+                y={y * 5}
                 width={10}
                 height={10}
                 fill="#edb9d8"
@@ -175,8 +189,8 @@ export const Game = () => {
             ))}
             {checkpoint && (
               <rect
-                x={(checkpoint.x - 0.5) * 5}
-                y={(checkpoint.y - 0.5) * 5}
+                x={(checkpoint.x + 0.5) * 5}
+                y={(checkpoint.y + 0.5) * 5}
                 width={5}
                 height={5}
                 fill="#6bc0f7"

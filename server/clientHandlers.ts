@@ -1,6 +1,7 @@
 import { BlockMessage, LoginMessage } from "../common/clientToServerMessage.ts";
 import { offsets } from "./constants.ts";
 import { game } from "./Game.ts";
+import { findPath } from "./pathing.ts";
 import { Player } from "./Player.ts";
 
 export const clientHandlers = {
@@ -28,6 +29,11 @@ export const clientHandlers = {
     }
 
     offsets.forEach(([xd, yd]) => player.grid[y + yd][x + xd] = true);
+
+    if (!findPath(player.grid, player.checkpoint)) {
+      return player.close("invalid placement");
+    }
+
     player.bricks--;
   },
 };

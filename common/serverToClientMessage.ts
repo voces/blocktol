@@ -20,7 +20,7 @@ const isStartMessage = (value: unknown): value is StartMessage =>
   hasNumber(value, "power") &&
   hasNumber(value, "bricks");
 
-type RunMessage = Readonly<{
+export type RunMessage = Readonly<{
   kind: "run";
   path: Point[];
   duration: number;

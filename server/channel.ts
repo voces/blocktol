@@ -1,6 +1,11 @@
 import { game } from "./Game.ts";
-import { ServerMessage, StartMessage } from "./ServerMessage.ts";
-import { trackLeadership } from "./trackLeadership.ts";
+import {
+  RunBeatMessage,
+  ServerMessage,
+  StartMessage,
+  StartRunMessage,
+} from "./ServerMessage.ts";
+import { isLeader, trackLeadership } from "./trackLeadership.ts";
 
 const channel = new BroadcastChannel("global");
 trackLeadership(channel, () => {
@@ -13,12 +18,17 @@ export const broadcast = (message: ServerMessage) => {
 };
 
 const handlers = {
-  start: (message: StartMessage) => game.broadcast(message),
+  start: (message: StartMessage) => game.startFromState(message),
+  startRun: (message: StartRunMessage) =>
+    game.startRunnersFromState(message.max),
+  runBeat: (message: RunBeatMessage) => isLeader() && game.runBeat(message.max),
 };
 
 channel.addEventListener("message", (e) => {
   const message: ServerMessage = e.data;
 
-  // deno-lint-ignore no-explicit-any
-  (handlers as any)[message.kind](message);
+  (handlers as Record<string, undefined | ((message: unknown) => void)>)
+    [message.kind]?.(
+      message,
+    );
 });
