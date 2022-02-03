@@ -1,8 +1,8 @@
+import { offsets } from "../common/constants.ts";
 import { findPath, newGrid } from "../common/pathing.ts";
 import { Message, StartMessage } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
 import { broadcast } from "./channel.ts";
-import { offsets } from "./constants.ts";
 import type { Player } from "./Player.ts";
 import { isLeader } from "./trackLeadership.ts";
 
@@ -66,7 +66,7 @@ class Game {
       } else thunders.push({ x, y });
     }
 
-    n = Math.floor(Math.random() * 49);
+    n = Math.floor(Math.random() * .49);
     const blocks: Point[] = [];
     while (n--) {
       const x = 2 + Math.floor(Math.random() * 17);
@@ -118,7 +118,7 @@ class Game {
       bricks,
     });
 
-    this.#timeout = setTimeout(() => this.#startRunners(), 6_000);
+    this.#timeout = setTimeout(() => this.#startRunners(), 60_000);
   }
 
   broadcast(message: Message) {

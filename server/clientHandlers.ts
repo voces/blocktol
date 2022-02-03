@@ -3,8 +3,8 @@ import {
   LoginMessage,
   TransitionBlockMessage,
 } from "../common/clientToServerMessage.ts";
+import { offsets } from "../common/constants.ts";
 import { findPath } from "../common/pathing.ts";
-import { offsets } from "./constants.ts";
 import { game } from "./Game.ts";
 import { Player } from "./Player.ts";
 

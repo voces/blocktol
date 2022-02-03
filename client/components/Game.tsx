@@ -7,8 +7,9 @@ import {
   StartMessage,
 } from "../../common/serverToClientMessage.ts";
 import { Point } from "../../common/types.ts";
-import { newGrid } from "../../common/pathing.ts";
+import { findPath, newGrid } from "../../common/pathing.ts";
 import { Runner } from "./Runner.tsx";
+import { offsets } from "../../common/constants.ts";
 
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -47,13 +48,25 @@ export const Game = () => {
   }, []);
 
   useEffect(() => {
-    const startCallback = (event: StartMessage) => {
-      setCheckpoint(event.checkpoint);
-      setBlocks(event.blocks);
-      setThunders(event.thunders);
+    const startCallback = (
+      { checkpoint, blocks, thunders, ...event }: StartMessage,
+    ) => {
+      setCheckpoint(checkpoint);
+      setThunders(thunders);
+      setBlocks(blocks);
       setBricks(event.bricks);
       setPower(event.power);
       setTime(60);
+
+      grid.splice(0, Infinity, ...newGrid());
+
+      grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      for (const { x, y } of thunders) {
+        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+      }
+      for (const { x, y } of blocks) {
+        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+      }
     };
     connection.addEventListener("start", startCallback);
 
@@ -70,11 +83,20 @@ export const Game = () => {
       setThunders([]);
       setBricks(0);
       setPower(0);
+      setRun(undefined);
+      setInvalid(false);
+      setTransitionBlock(undefined);
+      setPlacingBlock((pb) => ({ ...pb, placing: false }));
     };
     connection.addEventListener("connect", connectCallback);
 
     const runCallback = ({ path, duration }: RunMessage) => {
       setRun({ path, duration });
+      setPlacingBlock((pb) => ({ ...pb, placing: false }));
+      setTransitionBlock(undefined);
+      setTime(-1);
+      setBricks(-1);
+      setPower(-1);
     };
     connection.addEventListener("run", runCallback);
 
@@ -88,7 +110,7 @@ export const Game = () => {
 
   useEffect(() => {
     const callback = (e: MouseEvent) => {
-      if (!svgRef.current || bricks === 0) return;
+      if (!svgRef.current || bricks === 0 || time <= 0) return;
 
       const box = svgRef.current.getBoundingClientRect();
       const x = Math.min(
@@ -111,22 +133,35 @@ export const Game = () => {
       ) ??
         thunders.find((t) => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1);
 
-      setPlacingBlock(() => ({ placing: !overlap, x, y }));
+      setPlacingBlock(() => ({ placing: !overlap?.local, x, y }));
+
+      let invalid = (!!overlap && !overlap.local) ||
+        (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
+      if (!invalid && !overlap) {
+        offsets.forEach(([xd, yd]) =>
+          grid[y + yd][x + xd] = true
+        );
+        if (!findPath(grid, checkpoint)) invalid = true;
+        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
+      }
+
+      setInvalid(invalid);
+
       setTransitionBlock(
-        overlap?.local
-          ? overlap
-          : undefined,
+        overlap?.local ? overlap : undefined,
       );
     };
 
     globalThis.addEventListener("mousemove", callback);
 
     return () => globalThis.removeEventListener("mousemove", callback);
-  }, [svgRef.current, bricks, blocks]);
+  }, [svgRef.current, bricks, blocks, checkpoint, time]);
 
   useEffect(() => {
     const callback = (e: MouseEvent) => {
       setPlacingBlock((pb) => {
+        if (invalid) return pb;
+
         if (transitionBlock) {
           connection.send({
             kind: "transition",
@@ -137,17 +172,34 @@ export const Game = () => {
           setBlocks((blocks) =>
             blocks.filter((block) => block !== transitionBlock)
           );
+          let isThunder = false;
+          setThunders((thunders) =>
+            thunders.filter((thunder) => {
+              if (thunder === transitionBlock) {
+                isThunder = true;
+                return false;
+              }
+              return true;
+            })
+          );
 
-          if (power) {
+          if (power && !isThunder) {
             setThunders((thunders) => [...thunders, transitionBlock]);
             setPower((power) => power - 1);
-          } else setBricks((bricks) => bricks - 1);
+          } else {
+            setBricks((bricks) => bricks - 1);
+            offsets.forEach(([xd, yd]) =>
+              grid[transitionBlock.y + yd][transitionBlock.x + xd] = true
+            );
+          }
 
           setTransitionBlock(undefined);
           return pb;
         }
 
         if (!pb.placing) return pb;
+
+        offsets.forEach(([xd, yd]) => grid[pb.y + yd][pb.x + xd] = true);
 
         connection.send({ kind: "block", x: pb.x, y: pb.y });
         setBlocks((blocks) => [...blocks, { x: pb.x, y: pb.y, local: true }]);
@@ -160,7 +212,7 @@ export const Game = () => {
     globalThis.addEventListener("mousedown", callback);
 
     return () => globalThis.removeEventListener("mousedown", callback);
-  }, [transitionBlock]);
+  }, [transitionBlock, invalid]);
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", display: "flex" }}>
@@ -177,23 +229,31 @@ export const Game = () => {
           <rect x={11} y={19} width={9} height={1} fill="#404040" />
           <rect x={0} y={0} width={1} height={20} fill="#404040" />
           <rect x={19} y={0} width={1} height={20} fill="#404040" />
-          <text x={1} y={0.8} font-size={0.8} fill="white">🧱{bricks}</text>
-          <text x={3.4} y={0.8} font-size={0.8} fill="white">⚡{power}</text>
-          <text
-            x={18.8}
-            y={0.8}
-            font-size={0.8}
-            fill="white"
-            text-anchor="end"
-          >
-            {time} seconds to build
-          </text>
+          {bricks >= 0 && (
+            <text x={1} y={0.8} font-size={0.8} fill="white">🧱{bricks}</text>
+          )}
+          {power >= 0 && (
+            <text x={3.4} y={0.8} font-size={0.8} fill="white">⚡{power}</text>
+          )}
+          {time > 0 && (
+            <text
+              x={18.8}
+              y={0.8}
+              font-size={0.8}
+              fill="white"
+              text-anchor="end"
+            >
+              {time} seconds to build
+            </text>
+          )}
+
           {blocks.map((block) => (
             <rect
               x={block.x}
               y={block.y}
               width={2}
               height={2}
+              // TODO: transition should fork on if we have power
               fill={transitionBlock === block
                 ? "hsl(120, 60%, 65%)"
                 : block.local
@@ -203,13 +263,14 @@ export const Game = () => {
               stroke-width={0.1}
             />
           ))}
-          {thunders.map(({ x, y }) => (
+          {thunders.map((thunder) => (
             <rect
-              x={x}
-              y={y}
+              x={thunder.x}
+              y={thunder.y}
               width={2}
               height={2}
-              fill="hsl(320, 60%, 50%)"
+              fill={thunder.local ? "hsl(120, 60%, 50%)" : "hsl(320, 60%, 50%)"}
+              opacity={transitionBlock === thunder ? 0.4 : 1}
               stroke="black"
               stroke-width={0.1}
             />
@@ -229,7 +290,7 @@ export const Game = () => {
               y={placingBlock.y}
               width={2}
               height={2}
-              fill="hsl(120, 60%, 80%)"
+              fill={invalid ? "hsl(0, 100%, 60%)" : "hsl(120, 60%, 80%)"}
               stroke="black"
               stroke-width={0.1}
               opacity={0.4}
