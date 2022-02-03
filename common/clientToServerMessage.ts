@@ -13,6 +13,12 @@ export type BlockMessage = {
   y: number;
 };
 
+export type TransitionBlockMessage = {
+  kind: "transition";
+  x: number;
+  y: number;
+};
+
 const isLoginMessage = (value: unknown): value is LoginMessage =>
   isRecord(value) &&
   hasEnum(value, "kind", ["login"]) &&
@@ -25,7 +31,17 @@ const isBlockMessage = (value: unknown): value is LoginMessage =>
   hasNumber(value, "x") &&
   hasNumber(value, "y");
 
-export type ClientToServerMessage = LoginMessage | BlockMessage;
+const isTransitionBlockMessage = (value: unknown): value is LoginMessage =>
+  isRecord(value) &&
+  hasEnum(value, "kind", ["transition"]) &&
+  hasNumber(value, "x") &&
+  hasNumber(value, "y");
+
+export type ClientToServerMessage =
+  | LoginMessage
+  | BlockMessage
+  | TransitionBlockMessage;
 
 export const isMessage = (value: unknown): value is ClientToServerMessage =>
-  isLoginMessage(value) || isBlockMessage(value);
+  isLoginMessage(value) || isBlockMessage(value) ||
+  isTransitionBlockMessage(value);

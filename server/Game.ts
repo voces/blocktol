@@ -1,8 +1,8 @@
+import { findPath, newGrid } from "../common/pathing.ts";
 import { Message, StartMessage } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
 import { broadcast } from "./channel.ts";
 import { offsets } from "./constants.ts";
-import { findPath, newGrid } from "./pathing.ts";
 import type { Player } from "./Player.ts";
 import { isLeader } from "./trackLeadership.ts";
 
@@ -82,7 +82,6 @@ class Game {
     }
 
     const path = findPath(this.#grid, checkpoint);
-    console.log(path);
     console.log(
       this.#grid.map((r, y) =>
         r.map((v, x) =>
@@ -102,10 +101,12 @@ class Game {
     const bricks = power + Math.floor(Math.random() * Math.random() * 20) + 3;
 
     for (const player of this.#players) {
-      player.grid = this.#grid.map((r) => [...r]);
-      player.checkpoint = checkpoint;
-      player.bricks = bricks;
-      player.power = power;
+      player.startRound(
+        this.#grid.map((r) => [...r]),
+        checkpoint,
+        bricks,
+        power,
+      );
     }
 
     this.broadcast({
@@ -117,7 +118,7 @@ class Game {
       bricks,
     });
 
-    this.#timeout = setTimeout(() => this.#startRunners(), 60_000);
+    this.#timeout = setTimeout(() => this.#startRunners(), 6_000);
   }
 
   broadcast(message: Message) {
