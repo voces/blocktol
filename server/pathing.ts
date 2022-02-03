@@ -25,82 +25,8 @@ type Node = {
   parent: Node | undefined;
 };
 
-// const lineOfSight = (from: Node, to: Node, grid: boolean[][]) => {
-//   return false;
-//   if (from === to) return true;
-
-//   const current = from;
-//   const destination = to;
-//   const delta = {
-//     x: Math.abs(to.x - from.x),
-//     y: Math.abs(to.y - from.y),
-//   };
-//   const direction = {
-//     /* 1 if positive, -1 otherwise */
-//     x: (to.x - from.x > 0) ? 1 : -1,
-//     y: (to.y - from.y > 0) ? 1 : -1,
-//   };
-
-//   const primaryAxis = delta.x > delta.y ? "x" : "y"; // The axis along which the current point mainly moves
-//   const secondaryAxis = delta.x > delta.y ? "y" : "x";
-
-//   const deltaErrorHalf = Math.abs(delta[secondaryAxis] / delta[primaryAxis]) /
-//     2; // delta[primaryAxis] cannot be 0
-//   let error = -deltaErrorHalf; // Distance between the center of the tile and the ideal line
-
-//   while (
-//     current[primaryAxis] !== destination[primaryAxis] + direction[primaryAxis]
-//   ) {
-//     if (grid[current.y]?.[current.x] !== false) return false;
-
-//     error += deltaErrorHalf * 2; // Error at the end of the tile
-//     if (error >= 0.5) {
-//       current[secondaryAxis] += direction[secondaryAxis];
-//       if (error > 0.5) {
-//         if (grid[current.y]?.[current.y] !== false) return false;
-//       }
-//       error--;
-//     }
-//     current[primaryAxis] += direction[primaryAxis];
-//   }
-
-//   return true;
-// };
-
 const euclideanDistance = (s: Node, e: Node) =>
   Math.abs(s.x - e.x) + Math.abs(s.y - e.y);
-
-const updateNode = (
-  current: Node,
-  neighbor: Node,
-  open: BinaryHeap<Node>,
-  // grid: boolean[][],
-) => {
-  // This part of the algorithm is the main difference between A* and Theta*
-  // if (lineOfSight(current.parent!, neighbor, grid)) {
-  //   // If there is line-of-sight between parent(s) and neighbor
-  //   // then ignore s and use the path from parent(s) to neighbor
-  //   const newGScore = current.parent!.gScore +
-  //     euclideanDistance(current.parent!, neighbor);
-  //   if (newGScore < neighbor.gScore) {
-  //     neighbor.gScore = newGScore;
-  //     neighbor.parent = current.parent;
-  //     open.remove(neighbor);
-  //     open.push(neighbor);
-  //   }
-  // } else {
-  // If the length of the path from start to s and from s to
-  // neighbor is shorter than the shortest currently known distance
-  // from start to neighbor, then update node with the new distance
-  const newGScore = current.gScore + euclideanDistance(current, neighbor);
-  if (newGScore < neighbor.gScore) {
-    neighbor.gScore = newGScore;
-    neighbor.parent = current;
-    open.remove(neighbor);
-    open.push(neighbor);
-  }
-  // }
-};
 
 const reconstructPath = (s: Node) => {
   const path: Point[] = [];
@@ -164,7 +90,16 @@ const _findPath = (start: Point, end: Point, grid: boolean[][]) => {
     closed.add(cur);
     for (const neighbor of getNeighbors(cur)) {
       if (closed.has(neighbor)) continue;
-      updateNode(cur, neighbor, open);
+      // If the length of the path from start to cur and from cur to
+      // neighbor is shorter than the shortest currently known distance
+      // from start to neighbor, then update node with the new distance
+      const newGScore = cur.gScore + euclideanDistance(cur, neighbor);
+      if (newGScore < neighbor.gScore) {
+        neighbor.gScore = newGScore;
+        neighbor.parent = cur;
+        open.remove(neighbor);
+        open.push(neighbor);
+      }
     }
   }
 };

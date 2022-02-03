@@ -65,7 +65,6 @@ export class BinaryHeap<T> extends Array<T> {
     const element = this[index];
     const score = this.scoreFunc(element);
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const rightIndex = (index + 1) * 2;
       const leftIndex = rightIndex - 1;
