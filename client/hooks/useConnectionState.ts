@@ -18,5 +18,11 @@ export const useConnectionState = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => setConnected(connection.connected), 100);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
   return connected;
 };

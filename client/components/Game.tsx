@@ -26,7 +26,7 @@ export const Game = () => {
 
   const [disconnected, setDisconnected] = useState(false);
 
-  const [checkpoint, setCheckpoint] = useState<Point>({ x: -1, y: -1 });
+  const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
   const [blocks, setBlocks] = useState<ReadonlyArray<Point>>([]);
   const [thunders, setThunders] = useState<ReadonlyArray<Point>>([]);
   const [bricks, setBricks] = useState(0);
@@ -61,7 +61,7 @@ export const Game = () => {
 
     const connectCallback = () => {
       setDisconnected(false);
-      setCheckpoint({ x: -1, y: -1 });
+      setCheckpoint({ x: -2, y: -2 });
       setBlocks([]);
       setThunders([]);
       setBricks(0);
@@ -84,17 +84,17 @@ export const Game = () => {
         ...pb,
         x: Math.min(
           Math.max(
-            Math.round((e.clientX - box.x) / box.width * 20) * 5 - 5,
-            5,
+            Math.round((e.clientX - box.x) / box.width * 20) - 1,
+            1,
           ),
-          85,
+          17,
         ),
         y: Math.min(
           Math.max(
-            Math.round((e.clientY - box.y) / box.height * 20) * 5 - 5,
-            5,
+            Math.round((e.clientY - box.y) / box.height * 20) - 1,
+            1,
           ),
-          85,
+          17,
         ),
       }));
     };
@@ -109,11 +109,8 @@ export const Game = () => {
       setPlacingBlock((pb) => {
         if (!pb.placing) return pb;
 
-        const x = pb.x / 5;
-        const y = pb.y / 5;
-
-        connection.send({ kind: "block", x, y });
-        setBlocks((blocks) => [...blocks, { x, y }]);
+        connection.send({ kind: "block", x: pb.x, y: pb.y });
+        setBlocks((blocks) => [...blocks, { x: pb.x, y: pb.y }]);
         setBricks((bricks) => bricks - 1);
 
         return ({ ...pb, placing: false });
@@ -128,71 +125,68 @@ export const Game = () => {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", display: "flex" }}>
       <div style={{ flexGrow: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span>
-            <Action
-              hotkey="B"
-              name="Block"
-              icon="🧱"
-              handler={() =>
-                setPlacingBlock((pb) => ({ ...pb, placing: true }))}
-            />
-            <Action
-              hotkey="n"
-              name="Thunder"
-              icon="🧱⚡"
-              handler={handleStartThunder}
-            />
-          </span>
-          <span>
-            <span style={{ padding: 4 }}>{time} seconds to build!</span>
-            <Action
-              name="Ready"
-              hotkey="R"
-              handler={handleReady}
-              style={{ height: 34 }}
-            />
-          </span>
+        <div>
+          <Action
+            hotkey="B"
+            name="Block"
+            icon="🧱"
+            handler={() => setPlacingBlock((pb) => ({ ...pb, placing: true }))}
+          />
+          <Action
+            hotkey="n"
+            name="Thunder"
+            icon="🧱⚡"
+            handler={handleStartThunder}
+          />
         </div>
         <div style={{ position: "relative" }}>
-          <svg style={{ width: "100%" }} viewBox="0 0 100 100" ref={svgRef}>
-            <rect x={0} y={0} width={100} height={100} fill="#bee3fb" />
-            <rect x={0} y={0} width={45} height={5} fill="#404040" />
-            <rect x={55} y={0} width={45} height={5} fill="#404040" />
-            <rect x={0} y={95} width={45} height={5} fill="#404040" />
-            <rect x={55} y={95} width={45} height={5} fill="#404040" />
-            <rect x={0} y={0} width={5} height={100} fill="#404040" />
-            <rect x={95} y={0} width={5} height={100} fill="#404040" />
-            <text x={5} y={4} font-size={4} fill="white">🧱{bricks}</text>
-            <text x={17} y={4} font-size={4} fill="white">⚡{power}</text>
+          <svg style={{ width: "100%" }} viewBox="-1 -1 21 21" ref={svgRef}>
+            <rect x={0} y={0} width={20} height={20} fill="#bee3fb" />
+            <rect x={0} y={0} width={9} height={1} fill="#404040" />
+            <rect x={11} y={0} width={9} height={1} fill="#404040" />
+            <rect x={0} y={19} width={9} height={1} fill="#404040" />
+            <rect x={11} y={19} width={9} height={1} fill="#404040" />
+            <rect x={0} y={0} width={1} height={20} fill="#404040" />
+            <rect x={19} y={0} width={1} height={20} fill="#404040" />
+            <text x={1} y={0.8} font-size={0.8} fill="white">🧱{bricks}</text>
+            <text x={3.4} y={0.8} font-size={0.8} fill="white">⚡{power}</text>
+            <text
+              x={18.8}
+              y={0.8}
+              font-size={0.8}
+              fill="white"
+              text-anchor="end"
+            >
+              {time} seconds to build
+            </text>
             {blocks.map(({ x, y }) => (
               <rect
-                x={x * 5}
-                y={y * 5}
-                width={10}
-                height={10}
+                x={x}
+                y={y}
+                width={2}
+                height={2}
                 fill="#edb9d8"
                 stroke="black"
-                stroke-width={0.5}
+                stroke-width={0.1}
               />
             ))}
             {thunders.map(({ x, y }) => (
               <rect
-                x={x * 5}
-                y={y * 5}
-                width={10}
-                height={10}
+                x={x}
+                y={y}
+                width={2}
+                height={2}
                 fill="#edb9d8"
                 stroke="black"
-                stroke-width={0.5}
+                stroke-width={0.1}
               />
             ))}
             {checkpoint && (
               <rect
-                x={(checkpoint.x + 0.5) * 5}
-                y={(checkpoint.y + 0.5) * 5}
-                width={5}
-                height={5}
+                x={checkpoint.x + 0.55}
+                y={checkpoint.y + 0.55}
+                width={0.9}
+                height={0.9}
                 fill="#6bc0f7"
               />
             )}
@@ -200,11 +194,11 @@ export const Game = () => {
               <rect
                 x={placingBlock.x}
                 y={placingBlock.y}
-                width={10}
-                height={10}
+                width={2}
+                height={2}
                 fill="#edb9d8"
                 stroke="black"
-                stroke-width={0.5}
+                stroke-width={0.1}
                 opacity={0.4}
                 style={{ transition: "x 100ms, y 100ms" }}
               />
