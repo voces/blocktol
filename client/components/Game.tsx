@@ -215,114 +215,111 @@ export const Game = () => {
   }, [transitionBlock, invalid]);
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", display: "flex" }}>
-      <div style={{ position: "relative", flex: 1 }}>
-        <svg
-          style={{ width: "100%", display: "block" }}
-          viewBox="0 0 20 20"
-          ref={svgRef}
-        >
-          <rect x={0} y={0} width={20} height={20} fill="hsl(220, 60%, 80%)" />
-          <rect x={0} y={0} width={9} height={1} fill="#404040" />
-          <rect x={11} y={0} width={9} height={1} fill="#404040" />
-          <rect x={0} y={19} width={9} height={1} fill="#404040" />
-          <rect x={11} y={19} width={9} height={1} fill="#404040" />
-          <rect x={0} y={0} width={1} height={20} fill="#404040" />
-          <rect x={19} y={0} width={1} height={20} fill="#404040" />
-          {bricks >= 0 && (
-            <text x={1} y={0.8} font-size={0.8} fill="white">🧱{bricks}</text>
-          )}
-          {power >= 0 && (
-            <text x={3.4} y={0.8} font-size={0.8} fill="white">⚡{power}</text>
-          )}
-          {time > 0 && (
-            <text
-              x={18.8}
-              y={0.8}
-              font-size={0.8}
-              fill="white"
-              text-anchor="end"
-            >
-              {time} seconds to build
-            </text>
-          )}
-
-          {blocks.map((block) => (
-            <rect
-              x={block.x}
-              y={block.y}
-              width={2}
-              height={2}
-              // TODO: transition should fork on if we have power
-              fill={transitionBlock === block
-                ? "hsl(120, 60%, 65%)"
-                : block.local
-                ? "hsl(120, 60%, 80%)"
-                : "hsl(320, 60%, 80%)"}
-              stroke="black"
-              stroke-width={0.1}
-            />
-          ))}
-          {thunders.map((thunder) => (
-            <rect
-              x={thunder.x}
-              y={thunder.y}
-              width={2}
-              height={2}
-              fill={thunder.local ? "hsl(120, 60%, 50%)" : "hsl(320, 60%, 50%)"}
-              opacity={transitionBlock === thunder ? 0.4 : 1}
-              stroke="black"
-              stroke-width={0.1}
-            />
-          ))}
-          {checkpoint && (
-            <rect
-              x={checkpoint.x + 0.55}
-              y={checkpoint.y + 0.55}
-              width={0.9}
-              height={0.9}
-              fill="hsl(220, 60%, 50%)"
-            />
-          )}
-          {placingBlock.placing && (
-            <rect
-              x={placingBlock.x}
-              y={placingBlock.y}
-              width={2}
-              height={2}
-              fill={invalid ? "hsl(0, 100%, 60%)" : "hsl(120, 60%, 80%)"}
-              stroke="black"
-              stroke-width={0.1}
-              opacity={0.4}
-              style={{ transition: "x 100ms, y 100ms" }}
-            />
-          )}
-          {run && <Runner {...run} onFinish={() => setRun(undefined)} />}
-        </svg>
-        {disconnected && (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              color: "white",
-              fontSize: "200%",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            Disconnected
-          </div>
+    <div
+      style={{
+        maxWidth: "min(800px, 100vw, calc(100vh - 110px))",
+        margin: "0 auto",
+      }}
+    >
+      <svg
+        style={{ width: "100%", display: "block" }}
+        viewBox="0 0 20 20"
+        ref={svgRef}
+      >
+        <rect x={0} y={0} width={20} height={20} fill="hsl(220, 60%, 80%)" />
+        <rect x={0} y={0} width={9} height={1} fill="#404040" />
+        <rect x={11} y={0} width={9} height={1} fill="#404040" />
+        <rect x={0} y={19} width={9} height={1} fill="#404040" />
+        <rect x={11} y={19} width={9} height={1} fill="#404040" />
+        <rect x={0} y={0} width={1} height={20} fill="#404040" />
+        <rect x={19} y={0} width={1} height={20} fill="#404040" />
+        {bricks >= 0 && (
+          <text x={1} y={0.8} font-size={0.8} fill="white">🧱{bricks}</text>
         )}
-      </div>
-      <div style={{ width: 250 }}>
-        <Card>Live leaderboard</Card>
-        <Card>Log</Card>
-      </div>
+        {power >= 0 && (
+          <text x={3.4} y={0.8} font-size={0.8} fill="white">⚡{power}</text>
+        )}
+        {time > 0 && (
+          <text
+            x={18.8}
+            y={0.8}
+            font-size={0.8}
+            fill="white"
+            text-anchor="end"
+          >
+            {time} seconds to build
+          </text>
+        )}
+
+        {blocks.map((block) => (
+          <rect
+            x={block.x}
+            y={block.y}
+            width={2}
+            height={2}
+            // TODO: transition should fork on if we have power
+            fill={transitionBlock === block ? "hsl(120, 60%, 65%)" : block.local
+              ? "hsl(120, 60%, 80%)"
+              : "hsl(320, 60%, 80%)"}
+            stroke="black"
+            stroke-width={0.1}
+          />
+        ))}
+        {thunders.map((thunder) => (
+          <rect
+            x={thunder.x}
+            y={thunder.y}
+            width={2}
+            height={2}
+            fill={thunder.local ? "hsl(120, 60%, 50%)" : "hsl(320, 60%, 50%)"}
+            opacity={transitionBlock === thunder ? 0.4 : 1}
+            stroke="black"
+            stroke-width={0.1}
+          />
+        ))}
+        {checkpoint && (
+          <rect
+            x={checkpoint.x + 0.55}
+            y={checkpoint.y + 0.55}
+            width={0.9}
+            height={0.9}
+            fill="hsl(220, 60%, 50%)"
+          />
+        )}
+        {placingBlock.placing && (
+          <rect
+            x={placingBlock.x}
+            y={placingBlock.y}
+            width={2}
+            height={2}
+            fill={invalid ? "hsl(0, 100%, 60%)" : "hsl(120, 60%, 80%)"}
+            stroke="black"
+            stroke-width={0.1}
+            opacity={0.4}
+            style={{ transition: "x 100ms, y 100ms" }}
+          />
+        )}
+        {run && <Runner {...run} onFinish={() => setRun(undefined)} />}
+      </svg>
+      {disconnected && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            color: "white",
+            fontSize: "200%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          Disconnected
+        </div>
+      )}
     </div>
   );
 };
