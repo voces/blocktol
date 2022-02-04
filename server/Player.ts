@@ -10,6 +10,7 @@ export class Player {
   blocks: (Point & { thunder?: boolean })[] = [];
   bricks = 0;
   power = 0;
+  unranked = false;
 
   private static map = new WeakMap<WebSocket, Player>();
 

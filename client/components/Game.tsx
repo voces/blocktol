@@ -53,7 +53,7 @@ export const Game = () => {
       setBlocks(blocks);
       setBricks(event.bricks);
       setPower(event.power);
-      setTime(60);
+      setTime(Math.floor(event.time));
 
       grid.splice(0, Infinity, ...newGrid());
 
@@ -94,6 +94,7 @@ export const Game = () => {
       setTime(-1);
       setBricks(-1);
       setPower(-1);
+      setTouching(false);
     };
     connection.addEventListener("run", runCallback);
 
@@ -176,7 +177,7 @@ export const Game = () => {
 
   useEffect(() => {
     const callback = () => {
-      if (invalid) return;
+      if (invalid || time <= 0) return;
       if (svgRef.current) svgRef.current.style.transform = "";
 
       if (transitionBlock) {

@@ -4,6 +4,7 @@ import { Point } from "./types.ts";
 
 export type StartMessage = Readonly<{
   kind: "start";
+  time: number;
   checkpoint: Point;
   thunders: Point[];
   blocks: Point[];

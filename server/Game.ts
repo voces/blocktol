@@ -8,11 +8,20 @@ import { isLeader } from "./trackLeadership.ts";
 
 type Status = "idle" | "build" | "run";
 
+const BUILD_TIME = 60;
+
 class Game {
   #players = new Set<Player>();
-  #queuedPlayers = new Set<Player>();
   #status: Status = "idle";
   #started = false;
+
+  #start = 0;
+  #checkpoint = { x: 0, y: 0 };
+  #blocks: Point[] = [];
+  #thunders: Point[] = [];
+  #bricks = 0;
+  #power = 0;
+
   #grid: boolean[][] = [];
   #max = -Infinity;
   #timeout = 0;
@@ -20,9 +29,6 @@ class Game {
 
   start() {
     if (this.#started || this.#status !== "idle" || !isLeader()) return;
-
-    this.#queuedPlayers.forEach((player) => this.#players.add(player));
-    this.#queuedPlayers.clear();
 
     if (this.#players.size === 0) return;
 
@@ -39,20 +45,19 @@ class Game {
 
     console.log(new Date(), "Starting round");
 
-    this.#queuedPlayers.forEach((player) => this.#players.add(player));
-    this.#queuedPlayers.clear();
+    this.#start = Date.now();
 
     this.#grid = newGrid();
 
-    const checkpoint = {
+    this.#checkpoint = {
       x: 1.5 + Math.floor(Math.random() * 17),
       y: 1.5 + Math.floor(Math.random() * 17),
     };
-    this.#grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+    this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
 
     let r = Math.random();
     let n = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
-    const thunders: Point[] = [];
+    this.#thunders = [];
     while (n--) {
       const x = 2 + Math.floor(Math.random() * 17);
       const y = 2 + Math.floor(Math.random() * 17);
@@ -61,13 +66,13 @@ class Game {
 
       offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
 
-      if (!findPath(this.#grid, checkpoint)) {
+      if (!findPath(this.#grid, this.#checkpoint)) {
         offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
-      } else thunders.push({ x, y });
+      } else this.#thunders.push({ x, y });
     }
 
     n = Math.floor(Math.random() * Math.random() * 49);
-    const blocks: Point[] = [];
+    this.#blocks = [];
     while (n--) {
       const x = 2 + Math.floor(Math.random() * 17);
       const y = 2 + Math.floor(Math.random() * 17);
@@ -76,16 +81,16 @@ class Game {
 
       offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
 
-      if (!findPath(this.#grid, checkpoint)) {
+      if (!findPath(this.#grid, this.#checkpoint)) {
         offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
-      } else blocks.push({ x, y });
+      } else this.#blocks.push({ x, y });
     }
 
-    const path = findPath(this.#grid, checkpoint);
+    const path = findPath(this.#grid, this.#checkpoint);
     console.log(
       this.#grid.map((r, y) =>
         r.map((v, x) =>
-          (checkpoint.x + 0.5 === x && checkpoint.y + 0.5 === y)
+          (this.#checkpoint.x + 0.5 === x && this.#checkpoint.y + 0.5 === y)
             ? "X"
             : v
             ? "█"
@@ -97,33 +102,34 @@ class Game {
     );
 
     r = Math.random();
-    const power = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
-    const bricks = power + Math.floor(Math.random() * Math.random() * 20) + 3;
+    this.#power = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
+    this.#bricks = this.#power +
+      Math.floor(Math.random() * Math.random() * 20) + 3;
 
     for (const player of this.#players) {
       player.startRound(
         this.#grid.map((r) => [...r]),
-        checkpoint,
-        bricks,
-        power,
+        this.#checkpoint,
+        this.#bricks,
+        this.#power,
       );
     }
 
     this.broadcast({
       kind: "start",
-      checkpoint,
-      thunders,
-      blocks,
-      power,
-      bricks,
+      time: BUILD_TIME,
+      checkpoint: this.#checkpoint,
+      thunders: this.#thunders,
+      blocks: this.#blocks,
+      power: this.#power,
+      bricks: this.#bricks,
     });
 
-    this.#timeout = setTimeout(() => this.#startRunners(), 60_000);
+    this.#timeout = setTimeout(() => this.#startRunners(), BUILD_TIME * 1_000);
   }
 
   broadcast(message: Message) {
     for (const player of this.#players) player.send(message);
-    for (const player of this.#queuedPlayers) player.send(message);
   }
 
   #startRunTimeout(timeout: number) {
@@ -144,6 +150,11 @@ class Game {
       const duration = path.length * 0.2;
       if (duration > this.#max) this.#max = duration;
       player.send({ kind: "run", path, duration });
+
+      // A player is unranked for a round if they join in the middle of it
+      if (player.unranked) {
+        player.unranked = true;
+      }
     }
 
     broadcast({ kind: "startRun", max: this.#max });
@@ -172,6 +183,12 @@ class Game {
   }
 
   startFromState(state: StartMessage) {
+    this.#checkpoint = state.checkpoint;
+    this.#thunders = state.thunders;
+    this.#blocks = state.blocks;
+    this.#bricks = state.bricks;
+    this.#power = state.power;
+
     this.#grid = newGrid();
 
     this.#grid[state.checkpoint.y + 0.5][state.checkpoint.x + 0.5] = true;
@@ -209,24 +226,37 @@ class Game {
   }
 
   addPlayer(player: Player) {
+    this.#players.add(player);
     if (this.#status === "idle") {
-      this.#players.add(player);
       if (isLeader() && !this.#started) this.start();
-    } else this.#queuedPlayers.add(player);
+    } else {
+      player.unranked = true;
+      player.grid = this.#grid.map((r) => [...r]);
+      player.checkpoint = this.#checkpoint;
+      player.bricks = this.#bricks;
+      player.power = this.#power;
+
+      player.send({
+        kind: "start",
+        time: (this.#start + BUILD_TIME * 1_000 - Date.now()) / 1_000,
+        checkpoint: this.#checkpoint,
+        thunders: this.#thunders,
+        blocks: this.#blocks,
+        power: this.#power,
+        bricks: this.#bricks,
+      });
+    }
   }
 
   removePlayer(player: Player) {
-    if (this.#players.has(player)) {
-      this.#players.delete(player);
-      if (this.#players.size === 0) {
-        console.log(new Date(), "No players remaining, ending round early");
-        this.#status = "idle";
-        this.#started = false;
-        clearTimeout(this.#timeout);
-        if (this.#queuedPlayers.size > 0) this.start();
-      }
-    } else if (this.#queuedPlayers.has(player)) {
-      this.#queuedPlayers.delete(player);
+    if (!this.#players.has(player)) return;
+
+    this.#players.delete(player);
+    if (this.#players.size === 0) {
+      console.log(new Date(), "No players remaining, ending round early");
+      this.#status = "idle";
+      this.#started = false;
+      clearTimeout(this.#timeout);
     }
   }
 }
