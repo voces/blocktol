@@ -66,7 +66,7 @@ class Game {
       } else thunders.push({ x, y });
     }
 
-    n = Math.floor(Math.random() * .49);
+    n = Math.floor(Math.random() * Math.random() * 49);
     const blocks: Point[] = [];
     while (n--) {
       const x = 2 + Math.floor(Math.random() * 17);

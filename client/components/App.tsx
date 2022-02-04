@@ -1,4 +1,4 @@
-import { ComponentChildren, Fragment, h } from "preact";
+import { ComponentChildren, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { ConnectionContext } from "../contexts/Connection.ts";
 import { useConnectionState } from "../hooks/useConnectionState.ts";
@@ -8,7 +8,7 @@ import { Login } from "./Login.tsx";
 
 const Shell = ({ children }: { children: ComponentChildren }) => (
   <div style={{ textAlign: "center" }}>
-    <h1>mazing contest</h1>
+    <h1>Blocktol</h1>
     {children}
   </div>
 );

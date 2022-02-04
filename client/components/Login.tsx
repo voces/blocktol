@@ -20,7 +20,16 @@ export const Login = (
   }, []);
 
   return (
-    <Card style={{ maxWidth: 300, margin: "4px auto" }}>
+    <Card
+      style={{
+        width: 300,
+        maxWidth: "100%",
+        position: "absolute",
+        top: "calc(80px + 20%)",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+      }}
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -33,7 +42,7 @@ export const Login = (
           }
         }}
       >
-        <h2 style={{ marginTop: 0 }}>Welcome to mazing contest!</h2>
+        <h2 style={{ marginTop: 0 }}>Login</h2>
         <Input
           style={{ display: "block", width: "100%" }}
           placeholder="Username"

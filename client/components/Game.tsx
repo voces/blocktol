@@ -1,6 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { h } from "preact";
-import { Card } from "./Card.tsx";
 import { ConnectionContext } from "../contexts/Connection.ts";
 import {
   RunMessage,
@@ -14,16 +13,13 @@ import { offsets } from "../../common/constants.ts";
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const connection = useContext(ConnectionContext);
-
   const [placingBlock, setPlacingBlock] = useState({
     x: 0,
     y: 0,
     placing: false,
   });
   const [transitionBlock, setTransitionBlock] = useState<Point>();
-
   const [disconnected, setDisconnected] = useState(false);
-
   const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
   const [blocks, setBlocks] = useState<
     ReadonlyArray<Point & { local?: boolean }>
@@ -31,12 +27,13 @@ export const Game = () => {
   const [thunders, setThunders] = useState<
     ReadonlyArray<Point & { local?: boolean }>
   >([]);
-  const [bricks, setBricks] = useState(0);
-  const [power, setPower] = useState(0);
+  const [bricks, setBricks] = useState(-1);
+  const [power, setPower] = useState(-1);
   const [time, setTime] = useState(-1);
   const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
   const [run, setRun] = useState<Omit<RunMessage, "kind">>();
+  const [touching, setTouching] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(
@@ -109,20 +106,20 @@ export const Game = () => {
   }, []);
 
   useEffect(() => {
-    const callback = (e: MouseEvent) => {
-      if (!svgRef.current || bricks === 0 || time <= 0) return;
+    const callback = (clientX: number, clientY: number) => {
+      if (!svgRef.current || time <= 0) return;
 
       const box = svgRef.current.getBoundingClientRect();
       const x = Math.min(
         Math.max(
-          Math.round((e.clientX - box.x) / box.width * 20) - 1,
+          Math.round((clientX - box.x) / box.width * 20) - 1,
           1,
         ),
         17,
       );
       const y = Math.min(
         Math.max(
-          Math.round((e.clientY - box.y) / box.height * 20) - 1,
+          Math.round((clientY - box.y) / box.height * 20) - 1,
           1,
         ),
         17,
@@ -133,7 +130,7 @@ export const Game = () => {
       ) ??
         thunders.find((t) => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1);
 
-      setPlacingBlock(() => ({ placing: !overlap?.local, x, y }));
+      setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
 
       let invalid = (!!overlap && !overlap.local) ||
         (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
@@ -152,67 +149,99 @@ export const Game = () => {
       );
     };
 
-    globalThis.addEventListener("mousemove", callback);
+    const mousemoveCallback = (e: MouseEvent) => callback(e.clientX, e.clientY);
+    globalThis.addEventListener("mousemove", mousemoveCallback);
 
-    return () => globalThis.removeEventListener("mousemove", callback);
+    const touchmoveCallback = (e: TouchEvent) => {
+      callback(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    };
+    globalThis.addEventListener("touchmove", touchmoveCallback, {
+      passive: false,
+    });
+
+    const touchstartCallback = (e: TouchEvent) => {
+      setTouching(true);
+      callback(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    };
+    globalThis.addEventListener("touchstart", touchstartCallback);
+
+    return () => {
+      globalThis.removeEventListener("mousemove", mousemoveCallback);
+      globalThis.removeEventListener("touchstart", touchmoveCallback);
+      globalThis.removeEventListener("touchmove", touchmoveCallback);
+    };
   }, [svgRef.current, bricks, blocks, checkpoint, time]);
 
   useEffect(() => {
-    const callback = (e: MouseEvent) => {
-      setPlacingBlock((pb) => {
-        if (invalid) return pb;
+    const callback = () => {
+      if (invalid) return;
+      if (svgRef.current) svgRef.current.style.transform = "";
 
-        if (transitionBlock) {
-          connection.send({
-            kind: "transition",
-            x: transitionBlock.x,
-            y: transitionBlock.y,
-          });
+      if (transitionBlock) {
+        connection.send({
+          kind: "transition",
+          x: transitionBlock.x,
+          y: transitionBlock.y,
+        });
 
-          setBlocks((blocks) =>
-            blocks.filter((block) => block !== transitionBlock)
+        setBlocks((blocks) =>
+          blocks.filter((block) => block !== transitionBlock)
+        );
+        let isThunder = false;
+        setThunders((thunders) =>
+          thunders.filter((thunder) => {
+            if (thunder === transitionBlock) {
+              isThunder = true;
+              return false;
+            }
+            return true;
+          })
+        );
+
+        if (power && !isThunder) {
+          setThunders((thunders) => [...thunders, transitionBlock]);
+          setPower((power) => power - 1);
+        } else {
+          setBricks((bricks) => bricks + 1);
+          offsets.forEach(([xd, yd]) =>
+            grid[transitionBlock.y + yd][transitionBlock.x + xd] = true
           );
-          let isThunder = false;
-          setThunders((thunders) =>
-            thunders.filter((thunder) => {
-              if (thunder === transitionBlock) {
-                isThunder = true;
-                return false;
-              }
-              return true;
-            })
-          );
-
-          if (power && !isThunder) {
-            setThunders((thunders) => [...thunders, transitionBlock]);
-            setPower((power) => power - 1);
-          } else {
-            setBricks((bricks) => bricks - 1);
-            offsets.forEach(([xd, yd]) =>
-              grid[transitionBlock.y + yd][transitionBlock.x + xd] = true
-            );
-          }
-
-          setTransitionBlock(undefined);
-          return pb;
         }
 
-        if (!pb.placing) return pb;
+        setTransitionBlock(undefined);
+        return;
+      }
 
-        offsets.forEach(([xd, yd]) => grid[pb.y + yd][pb.x + xd] = true);
+      if (!placingBlock.placing) return;
 
-        connection.send({ kind: "block", x: pb.x, y: pb.y });
-        setBlocks((blocks) => [...blocks, { x: pb.x, y: pb.y, local: true }]);
-        setBricks((bricks) => bricks - 1);
+      offsets.forEach(([xd, yd]) =>
+        grid[placingBlock.y + yd][placingBlock.x + xd] = true
+      );
 
-        return ({ ...pb, placing: false });
-      });
+      connection.send({ kind: "block", x: placingBlock.x, y: placingBlock.y });
+      setBlocks((
+        blocks,
+      ) => [...blocks, { x: placingBlock.x, y: placingBlock.y, local: true }]);
+      setBricks((bricks) => bricks - 1);
+
+      setPlacingBlock({ ...placingBlock, placing: false });
     };
 
     globalThis.addEventListener("mousedown", callback);
 
-    return () => globalThis.removeEventListener("mousedown", callback);
-  }, [transitionBlock, invalid]);
+    const touchendCallback = () => {
+      setTouching(false);
+      callback();
+    };
+    globalThis.addEventListener("touchend", touchendCallback);
+
+    return () => {
+      globalThis.removeEventListener("mousedown", callback);
+      globalThis.removeEventListener("touchend", touchendCallback);
+    };
+  }, [placingBlock, transitionBlock, invalid]);
 
   return (
     <div
@@ -222,7 +251,15 @@ export const Game = () => {
       }}
     >
       <svg
-        style={{ width: "100%", display: "block" }}
+        style={{
+          width: "100%",
+          display: "block",
+          transition: "transform 100ms, transform-origin 100ms",
+          transformOrigin: `${(placingBlock.x + 1) * 5}% ${
+            placingBlock.y * 5
+          }%`,
+          transform: touching ? "scale(2)" : undefined,
+        }}
         viewBox="0 0 20 20"
         ref={svgRef}
       >
@@ -257,10 +294,12 @@ export const Game = () => {
             y={block.y}
             width={2}
             height={2}
-            // TODO: transition should fork on if we have power
-            fill={transitionBlock === block ? "hsl(120, 60%, 65%)" : block.local
+            fill={transitionBlock === block && power > 0
+              ? "hsl(120, 60%, 65%)"
+              : block.local
               ? "hsl(120, 60%, 80%)"
               : "hsl(320, 60%, 80%)"}
+            opacity={transitionBlock === block && power === 0 ? 0.6 : undefined}
             stroke="black"
             stroke-width={0.1}
           />
