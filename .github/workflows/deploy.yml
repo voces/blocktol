@@ -19,10 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: denolib/setup-deno@v2
-      - run: |
-          rm public/js/.gitignore
-          ./bundle
-          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin ${{ github.event.inputs.env }}:refs/remotes/origin/${{ github.event.inputs.env }}
-          git checkout --force -B prod refs/remotes/origin/${{ github.event.inputs.env }}
-          git add --all
-          git commit -am '${{ github.event.inputs.tag }}'
+      - run: rm public/js/.gitignore
+      - run: ./bundle
+      - run: git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin ${{ github.event.inputs.env }}:refs/remotes/origin/${{ github.event.inputs.env }}
+      - run: git checkout --force -B prod refs/remotes/origin/${{ github.event.inputs.env }}
+      - run: git add --all
+      - run: git commit -am '${{ github.event.inputs.tag }}'
