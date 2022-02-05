@@ -29,7 +29,7 @@ jobs:
       - run: git checkout --force -B ${{ github.event.inputs.env }} refs/remotes/origin/${{ github.event.inputs.env }}
       - run: git checkout -b tmp origin/master
       - run: git merge -s ours dev --squash --allow-unrelated-histories
-      - run: git commit -m '${{ github.event.inputs.tag }}'
+      - run: git commit -m '${{ github.event.inputs.tag }}' --allow-empty
       - run: git checkout dev
       - run: git merge tmp --squash --allow-unrelated-histories
       - run: git commit -m '${{ github.event.inputs.tag }}'
