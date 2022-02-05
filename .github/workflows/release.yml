@@ -5,6 +5,7 @@ on:
     inputs:
       tag:
         required: true
+        description: tag of release
       env:
         required: true
         default: 'dev'
