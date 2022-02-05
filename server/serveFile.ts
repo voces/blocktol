@@ -1,12 +1,9 @@
 const paths = {
-  "/": "index.html",
-  "/index.js": "index.js",
+  "/": "/index.html",
+  "/js/index.js": "/js/index.js",
 };
 
-const files: typeof paths = {
-  "/": paths["/"],
-  "/index.js": paths["/index.js"],
-};
+const files: typeof paths = { ...paths };
 
 const isValid = (path: string): path is keyof typeof paths => path in paths;
 
@@ -20,7 +17,7 @@ export const serveFile = async (req: Request) => {
   }
 
   if (files[path] === paths[path]) {
-    files[path] = await Deno.readTextFile(`public/${paths[path]}`);
+    files[path] = await Deno.readTextFile(`public${paths[path]}`);
   }
 
   return new Response(files[path], {
@@ -28,8 +25,4 @@ export const serveFile = async (req: Request) => {
       "Content-Type": path.endsWith(".js") ? "text/javascript" : "text/html",
     },
   });
-
-  //   return fetch(
-  //     `https://github.com/voces/blocktol/releases/latest/download/${paths[path]}`,
-  //   );
 };
