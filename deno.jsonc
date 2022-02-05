@@ -6,10 +6,10 @@
   },
   "lint": {
     "files": {
-      "exclude": ["public/js"]
+      "exclude": ["public/*.js"]
     }
   },
   "fmt": {
-    "files": { "exclude": ["public/js"] }
+    "files": { "exclude": ["public/*.js"] }
   }
 }
