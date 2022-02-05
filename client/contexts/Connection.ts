@@ -19,7 +19,7 @@ class Connection implements Emitter<MessageMap> {
 
   #setupSocket() {
     const protocol = location.protocol === "http:" ? "ws" : "wss";
-    this.#ws = new WebSocket(`${protocol}://${location.hostname}:3000`);
+    this.#ws = new WebSocket(`${protocol}://${location.host}`);
 
     this.#ws.addEventListener("open", () => {
       this.dispatchEvent("connect", undefined as never);

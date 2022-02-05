@@ -2,6 +2,7 @@ import { serve } from "std/http/server.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";
+import { serveFile } from "./serveFile.ts";
 
 const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 
@@ -10,7 +11,7 @@ console.log(new Date(), "Listening on", port);
 serve((req) => {
   const upgrade = req.headers.get("upgrade") || "";
   if (upgrade.toLowerCase() !== "websocket") {
-    return new Response("websocket only server");
+    return serveFile(req);
   }
   const { socket, response } = Deno.upgradeWebSocket(req);
 

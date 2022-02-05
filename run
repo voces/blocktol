@@ -4,6 +4,7 @@ deno run \
     --no-check=remote \
     --allow-net \
     --allow-env=PORT \
+    --allow-read \
     --unstable \
     "$@" \
     server/index.ts
