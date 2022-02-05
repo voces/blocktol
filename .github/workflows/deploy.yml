@@ -18,13 +18,11 @@ jobs:
     name: Builds master and commits to a deploy branch
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: '${{ github.event.inputs.env }}'
       - uses: denolib/setup-deno@v2
       - run: |
-          git fetch --no-tags --depth=1 origin master
-          git merge --no-commit --no-ff --squash master
+          rm public/js/.gitignore
           ./bundle
-          git add .
-          git commit -m "${{ github.event.inputs.tag }}"
-          git push
+          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin ${{ github.event.inputs.env }}:refs/remotes/origin/${{ github.event.inputs.env }}
+          git checkout --force -B prod refs/remotes/origin/${{ github.event.inputs.env }}
+          git add --all
+          git commit -am '${{ github.event.inputs.tag }}'
