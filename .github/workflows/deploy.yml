@@ -21,11 +21,10 @@ jobs:
       - uses: denolib/setup-deno@v2
       - run: rm public/js/.gitignore
       - run: ./bundle
+      - run: git add --all
+      - run: git commit -am '${{ github.event.inputs.tag }}'
       - run: git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin ${{ github.event.inputs.env }}:refs/remotes/origin/${{ github.event.inputs.env }}
       - run: git checkout --force -B ${{ github.event.inputs.env }} refs/remotes/origin/${{ github.event.inputs.env }}
-      - run: git status
-      - run: git add --all
-      - run: git config --global user.email "deploy+${{ github.actor }}@blocktol.com"
-      - run: git config --global user.name "${{ github.actor }}"
-      - run: git commit -am '${{ github.event.inputs.tag }}'
+      - run: git merge --squash master --allow-unrelated-histories
+      - run: git commit -m '${{ github.event.inputs.tag }}'
       - run: git push
