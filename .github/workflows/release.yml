@@ -20,18 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: denolib/setup-deno@v2
+      - run: git -c protocol.version=2 fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 origin ${{ github.event.inputs.env }}:refs/remotes/origin/${{ github.event.inputs.env }}
+      - run: git checkout ${{ github.event.inputs.env }}
+      - run: git checkout master -- *
       - run: rm public/js/.gitignore
       - run: ./bundle
       - run: git add --all
       - run: git config --global user.email "release+${{ github.actor }}@blocktol.com"
       - run: git config --global user.name "${{ github.actor }}"
       - run: git commit -am '${{ github.event.inputs.tag }}'
-      - run: git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin ${{ github.event.inputs.env }}:refs/remotes/origin/${{ github.event.inputs.env }}
-      - run: git checkout --force -B ${{ github.event.inputs.env }} refs/remotes/origin/${{ github.event.inputs.env }}
-      - run: git checkout -b tmp origin/master
-      - run: git merge -s ours dev --squash --allow-unrelated-histories
-      - run: git commit -m '${{ github.event.inputs.tag }}' --allow-empty
-      - run: git checkout dev
-      - run: git merge tmp --squash --allow-unrelated-histories
-      - run: git commit -m '${{ github.event.inputs.tag }}'
       - run: git push
