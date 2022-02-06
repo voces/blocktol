@@ -159,7 +159,7 @@ class Game {
 
     broadcast({ kind: "startRun", max: this.#max });
 
-    console.log(new Date(), "Start run, best is", this.#max);
+    console.log(new Date(), "Start run, local best is", this.#max);
 
     this.#startRunTimeout(this.#max * 1_000);
   }

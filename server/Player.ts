@@ -18,6 +18,7 @@ export class Player {
     websocket: WebSocket,
     readonly id: string,
     readonly username: string,
+    readonly rating: number,
   ) {
     this.#websocket = websocket;
     websocket.addEventListener("close", () => game.removePlayer(this));

@@ -5,13 +5,27 @@ import { names } from "../util/random/names.ts";
 import { Button } from "./Button.tsx";
 import { Input } from "./Input.tsx";
 
+const setStoredName = (name: string) => localStorage.setItem("name", name);
+
+const getStoredName = (random = false) => {
+  let name = localStorage.getItem("name");
+  if (name) return name;
+
+  if (!random) return "";
+
+  name = names[Math.floor(Math.random() ** 2 * names.length)];
+  setStoredName(name);
+
+  return name;
+};
+
 export const Login = (
   { onLogin, connected }: {
     onLogin: (username: string) => void;
     connected: boolean;
   },
 ) => {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(getStoredName());
   const [showError, setShowError] = useState(false);
 
   useEffect(() => {
@@ -33,13 +47,8 @@ export const Login = (
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (value.length) {
-            onLogin(value);
-          } else {
-            onLogin(
-              names[Math.floor(Math.random() ** 2 * names.length)],
-            );
-          }
+          if (value.length) setStoredName(value);
+          onLogin(value || getStoredName(true));
         }}
       >
         <h2 style={{ marginTop: 0 }}>Login</h2>

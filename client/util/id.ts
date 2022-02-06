@@ -1,13 +1,12 @@
+const randomUUID =
+  // deno-lint-ignore no-explicit-any
+  () => ((crypto as any) as { randomUUID: () => string }).randomUUID();
+
 export const getId = () => {
   const storedId = localStorage.getItem("id");
-  if (storedId) return storedId;
+  if (storedId?.match(/^[0-9a-f\-]+$/)) return storedId;
 
-  // Generate random 1024-character id
-  const id = Array.from(crypto.getRandomValues(new Uint8Array(4096)))
-    .map((c) => String.fromCharCode(c))
-    .join("")
-    .replace(/[^\x20-\x7E]/g, "")
-    .slice(0, 1024);
+  const id = randomUUID();
 
   localStorage.setItem("id", id);
 

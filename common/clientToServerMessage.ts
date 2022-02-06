@@ -1,9 +1,9 @@
-import { hasEnum, hasNumber, hasString } from "./typeguards.ts";
+import { hasEnum, hasMaybeString, hasNumber, hasString } from "./typeguards.ts";
 import { isRecord } from "./typeguards.ts";
 
 export type LoginMessage = {
   kind: "login";
-  username: string;
+  username: string | undefined;
   id: string;
 };
 
@@ -22,7 +22,7 @@ export type TransitionBlockMessage = {
 const isLoginMessage = (value: unknown): value is LoginMessage =>
   isRecord(value) &&
   hasEnum(value, "kind", ["login"]) &&
-  hasString(value, "username") &&
+  hasMaybeString(value, "username") &&
   hasString(value, "id");
 
 const isBlockMessage = (value: unknown): value is LoginMessage =>
@@ -43,5 +43,6 @@ export type ClientToServerMessage =
   | TransitionBlockMessage;
 
 export const isMessage = (value: unknown): value is ClientToServerMessage =>
-  isLoginMessage(value) || isBlockMessage(value) ||
+  isLoginMessage(value) ||
+  isBlockMessage(value) ||
   isTransitionBlockMessage(value);
