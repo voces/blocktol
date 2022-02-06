@@ -1,3 +1,5 @@
+import { env } from "./util/env.ts";
+
 const paths = {
   "/": "/index.html",
   "/js/index.js": "/js/index.js",
@@ -16,7 +18,7 @@ export const serveFile = async (req: Request) => {
     });
   }
 
-  if (files[path] === paths[path]) {
+  if (files[path] === paths[path] || env === "local") {
     files[path] = await Deno.readTextFile(`public${paths[path]}`);
   }
 

@@ -2,7 +2,7 @@ deno run \
     --config deno.jsonc \
     --no-check=remote \
     --allow-net \
-    --allow-env=PORT \
+    --allow-env=PORT,DENO_ENV \
     --allow-read \
     --unstable \
     "$@" \

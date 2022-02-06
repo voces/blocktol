@@ -8,14 +8,22 @@ const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 
 console.log(new Date(), "Listening on", port);
 
-serve((req) => {
+serve((req, connInfo) => {
   const upgrade = req.headers.get("upgrade") || "";
   if (upgrade.toLowerCase() !== "websocket") {
     return serveFile(req);
   }
   const { socket, response } = Deno.upgradeWebSocket(req);
 
-  socket.onopen = () => console.log(new Date(), "Socket opened");
+  socket.onopen = () =>
+    console.log(
+      new Date(),
+      "Socket opened",
+      connInfo.remoteAddr.transport === "tcp"
+        ? connInfo.remoteAddr.hostname
+        : connInfo,
+    );
+
   socket.onmessage = (e) => {
     try {
       const message = JSON.parse(e.data);
@@ -32,9 +40,11 @@ serve((req) => {
       socket.close();
     }
   };
+
   socket.onerror = (e) =>
     // deno-lint-ignore no-explicit-any
     console.log(new Date(), "Socket errored:", (e as any).message);
+
   socket.onclose = () => console.log(new Date(), "Socket closed");
 
   return response;

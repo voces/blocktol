@@ -1,0 +1,17 @@
+import { format } from "https://esm.sh/sqlstring@2.3.2?pin=v64";
+
+export const query = <T = unknown>(query: string): Promise<T> =>
+  fetch("https://w3x.io/sql", {
+    headers: {
+      "x-dbproxy-user": "elopublic",
+      "x-dbproxy-password": Deno.env.get("SQL_PASSWORD")!,
+      "x-dbproxy-database": "elo",
+    },
+    method: "POST",
+    body: query,
+  }).then((r) => r.json());
+
+export const sql = <T = unknown>(
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => query<T>(format(strings.join("?"), values));
