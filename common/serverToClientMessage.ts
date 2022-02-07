@@ -26,6 +26,7 @@ export type RunMessage = Readonly<{
   kind: "run";
   path: Point[];
   duration: number;
+  rating: number;
 }>;
 
 const isRunMessage = (value: unknown): value is StartMessage =>

@@ -7,14 +7,15 @@ type PlayerStatus = "midjoin" | "afk" | "playing";
 
 const HOUSE = 2; // 2**(1000/1000)
 
+const K = 32;
+
 const reverseInterpolate = (left: number, right: number, value: number) =>
   (value - left) / (right - left);
 
-// copy and pasted from revo; adapt to what we actually want...
-const reverseTween = (data: number[], value: number): number => {
-  if (value < data[0]) return 0;
+const reverseTween = (data: number[], value: number, min: number): number => {
+  if (value < data[0]) return reverseInterpolate(min, data[0], value);
   const length = data.length - 1;
-  if (value > data[length]) return 1;
+  if (value > data[length]) return (length * 2 + 1) / data.length;
 
   let left = 0;
   let right = length;
@@ -49,6 +50,7 @@ const reverseTween = (data: number[], value: number): number => {
 export class Player {
   #websocket: WebSocket;
   plays: number;
+  rating: number;
   status: PlayerStatus = "midjoin";
 
   grid: boolean[][] = [];
@@ -63,11 +65,12 @@ export class Player {
     websocket: WebSocket,
     readonly id: string,
     readonly username: string,
-    readonly rating: number,
+    rating: number,
     plays: number,
   ) {
     this.#websocket = websocket;
     this.plays = plays;
+    this.rating = rating;
 
     websocket.addEventListener("close", () => game.removePlayer(this));
 
@@ -107,11 +110,17 @@ export class Player {
         (2 ** (this.rating / 1000) + HOUSE);
       const actualPercentile = times.length === 0
         ? expectedPercentile
-        : reverseTween(times, duration);
+        : reverseTween(times, duration, min);
+      const change = K / Math.sqrt(this.plays) *
+        (actualPercentile - expectedPercentile);
+
+      this.rating += change;
       this.plays++;
     }
 
-    return [path, duration] as const;
+    this.send({ kind: "run", path, duration, rating: this.rating });
+
+    return duration;
   }
 
   static from(socket: WebSocket) {

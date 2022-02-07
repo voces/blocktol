@@ -15,3 +15,17 @@ export const sql = <T = unknown>(
   strings: TemplateStringsArray,
   ...values: unknown[]
 ) => query<T>(SqlString.format(strings.join("?"), values));
+
+export const format = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => SqlString.format(strings.join("?"), values);
+
+export type ExecResult = {
+  fieldCount: number;
+  affectedRows: number;
+  insertId: number;
+  info: string;
+  serverStatus: number;
+  warningStatus: number;
+};

@@ -1,9 +1,6 @@
-// type Iteration = {
-
 import { Point } from "../../common/types.ts";
-import { sql } from "./query.ts";
-
-// }
+import { PlayerRunsMessage } from "../ServerMessage.ts";
+import { ExecResult, format, sql } from "./query.ts";
 
 export const getIterationCount = () =>
   sql<{ count: number }[]>`
@@ -40,6 +37,10 @@ const raw = ({ raw }: { raw: readonly string[] }) => ({
   toSqlString: () => raw.join(""),
 });
 
+const raw2 = (str: string) => ({
+  toSqlString: () => str,
+});
+
 export const createIteration = (
   bricks: number,
   power: number,
@@ -47,18 +48,38 @@ export const createIteration = (
   blocks: Point[],
   thunders: Point[],
 ) =>
-  sql`
+  sql<[ExecResult, ExecResult, ExecResult[] | undefined]>`
     INSERT INTO iteration (bricks, power, checkpoint_x, checkpoint_y) 
     VALUES (${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y});
     SET @last_id = LAST_INSERT_ID();
-    INSERT INTO block (iteration, x, y, kind)
-    VALUES ${[
-    ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
-    ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
-  ]};
-  `;
+    ${
+    blocks.length || thunders.length
+      ? raw2(format`
+          INSERT INTO block (iteration, x, y, kind)
+          VALUES ${[
+        ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
+        ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
+      ]};`)
+      : ""
+  }`.then(([r]) => r.insertId);
 
 export const getIterationTimes = (iteration: number) =>
   sql<{ time: number }[]>`
     SELECT time FROM run WHERE iteration = ${iteration} ORDER BY created DESC LIMIT 1000;
   `.then((r) => r.map((r) => r.time).sort((a, b) => a - b));
+
+export const logRuns = (
+  runs: PlayerRunsMessage["playerRuns"],
+  iteration: number,
+) =>
+  sql`
+    INSERT INTO run (user, iteration, duration)
+    VALUES ${runs.map(({ player, duration }) => [player, iteration, duration])};
+    ${
+    raw2(
+      runs.map(({ player, rating }) =>
+        format`UPDATE user SET rating = ${rating} WHERE id = ${player};`
+      ).join("\n"),
+    )
+  }
+  `;

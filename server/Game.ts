@@ -8,8 +8,10 @@ import {
   getIteration,
   getIterationCount,
   getIterationTimes,
+  logRuns,
 } from "./db/iteration.ts";
 import type { Player } from "./Player.ts";
+import { PlayerRunsMessage } from "./ServerMessage.ts";
 import { isLeader } from "./trackLeadership.ts";
 
 type Status = "idle" | "build" | "run";
@@ -23,13 +25,16 @@ class Game {
   #iterationCount?: number;
 
   #checkpoint = { x: 0, y: 0 };
+  #iteration = -1;
   #blocks: Point[] = [];
   #thunders: Point[] = [];
   #bricks = 0;
   #power = 0;
   #grid: boolean[][] = [];
   #times: Promise<number[]> = Promise.resolve([]);
-  #minTime: number = 0;
+  #minTime = 0;
+
+  #playerRuns: PlayerRunsMessage["playerRuns"] = [];
 
   #start = 0;
   #max = -Infinity;
@@ -49,7 +54,7 @@ class Game {
   }
 
   async #startRound() {
-    if (this.#status !== "idle") return;
+    if (this.#status !== "idle" || this.#players.size === 0) return;
     this.#status = "build";
 
     console.log(new Date(), "Starting round");
@@ -61,6 +66,7 @@ class Game {
     this.#start = Date.now();
 
     this.#grid = newGrid();
+    this.#playerRuns = [];
 
     const avg = Array.from(this.#players).reduce((sum, p) => sum + p.plays, 0) /
       this.#players.size;
@@ -111,20 +117,20 @@ class Game {
       this.#bricks = this.#power +
         Math.floor(Math.random() * Math.random() * 20) + 3;
 
-      await createIteration(
+      this.#iteration = await createIteration(
         this.#bricks,
         this.#power,
         this.#checkpoint,
         this.#blocks,
         this.#thunders,
-      ).then(console.log);
+      );
       this.#iterationCount++;
 
       this.#times = Promise.resolve([]); // new iteration; no times
     } else {
-      const iteration = Math.floor(Math.random() * this.#iterationCount);
+      this.#iteration = Math.floor(Math.random() * this.#iterationCount);
 
-      Object.assign(this, await getIteration(iteration));
+      Object.assign(this, await getIteration(this.#iteration));
 
       this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
       this.#blocks.forEach(({ x, y }) =>
@@ -134,7 +140,7 @@ class Game {
         offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
       );
 
-      this.#times = getIterationTimes(iteration);
+      this.#times = getIterationTimes(this.#iteration);
     }
 
     const path = findPath(this.#grid, this.#checkpoint) ?? [];
@@ -183,12 +189,15 @@ class Game {
 
   #startRunTimeout(timeout: number) {
     this.timeoutStart = Date.now();
-    this.#timeout = setTimeout(() => {
+    this.#timeout = setTimeout(async () => {
       console.log(new Date(), "Finished run");
       this.#status = "idle";
-      this.#timeout = setTimeout(() => {
-        this.#startRound();
-      }, 500);
+
+      if (this.#playerRuns.length > 0) {
+        await logRuns(this.#playerRuns, this.#iteration);
+      }
+
+      this.#startRound();
     }, timeout);
   }
 
@@ -197,21 +206,34 @@ class Game {
 
     this.#max = -Infinity;
     for (const player of this.#players) {
-      const [path, duration] = player.run(times, this.#minTime);
+      const duration = player.run(times, this.#minTime);
 
       if (duration > this.#max) this.#max = duration;
 
-      player.send({ kind: "run", path, duration });
+      this.#playerRuns.push({
+        player: player.id,
+        rating: player.rating,
+        duration,
+      });
     }
 
-    broadcast({ kind: "startRun", max: this.#max, times });
+    broadcast({ kind: "startRun", times });
 
     console.log(new Date(), "Start run, local best is", this.#max);
 
     this.#startRunTimeout(this.#max * 1_000);
   }
 
-  runBeat(max: number) {
+  playerRuns(playerRuns: PlayerRunsMessage["playerRuns"]) {
+    let max = -Infinity;
+
+    for (const run of playerRuns) {
+      if (run.duration > max) max = run.duration;
+      this.#playerRuns.push(run);
+    }
+
+    if (max < this.#max) return;
+
     const remaining = this.timeoutStart + this.#max * 1_000 - Date.now();
     const extension = max - this.#max;
     const newTimeout = remaining + extension * 1_000;
@@ -258,18 +280,20 @@ class Game {
     this.broadcast(state);
   }
 
-  startRunnersFromState(max: number, times: number[]) {
-    let beat = false;
+  startRunnersFromState(times: number[]) {
+    const playerRuns: PlayerRunsMessage["playerRuns"] = [];
 
     for (const player of this.#players) {
-      const duration = player.run(times, this.#minTime)[1];
-      if (duration > max) {
-        max = duration;
-        beat = true;
-      }
+      const duration = player.run(times, this.#minTime);
+
+      playerRuns.push({
+        player: player.id,
+        rating: player.rating,
+        duration,
+      });
     }
 
-    if (beat) broadcast({ kind: "runBeat", max });
+    broadcast({ kind: "playerRuns", playerRuns });
   }
 
   addPlayer(player: Player) {

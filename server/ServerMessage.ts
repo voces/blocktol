@@ -6,9 +6,16 @@ type HeartbeatMessage = Readonly<{ kind: "heartbeat" }>;
 type VetoMessage = Readonly<{ kind: "veto" }>;
 
 export type StartRunMessage = Readonly<
-  { kind: "startRun"; max: number; times: number[] }
+  { kind: "startRun"; times: number[] }
 >;
-export type RunBeatMessage = Readonly<{ kind: "runBeat"; max: number }>;
+export type PlayerRunsMessage = Readonly<{
+  kind: "playerRuns";
+  playerRuns: {
+    player: string;
+    rating: number;
+    duration: number;
+  }[];
+}>;
 
 export type ServerMessage =
   | ElectionMessage
@@ -16,6 +23,6 @@ export type ServerMessage =
   | VetoMessage
   | StartMessage
   | StartRunMessage
-  | RunBeatMessage;
+  | PlayerRunsMessage;
 
 export { StartMessage };

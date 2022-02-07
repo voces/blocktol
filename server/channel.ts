@@ -1,6 +1,6 @@
 import { game } from "./Game.ts";
 import {
-  RunBeatMessage,
+  PlayerRunsMessage,
   ServerMessage,
   StartMessage,
   StartRunMessage,
@@ -20,8 +20,9 @@ export const broadcast = (message: ServerMessage) => {
 const handlers = {
   start: (message: StartMessage) => game.startFromState(message),
   startRun: (message: StartRunMessage) =>
-    game.startRunnersFromState(message.max, message.times),
-  runBeat: (message: RunBeatMessage) => isLeader() && game.runBeat(message.max),
+    game.startRunnersFromState(message.times),
+  playerRuns: (message: PlayerRunsMessage) =>
+    isLeader() && game.playerRuns(message.playerRuns),
 };
 
 channel.addEventListener("message", (e) => {
