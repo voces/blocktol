@@ -53,15 +53,13 @@ export const createIteration = (
     VALUES (${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y});
     SET @last_id = LAST_INSERT_ID();
     ${
-    blocks.length || thunders.length
-      ? raw2(format`
-          INSERT INTO block (iteration, x, y, kind)
-          VALUES ${[
-        ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
-        ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
-      ]};`)
-      : ""
-  }`.then(([r]) => r.insertId);
+    raw2(format`
+      INSERT INTO block (iteration, x, y, kind)
+      VALUES ${[
+      ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
+      ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
+    ]};`)
+  }`.then((q) => (console.log(q), q[0].insertId));
 
 export const getIterationTimes = (iteration: number) =>
   sql<{ time: number }[]>`
@@ -73,7 +71,7 @@ export const logRuns = (
   iteration: number,
 ) =>
   sql`
-    INSERT INTO run (user, iteration, duration)
+    INSERT INTO run (user, iteration, time)
     VALUES ${runs.map(({ player, duration }) => [player, iteration, duration])};
     ${
     raw2(
@@ -82,4 +80,4 @@ export const logRuns = (
       ).join("\n"),
     )
   }
-  `;
+  `.then(console.log);

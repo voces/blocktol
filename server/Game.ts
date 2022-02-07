@@ -57,8 +57,6 @@ class Game {
     if (this.#status !== "idle" || this.#players.size === 0) return;
     this.#status = "build";
 
-    console.log(new Date(), "Starting round");
-
     if (!this.#iterationCount) {
       this.#iterationCount = await getIterationCount();
     }
@@ -73,6 +71,12 @@ class Game {
     const newIteration =
       Math.random() < ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
           (this.#iterationCount || 1);
+    console.log(
+      avg,
+      this.#iterationCount,
+      ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
+        (this.#iterationCount || 1),
+    );
 
     if (newIteration) {
       this.#checkpoint = {
@@ -99,7 +103,7 @@ class Game {
 
       n = Math.floor(Math.random() * Math.random() * 49);
       this.#blocks = [];
-      while (n--) {
+      while (n-- > 0 || this.#blocks.length === 0) {
         const x = 2 + Math.floor(Math.random() * 17);
         const y = 2 + Math.floor(Math.random() * 17);
 
@@ -142,6 +146,8 @@ class Game {
 
       this.#times = getIterationTimes(this.#iteration);
     }
+
+    console.log(new Date(), `Starting round. iteration=${this.#iteration}`);
 
     const path = findPath(this.#grid, this.#checkpoint) ?? [];
     this.#minTime = pathDuration(path, this.#thunders);

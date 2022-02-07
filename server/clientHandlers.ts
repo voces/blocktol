@@ -11,16 +11,16 @@ import { Player } from "./Player.ts";
 
 export const clientHandlers = {
   login: async (socket: WebSocket, message: LoginMessage) => {
-    console.log(
-      new Date(),
-      `'${message.id.slice(0, 8)}...${
-        message.id.slice(-8)
-      }' logged in as ${message.username}`,
-    );
     const [{ rating, name }, plays] = await Promise.all([
       createOrUpdateUser(message.id, message.username),
       getUserPlays(message.id),
     ]);
+    console.log(
+      new Date(),
+      `'${message.id.slice(0, 8)}...${
+        message.id.slice(-8)
+      }' logged in as ${name} (${rating.toFixed(0)} rating, ${plays} plays)`,
+    );
     game.addPlayer(new Player(socket, message.id, name, rating, plays));
   },
   block: (socket: WebSocket, { x, y }: BlockMessage) => {

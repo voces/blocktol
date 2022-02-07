@@ -14,7 +14,11 @@ export const query = <T = unknown>(query: string): Promise<T> =>
 export const sql = <T = unknown>(
   strings: TemplateStringsArray,
   ...values: unknown[]
-) => query<T>(SqlString.format(strings.join("?"), values));
+) => {
+  const formatted = SqlString.format(strings.join("?"), values);
+  console.log(formatted);
+  return query<T>(formatted);
+};
 
 export const format = (
   strings: TemplateStringsArray,

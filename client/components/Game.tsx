@@ -32,7 +32,7 @@ export const Game = () => {
   const [time, setTime] = useState(-1);
   const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
-  const [run, setRun] = useState<Omit<RunMessage, "kind">>();
+  const [run, setRun] = useState<{ path: Point[]; duration: number }>();
   const [touching, setTouching] = useState(false);
 
   useEffect(() => {

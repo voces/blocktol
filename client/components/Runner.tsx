@@ -1,9 +1,11 @@
 import { h } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { RunMessage } from "../../common/serverToClientMessage.ts";
+import { Point } from "../../common/types.ts";
 
 export const Runner = (
-  { path, duration, onFinish }: Omit<RunMessage, "kind"> & {
+  { path, duration, onFinish }: {
+    path: Point[];
+    duration: number;
     onFinish: () => void;
   },
 ) => {
