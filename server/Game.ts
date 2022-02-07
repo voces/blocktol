@@ -1,8 +1,14 @@
 import { offsets } from "../common/constants.ts";
-import { findPath, newGrid } from "../common/pathing.ts";
+import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message, StartMessage } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
 import { broadcast } from "./channel.ts";
+import {
+  createIteration,
+  getIteration,
+  getIterationCount,
+  getIterationTimes,
+} from "./db/iteration.ts";
 import type { Player } from "./Player.ts";
 import { isLeader } from "./trackLeadership.ts";
 
@@ -14,15 +20,18 @@ class Game {
   #players = new Set<Player>();
   #status: Status = "idle";
   #started = false;
+  #iterationCount?: number;
 
-  #start = 0;
   #checkpoint = { x: 0, y: 0 };
   #blocks: Point[] = [];
   #thunders: Point[] = [];
   #bricks = 0;
   #power = 0;
-
   #grid: boolean[][] = [];
+  #times: Promise<number[]> = Promise.resolve([]);
+  #minTime: number = 0;
+
+  #start = 0;
   #max = -Infinity;
   #timeout = 0;
   timeoutStart = 0;
@@ -39,54 +48,98 @@ class Game {
     this.#startRound();
   }
 
-  #startRound() {
+  async #startRound() {
     if (this.#status !== "idle") return;
     this.#status = "build";
 
     console.log(new Date(), "Starting round");
 
+    if (!this.#iterationCount) {
+      this.#iterationCount = await getIterationCount();
+    }
+
     this.#start = Date.now();
 
     this.#grid = newGrid();
 
-    this.#checkpoint = {
-      x: 1.5 + Math.floor(Math.random() * 17),
-      y: 1.5 + Math.floor(Math.random() * 17),
-    };
-    this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
+    const avg = Array.from(this.#players).reduce((sum, p) => sum + p.plays, 0) /
+      this.#players.size;
+    const newIteration =
+      Math.random() < ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
+          (this.#iterationCount || 1);
 
-    let r = Math.random();
-    let n = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
-    this.#thunders = [];
-    while (n--) {
-      const x = 2 + Math.floor(Math.random() * 17);
-      const y = 2 + Math.floor(Math.random() * 17);
+    if (newIteration) {
+      this.#checkpoint = {
+        x: 1.5 + Math.floor(Math.random() * 17),
+        y: 1.5 + Math.floor(Math.random() * 17),
+      };
+      this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
 
-      if (offsets.some(([xd, yd]) => this.#grid[y + yd][x + xd])) continue;
+      let r = Math.random();
+      let n = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
+      this.#thunders = [];
+      while (n--) {
+        const x = 2 + Math.floor(Math.random() * 17);
+        const y = 2 + Math.floor(Math.random() * 17);
 
-      offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
+        if (offsets.some(([xd, yd]) => this.#grid[y + yd][x + xd])) continue;
 
-      if (!findPath(this.#grid, this.#checkpoint)) {
-        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
-      } else this.#thunders.push({ x, y });
+        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
+
+        if (!findPath(this.#grid, this.#checkpoint)) {
+          offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
+        } else this.#thunders.push({ x, y });
+      }
+
+      n = Math.floor(Math.random() * Math.random() * 49);
+      this.#blocks = [];
+      while (n--) {
+        const x = 2 + Math.floor(Math.random() * 17);
+        const y = 2 + Math.floor(Math.random() * 17);
+
+        if (offsets.some(([xd, yd]) => this.#grid[y + yd][x + xd])) continue;
+
+        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
+
+        if (!findPath(this.#grid, this.#checkpoint)) {
+          offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
+        } else this.#blocks.push({ x, y });
+      }
+
+      r = Math.random();
+      this.#power = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
+      this.#bricks = this.#power +
+        Math.floor(Math.random() * Math.random() * 20) + 3;
+
+      await createIteration(
+        this.#bricks,
+        this.#power,
+        this.#checkpoint,
+        this.#blocks,
+        this.#thunders,
+      ).then(console.log);
+      this.#iterationCount++;
+
+      this.#times = Promise.resolve([]); // new iteration; no times
+    } else {
+      const iteration = Math.floor(Math.random() * this.#iterationCount);
+
+      Object.assign(this, await getIteration(iteration));
+
+      this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
+      this.#blocks.forEach(({ x, y }) =>
+        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
+      );
+      this.#thunders.forEach(({ x, y }) =>
+        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
+      );
+
+      this.#times = getIterationTimes(iteration);
     }
 
-    n = Math.floor(Math.random() * Math.random() * 49);
-    this.#blocks = [];
-    while (n--) {
-      const x = 2 + Math.floor(Math.random() * 17);
-      const y = 2 + Math.floor(Math.random() * 17);
+    const path = findPath(this.#grid, this.#checkpoint) ?? [];
+    this.#minTime = pathDuration(path, this.#thunders);
 
-      if (offsets.some(([xd, yd]) => this.#grid[y + yd][x + xd])) continue;
-
-      offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
-
-      if (!findPath(this.#grid, this.#checkpoint)) {
-        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
-      } else this.#blocks.push({ x, y });
-    }
-
-    const path = findPath(this.#grid, this.#checkpoint);
     console.log(
       this.#grid.map((r, y) =>
         r.map((v, x) =>
@@ -100,11 +153,6 @@ class Game {
         ).join("")
       ).join("\n"),
     );
-
-    r = Math.random();
-    this.#power = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
-    this.#bricks = this.#power +
-      Math.floor(Math.random() * Math.random() * 20) + 3;
 
     for (const player of this.#players) {
       player.startRound(
@@ -123,6 +171,7 @@ class Game {
       blocks: this.#blocks,
       power: this.#power,
       bricks: this.#bricks,
+      minTime: this.#minTime,
     });
 
     this.#timeout = setTimeout(() => this.#startRunners(), BUILD_TIME * 1_000);
@@ -143,21 +192,19 @@ class Game {
     }, timeout);
   }
 
-  #startRunners() {
+  async #startRunners() {
+    const times = await this.#times;
+
     this.#max = -Infinity;
     for (const player of this.#players) {
-      const path = player.findPath();
-      const duration = path.length * 0.2;
-      if (duration > this.#max) this.#max = duration;
-      player.send({ kind: "run", path, duration });
+      const [path, duration] = player.run(times, this.#minTime);
 
-      // A player is unranked for a round if they join in the middle of it
-      if (player.unranked) {
-        player.unranked = true;
-      }
+      if (duration > this.#max) this.#max = duration;
+
+      player.send({ kind: "run", path, duration });
     }
 
-    broadcast({ kind: "startRun", max: this.#max });
+    broadcast({ kind: "startRun", max: this.#max, times });
 
     console.log(new Date(), "Start run, local best is", this.#max);
 
@@ -188,6 +235,7 @@ class Game {
     this.#blocks = state.blocks;
     this.#bricks = state.bricks;
     this.#power = state.power;
+    this.#minTime = state.minTime;
 
     this.#grid = newGrid();
 
@@ -210,12 +258,11 @@ class Game {
     this.broadcast(state);
   }
 
-  startRunnersFromState(max: number) {
+  startRunnersFromState(max: number, times: number[]) {
     let beat = false;
 
     for (const player of this.#players) {
-      const path = player.findPath();
-      const duration = path.length * 0.2;
+      const duration = player.run(times, this.#minTime)[1];
       if (duration > max) {
         max = duration;
         beat = true;
@@ -230,7 +277,7 @@ class Game {
     if (this.#status === "idle") {
       if (isLeader() && !this.#started) this.start();
     } else {
-      player.unranked = true;
+      player.status = "midjoin";
       player.grid = this.#grid.map((r) => [...r]);
       player.checkpoint = this.#checkpoint;
       player.bricks = this.#bricks;
@@ -244,6 +291,7 @@ class Game {
         blocks: this.#blocks,
         power: this.#power,
         bricks: this.#bricks,
+        minTime: this.#minTime,
       });
     }
   }

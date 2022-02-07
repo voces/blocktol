@@ -5,7 +5,9 @@ type ElectionMessage = Readonly<{ kind: "election"; value: number }>;
 type HeartbeatMessage = Readonly<{ kind: "heartbeat" }>;
 type VetoMessage = Readonly<{ kind: "veto" }>;
 
-export type StartRunMessage = Readonly<{ kind: "startRun"; max: number }>;
+export type StartRunMessage = Readonly<
+  { kind: "startRun"; max: number; times: number[] }
+>;
 export type RunBeatMessage = Readonly<{ kind: "runBeat"; max: number }>;
 
 export type ServerMessage =

@@ -5,7 +5,7 @@ import {
 } from "../common/clientToServerMessage.ts";
 import { offsets } from "../common/constants.ts";
 import { findPath } from "../common/pathing.ts";
-import { createOrUpdateUser } from "./db/user.ts";
+import { createOrUpdateUser, getUserPlays } from "./db/user.ts";
 import { game } from "./Game.ts";
 import { Player } from "./Player.ts";
 
@@ -17,11 +17,11 @@ export const clientHandlers = {
         message.id.slice(-8)
       }' logged in as ${message.username}`,
     );
-    const { rating, name } = await createOrUpdateUser(
-      message.id,
-      message.username,
-    );
-    game.addPlayer(new Player(socket, message.id, name, rating));
+    const [{ rating, name }, plays] = await Promise.all([
+      createOrUpdateUser(message.id, message.username),
+      getUserPlays(message.id),
+    ]);
+    game.addPlayer(new Player(socket, message.id, name, rating, plays));
   },
   block: (socket: WebSocket, { x, y }: BlockMessage) => {
     const player = Player.from(socket);
@@ -30,6 +30,8 @@ export const clientHandlers = {
       console.log(new Date(0), "Closing missing player");
       return socket.close();
     }
+
+    if (player.status === "afk") player.status = "playing";
 
     if (player.bricks === 0) return player.close("no bricks");
 

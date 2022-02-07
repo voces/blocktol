@@ -10,6 +10,7 @@ export type StartMessage = Readonly<{
   blocks: Point[];
   power: number;
   bricks: number;
+  minTime: number;
 }>;
 
 const isStartMessage = (value: unknown): value is StartMessage =>

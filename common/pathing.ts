@@ -124,3 +124,6 @@ export const findPath = (grid: boolean[][], checkpoint: Point) => {
 
   return [...pathA, ...pathB.slice(1)];
 };
+
+export const pathDuration = (path: Point[], _thunders: Point[]) =>
+  parseFloat((path.length * 0.2).toFixed(2));
