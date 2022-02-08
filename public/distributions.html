@@ -1,57 +1,95 @@
 <body>
-    <style>
-        .dist>.data {
-            width: 100px;
-            height: 100px;
-            border: 1px solid black;
-            display: flex;
-            align-items: end;
-        }
+  <style>
+    .dist {
+      display: inline-block;
+      margin: 4px;
+    }
 
-        .dist>.data>div {
-            width: 1px;
-            background-color: black;
-        }
-    </style>
-    <script>
-        const SAMPLES = 100_000;
+    .dist > .data {
+      width: 100px;
+      height: 100px;
+      border: 1px solid black;
+      display: flex;
+      align-items: end;
+    }
 
-        const funcs = [
-            { name: "r", fn: () => Math.random() },
-            { name: "r*r", fn: () => Math.random() * Math.random() },
-            { name: "r**2", fn: () => Math.random() ** 2 },
-            { name: "r**3", fn: () => Math.random() ** 3 },
-            { name: "r**.5", fn: () => Math.random() ** 0.5 },
-            { name: "r**1.5", fn: () => Math.random() ** 1.5 },
-        ];
+    .dist > .data > div {
+      width: 1px;
+      background-color: black;
+    }
+  </style>
+  <script>
+    const SAMPLES = 1_000_000;
 
-        for (const { name, fn } of funcs) {
-            /** @type {number[]} */
-            const samples = [];
+    const funcs = [
+      { name: "r", fn: () => Math.random() },
+      { name: "r*r", fn: () => Math.random() * Math.random() },
+      { name: "(r+r)/2", fn: () => (Math.random() + Math.random()) / 2 },
+      { name: "r^1.1", fn: () => Math.random() ** 1.1 },
+      { name: "r^1.5", fn: () => Math.random() ** 1.5 },
+      { name: "r^2", fn: () => Math.random() ** 2 },
+      { name: "r^3", fn: () => Math.random() ** 3 },
+      { name: "1-r^.3", fn: () => 1 - Math.random() ** 0.3 },
+      { name: "1-r^.4", fn: () => 1 - Math.random() ** 0.4 },
+      { name: "1-r^.5", fn: () => 1 - Math.random() ** 0.5 },
+      { name: "1-r^.6", fn: () => 1 - Math.random() ** 0.6 },
+      { name: "1-r^.7", fn: () => 1 - Math.random() ** 0.7 },
+      { name: "1-r^.8", fn: () => 1 - Math.random() ** 0.8 },
+      { name: "1-r^.9", fn: () => 1 - Math.random() ** 0.9 },
+      {
+        name: "magic",
+        fn: () => (1 - Math.random() ** 0.5) ** 0.5615,
+      },
+      {
+        name: "reflect",
+        fn: () => {
+          const r = Math.random() - 0.5;
+          const sign = Math.sign(r);
+          return (r ** 2 * sign + 0.25) * 2;
+        },
+      },
+      {
+        name: "cos",
+        fn: () => (-Math.cos(Math.random() * 2 * Math.PI) + 1) / 2,
+      },
+    ];
 
-            for (let i = 0; i < SAMPLES; i++)
-                samples.push(fn());
+    for (const { name, fn } of funcs) {
+      const bins = Array(100).fill(0);
+      let sum = 0;
 
-            const container = document.createElement("div");
-            container.classList.add("dist")
+      for (let i = 0; i < SAMPLES; i++) {
+        const sample = fn();
+        const bin = Math.floor(sample * 100);
+        bins[bin]++;
+        sum += sample;
+      }
 
-            const label = document.createElement("div");
-            label.textContent = name;
-            container.appendChild(label);
+      const avg = sum / SAMPLES;
 
-            const data = document.createElement("div");
-            data.classList.add("data")
-            container.appendChild(data);
+      const container = document.createElement("span");
+      container.classList.add("dist");
 
-            const dist = samples.reduce((bins, value) => (bins[Math.floor(value * 100)]++, bins), Array(100).fill(0));
-            const max = Math.max(...dist);
-            for (const bin of dist) {
-                const column = document.createElement("div");
-                column.style.height = (bin / max) * 100 + "%";
-                data.appendChild(column);
-            }
+      const label = document.createElement("div");
+      label.textContent = name;
+      container.appendChild(label);
 
-            document.body.appendChild(container);
-        }
-    </script>
+      const data = document.createElement("div");
+      data.classList.add("data");
+      container.appendChild(data);
+
+      const max = Math.max(...bins);
+      for (const bin of bins) {
+        const column = document.createElement("div");
+        column.style.height = (bin / max) * 100 + "%";
+        data.appendChild(column);
+      }
+
+      const stats = document.createElement("div");
+      stats.textContent = avg.toFixed(5);
+      container.appendChild(stats);
+
+      document.body.appendChild(container);
+    }
+  </script>
 </body>

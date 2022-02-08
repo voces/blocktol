@@ -86,7 +86,7 @@ class Game {
       this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
 
       let r = Math.random();
-      let n = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
+      let n = r < 0.04 ? 2 : r < 0.2 ? 1 : 0;
       this.#thunders = [];
       while (n--) {
         const x = 2 + Math.floor(Math.random() * 17);
@@ -101,7 +101,7 @@ class Game {
         } else this.#thunders.push({ x, y });
       }
 
-      n = Math.floor(Math.random() * Math.random() * 49);
+      n = Math.floor((1 - Math.random()) ** 0.5 * 49);
       this.#blocks = [];
       while (n-- > 0 || this.#blocks.length === 0) {
         const x = 2 + Math.floor(Math.random() * 17);
@@ -117,9 +117,9 @@ class Game {
       }
 
       r = Math.random();
-      this.#power = r < 0.01 ? 2 : r < 0.1 ? 1 : 0;
+      this.#power = r < 0.09 ? 2 : r < 0.3 ? 1 : 0;
       this.#bricks = this.#power +
-        Math.floor(Math.random() * Math.random() * 20) + 3;
+        Math.floor((1 - Math.random() ** 0.7) * 20) + 3;
 
       this.#iteration = await createIteration(
         this.#bricks,
