@@ -59,7 +59,7 @@ export const createIteration = (
       ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
       ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
     ]};`)
-  }`.then((q) => (console.log(q), q[0].insertId));
+  }`.then(([q]) => q.insertId);
 
 export const getIterationTimes = (iteration: number) =>
   sql<{ time: number }[]>`

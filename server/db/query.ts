@@ -16,7 +16,7 @@ export const sql = <T = unknown>(
   ...values: unknown[]
 ) => {
   const formatted = SqlString.format(strings.join("?"), values);
-  console.log(formatted);
+  // console.log(formatted);
   return query<T>(formatted);
 };
 

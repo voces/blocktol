@@ -1,4 +1,5 @@
 import { offsets } from "../common/constants.ts";
+import { gridToString } from "../common/gridToString.ts";
 import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message, StartMessage } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
@@ -76,6 +77,7 @@ class Game {
       this.#iterationCount,
       ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
         (this.#iterationCount || 1),
+      newIteration,
     );
 
     if (newIteration) {
@@ -132,9 +134,14 @@ class Game {
 
       this.#times = Promise.resolve([]); // new iteration; no times
     } else {
-      this.#iteration = Math.floor(Math.random() * this.#iterationCount);
+      this.#iteration = Math.floor(Math.random() * this.#iterationCount) + 1;
 
-      Object.assign(this, await getIteration(this.#iteration));
+      const values = await getIteration(this.#iteration);
+      this.#checkpoint = values.checkpoint;
+      this.#power = values.power;
+      this.#thunders = values.thunders;
+      this.#bricks = values.bricks;
+      this.#blocks = values.blocks;
 
       this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
       this.#blocks.forEach(({ x, y }) =>
@@ -152,19 +159,7 @@ class Game {
     const path = findPath(this.#grid, this.#checkpoint) ?? [];
     this.#minTime = pathDuration(path, this.#thunders);
 
-    console.log(
-      this.#grid.map((r, y) =>
-        r.map((v, x) =>
-          (this.#checkpoint.x + 0.5 === x && this.#checkpoint.y + 0.5 === y)
-            ? "X"
-            : v
-            ? "█"
-            : path?.some((p) => p.x === x && p.y === y)
-            ? "O"
-            : " "
-        ).join("")
-      ).join("\n"),
-    );
+    console.log(gridToString(this.#grid, path, this.#checkpoint));
 
     for (const player of this.#players) {
       player.startRound(
@@ -209,6 +204,7 @@ class Game {
 
   async #startRunners() {
     const times = await this.#times;
+    console.log("times", times);
 
     this.#max = -Infinity;
     for (const player of this.#players) {
