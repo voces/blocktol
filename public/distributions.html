@@ -1,0 +1,57 @@
+<body>
+    <style>
+        .dist>.data {
+            width: 100px;
+            height: 100px;
+            border: 1px solid black;
+            display: flex;
+            align-items: end;
+        }
+
+        .dist>.data>div {
+            width: 1px;
+            background-color: black;
+        }
+    </style>
+    <script>
+        const SAMPLES = 100_000;
+
+        const funcs = [
+            { name: "r", fn: () => Math.random() },
+            { name: "r*r", fn: () => Math.random() * Math.random() },
+            { name: "r**2", fn: () => Math.random() ** 2 },
+            { name: "r**3", fn: () => Math.random() ** 3 },
+            { name: "r**.5", fn: () => Math.random() ** 0.5 },
+            { name: "r**1.5", fn: () => Math.random() ** 1.5 },
+        ];
+
+        for (const { name, fn } of funcs) {
+            /** @type {number[]} */
+            const samples = [];
+
+            for (let i = 0; i < SAMPLES; i++)
+                samples.push(fn());
+
+            const container = document.createElement("div");
+            container.classList.add("dist")
+
+            const label = document.createElement("div");
+            label.textContent = name;
+            container.appendChild(label);
+
+            const data = document.createElement("div");
+            data.classList.add("data")
+            container.appendChild(data);
+
+            const dist = samples.reduce((bins, value) => (bins[Math.floor(value * 100)]++, bins), Array(100).fill(0));
+            const max = Math.max(...dist);
+            for (const bin of dist) {
+                const column = document.createElement("div");
+                column.style.height = (bin / max) * 100 + "%";
+                data.appendChild(column);
+            }
+
+            document.body.appendChild(container);
+        }
+    </script>
+</body>
