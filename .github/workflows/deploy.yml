@@ -26,7 +26,7 @@ jobs:
 
       - name: Extract enviornment
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo [[ ${{ steps.extract_branch.outputs.branch }} = prod ]] && prod || dev)"
+        run: echo "##[set-output name=env;]$(echo [ ${{ steps.extract_branch.outputs.branch }} = prod ] && prod || dev)"
         id: extract_env
       
       - name: Deploy
