@@ -18,9 +18,19 @@ jobs:
 
       - name: Build
         run: ./bundle
+
+      - name: Extract branch
+        shell: branch
+        run: echo "##[set-output name=branch;]${GITHUB_REF#refs/heads/}"
+        id: extract_branch
+
+      - name: Extract enviornment
+        shell: bash
+        run: echo "##[set-output name=branch;]${[[ ${{ steps.extract_branch.outputs.branch }} = prod ]] && prod || dev}"
+        id: extract_env
       
       - name: Deploy
         uses: denoland/deployctl@v1
         with:
-          project: "blocktol-dev"
+          project: "blocktol-${{ steps.extract_env.outputs.env }}"
           entrypoint: "./server/index.ts"
