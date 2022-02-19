@@ -10,11 +10,13 @@ jobs:
       contents: read
     
     steps:
-      - name: Clone repository
+      - name: Clone
         uses: actions/checkout@v2
 
-      - name: Build
+      - name: Install
         uses: denoland/setup-deno@v1
+
+      - name: Build
         run: ./bundle
       
       - name: Deploy
