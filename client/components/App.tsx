@@ -8,7 +8,7 @@ import { Login } from "./Login.tsx";
 
 const Shell = ({ children }: { children: ComponentChildren }) => (
   <div style={{ textAlign: "center" }}>
-    <h1>Blocktol</h1>
+    <h1>Blocktol2</h1>
     {children}
   </div>
 );
