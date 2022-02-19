@@ -1,0 +1,200 @@
+<body>
+  <svg id="svg"></svg>
+  <script type="module">
+    import { findPath } from "./js/pathing.js";
+
+    const SIZE = 21; // MUST BE ODD
+
+    const svg = document.getElementById("svg");
+
+    svg.setAttribute("width", SIZE);
+    svg.setAttribute("height", SIZE);
+    svg.setAttribute("viewBox", `0 0 ${SIZE} ${SIZE}`);
+
+    const colorWalkable = "#77aaee";
+    const colorBlocked = "#ee77dd";
+    const colorEnd = "#77ee77";
+    const colorWaypoint = "#eeee77";
+
+    const WALKABLE = 0;
+    const BLOCKED = 1;
+    const START = 2;
+    const END = 3;
+    const WAYPOINT = 4;
+
+    const grid = (globalThis.grid = Array.from(Array(SIZE), () =>
+      Array.from(Array(SIZE), () => (Math.random() < 0.6 ? WALKABLE : BLOCKED))
+    ));
+
+    const start = { x: (SIZE - 1) / 2, y: SIZE - 1 };
+    const end = { x: (SIZE - 1) / 2, y: 0 };
+    const waypoint = { x: (SIZE - 1) / 2, y: (SIZE - 1) / 2 };
+
+    grid[start.y][start.x] = START;
+    grid[end.y][end.x] = END;
+    grid[waypoint.y][waypoint.x] = WAYPOINT;
+
+    const colorMap = {
+      [WALKABLE]: colorWalkable,
+      [BLOCKED]: colorBlocked,
+      [START]: colorEnd,
+      [END]: colorEnd,
+      [WAYPOINT]: colorWaypoint,
+    };
+
+    const updateCell = (x = 0, y = 0, mode = WALKABLE) => {
+      grid[y][x] = mode;
+      nodeMap[y][x].setAttribute("fill", colorMap[mode]);
+    };
+
+    const pathElements = [
+      document.createElementNS("http://www.w3.org/2000/svg", "circle"),
+    ];
+    pathElements.splice(0);
+
+    const createPathCircle = (x = 0, y = 0) => {
+      const circle = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle"
+      );
+      circle.setAttribute("cx", x + 0.5);
+      circle.setAttribute("cy", y + 0.5);
+      circle.setAttribute("r", 0.125);
+      circle.setAttribute("fill", "rgba(0, 0, 0, 0.3)");
+
+      svg.appendChild(circle);
+      pathElements.push(circle);
+    };
+
+    const createPathLine = (start = { x: 0, y: 0 }, end = { x: 0, y: 0 }) => {
+      const line = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "line"
+      );
+
+      line.setAttribute("x1", start.x + 0.5);
+      line.setAttribute("y1", start.y + 0.5);
+      line.setAttribute("x2", end.x + 0.5);
+      line.setAttribute("y2", end.y + 0.5);
+      const angle = Math.atan2(end.y - start.y, end.x - start.x);
+      line.setAttribute(
+        "stroke-width",
+        Math.abs(Math.sin(angle)) + Math.abs(Math.cos(angle))
+      );
+      line.setAttribute("stroke", "rgba(0,0,0,0.2)");
+
+      svg.appendChild(line);
+      pathElements.push(line);
+    };
+
+    const redoPath = async () => {
+      for (const el of pathElements) svg.removeChild(el);
+      pathElements.splice(0);
+
+      const path = await findPath(
+        grid.map((row) => row.map((v) => v === BLOCKED)),
+        { x: waypoint.x - 0.5, y: waypoint.y - 0.5 },
+        start,
+        end
+      );
+      console.log(path);
+
+      if (path?.length) {
+        createPathCircle(path[0].x, path[0].y);
+
+        for (let i = 1; i < path.length; i++) {
+          createPathCircle(path[i].x, path[i].y);
+          createPathLine(path[i - 1], path[i]);
+        }
+      }
+    };
+
+    for (let y = 0; y < SIZE; y++)
+      for (let x = 0; x < SIZE; x++) {
+        const cell = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "rect"
+        );
+        cell.setAttribute("y", y);
+        cell.setAttribute("x", x);
+        cell.setAttribute("width", 1);
+        cell.setAttribute("height", 1);
+        cell.setAttribute("fill", colorMap[grid[y][x]]);
+
+        cell.addEventListener("click", (e) => {
+          if (e.altKey) {
+            updateCell(waypoint.x, waypoint.y, WALKABLE);
+            updateCell(x, y, WAYPOINT);
+            waypoint.x = x;
+            waypoint.y = y;
+          } else if (e.metaKey) {
+            if (e.shiftKey) {
+              updateCell(end.x, end.y, WALKABLE);
+              updateCell(x, y, END);
+              end.x = x;
+              end.y = y;
+            } else {
+              updateCell(start.x, start.y, WALKABLE);
+              updateCell(x, y, START);
+              start.x = x;
+              start.y = y;
+            }
+          } else if (grid[y][x] === WALKABLE) updateCell(x, y, BLOCKED);
+          else if (grid[y][x] === BLOCKED) updateCell(x, y, WALKABLE);
+
+          redoPath();
+        });
+
+        svg.appendChild(cell);
+
+        if (SIZE < 20) {
+          const text = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "text"
+          );
+
+          text.setAttribute("x", x + 0.3);
+          text.setAttribute("y", y + 0.6);
+          text.textContent = `(${x}, ${y})`;
+
+          svg.appendChild(text);
+        }
+      }
+
+    const nodeMap = Array.from(Array(SIZE), (_, y) =>
+      Array.from(
+        Array(SIZE),
+        (_, x) => svg.children[(y * SIZE + x) * (SIZE < 20 ? 2 : 1)]
+      )
+    );
+
+    redoPath();
+  </script>
+  <style>
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    rect {
+      cursor: pointer;
+      opacity: 1;
+    }
+
+    rect:hover {
+      filter: brightness(80%) saturate(125%);
+    }
+
+    circle,
+    line,
+    text {
+      pointer-events: none;
+    }
+
+    text {
+      font-size: 0.2px;
+      fill: rgba(0, 0, 0, 0.6);
+    }
+  </style>
+</body>

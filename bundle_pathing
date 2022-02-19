@@ -1,0 +1,5 @@
+deno bundle \
+    --import-map ./import_map.json \
+    --config deno.jsonc \
+    "$@" \
+    common/pathing.ts public/js/pathing.js
