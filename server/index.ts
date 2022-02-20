@@ -1,8 +1,9 @@
-import { serve } from "https://deno.land/std@0.119.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.120.0/http/server.ts";
+import { serveFile } from "https://deno.land/std@0.120.0/http/file_server.ts";
+import { join, normalize } from "https://deno.land/std@0.120.0/path/posix.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";
-import { serveFile } from "./serveFile.ts";
 
 const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 
@@ -11,8 +12,19 @@ console.log(new Date(), "Listening on", port);
 serve((req, connInfo) => {
   const upgrade = req.headers.get("upgrade") || "";
   if (upgrade.toLowerCase() !== "websocket") {
-    return serveFile(req);
+    const path = join(
+      Deno.cwd(),
+      "public",
+      normalize(decodeURI(new URL(req.url).pathname)),
+    );
+
+    return serveFile(req, path)
+      .catch(() => serveFile(req, join(path, "index.html")))
+      .catch(() =>
+        new Response(undefined, { status: 302, headers: { "Location": "/" } })
+      );
   }
+
   const { socket, response } = Deno.upgradeWebSocket(req);
 
   socket.onopen = () =>
