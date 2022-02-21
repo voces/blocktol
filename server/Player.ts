@@ -102,7 +102,10 @@ export class Player {
 
   run(times: number[], min: number) {
     const path = findPath(this.grid, this.checkpoint) ?? [];
-    const duration = pathDuration(path, this.blocks.filter((b) => b.thunder));
+    const [duration, slows] = pathDuration(
+      path,
+      this.blocks.filter((b) => b.thunder),
+    );
 
     // A player is only ranked if they place a block (i.e., AFKs are ignored)
     if (this.status === "playing") {
@@ -118,7 +121,7 @@ export class Player {
       this.plays++;
     }
 
-    this.send({ kind: "run", path, duration, rating: this.rating });
+    this.send({ kind: "run", path, duration, slows, rating: this.rating });
 
     return duration;
   }

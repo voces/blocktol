@@ -50,7 +50,7 @@ const lineOfSight = (from: Node, to: Node, grid: boolean[][]) => {
   return true;
 };
 
-const euclideanDistance = (s: Node, e: Node) =>
+const euclideanDistance = (s: Point, e: Point) =>
   ((e.x - s.x) ** 2 + (e.y - s.y) ** 2) ** .5;
 
 const updateNode = (
@@ -183,12 +183,67 @@ export const findPath = (
 
 export const SPEED = 5;
 
-export const pathDuration = (path: Point[], _thunders: Point[]) => {
+export const pathDuration = (
+  path: ReadonlyArray<Readonly<Point>> = [],
+  thunders: ReadonlyArray<Readonly<Point>> = [],
+): [duration: number, slows: number[]] => {
+  if (path.length < 2) return [0, []];
+
   let distance = 0;
-  for (let i = 1; i < path.length; i++) {
-    distance +=
-      ((path[i].x - path[i - 1].x) ** 2 + (path[i].y - path[i - 1].y) ** 2) **
-        0.5;
+  let consumedDistance = 0;
+  let index = 0;
+  let distanceToNext = euclideanDistance(path[index], path[index + 1]);
+  const thunderUsage = Array<number>(thunders.length).fill(-Infinity);
+  const runner = { ...path[0] };
+  let slowed = 0;
+  const slows: number[] = [];
+  let steps = 0;
+
+  while (index < path.length - 1) {
+    steps++;
+
+    let slowedThisStep = false;
+    for (let i = 0; i < thunders.length; i++) {
+      if (
+        euclideanDistance(runner, {
+            x: thunders[i].x + 0.5,
+            y: thunders[i].y + 0.5,
+          }) > 4 ||
+        thunderUsage[i] + 2 * SPEED >= steps
+      ) {
+        continue;
+      }
+      thunderUsage[i] = steps;
+
+      if (!slowedThisStep) {
+        slowedThisStep = true;
+        slowed = 8 * SPEED;
+        slows.push(steps);
+      }
+    }
+
+    distance += slowed < 1e-8 ? 0.1 : 0.05;
+    slowed -= 0.1;
+    while (
+      (distance - consumedDistance) + 1e-8 >= distanceToNext &&
+      index < path.length
+    ) {
+      index++;
+      consumedDistance += distanceToNext;
+      if (index < path.length - 1) {
+        distanceToNext = euclideanDistance(path[index], path[index + 1]);
+      }
+    }
+
+    if (index < path.length - 1) {
+      const p = (distance - consumedDistance) / distanceToNext;
+      runner.x = path[index].x * (1 - p) + path[index + 1].x * p;
+      runner.y = path[index].y * (1 - p) + path[index + 1].y * p;
+    }
   }
-  return distance / SPEED;
+
+  return [
+    Math.round(steps * 10 / SPEED) / 100,
+    slows.map((steps) => Math.round(steps * 10 / SPEED) / 100),
+  ];
 };

@@ -1,9 +1,16 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+
 <body>
   <svg id="svg"></svg>
   <script type="module">
-    import { findPath } from "./js/pathing.js";
+    import { findPath, pathDuration } from "./js/pathing.js";
 
-    const SIZE = 21; // MUST BE ODD
+    const SIZE = 19; // MUST BE ODD
 
     const svg = document.getElementById("svg");
 
@@ -23,7 +30,7 @@
     const WAYPOINT = 4;
 
     const grid = (globalThis.grid = Array.from(Array(SIZE), () =>
-      Array.from(Array(SIZE), () => (Math.random() < 0.6 ? WALKABLE : BLOCKED))
+      Array.from(Array(SIZE), () => (Math.random() < 0.65 ? WALKABLE : BLOCKED))
     ));
 
     const start = { x: (SIZE - 1) / 2, y: SIZE - 1 };
@@ -52,18 +59,20 @@
     ];
     pathElements.splice(0);
 
-    const createPathCircle = (x = 0, y = 0) => {
-      const circle = document.createElementNS(
+    const createPathSquare = (x = 0, y = 0) => {
+      const square = document.createElementNS(
         "http://www.w3.org/2000/svg",
-        "circle"
+        "rect"
       );
-      circle.setAttribute("cx", x + 0.5);
-      circle.setAttribute("cy", y + 0.5);
-      circle.setAttribute("r", 0.125);
-      circle.setAttribute("fill", "rgba(0, 0, 0, 0.3)");
+      square.classList.add("path")
+      square.setAttribute("x", x);
+      square.setAttribute("y", y);
+      square.setAttribute("width", 1);
+      square.setAttribute("height", 1);
+      square.setAttribute("fill", "rgba(0, 0, 0, 0.2)");
 
-      svg.appendChild(circle);
-      pathElements.push(circle);
+      svg.appendChild(square);
+      pathElements.push(square);
     };
 
     const createPathLine = (start = { x: 0, y: 0 }, end = { x: 0, y: 0 }) => {
@@ -97,13 +106,14 @@
         start,
         end
       );
-      console.log(path);
+      const [duration, slows] = pathDuration(path)
+      console.log(path, duration, slows);
 
       if (path?.length) {
-        createPathCircle(path[0].x, path[0].y);
+        createPathSquare(path[0].x, path[0].y);
 
         for (let i = 1; i < path.length; i++) {
-          createPathCircle(path[i].x, path[i].y);
+          createPathSquare(path[i].x, path[i].y);
           createPathLine(path[i - 1], path[i]);
         }
       }
@@ -172,8 +182,8 @@
   </script>
   <style>
     svg {
-      width: 100%;
-      height: 100%;
+      width: calc(100vw - 16px);
+      height: calc(100vh - 16px);
       display: block;
     }
 
@@ -186,7 +196,7 @@
       filter: brightness(80%) saturate(125%);
     }
 
-    circle,
+    rect.path,
     line,
     text {
       pointer-events: none;
@@ -198,3 +208,5 @@
     }
   </style>
 </body>
+
+</html>

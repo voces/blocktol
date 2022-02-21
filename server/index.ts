@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.120.0/http/server.ts";
-import { serveFile } from "https://deno.land/std@0.120.0/http/file_server.ts";
-import { join, normalize } from "https://deno.land/std@0.120.0/path/posix.ts";
+import { serve } from "https://deno.land/std@0.126.0/http/server.ts";
+import { serveFile } from "https://deno.land/std@0.126.0/http/file_server.ts";
+import { join, normalize } from "https://deno.land/std@0.126.0/path/posix.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";
@@ -18,11 +18,13 @@ serve((req, connInfo) => {
       normalize(decodeURI(new URL(req.url).pathname)),
     );
 
-    return serveFile(req, path)
-      .catch(() => serveFile(req, join(path, "index.html")))
-      .catch(() =>
-        new Response(undefined, { status: 302, headers: { "Location": "/" } })
-      );
+    return Deno.stat(path).then((fileInfo) =>
+      fileInfo.isDirectory
+        ? serveFile(req, join(path, "index.html"))
+        : serveFile(req, path)
+    ).catch(() =>
+      new Response(undefined, { status: 302, headers: { "Location": "/" } })
+    );
   }
 
   const { socket, response } = Deno.upgradeWebSocket(req);

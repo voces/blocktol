@@ -157,7 +157,8 @@ class Game {
     console.log(new Date(), `Starting round. iteration=${this.#iteration}`);
 
     const path = findPath(this.#grid, this.#checkpoint) ?? [];
-    this.#minTime = pathDuration(path, this.#thunders);
+    const [duration] = pathDuration(path, this.#thunders);
+    this.#minTime = duration;
 
     console.log(gridToString(this.#grid, path, this.#checkpoint));
 
