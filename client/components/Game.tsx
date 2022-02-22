@@ -170,7 +170,7 @@ export const Game = () => {
 
     return () => {
       globalThis.removeEventListener("mousemove", mousemoveCallback);
-      globalThis.removeEventListener("touchstart", touchmoveCallback);
+      globalThis.removeEventListener("touchstart", touchstartCallback);
       globalThis.removeEventListener("touchmove", touchmoveCallback);
     };
   }, [svgRef.current, bricks, blocks, checkpoint, time]);
@@ -260,7 +260,7 @@ export const Game = () => {
           transformOrigin: `${(placingBlock.x + 1) * 5}% ${
             placingBlock.y * 5
           }%`,
-          transform: touching ? "scale(2)" : undefined,
+          transform: touching && time > 0 ? "scale(2)" : undefined,
         }}
         viewBox="0 0 20 20"
         ref={svgRef}
