@@ -265,25 +265,35 @@ export const Game = () => {
         viewBox="0 0 20 20"
         ref={svgRef}
       >
-        <rect x={0} y={0} width={20} height={20} fill="hsl(220, 60%, 80%)" />
-        <rect x={0} y={0} width={9} height={1} fill="#404040" />
-        <rect x={11} y={0} width={9} height={1} fill="#404040" />
-        <rect x={0} y={19} width={9} height={1} fill="#404040" />
-        <rect x={11} y={19} width={9} height={1} fill="#404040" />
-        <rect x={0} y={0} width={1} height={20} fill="#404040" />
-        <rect x={19} y={0} width={1} height={20} fill="#404040" />
+        <rect
+          x={0}
+          y={0}
+          width={20}
+          height={20}
+          fill="var(--maze-background)"
+        />
+        <rect x={0} y={0} width={9} height={1} fill="var(--maze-wall)" />
+        <rect x={11} y={0} width={9} height={1} fill="var(--maze-wall)" />
+        <rect x={0} y={19} width={9} height={1} fill="var(--maze-wall)" />
+        <rect x={11} y={19} width={9} height={1} fill="var(--maze-wall)" />
+        <rect x={0} y={0} width={1} height={20} fill="var(--maze-wall)" />
+        <rect x={19} y={0} width={1} height={20} fill="var(--maze-wall)" />
         {bricks >= 0 && (
-          <text x={1} y={0.8} font-size={0.8} fill="white">🧱{bricks}</text>
+          <text x={1} y={0.8} font-size={0.8} fill="var(--maze-text)">
+            🧱{bricks}
+          </text>
         )}
         {power >= 0 && (
-          <text x={3.4} y={0.8} font-size={0.8} fill="white">⚡{power}</text>
+          <text x={3.4} y={0.8} font-size={0.8} fill="var(--maze-text)">
+            ⚡{power}
+          </text>
         )}
         {time > 0 && (
           <text
             x={18.8}
             y={0.8}
             font-size={0.8}
-            fill="white"
+            fill="var(--maze-text)"
             text-anchor="end"
           >
             {time} seconds to build
@@ -297,12 +307,12 @@ export const Game = () => {
             width={2}
             height={2}
             fill={transitionBlock === block && power > 0
-              ? "hsl(120, 60%, 65%)"
+              ? "var(--maze-upgrade-to-thunder)"
               : block.local
-              ? "hsl(120, 60%, 80%)"
-              : "hsl(320, 60%, 80%)"}
+              ? "var(--maze-player-block)"
+              : "var(--maze-game-block)"}
             opacity={transitionBlock === block && power === 0 ? 0.6 : undefined}
-            stroke="black"
+            stroke="var(--maze-stroke)"
             stroke-width={0.1}
           />
         ))}
@@ -312,9 +322,11 @@ export const Game = () => {
             y={thunder.y}
             width={2}
             height={2}
-            fill={thunder.local ? "hsl(120, 60%, 50%)" : "hsl(320, 60%, 50%)"}
+            fill={thunder.local
+              ? "var(--player-thunder)"
+              : "var(--game-thunder)"}
             opacity={transitionBlock === thunder ? 0.4 : 1}
-            stroke="black"
+            stroke="var(--maze-stroke)"
             stroke-width={0.1}
           />
         ))}
@@ -324,7 +336,7 @@ export const Game = () => {
             y={checkpoint.y + 0.55}
             width={0.9}
             height={0.9}
-            fill="hsl(220, 60%, 50%)"
+            fill="var(--maze-checkpoint)"
           />
         )}
         {placingBlock.placing && (
@@ -333,8 +345,10 @@ export const Game = () => {
             y={placingBlock.y}
             width={2}
             height={2}
-            fill={invalid ? "hsl(0, 100%, 60%)" : "hsl(120, 60%, 80%)"}
-            stroke="black"
+            fill={invalid
+              ? "var(--maze-placing-error)"
+              : "var(--maze-placing-block)"}
+            stroke="var(--maze-stroke)"
             stroke-width={0.1}
             opacity={0.4}
             style={{ transition: "x 100ms, y 100ms" }}

@@ -18,6 +18,8 @@ export const Input = (
           border: 0,
           borderBottom: "2px solid #bbb",
           fontSize: "inherit",
+          backgroundColor: "inherit",
+          color: "inherit",
           outline: "none",
           ...(typeof style === "object" && style),
           ...(hasFocus && {

@@ -2,6 +2,7 @@ import { Fragment, h } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { SPEED } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
+import { debug } from "../util/debug.ts";
 
 export const Runner = (
   { path, duration, onFinish }: {
@@ -59,11 +60,11 @@ export const Runner = (
         cx={loc.x + 0.5}
         cy={loc.y + 0.5}
         r={0.45}
-        fill="hsl(300, 60%, 60%)"
-        stroke="black"
+        fill="var(--runner)"
+        stroke="var(--maze-stroke)"
         stroke-width={0.1}
       />
-      {path.map((loc) => (
+      {debug && path.map((loc) => (
         <circle
           key={`${loc.x}-${loc.y}`}
           cx={loc.x + 0.5}
