@@ -209,7 +209,9 @@ export const pathDuration = (
             x: thunders[i].x + 0.5,
             y: thunders[i].y + 0.5,
           }) > 4 ||
-        thunderUsage[i] + 2 * SPEED >= steps
+        // Timed so that runner passing by in
+        // a straight line won't trigger twice
+        thunderUsage[i] + 32 * SPEED >= steps
       ) {
         continue;
       }
@@ -241,6 +243,8 @@ export const pathDuration = (
       runner.y = path[index].y * (1 - p) + path[index + 1].y * p;
     }
   }
+
+  console.log(steps, slows, thunderUsage);
 
   return [
     Math.round(steps * 10 / SPEED) / 100,

@@ -9,6 +9,8 @@ import { Point } from "../../common/types.ts";
 import { findPath, newGrid } from "../../common/pathing.ts";
 import { Runner } from "./Runner.tsx";
 import { offsets } from "../../common/constants.ts";
+import { Disconnected } from "./Disconnected.tsx";
+import { Block } from "./Block.tsx";
 
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -32,7 +34,9 @@ export const Game = () => {
   const [time, setTime] = useState(-1);
   const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
-  const [run, setRun] = useState<{ path: Point[]; duration: number }>();
+  const [run, setRun] = useState<
+    { path: Point[]; duration: number; slows: number[] }
+  >();
   const [touching, setTouching] = useState(false);
 
   useEffect(() => {
@@ -87,8 +91,8 @@ export const Game = () => {
     };
     connection.addEventListener("connect", connectCallback);
 
-    const runCallback = ({ path, duration }: RunMessage) => {
-      setRun({ path, duration });
+    const runCallback = ({ path, duration, slows }: RunMessage) => {
+      setRun({ path, duration, slows });
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       setTransitionBlock(undefined);
       setTime(-1);
@@ -301,33 +305,23 @@ export const Game = () => {
         )}
 
         {blocks.map((block) => (
-          <rect
+          <Block
             x={block.x}
             y={block.y}
-            width={2}
-            height={2}
-            fill={transitionBlock === block && power > 0
-              ? "var(--maze-upgrade-to-thunder)"
+            color={transitionBlock === block && power > 0
+              ? "upgrade-to-thunder"
               : block.local
-              ? "var(--maze-player-block)"
-              : "var(--maze-game-block)"}
+              ? "player-block"
+              : "game-block"}
             opacity={transitionBlock === block && power === 0 ? 0.6 : undefined}
-            stroke="var(--maze-stroke)"
-            stroke-width={0.1}
           />
         ))}
         {thunders.map((thunder) => (
-          <rect
+          <Block
             x={thunder.x}
             y={thunder.y}
-            width={2}
-            height={2}
-            fill={thunder.local
-              ? "var(--player-thunder)"
-              : "var(--game-thunder)"}
+            color={thunder.local ? "player-thunder" : "game-thunder"}
             opacity={transitionBlock === thunder ? 0.4 : 1}
-            stroke="var(--maze-stroke)"
-            stroke-width={0.1}
           />
         ))}
         {checkpoint && (
@@ -340,41 +334,17 @@ export const Game = () => {
           />
         )}
         {placingBlock.placing && (
-          <rect
+          <Block
             x={placingBlock.x}
             y={placingBlock.y}
-            width={2}
-            height={2}
-            fill={invalid
-              ? "var(--maze-placing-error)"
-              : "var(--maze-placing-block)"}
-            stroke="var(--maze-stroke)"
-            stroke-width={0.1}
+            color={invalid ? "placing-error" : "placing-block"}
             opacity={0.4}
             style={{ transition: "x 100ms, y 100ms" }}
           />
         )}
         {run && <Runner {...run} onFinish={() => setRun(undefined)} />}
       </svg>
-      {disconnected && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            color: "white",
-            fontSize: "200%",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          Disconnected
-        </div>
-      )}
+      {disconnected && <Disconnected />}
     </div>
   );
 };

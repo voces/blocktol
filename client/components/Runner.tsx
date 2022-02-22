@@ -5,9 +5,10 @@ import { Point } from "../../common/types.ts";
 import { debug } from "../util/debug.ts";
 
 export const Runner = (
-  { path, duration, onFinish }: {
+  { path, duration, slows, onFinish }: {
     path: Point[];
     duration: number;
+    slows: number[];
     onFinish: () => void;
   },
 ) => {
@@ -16,18 +17,26 @@ export const Runner = (
 
   useEffect(() => {
     let animationFrame: number;
-    const totalDistance = duration * SPEED;
     let coveredDistance = 0;
     let pathIndex = 0;
+    let pathDistance = 0;
+    let last = start;
 
     const cb = () => {
       animationFrame = requestAnimationFrame(cb);
 
-      const pathPercent = (Date.now() - start) / 1_000 / duration;
-      if (pathPercent >= 1) return onFinish();
+      const now = Date.now();
+      const delta = now - last;
+      last = now;
+      const time = (now - start) / 1_000;
+      const slowed = slows.some((v) => v > time && v + 4_000 < time);
+      const speed = slowed ? SPEED / 2 : SPEED;
 
-      let distanceRemaining = pathPercent * totalDistance - coveredDistance;
-      while (pathIndex < path.length - 2) {
+      pathDistance += delta / 1_000 * speed;
+      // console.log(time, slowed, speed, pathDistance);
+
+      let distanceRemaining = pathDistance - coveredDistance;
+      while (pathIndex < path.length - 1) {
         const legDistance = ((path[pathIndex + 1].x - path[pathIndex].x) ** 2 +
           (path[pathIndex + 1].y - path[pathIndex].y) ** 2) ** 0.5;
 
@@ -47,6 +56,8 @@ export const Runner = (
         });
         break;
       }
+
+      if (pathIndex === path.length - 1) return onFinish();
     };
 
     cb();

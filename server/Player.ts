@@ -58,6 +58,7 @@ export class Player {
   blocks: (Point & { thunder?: boolean })[] = [];
   bricks = 0;
   power = 0;
+  #gameThunders: Point[] = [];
 
   private static map = new WeakMap<WebSocket, Player>();
 
@@ -82,12 +83,14 @@ export class Player {
     checkpoint: Point,
     bricks: number,
     power: number,
+    thunders: Point[],
   ) {
     this.grid = grid;
     this.checkpoint = checkpoint;
     this.bricks = bricks;
     this.power = power;
     this.blocks = [];
+    this.#gameThunders = thunders;
     this.status = "afk";
   }
 
@@ -108,7 +111,7 @@ export class Player {
     const path = findPath(this.grid, this.checkpoint) ?? [];
     const [duration, slows] = pathDuration(
       path,
-      this.blocks.filter((b) => b.thunder),
+      [...this.#gameThunders, ...this.blocks.filter((b) => b.thunder)],
     );
 
     // A player is only ranked if they place a block (i.e., AFKs are ignored)

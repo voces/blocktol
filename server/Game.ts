@@ -168,6 +168,7 @@ class Game {
         this.#checkpoint,
         this.#bricks,
         this.#power,
+        this.#thunders,
       );
     }
 

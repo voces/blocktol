@@ -7,7 +7,7 @@ import { pathDuration } from "./pathing.ts";
 import { Point } from "./types.ts";
 
 Deno.test("pathDuration", async (t) => {
-  const assertPath = (
+  const assertPathDuration = (
     points: Point[],
     thunders: Point[],
     duration: number,
@@ -22,14 +22,17 @@ Deno.test("pathDuration", async (t) => {
   };
 
   await t.step("Without thunders", async (t) => {
-    await t.step("zero points", () => assertPath([], [], 0));
+    await t.step("zero points", () => assertPathDuration([], [], 0));
 
-    await t.step("one point", () => assertPath([{ x: 0, y: 0 }], [], 0));
+    await t.step(
+      "one point",
+      () => assertPathDuration([{ x: 0, y: 0 }], [], 0),
+    );
 
     await t.step(
       "two points (vertical down)",
       () =>
-        assertPath(
+        assertPathDuration(
           [
             { x: 0, y: 0 },
             { x: 0, y: 1 },
@@ -42,7 +45,7 @@ Deno.test("pathDuration", async (t) => {
     await t.step(
       "two points (vertical down twice)",
       () =>
-        assertPath(
+        assertPathDuration(
           [
             { x: 0, y: 0 },
             { x: 0, y: 2 },
@@ -55,7 +58,7 @@ Deno.test("pathDuration", async (t) => {
     await t.step(
       "two points (vertical up)",
       () =>
-        assertPath(
+        assertPathDuration(
           [
             { x: 0, y: 0 },
             { x: 0, y: -1 },
@@ -68,7 +71,7 @@ Deno.test("pathDuration", async (t) => {
     await t.step(
       "two points (diag)",
       () =>
-        assertPath(
+        assertPathDuration(
           [
             { x: 0, y: 0 },
             { x: 1, y: 1 },
@@ -81,7 +84,7 @@ Deno.test("pathDuration", async (t) => {
     await t.step(
       "three points",
       () =>
-        assertPath(
+        assertPathDuration(
           [
             { x: 0, y: 0 },
             { x: 1, y: 1 },
@@ -95,7 +98,7 @@ Deno.test("pathDuration", async (t) => {
     await t.step(
       "many points",
       () =>
-        assertPath(
+        assertPathDuration(
           [
             { x: 0, y: 0 },
             { x: 1, y: 0 },
@@ -112,38 +115,27 @@ Deno.test("pathDuration", async (t) => {
   });
 
   await t.step("With thunders", async (t) => {
-    // await t.step("without nearing", () =>
-    //   assertPath([
-    //     { x: 0, y: 0 },
-    //     { x: 100, y: 0 },
-    //   ], [
-    //     { x: 4.5, y: 9.5 },
-    //   ], 20));
+    await t.step("without nearing", () =>
+      assertPathDuration([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ], [
+        { x: 4.5, y: 9.5 },
+      ], 20));
 
     await t.step("walking past", () =>
-      assertPath(
+      assertPathDuration(
         [
           { x: 0, y: 0 },
           { x: 100, y: 0 },
         ],
         [
+          // Note this isn't valid, as the runner walks through a thunder,
+          // but easier math
           { x: 4.5, y: -0.5 },
         ],
         24, // slowed for eight seconds by half
-        [0.12], //
+        [0.22], // 1 tile + step into next
       ));
-
-    //   await t.step("walking around", () =>
-    //   assertPath(
-    //     [
-    //       { x: 0, y: 0 },
-    //       { x: 100, y: 0 },
-    //     ],
-    //     [
-    //       { x: 5, y: 2 },
-    //     ],
-    //     24, // slowed for eight seconds by half
-    //     [0.12],
-    //   ));
   });
 });
