@@ -206,6 +206,7 @@ export const Game = () => {
           setPower((power) => power - 1);
         } else {
           setBricks((bricks) => bricks + 1);
+          if (isThunder) setPower((power) => power + 1);
           offsets.forEach(([xd, yd]) =>
             grid[transitionBlock.y + yd][transitionBlock.x + xd] = true
           );

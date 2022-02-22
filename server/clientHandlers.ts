@@ -4,7 +4,6 @@ import {
   TransitionBlockMessage,
 } from "../common/clientToServerMessage.ts";
 import { offsets } from "../common/constants.ts";
-// import { gridToString } from "../common/gridToString.ts";
 import { findPath } from "../common/pathing.ts";
 import { createOrUpdateUser, getUserPlays } from "./db/user.ts";
 import { game } from "./Game.ts";
@@ -37,16 +36,13 @@ export const clientHandlers = {
     if (player.bricks === 0) return player.close("no bricks");
 
     if (offsets.some(([xd, yd]) => player.grid[y + yd]?.[x + xd] !== false)) {
-      return player.close("invalid placement");
+      return player.close("invalid placement (grid)");
     }
 
     offsets.forEach(([xd, yd]) => player.grid[y + yd][x + xd] = true);
 
     const path = findPath(player.grid, player.checkpoint);
-    if (!path) {
-      return player.close("invalid placement");
-    }
-    // console.log(gridToString(player.grid, path, player.checkpoint));
+    if (!path) return player.close("invalid placement (path)");
 
     player.blocks.push({ x, y });
     player.bricks--;
@@ -76,8 +72,5 @@ export const clientHandlers = {
     player.bricks++;
     if (block.thunder) player.power++;
     player.blocks.splice(player.blocks.indexOf(block), 1);
-
-    // const path = findPath(player.grid, player.checkpoint);
-    // console.log(gridToString(player.grid, path, player.checkpoint));
   },
 };

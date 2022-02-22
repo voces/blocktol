@@ -92,7 +92,11 @@ export class Player {
   }
 
   send(message: Message) {
-    this.#websocket.send(JSON.stringify(message));
+    try {
+      this.#websocket.send(JSON.stringify(message));
+    } catch {
+      this.close("error on send");
+    }
   }
 
   close(reason: string) {
