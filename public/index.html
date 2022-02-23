@@ -1,56 +1,55 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-  <meta name="viewport" content="width=device-width, user-scalable=no" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
-      margin: 0;
-      overscroll-behavior: none;
-      touch-action: none;
-      user-select: none;
-      background-color: var(--background);
-      color: var(--color);
-    }
-
-    :root {
-      --background: #f7f7f7;
-      --card-background: white;
-      --color: black;
-      --maze-background: hsl(220, 60%, 80%);
-      --maze-checkpoint: hsl(220, 60%, 50%);
-      --maze-wall: #404040;
-      --maze-text: white;
-      --maze-upgrade-to-thunder: hsl(120, 60%, 65%);
-      --maze-player-block: hsl(120, 60%, 80%);
-      --maze-game-block: hsl(320, 60%, 80%);
-      --maze-placing-block: hsl(120, 60%, 80%);
-      --maze-placing-error: hsl(0, 100%, 60%);
-      --maze-player-thunder: hsl(120, 60%, 50%);
-      --maze-game-thunder: hsl(320, 60%, 50%);
-      --maze-debug-block: hsla(0, 100%, 60%, 10%);
-      --maze-stroke: black;
-      --runner: hsl(300, 60%, 60%);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --background: #222227;
-        --card-background: #2f2f33;
-        --color: #eee;
+  <head>
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      * {
+        box-sizing: border-box;
       }
-    }
-  </style>
-</head>
 
-<body>
-  <script src="./js/index.js" type="module"></script>
-</body>
+      body {
+        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+        margin: 0;
+        overscroll-behavior: none;
+        touch-action: none;
+        user-select: none;
+        background-color: var(--background);
+        color: var(--color);
+      }
 
+      :root {
+        --background: #f7f7f7;
+        --card-background: white;
+        --color: black;
+        --maze-background: hsl(220, 60%, 80%);
+        --maze-checkpoint: hsl(220, 60%, 50%);
+        --maze-wall: #404040;
+        --maze-text: white;
+        --maze-upgrade-to-thunder: hsl(120, 60%, 65%);
+        --maze-player-block: hsl(120, 60%, 80%);
+        --maze-game-block: hsl(320, 60%, 80%);
+        --maze-placing-block: hsl(120, 60%, 80%);
+        --maze-placing-error: hsl(0, 100%, 60%);
+        --maze-player-thunder: hsl(120, 60%, 50%);
+        --maze-game-thunder: hsl(320, 60%, 50%);
+        --maze-thunder-radius: hsla(220, 60%, 50%, 20%);
+        --maze-debug-block: hsla(0, 100%, 60%, 10%);
+        --maze-stroke: black;
+        --runner: hsl(300, 60%, 60%);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #222227;
+          --card-background: #2f2f33;
+          --color: #eee;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <script src="./js/index.js" type="module"></script>
+  </body>
 </html>

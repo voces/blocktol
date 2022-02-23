@@ -39,6 +39,9 @@ export const Game = () => {
     { path: Point[]; duration: number; slows: number[] }
   >();
   const [touching, setTouching] = useState(false);
+  const [thunderHover, setThunderHover] = useState<
+    Point & { local?: boolean }
+  >();
 
   useEffect(() => {
     const interval = setInterval(
@@ -154,6 +157,14 @@ export const Game = () => {
 
       setInvalid(invalid);
 
+      if (
+        overlap && !overlap.local && thunders.includes(overlap)
+      ) {
+        setThunderHover(overlap);
+      } else {
+        setThunderHover(undefined);
+      }
+
       setTransitionBlock(
         overlap?.local ? overlap : undefined,
       );
@@ -251,6 +262,7 @@ export const Game = () => {
 
     const touchendCallback = () => {
       setTouching(false);
+      setPlacingBlock((pb) => ({ ...pb, placing: false }));
       callback();
     };
     globalThis.addEventListener("touchend", touchendCallback);
@@ -299,6 +311,26 @@ export const Game = () => {
           height={20}
           fill="var(--maze-background)"
         />
+        {transitionBlock && (power > 0 || thunders.includes(transitionBlock)) &&
+          (
+            <circle
+              cx={transitionBlock.x + 1}
+              cy={transitionBlock.y + 1}
+              fill="var(--maze-thunder-radius)"
+              r={4}
+              z-index={1}
+            />
+          )}
+        {thunderHover && !thunderHover.local &&
+          (
+            <circle
+              cx={thunderHover.x + 1}
+              cy={thunderHover.y + 1}
+              fill="var(--maze-thunder-radius)"
+              r={4}
+              z-index={1}
+            />
+          )}
         <rect x={0} y={0} width={9} height={1} fill="var(--maze-wall)" />
         <rect x={11} y={0} width={9} height={1} fill="var(--maze-wall)" />
         <rect x={0} y={19} width={9} height={1} fill="var(--maze-wall)" />
