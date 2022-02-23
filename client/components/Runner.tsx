@@ -81,8 +81,22 @@ export const Runner = (
           cx={loc.x + 0.5}
           cy={loc.y + 0.5}
           r={0.05}
+          fill="var(--maze-stroke)"
         />
       ))}
+      {debug && path.map((loc, i) =>
+        i > 0 && (
+          <line
+            key={`${loc.x},${loc.y}-${path[i - 1].x},${path[i - 1].y}`}
+            x1={loc.x + 0.5}
+            y1={loc.y + 0.5}
+            x2={path[i - 1].x + 0.5}
+            y2={path[i - 1].y + 0.5}
+            stroke="var(--maze-stroke)"
+            stroke-width={0.02}
+          />
+        )
+      )}
     </>
   );
 };

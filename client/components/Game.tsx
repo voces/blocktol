@@ -11,6 +11,7 @@ import { Runner } from "./Runner.tsx";
 import { offsets } from "../../common/constants.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Block } from "./Block.tsx";
+import { debug } from "../util/debug.ts";
 
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -143,7 +144,11 @@ export const Game = () => {
         offsets.forEach(([xd, yd]) =>
           grid[y + yd][x + xd] = true
         );
-        if (!findPath(grid, checkpoint)) invalid = true;
+        try {
+          if (!findPath(grid, checkpoint)) invalid = true;
+        } catch (err) {
+          console.error(err);
+        }
         offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
       }
 
@@ -191,9 +196,12 @@ export const Game = () => {
           y: transitionBlock.y,
         });
 
+        // Remove from blocks
         setBlocks((blocks) =>
           blocks.filter((block) => block !== transitionBlock)
         );
+
+        // Remove from thunders
         let isThunder = false;
         setThunders((thunders) =>
           thunders.filter((thunder) => {
@@ -205,18 +213,22 @@ export const Game = () => {
           })
         );
 
+        // Upgrade to thunder
         if (power && !isThunder) {
           setThunders((thunders) => [...thunders, transitionBlock]);
           setPower((power) => power - 1);
+
+          // Remove
         } else {
           setBricks((bricks) => bricks + 1);
           if (isThunder) setPower((power) => power + 1);
           offsets.forEach(([xd, yd]) =>
-            grid[transitionBlock.y + yd][transitionBlock.x + xd] = true
+            grid[transitionBlock.y + yd][transitionBlock.x + xd] = false
           );
         }
 
         setTransitionBlock(undefined);
+        // TODO: recall mousemove callback
         return;
       }
 
@@ -269,6 +281,17 @@ export const Game = () => {
         viewBox="0 0 20 20"
         ref={svgRef}
       >
+        <defs>
+          <linearGradient id="Striped" x1="0%" y1="0%" x2="10%" y2="10%">
+            <stop offset="0%" stop-color="red" />
+            <stop offset="50%" stop-color="rgba(0, 0, 0, 0)" />
+          </linearGradient>
+          <linearGradient
+            id="repeat"
+            href="#Striped"
+            spreadMethod="repeat"
+          />
+        </defs>
         <rect
           x={0}
           y={0}
@@ -343,6 +366,20 @@ export const Game = () => {
           />
         )}
         {run && <Runner {...run} onFinish={() => setRun(undefined)} />}
+        {debug && grid.flatMap((row, y) =>
+          row.map((value, x) =>
+            value && (
+              <rect
+                key={`${x}-${y}`}
+                x={x}
+                y={y}
+                width={1}
+                height={1}
+                fill="url(#repeat)"
+              />
+            )
+          )
+        )}
       </svg>
       {disconnected && <Disconnected />}
     </div>
