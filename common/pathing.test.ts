@@ -134,7 +134,7 @@ Deno.test("pathDuration", async (t) => {
           // but easier math
           { x: 4.5, y: -0.5 },
         ],
-        24, // slowed for eight seconds by half
+        23, // slowed for six seconds by half
         [0.22], // 1 tile + step into next
       ));
   });

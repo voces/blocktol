@@ -29,11 +29,10 @@ export const Runner = (
       const delta = now - last;
       last = now;
       const time = (now - start) / 1_000;
-      const slowed = slows.some((v) => v > time && v + 4_000 < time);
+      const slowed = slows.some((v) => v < time && time < v + 6);
       const speed = slowed ? SPEED / 2 : SPEED;
 
       pathDistance += delta / 1_000 * speed;
-      // console.log(time, slowed, speed, pathDistance);
 
       let distanceRemaining = pathDistance - coveredDistance;
       while (pathIndex < path.length - 1) {

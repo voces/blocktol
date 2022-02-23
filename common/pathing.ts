@@ -219,7 +219,7 @@ export const pathDuration = (
 
       if (!slowedThisStep) {
         slowedThisStep = true;
-        slowed = 8 * SPEED;
+        slowed = 6 * SPEED;
         slows.push(steps);
       }
     }

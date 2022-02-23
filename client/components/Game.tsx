@@ -283,7 +283,7 @@ export const Game = () => {
       >
         <defs>
           <linearGradient id="Striped" x1="0%" y1="0%" x2="10%" y2="10%">
-            <stop offset="0%" stop-color="red" />
+            <stop offset="0%" stop-color="rgba(255, 0, 0, 0.2)" />
             <stop offset="50%" stop-color="rgba(0, 0, 0, 0)" />
           </linearGradient>
           <linearGradient
