@@ -1,14 +1,8 @@
 import { h, JSX } from "preact";
-import { ThemeColor } from "../contexts/Theme.ts";
-import { useTheme } from "../hooks/useTheme.ts";
 
 export const Button = (
-  { children, color, style, ...rest }: JSX.HTMLAttributes<HTMLButtonElement> & {
-    color?: ThemeColor;
-  },
+  { children, style, ...rest }: JSX.HTMLAttributes<HTMLButtonElement>,
 ) => {
-  const theme = useTheme();
-
   return (
     <button
       {...rest}
@@ -16,7 +10,7 @@ export const Button = (
         padding: 8,
         borderRadius: 4,
         margin: 1,
-        backgroundColor: theme[color ?? "primary"],
+        backgroundColor: "var(--maze-player-thunder)",
         color: "white",
         fontWeight: "bold",
         border: 0,

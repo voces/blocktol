@@ -7,11 +7,8 @@ import {
 } from "../../common/serverToClientMessage.ts";
 import { Point } from "../../common/types.ts";
 import { findPath, newGrid } from "../../common/pathing.ts";
-import { Runner } from "./Runner.tsx";
 import { offsets } from "../../common/constants.ts";
-import { Disconnected } from "./Disconnected.tsx";
-import { Block } from "./Block.tsx";
-import { debug } from "../util/debug.ts";
+import { Board } from "./Board.tsx";
 
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -28,7 +25,7 @@ export const Game = () => {
     ReadonlyArray<Point & { local?: boolean }>
   >([]);
   const [thunders, setThunders] = useState<
-    ReadonlyArray<Point & { local?: boolean }>
+    ReadonlyArray<Point & { local?: boolean; active?: boolean }>
   >([]);
   const [bricks, setBricks] = useState(-1);
   const [power, setPower] = useState(-1);
@@ -36,7 +33,11 @@ export const Game = () => {
   const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
   const [run, setRun] = useState<
-    { path: Point[]; duration: number; slows: number[] }
+    {
+      path: Point[];
+      duration: number;
+      slows: { time: number; thunder: Point }[];
+    }
   >();
   const [touching, setTouching] = useState(false);
   const [thunderHover, setThunderHover] = useState<
@@ -103,6 +104,7 @@ export const Game = () => {
       setBricks(-1);
       setPower(-1);
       setTouching(false);
+      setThunderHover(undefined);
     };
     connection.addEventListener("run", runCallback);
 
@@ -274,146 +276,43 @@ export const Game = () => {
   }, [placingBlock, transitionBlock, invalid]);
 
   return (
-    <div
-      style={{
-        maxWidth: "min(800px, 100vw, calc(100vh - 110px))",
-        margin: "0 auto",
+    <Board
+      placingBlock={placingBlock}
+      touching={touching}
+      time={time}
+      svgRef={svgRef}
+      transitionBlock={transitionBlock}
+      power={power}
+      thunders={thunders}
+      thunderHover={thunderHover}
+      bricks={bricks}
+      blocks={blocks}
+      checkpoint={checkpoint}
+      invalid={invalid}
+      run={run}
+      onFinish={() => setRun(undefined)}
+      grid={grid}
+      disconnected={disconnected}
+      onSlow={(thunder) => {
+        setThunders(
+          (thunders) =>
+            thunders.map((t) =>
+              t.x === thunder.x && t.y === thunder.y
+                ? { ...thunder, active: true }
+                : t
+            ),
+        );
+        setTimeout(() => {
+          setThunders(
+            (thunders) =>
+              thunders.map((t) =>
+                t.x === thunder.x && t.y === thunder.y
+                  ? { ...thunder, active: false }
+                  : t
+              ),
+          );
+        }, 100);
       }}
-    >
-      <svg
-        style={{
-          width: "100%",
-          display: "block",
-          transition: "transform 100ms, transform-origin 100ms",
-          transformOrigin: `${(placingBlock.x + 1) * 5}% ${
-            placingBlock.y * 5
-          }%`,
-          transform: touching && time > 0 ? "scale(2)" : undefined,
-        }}
-        viewBox="0 0 20 20"
-        ref={svgRef}
-      >
-        <defs>
-          <linearGradient id="Striped" x1="0%" y1="0%" x2="10%" y2="10%">
-            <stop offset="0%" stop-color="rgba(255, 0, 0, 0.2)" />
-            <stop offset="50%" stop-color="rgba(0, 0, 0, 0)" />
-          </linearGradient>
-          <linearGradient
-            id="repeat"
-            href="#Striped"
-            spreadMethod="repeat"
-          />
-        </defs>
-        <rect
-          x={0}
-          y={0}
-          width={20}
-          height={20}
-          fill="var(--maze-background)"
-        />
-        {transitionBlock && (power > 0 || thunders.includes(transitionBlock)) &&
-          (
-            <circle
-              cx={transitionBlock.x + 1}
-              cy={transitionBlock.y + 1}
-              fill="var(--maze-thunder-radius)"
-              r={4}
-              z-index={1}
-            />
-          )}
-        {thunderHover && !thunderHover.local &&
-          (
-            <circle
-              cx={thunderHover.x + 1}
-              cy={thunderHover.y + 1}
-              fill="var(--maze-thunder-radius)"
-              r={4}
-              z-index={1}
-            />
-          )}
-        <rect x={0} y={0} width={9} height={1} fill="var(--maze-wall)" />
-        <rect x={11} y={0} width={9} height={1} fill="var(--maze-wall)" />
-        <rect x={0} y={19} width={9} height={1} fill="var(--maze-wall)" />
-        <rect x={11} y={19} width={9} height={1} fill="var(--maze-wall)" />
-        <rect x={0} y={0} width={1} height={20} fill="var(--maze-wall)" />
-        <rect x={19} y={0} width={1} height={20} fill="var(--maze-wall)" />
-        {bricks >= 0 && (
-          <text x={1} y={0.8} font-size={0.8} fill="var(--maze-text)">
-            🧱{bricks}
-          </text>
-        )}
-        {power >= 0 && (
-          <text x={3.4} y={0.8} font-size={0.8} fill="var(--maze-text)">
-            ⚡{power}
-          </text>
-        )}
-        {time > 0 && (
-          <text
-            x={18.8}
-            y={0.8}
-            font-size={0.8}
-            fill="var(--maze-text)"
-            text-anchor="end"
-          >
-            {time} seconds to build
-          </text>
-        )}
-
-        {blocks.map((block) => (
-          <Block
-            x={block.x}
-            y={block.y}
-            color={transitionBlock === block && power > 0
-              ? "upgrade-to-thunder"
-              : block.local
-              ? "player-block"
-              : "game-block"}
-            opacity={transitionBlock === block && power === 0 ? 0.6 : undefined}
-          />
-        ))}
-        {thunders.map((thunder) => (
-          <Block
-            x={thunder.x}
-            y={thunder.y}
-            color={thunder.local ? "player-thunder" : "game-thunder"}
-            opacity={transitionBlock === thunder ? 0.4 : 1}
-          />
-        ))}
-        {checkpoint && (
-          <rect
-            x={checkpoint.x + 0.55}
-            y={checkpoint.y + 0.55}
-            width={0.9}
-            height={0.9}
-            fill="var(--maze-checkpoint)"
-          />
-        )}
-        {placingBlock.placing && (
-          <Block
-            x={placingBlock.x}
-            y={placingBlock.y}
-            color={invalid ? "placing-error" : "placing-block"}
-            opacity={0.4}
-            style={{ transition: "x 100ms, y 100ms" }}
-          />
-        )}
-        {run && <Runner {...run} onFinish={() => setRun(undefined)} />}
-        {debug && grid.flatMap((row, y) =>
-          row.map((value, x) =>
-            value && (
-              <rect
-                key={`${x}-${y}`}
-                x={x}
-                y={y}
-                width={1}
-                height={1}
-                fill="url(#repeat)"
-              />
-            )
-          )
-        )}
-      </svg>
-      {disconnected && <Disconnected />}
-    </div>
+    />
   );
 };

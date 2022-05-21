@@ -26,7 +26,7 @@ export type RunMessage = Readonly<{
   kind: "run";
   path: Point[];
   duration: number;
-  slows: number[];
+  slows: { time: number; thunder: Point }[];
   rating: number;
 }>;
 

@@ -61,7 +61,6 @@ export const Login = (
         />
         <div>
           <Button
-            color="secondary"
             style={{ width: "100%", marginTop: 8 }}
             disabled={!connected && showError}
           >

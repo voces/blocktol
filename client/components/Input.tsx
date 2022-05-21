@@ -1,6 +1,5 @@
 import { useState } from "preact/hooks";
 import { Fragment, h, JSX } from "preact";
-import { useTheme } from "../hooks/useTheme.ts";
 
 export const Input = (
   { style, onFocus, onBlur, ...rest }: JSX.HTMLAttributes<
@@ -8,7 +7,6 @@ export const Input = (
   >,
 ) => {
   const [hasFocus, setFocused] = useState(false);
-  const theme = useTheme();
 
   return (
     <>
@@ -23,8 +21,7 @@ export const Input = (
           outline: "none",
           ...(typeof style === "object" && style),
           ...(hasFocus && {
-            borderBottomColor: theme.primary,
-            backgroundColor: `rgba(${theme.primary}, 0.5)`,
+            borderBottomColor: "var(--maze-checkpoint)",
           }),
         }}
         onFocus={(e) => {

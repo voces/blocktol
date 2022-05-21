@@ -1,0 +1,10 @@
+trap killgroup SIGINT
+
+killgroup(){
+  kill 0
+}
+
+./bundle --no-clear-screen --watch &
+./run --watch &
+
+wait

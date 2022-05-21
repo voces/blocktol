@@ -5,15 +5,16 @@ import { Point } from "../../common/types.ts";
 import { debug } from "../util/debug.ts";
 
 export const Runner = (
-  { path, duration, slows, onFinish }: {
+  { path, slows, onFinish, onSlow }: {
     path: Point[];
-    duration: number;
-    slows: number[];
+    slows: { time: number; thunder: Point }[];
     onFinish: () => void;
+    onSlow: (thunder: Point) => void;
   },
 ) => {
   const start = useRef(Date.now()).current;
   const [loc, setLoc] = useState(path[0]);
+  const [slowed, setSlowed] = useState(false);
 
   useEffect(() => {
     let animationFrame: number;
@@ -21,6 +22,7 @@ export const Runner = (
     let pathIndex = 0;
     let pathDistance = 0;
     let last = start;
+    let nextSlow = 0;
 
     const cb = () => {
       animationFrame = requestAnimationFrame(cb);
@@ -29,8 +31,19 @@ export const Runner = (
       const delta = now - last;
       last = now;
       const time = (now - start) / 1_000;
-      const slowed = slows.some((v) => v < time && time < v + 6);
-      const speed = slowed ? SPEED / 2 : SPEED;
+
+      // Off by 1 error
+      for (
+        ;
+        nextSlow < slows.length && slows[nextSlow].time < time;
+        nextSlow++
+      ) {
+        onSlow(slows[nextSlow].thunder);
+      }
+      const isSlowed = nextSlow > 0 && (slows[nextSlow - 1].time) + 6 > time;
+      setSlowed(isSlowed);
+
+      const speed = isSlowed ? SPEED / 2 : SPEED;
 
       pathDistance += delta / 1_000 * speed;
 
@@ -70,7 +83,7 @@ export const Runner = (
         cx={loc.x + 0.5}
         cy={loc.y + 0.5}
         r={0.45}
-        fill="var(--runner)"
+        fill={slowed ? "var(--slow-runner)" : "var(--runner)"}
         stroke="var(--maze-stroke)"
         stroke-width={0.1}
       />

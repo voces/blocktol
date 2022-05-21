@@ -183,10 +183,15 @@ export const findPath = (
 
 export const SPEED = 5;
 
+type Slow = {
+  time: number;
+  thunder: Point;
+};
+
 export const pathDuration = (
   path: ReadonlyArray<Readonly<Point>> = [],
   thunders: ReadonlyArray<Readonly<Point>> = [],
-): [duration: number, slows: number[]] => {
+): [duration: number, slows: Slow[]] => {
   if (path.length < 2) return [0, []];
 
   let distance = 0;
@@ -196,7 +201,7 @@ export const pathDuration = (
   const thunderUsage = Array<number>(thunders.length).fill(-Infinity);
   const runner = { ...path[0] };
   let slowed = 0;
-  const slows: number[] = [];
+  const slows: Slow[] = [];
   let steps = 0;
 
   while (index < path.length - 1) {
@@ -220,7 +225,9 @@ export const pathDuration = (
       if (!slowedThisStep) {
         slowedThisStep = true;
         slowed = 6 * SPEED;
-        slows.push(steps);
+        slows.push(
+          { time: steps, thunder: { x: thunders[i].x, y: thunders[i].y } },
+        );
       }
     }
 
@@ -248,6 +255,9 @@ export const pathDuration = (
 
   return [
     Math.round(steps * 10 / SPEED) / 100,
-    slows.map((steps) => Math.round(steps * 10 / SPEED) / 100),
+    slows.map(({ time, thunder }) => ({
+      time: Math.round(time * 10 / SPEED) / 100,
+      thunder,
+    })),
   ];
 };
