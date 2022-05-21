@@ -25,6 +25,8 @@ export const Board = (
     grid,
     disconnected,
     onSlow,
+    rating,
+    lastRating,
   }: {
     placingBlock: Point & { placing: boolean };
     touching: boolean;
@@ -47,6 +49,8 @@ export const Board = (
     grid: boolean[][];
     disconnected: boolean;
     onSlow: (thunder: Point & { local?: boolean }) => void;
+    rating: number;
+    lastRating: number;
   },
 ) => (
   <div
@@ -129,6 +133,23 @@ export const Board = (
           text-anchor="end"
         >
           {time} seconds to build
+        </text>
+      )}
+      {!Number.isNaN(rating) && (
+        <text
+          x={18.8}
+          y={19.75}
+          font-size={0.8}
+          fill="var(--maze-text)"
+          text-anchor="end"
+        >
+          {`${Math.round(rating)}${
+            !Number.isNaN(lastRating) && lastRating !== rating
+              ? ` (${rating > lastRating ? "+" : ""}${
+                (rating - lastRating).toFixed(1)
+              })`
+              : ""
+          }`}
         </text>
       )}
 

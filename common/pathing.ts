@@ -251,8 +251,6 @@ export const pathDuration = (
     }
   }
 
-  console.log(steps, slows, thunderUsage);
-
   return [
     Math.round(steps * 10 / SPEED) / 100,
     slows.map(({ time, thunder }) => ({

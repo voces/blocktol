@@ -5,8 +5,6 @@ import { game } from "./Game.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
-const HOUSE = 2; // 2**(1000/1000)
-
 const K = 32;
 
 const reverseInterpolate = (left: number, right: number, value: number) =>
@@ -116,8 +114,8 @@ export class Player {
 
     // A player is only ranked if they place a block (i.e., AFKs are ignored)
     if (this.status === "playing") {
-      const expectedPercentile = 2 ** (this.rating / 1000) /
-        (2 ** (this.rating / 1000) + HOUSE);
+      // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
+      const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
       const actualPercentile = times.length === 0
         ? expectedPercentile
         : reverseTween(times, duration, min);

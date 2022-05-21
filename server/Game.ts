@@ -170,18 +170,19 @@ class Game {
         this.#power,
         this.#thunders,
       );
-    }
 
-    this.broadcast({
-      kind: "start",
-      time: BUILD_TIME,
-      checkpoint: this.#checkpoint,
-      thunders: this.#thunders,
-      blocks: this.#blocks,
-      power: this.#power,
-      bricks: this.#bricks,
-      minTime: this.#minTime,
-    });
+      player.send({
+        kind: "start",
+        time: BUILD_TIME,
+        checkpoint: this.#checkpoint,
+        thunders: this.#thunders,
+        blocks: this.#blocks,
+        power: this.#power,
+        bricks: this.#bricks,
+        minTime: this.#minTime,
+        rating: player.rating,
+      });
+    }
 
     this.#timeout = setTimeout(() => this.#startRunners(), BUILD_TIME * 1_000);
   }
@@ -320,6 +321,7 @@ class Game {
         power: this.#power,
         bricks: this.#bricks,
         minTime: this.#minTime,
+        rating: player.rating,
       });
     }
   }

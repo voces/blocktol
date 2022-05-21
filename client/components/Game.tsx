@@ -1,4 +1,10 @@
-import { useContext, useEffect, useRef, useState } from "preact/hooks";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { h } from "preact";
 import { ConnectionContext } from "../contexts/Connection.ts";
 import {
@@ -43,6 +49,8 @@ export const Game = () => {
   const [thunderHover, setThunderHover] = useState<
     Point & { local?: boolean }
   >();
+  const [lastRating, setLastRating] = useState(NaN);
+  const [rating, setRating] = useState(NaN);
 
   useEffect(() => {
     const interval = setInterval(
@@ -63,6 +71,7 @@ export const Game = () => {
       setBricks(event.bricks);
       setPower(event.power);
       setTime(Math.floor(event.time));
+      setRating(event.rating);
 
       grid.splice(0, Infinity, ...newGrid());
 
@@ -96,7 +105,7 @@ export const Game = () => {
     };
     connection.addEventListener("connect", connectCallback);
 
-    const runCallback = ({ path, duration, slows }: RunMessage) => {
+    const runCallback = ({ path, duration, slows, rating }: RunMessage) => {
       setRun({ path, duration, slows });
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       setTransitionBlock(undefined);
@@ -105,6 +114,8 @@ export const Game = () => {
       setPower(-1);
       setTouching(false);
       setThunderHover(undefined);
+      setLastRating(rating);
+      setRating(rating);
     };
     connection.addEventListener("run", runCallback);
 
@@ -275,6 +286,30 @@ export const Game = () => {
     };
   }, [placingBlock, transitionBlock, invalid]);
 
+  const onSlow = useCallback((thunder: Point) => {
+    // Animate thunder tower
+    setThunders(
+      (thunders) =>
+        thunders.map((t) =>
+          t.x === thunder.x && t.y === thunder.y
+            ? { ...thunder, active: true }
+            : t
+        ),
+    );
+
+    // Remove thunder tower animation after 0.1s
+    setTimeout(() => {
+      setThunders(
+        (thunders) =>
+          thunders.map((t) =>
+            t.x === thunder.x && t.y === thunder.y
+              ? { ...thunder, active: false }
+              : t
+          ),
+      );
+    }, 100);
+  }, []);
+
   return (
     <Board
       placingBlock={placingBlock}
@@ -293,26 +328,9 @@ export const Game = () => {
       onFinish={() => setRun(undefined)}
       grid={grid}
       disconnected={disconnected}
-      onSlow={(thunder) => {
-        setThunders(
-          (thunders) =>
-            thunders.map((t) =>
-              t.x === thunder.x && t.y === thunder.y
-                ? { ...thunder, active: true }
-                : t
-            ),
-        );
-        setTimeout(() => {
-          setThunders(
-            (thunders) =>
-              thunders.map((t) =>
-                t.x === thunder.x && t.y === thunder.y
-                  ? { ...thunder, active: false }
-                  : t
-              ),
-          );
-        }, 100);
-      }}
+      onSlow={onSlow}
+      rating={rating}
+      lastRating={lastRating}
     />
   );
 };

@@ -11,6 +11,7 @@ export type StartMessage = Readonly<{
   power: number;
   bricks: number;
   minTime: number;
+  rating: number;
 }>;
 
 const isStartMessage = (value: unknown): value is StartMessage =>
@@ -20,7 +21,9 @@ const isStartMessage = (value: unknown): value is StartMessage =>
   has(value, "thunders", arrayOf(isPoint)) &&
   has(value, "blocks", arrayOf(isPoint)) &&
   hasNumber(value, "power") &&
-  hasNumber(value, "bricks");
+  hasNumber(value, "bricks") &&
+  hasNumber(value, "minTime") &&
+  hasNumber(value, "rating");
 
 export type RunMessage = Readonly<{
   kind: "run";
