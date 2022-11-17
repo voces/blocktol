@@ -72,13 +72,6 @@ class Game {
     const newIteration =
       Math.random() < ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
           (this.#iterationCount || 1);
-    console.log(
-      avg,
-      this.#iterationCount,
-      ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
-        (this.#iterationCount || 1),
-      newIteration,
-    );
 
     if (newIteration) {
       this.#checkpoint = {
@@ -207,7 +200,6 @@ class Game {
 
   async #startRunners() {
     const times = await this.#times;
-    console.log("times", times);
 
     this.#max = -Infinity;
     for (const player of this.#players) {

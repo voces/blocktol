@@ -1,9 +1,10 @@
-import { ComponentChildren, h } from "preact";
+import { ComponentChildren, Fragment, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { ConnectionContext } from "../contexts/Connection.ts";
 import { useConnectionState } from "../hooks/useConnectionState.ts";
 import { getId } from "../util/id.ts";
 import { Game } from "./Game.tsx";
+import { IntroBoard } from "./IntroBoard.tsx";
 import { Login } from "./Login.tsx";
 
 const Shell = ({ children }: { children: ComponentChildren }) => (
@@ -30,18 +31,21 @@ export const App = () => {
   return (
     <Shell>
       {(username?.length ?? 0) > 0 ? <Game /> : (
-        <Login
-          connected={connection.connected}
-          onLogin={(username) => {
-            setUsername(username);
-            if (connection.connected) {
-              logInTimeout.current = setTimeout(
-                () => connection.send({ kind: "login", username, id }),
-                250,
-              );
-            }
-          }}
-        />
+        <>
+          <IntroBoard />
+          <Login
+            connected={connection.connected}
+            onLogin={(username) => {
+              setUsername(username);
+              if (connection.connected) {
+                logInTimeout.current = setTimeout(
+                  () => connection.send({ kind: "login", username, id }),
+                  250,
+                );
+              }
+            }}
+          />
+        </>
       )}
     </Shell>
   );
