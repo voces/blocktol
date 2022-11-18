@@ -1,43 +1,26 @@
-import { arrayOf, has, hasEnum, hasNumber, isPoint } from "./typeguards.ts";
-import { isRecord } from "./typeguards.ts";
-import { Point } from "./types.ts";
+import { GuardedType, is, isPoint } from "./typeguards.ts";
 
-export type StartMessage = Readonly<{
-  kind: "start";
-  time: number;
-  checkpoint: Point;
-  thunders: Point[];
-  blocks: Point[];
-  power: number;
-  bricks: number;
-  minTime: number;
-  rating: number;
-}>;
+const isStartMessage = is.object({
+  kind: is.const("start"),
+  time: is.number,
+  checkpoint: isPoint,
+  thunders: is.array(isPoint),
+  blocks: is.array(isPoint),
+  power: is.number,
+  bricks: is.number,
+  minTime: is.number,
+  rating: is.number,
+});
+export type StartMessage = GuardedType<typeof isStartMessage>;
 
-const isStartMessage = (value: unknown): value is StartMessage =>
-  isRecord(value) &&
-  hasEnum(value, "kind", ["start"]) &&
-  has(value, "checkpoint", isPoint) &&
-  has(value, "thunders", arrayOf(isPoint)) &&
-  has(value, "blocks", arrayOf(isPoint)) &&
-  hasNumber(value, "power") &&
-  hasNumber(value, "bricks") &&
-  hasNumber(value, "minTime") &&
-  hasNumber(value, "rating");
-
-export type RunMessage = Readonly<{
-  kind: "run";
-  path: Point[];
-  duration: number;
-  slows: { time: number; thunder: Point }[];
-  rating: number;
-}>;
-
-const isRunMessage = (value: unknown): value is StartMessage =>
-  isRecord(value) &&
-  hasEnum(value, "kind", ["run"]) &&
-  has(value, "path", arrayOf(isPoint)) &&
-  hasNumber(value, "duration");
+const isRunMessage = is.object({
+  kind: is.const("run"),
+  path: is.array(isPoint),
+  duration: is.number,
+  slows: is.array(is.object({ time: is.number, thunder: isPoint })),
+  rating: is.number,
+});
+export type RunMessage = Readonly<GuardedType<typeof isRunMessage>>;
 
 export type MessageMap = {
   start: StartMessage;

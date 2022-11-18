@@ -15,6 +15,11 @@ import { Point } from "../../common/types.ts";
 import { findPath, newGrid } from "../../common/pathing.ts";
 import { offsets } from "../../common/constants.ts";
 import { Board } from "./Board.tsx";
+import { is } from "../../common/typeguards.ts";
+
+const isTouchSource = is.object({
+  sourceCapabilities: is.object({ firesTouchEvents: is.const(true) }),
+});
 
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -186,7 +191,10 @@ export const Game = () => {
       );
     };
 
-    const mousemoveCallback = (e: MouseEvent) => callback(e.clientX, e.clientY);
+    const mousemoveCallback = (e: MouseEvent) => {
+      if (isTouchSource(e)) return;
+      callback(e.clientX, e.clientY);
+    };
     globalThis.addEventListener("mousemove", mousemoveCallback);
 
     const touchmoveCallback = (e: TouchEvent) => {
@@ -259,7 +267,15 @@ export const Game = () => {
         return;
       }
 
-      if (!placingBlockRef.current.placing) return;
+      if (
+        offsets.some(([xd, yd]) =>
+          grid[placingBlockRef.current.y + yd][placingBlockRef.current.x + xd]
+        )
+      ) return false;
+
+      try {
+        if (!findPath(grid, checkpoint)) return false;
+      } catch { /* do nothing */ }
 
       offsets.forEach(([xd, yd]) =>
         grid[placingBlockRef.current.y + yd][placingBlockRef.current.x + xd] =
@@ -283,7 +299,11 @@ export const Game = () => {
       setPlacingBlock({ ...placingBlockRef.current, placing: false });
     };
 
-    globalThis.addEventListener("mousedown", callback);
+    const mousedownCallback = (e: MouseEvent) => {
+      if (isTouchSource(e)) return;
+      callback();
+    };
+    globalThis.addEventListener("mousedown", mousedownCallback);
 
     const touchendCallback = (e: TouchEvent) => {
       setTouching(false);
@@ -293,7 +313,7 @@ export const Game = () => {
     globalThis.addEventListener("touchend", touchendCallback);
 
     return () => {
-      globalThis.removeEventListener("mousedown", callback);
+      globalThis.removeEventListener("mousedown", mousedownCallback);
       globalThis.removeEventListener("touchend", touchendCallback);
     };
   }, [placingBlockRef.current, transitionBlock, invalid]);

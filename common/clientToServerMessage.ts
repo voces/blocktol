@@ -1,48 +1,31 @@
-import { hasEnum, hasMaybeString, hasNumber, hasString } from "./typeguards.ts";
-import { isRecord } from "./typeguards.ts";
+import { GuardedType, is } from "./typeguards.ts";
 
-export type LoginMessage = {
-  kind: "login";
-  username: string | undefined;
-  id: string;
-};
+const isLoginMessage = is.object({
+  kind: is.const("login"),
+  username: is.union(is.string, is.undefined),
+  id: is.string,
+});
+export type LoginMessage = GuardedType<typeof isLoginMessage>;
 
-export type BlockMessage = {
-  kind: "block";
-  x: number;
-  y: number;
-};
+const isBlockMessage = is.object({
+  kind: is.const("block"),
+  x: is.number,
+  y: is.number,
+});
+export type BlockMessage = GuardedType<typeof isBlockMessage>;
 
-export type TransitionBlockMessage = {
-  kind: "transition";
-  x: number;
-  y: number;
-};
+const isTransitionBlockMessage = is.object({
+  kind: is.const("transition"),
+  x: is.number,
+  y: is.number,
+});
+export type TransitionBlockMessage = GuardedType<
+  typeof isTransitionBlockMessage
+>;
 
-const isLoginMessage = (value: unknown): value is LoginMessage =>
-  isRecord(value) &&
-  hasEnum(value, "kind", ["login"]) &&
-  hasMaybeString(value, "username") &&
-  hasString(value, "id");
-
-const isBlockMessage = (value: unknown): value is LoginMessage =>
-  isRecord(value) &&
-  hasEnum(value, "kind", ["block"]) &&
-  hasNumber(value, "x") &&
-  hasNumber(value, "y");
-
-const isTransitionBlockMessage = (value: unknown): value is LoginMessage =>
-  isRecord(value) &&
-  hasEnum(value, "kind", ["transition"]) &&
-  hasNumber(value, "x") &&
-  hasNumber(value, "y");
-
-export type ClientToServerMessage =
-  | LoginMessage
-  | BlockMessage
-  | TransitionBlockMessage;
-
-export const isMessage = (value: unknown): value is ClientToServerMessage =>
-  isLoginMessage(value) ||
-  isBlockMessage(value) ||
-  isTransitionBlockMessage(value);
+export const isMessage = is.union(
+  isLoginMessage,
+  isBlockMessage,
+  isTransitionBlockMessage,
+);
+export type ClientToServerMessage = GuardedType<typeof isMessage>;

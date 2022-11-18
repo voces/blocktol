@@ -22,9 +22,13 @@ serve((req, connInfo) => {
       fileInfo.isDirectory
         ? serveFile(req, join(path, "index.html"))
         : serveFile(req, path)
-    ).catch(() =>
-      new Response(undefined, { status: 302, headers: { "Location": "/" } })
-    );
+    ).catch((err) => {
+      console.error(err);
+      return new Response(undefined, {
+        status: 302,
+        headers: { "Location": "/" },
+      });
+    });
   }
 
   const { socket, response } = Deno.upgradeWebSocket(req);
