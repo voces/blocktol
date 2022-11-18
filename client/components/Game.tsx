@@ -19,11 +19,14 @@ import { Board } from "./Board.tsx";
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const connection = useContext(ConnectionContext);
-  const [placingBlock, setPlacingBlock] = useState({
-    x: 0,
-    y: 0,
-    placing: false,
-  });
+  const placingBlockRef = useRef({ x: 0, y: 0, placing: false });
+  const [, _setPlacingBlock] = useState(placingBlockRef.current);
+  const setPlacingBlock: typeof _setPlacingBlock = (s) => {
+    if (typeof s === "function") {
+      placingBlockRef.current = s(placingBlockRef.current);
+    } else placingBlockRef.current = s;
+    _setPlacingBlock(s);
+  };
   const [transitionBlock, setTransitionBlock] = useState<Point>();
   const [disconnected, setDisconnected] = useState(false);
   const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
@@ -256,24 +259,33 @@ export const Game = () => {
         return;
       }
 
-      if (!placingBlock.placing) return;
+      if (!placingBlockRef.current.placing) return;
 
       offsets.forEach(([xd, yd]) =>
-        grid[placingBlock.y + yd][placingBlock.x + xd] = true
+        grid[placingBlockRef.current.y + yd][placingBlockRef.current.x + xd] =
+          true
       );
 
-      connection.send({ kind: "block", x: placingBlock.x, y: placingBlock.y });
+      connection.send({
+        kind: "block",
+        x: placingBlockRef.current.x,
+        y: placingBlockRef.current.y,
+      });
       setBlocks((
         blocks,
-      ) => [...blocks, { x: placingBlock.x, y: placingBlock.y, local: true }]);
+      ) => [...blocks, {
+        x: placingBlockRef.current.x,
+        y: placingBlockRef.current.y,
+        local: true,
+      }]);
       setBricks((bricks) => bricks - 1);
 
-      setPlacingBlock({ ...placingBlock, placing: false });
+      setPlacingBlock({ ...placingBlockRef.current, placing: false });
     };
 
     globalThis.addEventListener("mousedown", callback);
 
-    const touchendCallback = () => {
+    const touchendCallback = (e: TouchEvent) => {
       setTouching(false);
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       callback();
@@ -284,7 +296,7 @@ export const Game = () => {
       globalThis.removeEventListener("mousedown", callback);
       globalThis.removeEventListener("touchend", touchendCallback);
     };
-  }, [placingBlock, transitionBlock, invalid]);
+  }, [placingBlockRef.current, transitionBlock, invalid]);
 
   const onSlow = useCallback((thunder: Point) => {
     // Animate thunder tower
@@ -312,7 +324,7 @@ export const Game = () => {
 
   return (
     <Board
-      placingBlock={placingBlock}
+      placingBlock={placingBlockRef.current}
       touching={touching}
       time={time}
       svgRef={svgRef}

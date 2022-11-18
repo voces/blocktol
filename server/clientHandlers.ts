@@ -36,7 +36,7 @@ export const clientHandlers = {
     if (player.bricks === 0) return player.close("no bricks");
 
     if (offsets.some(([xd, yd]) => player.grid[y + yd]?.[x + xd] !== false)) {
-      return player.close("invalid placement (grid)");
+      return player.close(`invalid placement (grid=(${x},${y}))`);
     }
 
     offsets.forEach(([xd, yd]) => player.grid[y + yd][x + xd] = true);

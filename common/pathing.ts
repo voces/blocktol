@@ -183,7 +183,7 @@ export const findPath = (
 
 export const SPEED = 5;
 
-type Slow = {
+export type Slow = {
   time: number;
   thunder: Point;
 };

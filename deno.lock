@@ -92,6 +92,8 @@
     "https://deno.land/std@0.126.0/path/posix.ts": "663e4a6fe30a145f56aa41a22d95114c4c5582d8b57d2d7c9ed27ad2c47636bb",
     "https://deno.land/std@0.126.0/path/separator.ts": "fe1816cb765a8068afb3e8f13ad272351c85cbc739af56dacfc7d93d710fe0f9",
     "https://deno.land/std@0.126.0/path/win32.ts": "e7bdf63e8d9982b4d8a01ef5689425c93310ece950e517476e22af10f41a136e",
+    "https://deno.land/std@0.126.0/testing/_diff.ts": "9d849cd6877694152e01775b2d93f9d6b7aef7e24bfe3bfafc4d7a1ac8e9f392",
+    "https://deno.land/std@0.126.0/testing/asserts.ts": "b7a2b7f80a12b9b2abe1bfeb7b84ead0e971671977c4d70390f43abd85c904ae",
     "https://esm.sh/sqlstring@2.3.2?pin=v64": "78a3f2f9edf2231f01f272f9f4c507f2133b758842c18a8dc632167f1e0384af"
   }
 }

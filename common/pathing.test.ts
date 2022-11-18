@@ -3,7 +3,7 @@ import {
   assertEquals,
 } from "https://deno.land/std@0.126.0/testing/asserts.ts";
 
-import { pathDuration } from "./pathing.ts";
+import { pathDuration, Slow } from "./pathing.ts";
 import { Point } from "./types.ts";
 
 Deno.test("pathDuration", async (t) => {
@@ -11,7 +11,7 @@ Deno.test("pathDuration", async (t) => {
     points: Point[],
     thunders: Point[],
     duration: number,
-    slows: number[] = [],
+    slows: Slow[] = [],
   ) => {
     const [actualDuration, actualSlows] = pathDuration(points, thunders ?? []);
     assert(
@@ -135,7 +135,7 @@ Deno.test("pathDuration", async (t) => {
           { x: 4.5, y: -0.5 },
         ],
         23, // slowed for six seconds by half
-        [0.22], // 1 tile + step into next
+        [{ thunder: { x: 4.5, y: -0.5 }, time: 0.22 }], // 1 tile + step into next
       ));
   });
 });
