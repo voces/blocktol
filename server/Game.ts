@@ -361,7 +361,7 @@ class Game {
 
   incTokens() {
     for (const player of this.#players) {
-      player.tokens = Math.min(player.tokens, TOKEN_MAX);
+      player.tokens = Math.min(player.tokens + 1, TOKEN_MAX);
     }
   }
 
