@@ -34,6 +34,7 @@ class Game {
   #grid: boolean[][] = [];
   #times: Promise<number[]> = Promise.resolve([]);
   #minTime = 0;
+  #date = 0;
 
   #playerRuns: Omit<PlayerRunsMessage["playerRuns"][number], "log">[] = [];
 
@@ -124,6 +125,7 @@ class Game {
         this.#thunders,
       );
       this.#iterationCount++;
+      this.#date = Date.now();
 
       this.#times = Promise.resolve([]); // new iteration; no times
     } else {
@@ -135,6 +137,7 @@ class Game {
       this.#thunders = values.thunders;
       this.#bricks = values.bricks;
       this.#blocks = values.blocks;
+      this.#date = new Date(values.date).getTime();
 
       this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
       this.#blocks.forEach(({ x, y }) =>
@@ -157,6 +160,7 @@ class Game {
 
     const message = {
       kind: "start",
+      date: this.#date,
       time: BUILD_TIME,
       checkpoint: this.#checkpoint,
       thunders: this.#thunders,
@@ -272,6 +276,7 @@ class Game {
     this.#bricks = state.bricks;
     this.#power = state.power;
     this.#minTime = state.minTime;
+    this.#date = state.date;
 
     this.#grid = newGrid();
 
@@ -335,6 +340,7 @@ class Game {
 
       player.send({
         kind: "start",
+        date: this.#date,
         time: (this.#start + BUILD_TIME * 1_000 - Date.now()) / 1_000,
         checkpoint: this.#checkpoint,
         thunders: this.#thunders,
@@ -345,6 +351,19 @@ class Game {
         rating: player.rating,
       });
     }
+
+    player.send({
+      kind: "log",
+      source: "server",
+      time: Date.now(),
+      message: `Welcome ${player.username}${
+        this.#players.size === 1
+          ? "!"
+          : `, there ${this.#players.size === 2 ? "is" : "are"} ${
+            this.#players.size - 1
+          } other player${this.#players.size === 2 ? "" : "s"} on your server!`
+      }`,
+    });
   }
 
   removePlayer(player: Player) {

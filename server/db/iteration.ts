@@ -12,6 +12,7 @@ export const getIteration = (id: number) =>
     [
       {
         bricks: number;
+        created: string;
         power: number;
         checkpoint_x: number;
         checkpoint_y: number;
@@ -19,9 +20,10 @@ export const getIteration = (id: number) =>
       { x: number; y: number; kind: "block" | "thunder" }[],
     ]
   >`
-    SELECT bricks, power, checkpoint_x, checkpoint_y FROM iteration WHERE id = ${id};
+    SELECT bricks, created, power, checkpoint_x, checkpoint_y FROM iteration WHERE id = ${id};
     SELECT x, y, kind FROM block WHERE iteration = ${id};
   `.then(([[i], blocks]) => ({
+    date: i.created,
     bricks: i.bricks,
     power: i.power,
     checkpoint: { x: i.checkpoint_x, y: i.checkpoint_y },

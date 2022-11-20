@@ -179,6 +179,7 @@ export const IntroBoard = () => {
       onSlow={onSlow}
       rating={NaN}
       lastRating={NaN}
+      date={NaN}
     />
   );
 };

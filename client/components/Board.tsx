@@ -27,6 +27,7 @@ export const Board = (
     onSlow,
     rating,
     lastRating,
+    date,
   }: {
     placingBlock: Point & { placing: boolean };
     touching: boolean;
@@ -51,6 +52,7 @@ export const Board = (
     onSlow: (thunder: Point & { local?: boolean }) => void;
     rating: number;
     lastRating: number;
+    date: number;
   },
 ) => (
   <div
@@ -143,6 +145,7 @@ export const Board = (
           fill="var(--maze-text)"
           text-anchor="end"
         >
+          {(console.log(rating, lastRating), null)}
           {`${Math.round(rating)}${
             !Number.isNaN(lastRating) && lastRating !== rating
               ? ` (${rating > lastRating ? "+" : ""}${
@@ -150,6 +153,13 @@ export const Board = (
               })`
               : ""
           }`}
+        </text>
+      )}
+      {!Number.isNaN(date) && (
+        <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
+          {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+            new Date(date),
+          )}
         </text>
       )}
 

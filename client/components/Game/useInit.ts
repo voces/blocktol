@@ -28,6 +28,7 @@ export const useInit = () => {
     setDisconnected,
     setLastRating,
     rating: lastRating,
+    setDate,
   } = useContext(GameStateContext);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export const useInit = () => {
       setPower(event.power);
       setTime(Math.floor(event.time));
       setRating(event.rating);
+      setDate(event.date);
 
       grid.splice(0, Infinity, ...newGrid());
 
@@ -75,7 +77,17 @@ export const useInit = () => {
     };
     connection.addEventListener("connect", connectCallback);
 
+    return () => {
+      connection.removeEventListener("start", startCallback);
+      connection.removeEventListener("disconnect", disconnectCallback);
+      connection.removeEventListener("connect", connectCallback);
+    };
+  }, [connection]);
+
+  useEffect(() => {
+    console.log("run effect", lastRating);
     const runCallback = ({ path, duration, slows, rating }: RunMessage) => {
+      console.log("runCallback", lastRating);
       setRun({ path, duration, slows });
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       setTransitionBlock(undefined);
@@ -89,11 +101,6 @@ export const useInit = () => {
     };
     connection.addEventListener("run", runCallback);
 
-    return () => {
-      connection.removeEventListener("start", startCallback);
-      connection.removeEventListener("disconnect", disconnectCallback);
-      connection.removeEventListener("connect", connectCallback);
-      connection.removeEventListener("run", runCallback);
-    };
-  }, []);
+    return () => connection.removeEventListener("run", runCallback);
+  }, [connection, lastRating]);
 };

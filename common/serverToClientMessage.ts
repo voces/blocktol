@@ -2,6 +2,7 @@ import { GuardedType, is, isPoint } from "./typeguards.ts";
 
 const isStartMessage = is.object({
   kind: is.const("start"),
+  date: is.number,
   time: is.number,
   checkpoint: isPoint,
   thunders: is.array(isPoint),

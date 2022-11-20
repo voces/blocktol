@@ -29,6 +29,7 @@ export const Game = () => {
     disconnected,
     rating,
     lastRating,
+    date,
   } = useContext(GameStateContext);
 
   useInit();
@@ -60,6 +61,7 @@ export const Game = () => {
         onSlow={onSlow}
         rating={rating}
         lastRating={lastRating}
+        date={date}
       />
     </>
   );

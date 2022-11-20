@@ -39,7 +39,7 @@ const useLogLocation = () => {
   const { width, height: fullHeight } = useWindowDimensions();
   const height = fullHeight - 110;
 
-  return width - height >= 300
+  return width - height >= 300 || width > 1000
     ? "side"
     : width - height <= -100
     ? "bottom"
@@ -79,7 +79,6 @@ export const Log = () => {
       const now = Date.now();
       const newMessages = queue.filter((m) => m.time <= now);
       if (newMessages.length) {
-        console.log("newMessages");
         setQueue((q) => q.filter((m) => m.time > now));
         setLog(Array.from(
           new Set(
