@@ -41,4 +41,4 @@ export type MessageMap = {
 export type Message = MessageMap[keyof MessageMap];
 
 export const isMessage = (value: unknown): value is Message =>
-  isStartMessage(value) || isRunMessage(value);
+  isStartMessage(value) || isRunMessage(value) || isLogMessage(value);

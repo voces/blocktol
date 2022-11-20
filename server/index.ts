@@ -45,7 +45,7 @@ serve((req, connInfo) => {
   socket.onmessage = (e) => {
     try {
       const message = JSON.parse(e.data);
-      if (isMessage(message)) {
+      if (isMessage(message) && message.kind in clientHandlers) {
         // deno-lint-ignore no-explicit-any
         clientHandlers[message.kind](socket, message as any);
       } else {

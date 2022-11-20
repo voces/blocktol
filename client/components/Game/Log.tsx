@@ -40,14 +40,13 @@ const useLogLocation = () => {
 };
 
 export const Log = () => {
-  return null;
   const logLocation = useLogLocation();
   const connection = useContext(ConnectionContext);
+  const [log, setLog] = useState<LogMessage[]>([]);
 
   useEffect(() => {
-    const logCallback = (message: LogMessage) => {
-      console.log("log", message);
-    };
+    const logCallback = (message: LogMessage) =>
+      setLog((l) => [...l, message].sort((a, b) => a.time - b.time));
 
     connection.addEventListener("log", logCallback);
 
@@ -74,9 +73,8 @@ export const Log = () => {
           : "calc(100vh - 100vw - 94.88px)",
       }}
     >
-      <p>Just some content</p>
-      <p>Some of the content is quite long and needs to handle wrapping</p>
-      <p>While dis short</p>
+      {log.filter((l) => l.time < Date.now()).map((l) => <div>{l.message}
+      </div>)}
     </div>
   );
 };

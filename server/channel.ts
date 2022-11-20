@@ -23,6 +23,7 @@ const handlers = {
     game.startRunnersFromState(message.times),
   playerRuns: (message: PlayerRunsMessage) =>
     isLeader() && game.playerRuns(message.playerRuns),
+  heartbeat: () => game.incTokens(),
 };
 
 channel.addEventListener("message", (e) => {

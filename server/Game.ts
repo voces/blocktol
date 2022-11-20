@@ -11,7 +11,7 @@ import {
   getIterationTimes,
   logRuns,
 } from "./db/iteration.ts";
-import type { Player } from "./Player.ts";
+import { Player, TOKEN_MAX } from "./Player.ts";
 import { PlayerRunsMessage } from "./ServerMessage.ts";
 import { isLeader } from "./trackLeadership.ts";
 
@@ -217,6 +217,17 @@ class Game {
           duration,
         });
       }
+
+      const now = Date.now();
+      for (const p2 of this.#players) {
+        if (Math.random() * TOKEN_MAX > p2.tokens) continue;
+        p2.send({
+          kind: "log",
+          source: "server",
+          time: now + duration * 1000,
+          message: `${player.username} lasted ${duration} seconds.`,
+        });
+      }
     }
 
     broadcast({ kind: "startRun", times });
@@ -293,6 +304,17 @@ class Game {
         duration,
         log,
       });
+
+      const now = Date.now();
+      for (const p2 of this.#players) {
+        if (Math.random() * TOKEN_MAX > p2.tokens) continue;
+        p2.send({
+          kind: "log",
+          source: "server",
+          time: now + duration * 1000,
+          message: `${player.username} lasted ${duration} seconds.`,
+        });
+      }
     }
 
     broadcast({ kind: "playerRuns", playerRuns });
@@ -332,6 +354,12 @@ class Game {
       this.#status = "idle";
       this.#started = false;
       clearTimeout(this.#timeout);
+    }
+  }
+
+  incTokens() {
+    for (const player of this.#players) {
+      player.tokens = Math.min(player.tokens, TOKEN_MAX);
     }
   }
 }

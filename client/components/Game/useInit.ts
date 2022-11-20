@@ -76,7 +76,6 @@ export const useInit = () => {
     connection.addEventListener("connect", connectCallback);
 
     const runCallback = ({ path, duration, slows, rating }: RunMessage) => {
-      console.warn("run callback");
       setRun({ path, duration, slows });
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       setTransitionBlock(undefined);

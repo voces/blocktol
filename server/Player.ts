@@ -5,6 +5,8 @@ import { game } from "./Game.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
+export const TOKEN_MAX = 10;
+
 const K = 32;
 
 const reverseInterpolate = (left: number, right: number, value: number) =>
@@ -57,6 +59,7 @@ export class Player {
   bricks = 0;
   power = 0;
   #gameThunders: Point[] = [];
+  tokens = 10;
 
   private static map = new WeakMap<WebSocket, Player>();
 
