@@ -24,7 +24,6 @@ export const clientHandlers = {
     game.addPlayer(new Player(socket, message.id, name, rating, plays));
   },
   block: (socket: WebSocket, { x, y }: BlockMessage) => {
-    console.log("block", x, y);
     const player = Player.from(socket);
 
     if (!player) {
@@ -49,7 +48,6 @@ export const clientHandlers = {
     player.bricks--;
   },
   transition: (socket: WebSocket, { x, y }: TransitionBlockMessage) => {
-    console.log("transition", x, y);
     const player = Player.from(socket);
 
     if (!player) {
