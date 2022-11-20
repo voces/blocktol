@@ -67,7 +67,7 @@ export const getIterationTimes = (iteration: number) =>
   `.then((r) => r.map((r) => r.time).sort((a, b) => a - b));
 
 export const logRuns = (
-  runs: PlayerRunsMessage["playerRuns"],
+  runs: Omit<PlayerRunsMessage["playerRuns"][number], "log">[],
   iteration: number,
 ) =>
   sql`
@@ -79,5 +79,4 @@ export const logRuns = (
         format`UPDATE user SET rating = ${rating} WHERE id = ${player};`
       ).join("\n"),
     )
-  }
-  `.then(console.log);
+  }`;

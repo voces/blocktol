@@ -35,7 +35,7 @@ class Game {
   #times: Promise<number[]> = Promise.resolve([]);
   #minTime = 0;
 
-  #playerRuns: PlayerRunsMessage["playerRuns"] = [];
+  #playerRuns: Omit<PlayerRunsMessage["playerRuns"][number], "log">[] = [];
 
   #start = 0;
   #max = -Infinity;
@@ -155,6 +155,19 @@ class Game {
 
     console.log(gridToString(this.#grid, path, this.#checkpoint));
 
+    const message = {
+      kind: "start",
+      time: BUILD_TIME,
+      checkpoint: this.#checkpoint,
+      thunders: this.#thunders,
+      blocks: this.#blocks,
+      power: this.#power,
+      bricks: this.#bricks,
+      minTime: this.#minTime,
+    } as const;
+
+    broadcast(message);
+
     for (const player of this.#players) {
       player.startRound(
         this.#grid.map((r) => [...r]),
@@ -164,17 +177,7 @@ class Game {
         this.#thunders,
       );
 
-      player.send({
-        kind: "start",
-        time: BUILD_TIME,
-        checkpoint: this.#checkpoint,
-        thunders: this.#thunders,
-        blocks: this.#blocks,
-        power: this.#power,
-        bricks: this.#bricks,
-        minTime: this.#minTime,
-        rating: player.rating,
-      });
+      player.send({ ...message, rating: player.rating });
     }
 
     this.#timeout = setTimeout(() => this.#startRunners(), BUILD_TIME * 1_000);
@@ -203,15 +206,17 @@ class Game {
 
     this.#max = -Infinity;
     for (const player of this.#players) {
-      const duration = player.run(times, this.#minTime);
+      const [duration, log] = player.run(times, this.#minTime);
 
       if (duration > this.#max) this.#max = duration;
 
-      this.#playerRuns.push({
-        player: player.id,
-        rating: player.rating,
-        duration,
-      });
+      if (log) {
+        this.#playerRuns.push({
+          player: player.id,
+          rating: player.rating,
+          duration,
+        });
+      }
     }
 
     broadcast({ kind: "startRun", times });
@@ -226,7 +231,7 @@ class Game {
 
     for (const run of playerRuns) {
       if (run.duration > max) max = run.duration;
-      this.#playerRuns.push(run);
+      if (run.log) this.#playerRuns.push(run);
     }
 
     if (max < this.#max) return;
@@ -273,7 +278,6 @@ class Game {
       player.power = state.power;
     }
 
-    broadcast(state);
     this.broadcast(state);
   }
 
@@ -281,12 +285,13 @@ class Game {
     const playerRuns: PlayerRunsMessage["playerRuns"] = [];
 
     for (const player of this.#players) {
-      const duration = player.run(times, this.#minTime);
+      const [duration, log] = player.run(times, this.#minTime);
 
       playerRuns.push({
         player: player.id,
         rating: player.rating,
         duration,
+        log,
       });
     }
 

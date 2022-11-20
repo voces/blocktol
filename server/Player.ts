@@ -128,7 +128,7 @@ export class Player {
 
     this.send({ kind: "run", path, duration, slows, rating: this.rating });
 
-    return duration;
+    return [duration, this.status === "playing"] as const;
   }
 
   static from(socket: WebSocket) {

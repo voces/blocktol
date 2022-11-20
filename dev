@@ -1,4 +1,4 @@
-trap killgroup SIGINT
+trap killgroup INT
 
 killgroup(){
   kill 0

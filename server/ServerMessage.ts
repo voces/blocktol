@@ -14,6 +14,7 @@ export type PlayerRunsMessage = Readonly<{
     player: string;
     rating: number;
     duration: number;
+    log: boolean;
   }[];
 }>;
 
@@ -21,7 +22,7 @@ export type ServerMessage =
   | ElectionMessage
   | HeartbeatMessage
   | VetoMessage
-  | StartMessage
+  | Omit<StartMessage, "rating">
   | StartRunMessage
   | PlayerRunsMessage;
 

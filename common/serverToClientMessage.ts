@@ -22,9 +22,18 @@ const isRunMessage = is.object({
 });
 export type RunMessage = Readonly<GuardedType<typeof isRunMessage>>;
 
+const isLogMessage = is.object({
+  kind: is.const("log"),
+  source: is.string,
+  time: is.number,
+  message: is.string,
+});
+export type LogMessage = GuardedType<typeof isLogMessage>;
+
 export type MessageMap = {
   start: StartMessage;
   run: RunMessage;
+  log: LogMessage;
   disconnect: never;
   connect: never;
 };

@@ -1,5 +1,5 @@
 import { useContext, useRef } from "preact/hooks";
-import { h } from "preact";
+import { Fragment, h } from "preact";
 import { Board } from "../Board.tsx";
 import { useInit } from "./useInit.ts";
 import { useClock } from "./useClock.ts";
@@ -7,6 +7,7 @@ import { useInputStart } from "./useInputStart.ts";
 import { useInputEnd } from "./useInputEnd.ts";
 import { useOnSlow } from "./useOnSlow.ts";
 import { GameStateContext } from "./useGameState.ts";
+import { Log } from "./Log.tsx";
 
 export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -36,29 +37,30 @@ export const Game = () => {
   useInputEnd(svgRef.current);
   const onSlow = useOnSlow();
 
-  console.log({ blocks });
-
   return (
-    <Board
-      placingBlock={placingBlockRef.current}
-      touching={touching}
-      time={time}
-      svgRef={svgRef}
-      transitionBlock={transitionBlock}
-      power={power}
-      thunders={thunders}
-      thunderHover={thunderHover}
-      bricks={bricks}
-      blocks={blocks}
-      checkpoint={checkpoint}
-      invalid={invalid}
-      run={run}
-      onFinish={() => setRun(undefined)}
-      grid={grid}
-      disconnected={disconnected}
-      onSlow={onSlow}
-      rating={rating}
-      lastRating={lastRating}
-    />
+    <>
+      <Log />
+      <Board
+        placingBlock={placingBlockRef.current}
+        touching={touching}
+        time={time}
+        svgRef={svgRef}
+        transitionBlock={transitionBlock}
+        power={power}
+        thunders={thunders}
+        thunderHover={thunderHover}
+        bricks={bricks}
+        blocks={blocks}
+        checkpoint={checkpoint}
+        invalid={invalid}
+        run={run}
+        onFinish={() => setRun(undefined)}
+        grid={grid}
+        disconnected={disconnected}
+        onSlow={onSlow}
+        rating={rating}
+        lastRating={lastRating}
+      />
+    </>
   );
 };

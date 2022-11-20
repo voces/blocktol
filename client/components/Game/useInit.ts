@@ -27,12 +27,13 @@ export const useInit = () => {
     setRating,
     setDisconnected,
     setLastRating,
+    rating: lastRating,
   } = useContext(GameStateContext);
 
   const startCallback = (
     { checkpoint, blocks, thunders, ...event }: StartMessage,
   ) => {
-    console.log("startCallback", { checkpoint, blocks, thunders, ...event });
+    setLastRating(NaN);
     setCheckpoint(checkpoint);
     setThunders(thunders);
     setBlocks(blocks);
@@ -82,7 +83,7 @@ export const useInit = () => {
     setPower(-1);
     setTouching(false);
     setThunderHover(undefined);
-    setLastRating(rating);
+    setLastRating(lastRating);
     setRating(rating);
   };
   connection.addEventListener("run", runCallback);
