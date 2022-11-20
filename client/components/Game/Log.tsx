@@ -71,9 +71,7 @@ export const Log = () => {
   useEffect(() => {
     let animationFrame = -1;
     const animate = () => {
-      if (
-        inputRef.current !== document.activeElement && logLocation === "side"
-      ) {
+      if (inputRef.current !== document.activeElement) {
         inputRef.current?.focus();
       }
 
@@ -169,13 +167,15 @@ export const Log = () => {
         ))}
         <div ref={scrollLogRef} />
       </div>
-      <Input
-        ref={inputRef}
-        style={{ width: "100%", flexGrow: 0 }}
-        placeholder="Send a message"
-        onKeyDown={onKeyDown}
-        maxLength={100}
-      />
+      {logLocation === "side" && (
+        <Input
+          ref={inputRef}
+          style={{ width: "100%", flexGrow: 0 }}
+          placeholder="Send a message"
+          onKeyDown={onKeyDown}
+          maxLength={100}
+        />
+      )}
     </div>
   );
 };
