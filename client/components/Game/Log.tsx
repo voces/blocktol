@@ -71,7 +71,9 @@ export const Log = () => {
   useEffect(() => {
     let animationFrame = -1;
     const animate = () => {
-      if (inputRef.current !== document.activeElement) {
+      if (
+        inputRef.current !== document.activeElement && logLocation === "side"
+      ) {
         inputRef.current?.focus();
       }
 
