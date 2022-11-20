@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/compat";
 import { h } from "preact";
 import { Card } from "./Card.tsx";
 import { names } from "../util/random/names.ts";

@@ -1,4 +1,4 @@
-import { useCallback, useContext } from "preact/hooks";
+import { useCallback, useContext } from "preact/compat";
 import { Point } from "../../../common/types.ts";
 import { GameStateContext } from "./useGameState.ts";
 

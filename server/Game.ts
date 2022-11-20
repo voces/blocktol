@@ -220,13 +220,14 @@ class Game {
 
       const now = Date.now();
       for (const p2 of this.#players) {
-        if (Math.random() * TOKEN_MAX > p2.tokens) continue;
+        if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
         p2.send({
           kind: "log",
           source: "server",
           time: now + duration * 1000,
           message: `${player.username} lasted ${duration} seconds.`,
         });
+        if (p2 !== player) p2.tokens--;
       }
     }
 
@@ -307,13 +308,14 @@ class Game {
 
       const now = Date.now();
       for (const p2 of this.#players) {
-        if (Math.random() * TOKEN_MAX > p2.tokens) continue;
+        if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
         p2.send({
           kind: "log",
           source: "server",
           time: now + duration * 1000,
           message: `${player.username} lasted ${duration} seconds.`,
         });
+        if (p2 !== player) p2.tokens--;
       }
     }
 
@@ -360,6 +362,20 @@ class Game {
   incTokens() {
     for (const player of this.#players) {
       player.tokens = Math.min(player.tokens, TOKEN_MAX);
+    }
+  }
+
+  chat(player: Player, message: string) {
+    const now = Date.now();
+    for (const p2 of this.#players) {
+      if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
+      p2.send({
+        kind: "log",
+        source: player.username.replace(/^server$/, "_server"),
+        time: now,
+        message,
+      });
+      if (p2 !== player) p2.tokens--;
     }
   }
 }

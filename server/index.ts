@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.126.0/http/server.ts";
-import { serveFile } from "https://deno.land/std@0.126.0/http/file_server.ts";
-import { join, normalize } from "https://deno.land/std@0.126.0/path/posix.ts";
+import { serve } from "https://deno.land/std@0.165.0/http/server.ts";
+import { serveFile } from "https://deno.land/std@0.165.0/http/file_server.ts";
+import { join, normalize } from "https://deno.land/std@0.165.0/path/posix.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";

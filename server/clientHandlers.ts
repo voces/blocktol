@@ -1,5 +1,6 @@
 import {
   BlockMessage,
+  ChatMessage,
   LoginMessage,
   TransitionBlockMessage,
 } from "../common/clientToServerMessage.ts";
@@ -72,5 +73,17 @@ export const clientHandlers = {
     player.bricks++;
     if (block.thunder) player.power++;
     player.blocks.splice(player.blocks.indexOf(block), 1);
+  },
+  chat: (socket: WebSocket, { message }: ChatMessage) => {
+    const player = Player.from(socket);
+
+    if (!player) {
+      console.log(new Date(0), "Closing missing player");
+      return socket.close();
+    }
+
+    if (message.length > 100) return player.close("invalid chat message");
+
+    game.chat(player, message);
   },
 };

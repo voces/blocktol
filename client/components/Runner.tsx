@@ -1,5 +1,5 @@
 import { Fragment, h } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/compat";
 import { SPEED } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
 import { debug } from "../util/debug.ts";

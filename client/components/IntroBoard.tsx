@@ -1,6 +1,6 @@
 import { h } from "preact";
 import { Board } from "./Board.tsx";
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/compat";
 import { Point } from "../../common/types.ts";
 
 const initialBlocks = [

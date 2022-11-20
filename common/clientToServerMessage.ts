@@ -23,9 +23,16 @@ export type TransitionBlockMessage = GuardedType<
   typeof isTransitionBlockMessage
 >;
 
+const isChatMessage = is.object({
+  kind: is.const("chat"),
+  message: is.string,
+});
+export type ChatMessage = GuardedType<typeof isChatMessage>;
+
 export const isMessage = is.union(
   isLoginMessage,
   isBlockMessage,
   isTransitionBlockMessage,
+  isChatMessage,
 );
 export type ClientToServerMessage = GuardedType<typeof isMessage>;

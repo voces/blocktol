@@ -1,4 +1,4 @@
-import SqlString from "https://esm.sh/sqlstring@2.3.2?pin=v64";
+import SqlString from "https://esm.sh/sqlstring@2.3.3?pin=v99";
 
 const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
   const makeFetch = async () => {

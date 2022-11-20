@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "preact/hooks";
+import { useContext, useEffect } from "preact/compat";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useClock = () => {

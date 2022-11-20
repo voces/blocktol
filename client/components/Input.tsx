@@ -1,10 +1,12 @@
-import { useState } from "preact/hooks";
 import { Fragment, h, JSX } from "preact";
+import { forwardRef, useState } from "preact/compat";
 
-export const Input = (
-  { style, onFocus, onBlur, ...rest }: JSX.HTMLAttributes<
-    HTMLInputElement
-  >,
+export const Input = forwardRef<
+  HTMLInputElement,
+  JSX.HTMLAttributes<HTMLInputElement>
+>((
+  { style, onFocus, onBlur, ...rest },
+  ref,
 ) => {
   const [hasFocus, setFocused] = useState(false);
 
@@ -32,7 +34,8 @@ export const Input = (
           setFocused(false);
           onBlur?.call(e.currentTarget as never, e);
         }}
+        ref={ref as any}
       />
     </>
   );
-};
+});

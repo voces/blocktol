@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { useRef, useState } from "preact/hooks";
+import { useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 

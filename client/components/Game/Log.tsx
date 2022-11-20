@@ -1,7 +1,14 @@
-import { useContext, useEffect, useState } from "preact/hooks";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "preact/compat";
 import { h } from "preact";
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { LogMessage } from "../../../common/serverToClientMessage.ts";
+import { Input } from "../Input.tsx";
 
 const getWindowDimensions = () => {
   const { innerWidth: width, innerHeight: height } = window;
@@ -40,18 +47,86 @@ const useLogLocation = () => {
 };
 
 export const Log = () => {
+  const scrollLogRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const logLocation = useLogLocation();
   const connection = useContext(ConnectionContext);
+  const [queue, setQueue] = useState<LogMessage[]>([]);
+  const [colors, setColors] = useState<Record<string, string | undefined>>({});
   const [log, setLog] = useState<LogMessage[]>([]);
 
   useEffect(() => {
-    const logCallback = (message: LogMessage) =>
-      setLog((l) => [...l, message].sort((a, b) => a.time - b.time));
+    const logCallback = (message: LogMessage) => {
+      if (message.time > Date.now()) setQueue((q) => [...q, message]);
+      else {
+        setLog((l) => [...l, message]);
+      }
+    };
 
     connection.addEventListener("log", logCallback);
 
     return () => connection.removeEventListener("log", logCallback);
-  }, []);
+  }, [colors]);
+
+  useEffect(() => {
+    let animationFrame = -1;
+    const animate = () => {
+      if (inputRef.current !== document.activeElement) {
+        inputRef.current?.focus();
+      }
+
+      animationFrame = requestAnimationFrame(animate);
+      const now = Date.now();
+      const newMessages = queue.filter((m) => m.time <= now);
+      if (newMessages.length) {
+        console.log("newMessages");
+        setQueue((q) => q.filter((m) => m.time > now));
+        setLog(Array.from(
+          new Set(
+            [...log, ...newMessages].sort((a, b) => a.time - b.time).slice(
+              -100,
+            ),
+          ),
+        ));
+      }
+    };
+    animate();
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [log, queue, scrollLogRef.current]);
+
+  useEffect(() => {
+    scrollLogRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [log, scrollLogRef.current]);
+
+  useEffect(() => {
+    const users = Array.from(new Set(log.map((l) => l.source)));
+    if (
+      users.length === Object.keys(colors).length &&
+      users.every((u) => u in colors)
+    ) return;
+    setColors((colors) => {
+      const newcolors = Object.fromEntries(
+        users.map((
+          u,
+        ) => [u, colors[u] ?? `hsl(${Math.random() * 360} 100% 40%)`]),
+      );
+      return newcolors;
+    });
+  }, [log, colors]);
+
+  const onKeyDown = useCallback(
+    (e: h.JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== "Enter") return;
+
+      const message = e.currentTarget.value.slice(0, 100);
+      if (!message) return;
+      e.currentTarget.value = "";
+
+      connection.send({ kind: "chat", message });
+    },
+    [],
+  );
 
   if (logLocation === "none") {
     return null;
@@ -60,21 +135,45 @@ export const Log = () => {
   return (
     <div
       style={{
+        display: "flex",
+        flexDirection: "column",
         position: "absolute",
         textAlign: "left",
         fontSize: 14,
-        right: logLocation === "side" ? 8 : undefined,
+        right: 8,
         bottom: logLocation === "side" ? undefined : 8,
         width: logLocation === "side"
           ? "calc((100vw - min(800px, 100vw, calc(100vh - 110px))) / 2 - 16px)"
-          : "100%",
+          : "calc(100% - 16px)",
         height: logLocation === "side"
           ? "min(800px, 100vw, calc(100vh - 110px))"
           : "calc(100vh - 100vw - 94.88px)",
       }}
     >
-      {log.filter((l) => l.time < Date.now()).map((l) => <div>{l.message}
-      </div>)}
+      <div style={{ flexGrow: 1, overflowY: "auto" }}>
+        {log.filter((l) => l.time < Date.now()).map((l) => (
+          <div
+            style={{ wordBreak: "break-word", marginLeft: 16, textIndent: -16 }}
+          >
+            {l.source !== "server"
+              ? (
+                <span style={{ color: colors[l.source] }}>
+                  {`${l.source}: `}
+                </span>
+              )
+              : null}
+            <span>{l.message}</span>
+          </div>
+        ))}
+        <div ref={scrollLogRef} />
+      </div>
+      <Input
+        ref={inputRef}
+        style={{ width: "100%", flexGrow: 0 }}
+        placeholder="Send a message"
+        onKeyDown={onKeyDown}
+        maxLength={100}
+      />
     </div>
   );
 };

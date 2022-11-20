@@ -1,4 +1,4 @@
-import { useContext, useRef } from "preact/hooks";
+import { useContext, useRef } from "preact/compat";
 import { Fragment, h } from "preact";
 import { Board } from "../Board.tsx";
 import { useInit } from "./useInit.ts";

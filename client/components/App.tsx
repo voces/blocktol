@@ -1,5 +1,5 @@
 import { ComponentChildren, Fragment, h } from "preact";
-import { useContext, useEffect, useRef, useState } from "preact/hooks";
+import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { ConnectionContext } from "../contexts/Connection.ts";
 import { useConnectionState } from "../hooks/useConnectionState.ts";
 import { getId } from "../util/id.ts";
