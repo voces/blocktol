@@ -10,6 +10,14 @@ import { createOrUpdateUser, getUserPlays } from "./db/user.ts";
 import { game } from "./Game.ts";
 import { Player } from "./Player.ts";
 
+const loginDate = (date: LoginMessage["date"]) => {
+  const d = new Date(date.year, date.month, date.day);
+  const now = Date.now();
+  // Only allow a max of 8 hours of drift from server; servers should be somewhat near client
+  if (d.getTime() - now > 8 * 60 * 60 * 1000) return new Date();
+  return d;
+};
+
 export const clientHandlers = {
   login: async (socket: WebSocket, message: LoginMessage) => {
     const [{ rating, name }, plays] = await Promise.all([
@@ -22,7 +30,15 @@ export const clientHandlers = {
         message.id.slice(-8)
       }' logged in as ${name} (${rating.toFixed(0)} rating, ${plays} plays)`,
     );
-    game.addPlayer(new Player(socket, message.id, name, rating, plays));
+    game.addPlayer(
+      new Player(
+        socket,
+        message.id,
+        name,
+        rating,
+        plays,
+      ),
+    );
   },
   block: (socket: WebSocket, { x, y }: BlockMessage) => {
     const player = Player.from(socket);

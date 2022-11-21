@@ -145,7 +145,6 @@ export const Board = (
           fill="var(--maze-text)"
           text-anchor="end"
         >
-          {(console.log(rating, lastRating), null)}
           {`${Math.round(rating)}${
             !Number.isNaN(lastRating) && lastRating !== rating
               ? ` (${rating > lastRating ? "+" : ""}${
