@@ -12,20 +12,29 @@ import { Input } from "../Input.tsx";
 
 const getWindowDimensions = () => {
   const { innerWidth: width, innerHeight: height } = window;
-  return {
-    width,
-    height,
-  };
+  return { width, height };
 };
 
 const useWindowDimensions = () => {
   const [windowDimensions, setWindowDimensions] = useState(
-    getWindowDimensions(),
+    () => {
+      const dimensions = getWindowDimensions();
+      document.documentElement.style.setProperty(
+        "--vh",
+        `${dimensions.height * 0.01}px`,
+      );
+      return dimensions;
+    },
   );
 
   useEffect(() => {
     const handleResize = () => {
-      setWindowDimensions(getWindowDimensions());
+      const dimensions = getWindowDimensions();
+      document.documentElement.style.setProperty(
+        "--vh",
+        `${dimensions.height * 0.01}px`,
+      );
+      setWindowDimensions(dimensions);
     };
 
     globalThis.addEventListener("resize", handleResize);
@@ -142,11 +151,11 @@ export const Log = () => {
         right: 8,
         bottom: logLocation === "side" ? undefined : 8,
         width: logLocation === "side"
-          ? "calc((100vw - min(800px, 100vw, calc(100vh - 110px))) / 2 - 16px)"
+          ? "calc((100vw - min(800px, 100vw, calc(var(--vh, 1vh) * 100 - 110px))) / 2 - 16px)"
           : "calc(100% - 16px)",
         height: logLocation === "side"
-          ? "min(800px, 100vw, calc(100vh - 110px))"
-          : "calc(100vh - 100vw - 94.88px)",
+          ? "min(800px, 100vw, calc(var(--vh, 1vh) * 100 - 110px))"
+          : "calc(var(--vh, 1vh) * 100 - 100vw - 94.88px)",
       }}
     >
       <div style={{ flexGrow: 1, overflowY: "auto" }}>
