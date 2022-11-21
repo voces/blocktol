@@ -85,9 +85,7 @@ export const useInit = () => {
   }, [connection]);
 
   useEffect(() => {
-    console.log("run effect", lastRating);
     const runCallback = ({ path, duration, slows, rating }: RunMessage) => {
-      console.log("runCallback", lastRating);
       setRun({ path, duration, slows });
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       setTransitionBlock(undefined);
