@@ -29,7 +29,7 @@ export const Login = (
   const [showError, setShowError] = useState(false);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setShowError(true), 1000);
+    const timeout = setTimeout(() => setShowError(true), 1_000);
     return () => clearTimeout(timeout);
   }, []);
 

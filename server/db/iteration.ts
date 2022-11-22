@@ -11,6 +11,7 @@ export const getIteration = (id: number) =>
   sql<
     [
       {
+        id: number;
         bricks: number;
         created: string;
         power: number;
@@ -20,9 +21,10 @@ export const getIteration = (id: number) =>
       { x: number; y: number; kind: "block" | "thunder" }[],
     ]
   >`
-    SELECT bricks, created, power, checkpoint_x, checkpoint_y FROM iteration WHERE id = ${id};
+    SELECT id, bricks, created, power, checkpoint_x, checkpoint_y FROM iteration WHERE id = ${id};
     SELECT x, y, kind FROM block WHERE iteration = ${id};
   `.then(([[i], blocks]) => ({
+    iteration: i.id,
     date: i.created,
     bricks: i.bricks,
     power: i.power,
@@ -44,6 +46,7 @@ const raw2 = (str: string) => ({
 });
 
 export const createIteration = (
+  date: Date,
   bricks: number,
   power: number,
   checkpoint: Point,
@@ -51,8 +54,8 @@ export const createIteration = (
   thunders: Point[],
 ) =>
   sql<[ExecResult, ExecResult, ExecResult[] | undefined]>`
-    INSERT INTO iteration (bricks, power, checkpoint_x, checkpoint_y) 
-    VALUES (${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y});
+    INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y) 
+    VALUES (${date}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y});
     SET @last_id = LAST_INSERT_ID();
     ${
     raw2(format`
@@ -82,3 +85,22 @@ export const logRuns = (
       ).join("\n"),
     )
   }`;
+
+export const getLastIteration = () =>
+  sql<
+    { created: string }[]
+  >`SELECT created FROM iteration ORDER BY created DESC LIMIT 1;`;
+
+export const getDailyIterationId = (year: number, month: number, day: number) =>
+  sql<{ id: number }[]>`
+    SELECT id
+    FROM iteration
+    WHERE YEAR(created) = ${year}
+      AND MONTH(created) = ${month}
+      AND DAY(created) = ${day}
+    LIMIT 1`.then((r) => r[0]?.id);
+
+export const getDailyIteration = (year: number, month: number, day: number) =>
+  getDailyIterationId(year, month, day).then((id) =>
+    id ? getIteration(id) : undefined
+  );

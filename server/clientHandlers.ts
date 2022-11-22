@@ -6,15 +6,16 @@ import {
 } from "../common/clientToServerMessage.ts";
 import { offsets } from "../common/constants.ts";
 import { findPath } from "../common/pathing.ts";
-import { createOrUpdateUser, getUserPlays } from "./db/user.ts";
+import { createOrUpdateUser, dailyAttempts, getUserPlays } from "./db/user.ts";
 import { game } from "./Game.ts";
 import { Player } from "./Player.ts";
 
+const EIGHT_HOURS = 8 * 60 * 60 * 1_000;
+
 const loginDate = (date: LoginMessage["date"]) => {
-  const d = new Date(date.year, date.month, date.day);
+  const d = new Date(date.year, date.month - 1, date.day);
   const now = Date.now();
-  // Only allow a max of 8 hours of drift from server; servers should be somewhat near client
-  if (d.getTime() - now > 8 * 60 * 60 * 1000) return new Date();
+  if (Math.abs(d.getTime() - now) > EIGHT_HOURS) return new Date();
   return d;
 };
 
@@ -30,6 +31,18 @@ export const clientHandlers = {
         message.id.slice(-8)
       }' logged in as ${name} (${rating.toFixed(0)} rating, ${plays} plays)`,
     );
+
+    const localDate = loginDate(message.date);
+    const year = localDate.getFullYear();
+    const month = localDate.getMonth() + 1;
+    const date = localDate.getDate();
+    const remainingDailyAttempts = 3 - (await dailyAttempts(
+      message.id,
+      year,
+      month,
+      date,
+    )).length;
+
     game.addPlayer(
       new Player(
         socket,
@@ -37,6 +50,8 @@ export const clientHandlers = {
         name,
         rating,
         plays,
+        remainingDailyAttempts,
+        { year, month, date },
       ),
     );
   },

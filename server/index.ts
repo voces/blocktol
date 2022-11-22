@@ -4,6 +4,7 @@ import { join, normalize } from "https://deno.land/std@0.165.0/path/posix.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";
+import { Player } from "./Player.ts";
 
 const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 
@@ -63,7 +64,12 @@ serve((req, connInfo) => {
     // deno-lint-ignore no-explicit-any
     console.log(new Date(), "Socket errored:", (e as any).message);
 
-  socket.onclose = () => console.log(new Date(), "Socket closed");
+  socket.onclose = () => {
+    const player = Player.from(socket);
+    if (player) player.close("socket closed");
+    else console.log(new Date(), "Socket closed");
+    Player.from(socket)?.close("socket closed");
+  };
 
   return response;
 }, { port });

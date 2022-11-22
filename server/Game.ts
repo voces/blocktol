@@ -9,6 +9,7 @@ import {
   getIteration,
   getIterationCount,
   getIterationTimes,
+  getLastIteration,
   logRuns,
 } from "./db/iteration.ts";
 import { Player, TOKEN_MAX } from "./Player.ts";
@@ -17,7 +18,66 @@ import { isLeader } from "./trackLeadership.ts";
 
 type Status = "idle" | "build" | "run";
 
-const BUILD_TIME = 60;
+export const BUILD_TIME = 60;
+const ONE_MINUTE = 60 * 1_000;
+const ONE_DAY = ONE_MINUTE * 60 * 24;
+
+const newIteration = (date: Date) => {
+  console.log(new Date(), "New iteration");
+
+  const checkpoint = {
+    x: 1.5 + Math.floor(Math.random() * 17),
+    y: 1.5 + Math.floor(Math.random() * 17),
+  };
+  const grid = newGrid();
+
+  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+
+  let r = Math.random();
+  let n = r < 0.04 ? 2 : r < 0.2 ? 1 : 0;
+  const thunders: Point[] = [];
+  while (n--) {
+    const x = 2 + Math.floor(Math.random() * 17);
+    const y = 2 + Math.floor(Math.random() * 17);
+
+    if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
+
+    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+
+    if (!findPath(grid, checkpoint)) {
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
+    } else thunders.push({ x, y });
+  }
+
+  n = Math.floor((1 - Math.random()) ** 0.5 * 49);
+  const blocks: Point[] = [];
+  while (n-- > 0 || blocks.length === 0) {
+    const x = 2 + Math.floor(Math.random() * 17);
+    const y = 2 + Math.floor(Math.random() * 17);
+
+    if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
+
+    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+
+    if (!findPath(grid, checkpoint)) {
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
+    } else blocks.push({ x, y });
+  }
+
+  r = Math.random();
+  const power = r < 0.09 ? 2 : r < 0.3 ? 1 : 0;
+  const bricks = power +
+    Math.floor((1 - Math.random() ** 0.7) * 20) + 3;
+
+  createIteration(
+    date,
+    bricks,
+    power,
+    checkpoint,
+    blocks,
+    thunders,
+  );
+};
 
 class Game {
   #players = new Set<Player>();
@@ -43,7 +103,18 @@ class Game {
   #timeout = 0;
   timeoutStart = 0;
 
-  start() {
+  start(electedLeader = false) {
+    if (electedLeader) {
+      setInterval(async () => {
+        const last = await getLastIteration();
+        const lastDate = new Date(last[0]?.created ?? 0).toDateString();
+        const tomorrow = new Date(Date.now() + ONE_DAY);
+        const tomorrowDate = tomorrow.toDateString();
+        console.log({ lastDate, tomorrowDate });
+        if (lastDate !== tomorrowDate) newIteration(tomorrow);
+      }, ONE_MINUTE);
+    }
+
     if (this.#started || this.#status !== "idle" || !isLeader()) return;
 
     if (this.#players.size === 0) return;
@@ -68,87 +139,25 @@ class Game {
     this.#grid = newGrid();
     this.#playerRuns = [];
 
-    const avg = Array.from(this.#players).reduce((sum, p) => sum + p.plays, 0) /
-      this.#players.size;
-    const newIteration =
-      Math.random() < ((avg + 100) / (this.#iterationCount || 1)) ** 4 /
-          (this.#iterationCount || 1);
+    this.#iteration = Math.floor(Math.random() * this.#iterationCount) + 1;
 
-    if (newIteration) {
-      this.#checkpoint = {
-        x: 1.5 + Math.floor(Math.random() * 17),
-        y: 1.5 + Math.floor(Math.random() * 17),
-      };
-      this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
+    const values = await getIteration(this.#iteration);
+    this.#checkpoint = values.checkpoint;
+    this.#power = values.power;
+    this.#thunders = values.thunders;
+    this.#bricks = values.bricks;
+    this.#blocks = values.blocks;
+    this.#date = new Date(values.date).getTime();
 
-      let r = Math.random();
-      let n = r < 0.04 ? 2 : r < 0.2 ? 1 : 0;
-      this.#thunders = [];
-      while (n--) {
-        const x = 2 + Math.floor(Math.random() * 17);
-        const y = 2 + Math.floor(Math.random() * 17);
+    this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
+    this.#blocks.forEach(({ x, y }) =>
+      offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
+    );
+    this.#thunders.forEach(({ x, y }) =>
+      offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
+    );
 
-        if (offsets.some(([xd, yd]) => this.#grid[y + yd][x + xd])) continue;
-
-        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
-
-        if (!findPath(this.#grid, this.#checkpoint)) {
-          offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
-        } else this.#thunders.push({ x, y });
-      }
-
-      n = Math.floor((1 - Math.random()) ** 0.5 * 49);
-      this.#blocks = [];
-      while (n-- > 0 || this.#blocks.length === 0) {
-        const x = 2 + Math.floor(Math.random() * 17);
-        const y = 2 + Math.floor(Math.random() * 17);
-
-        if (offsets.some(([xd, yd]) => this.#grid[y + yd][x + xd])) continue;
-
-        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true);
-
-        if (!findPath(this.#grid, this.#checkpoint)) {
-          offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = false);
-        } else this.#blocks.push({ x, y });
-      }
-
-      r = Math.random();
-      this.#power = r < 0.09 ? 2 : r < 0.3 ? 1 : 0;
-      this.#bricks = this.#power +
-        Math.floor((1 - Math.random() ** 0.7) * 20) + 3;
-
-      this.#iteration = await createIteration(
-        this.#bricks,
-        this.#power,
-        this.#checkpoint,
-        this.#blocks,
-        this.#thunders,
-      );
-      this.#iterationCount++;
-      this.#date = Date.now();
-
-      this.#times = Promise.resolve([]); // new iteration; no times
-    } else {
-      this.#iteration = Math.floor(Math.random() * this.#iterationCount) + 1;
-
-      const values = await getIteration(this.#iteration);
-      this.#checkpoint = values.checkpoint;
-      this.#power = values.power;
-      this.#thunders = values.thunders;
-      this.#bricks = values.bricks;
-      this.#blocks = values.blocks;
-      this.#date = new Date(values.date).getTime();
-
-      this.#grid[this.#checkpoint.y + 0.5][this.#checkpoint.x + 0.5] = true;
-      this.#blocks.forEach(({ x, y }) =>
-        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
-      );
-      this.#thunders.forEach(({ x, y }) =>
-        offsets.forEach(([xd, yd]) => this.#grid[y + yd][x + xd] = true)
-      );
-
-      this.#times = getIterationTimes(this.#iteration);
-    }
+    this.#times = getIterationTimes(this.#iteration);
 
     console.log(new Date(), `Starting round. iteration=${this.#iteration}`);
 
@@ -228,7 +237,7 @@ class Game {
         p2.send({
           kind: "log",
           source: "server",
-          time: now + duration * 1000,
+          time: now + duration * 1_000,
           message: `${player.username} lasted ${duration} seconds.`,
         });
         if (p2 !== player) p2.tokens--;
@@ -317,7 +326,7 @@ class Game {
         p2.send({
           kind: "log",
           source: "server",
-          time: now + duration * 1000,
+          time: now + duration * 1_000,
           message: `${player.username} lasted ${duration} seconds.`,
         });
         if (p2 !== player) p2.tokens--;
@@ -327,7 +336,19 @@ class Game {
     broadcast({ kind: "playerRuns", playerRuns });
   }
 
-  addPlayer(player: Player) {
+  addPlayer(player: Player, skipMessage = false) {
+    if (player.remainingDailyAttempts > 0) {
+      player.dailyStep();
+      player.send({
+        kind: "log",
+        source: "server",
+        time: Date.now(),
+        message:
+          `Welcome ${player.username}! You have ${player.remainingDailyAttempts} remaining attempts on your daily maze.`,
+      });
+      return;
+    }
+
     this.#players.add(player);
     if (this.#status === "idle") {
       if (isLeader() && !this.#started) this.start();
@@ -352,18 +373,22 @@ class Game {
       });
     }
 
-    player.send({
-      kind: "log",
-      source: "server",
-      time: Date.now(),
-      message: `Welcome ${player.username}${
-        this.#players.size === 1
-          ? "!"
-          : `, there ${this.#players.size === 2 ? "is" : "are"} ${
-            this.#players.size - 1
-          } other player${this.#players.size === 2 ? "" : "s"} on your server!`
-      }`,
-    });
+    if (!skipMessage) {
+      player.send({
+        kind: "log",
+        source: "server",
+        time: Date.now(),
+        message: `Welcome ${player.username}${
+          this.#players.size === 1
+            ? "!"
+            : `, there ${this.#players.size === 2 ? "is" : "are"} ${
+              this.#players.size - 1
+            } other player${
+              this.#players.size === 2 ? "" : "s"
+            } on your server!`
+        }`,
+      });
+    }
   }
 
   removePlayer(player: Player) {

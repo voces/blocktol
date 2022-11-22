@@ -129,7 +129,7 @@ export const IntroBoard = () => {
 
       setTime((t) => t - 1);
       step++;
-    }, 1000);
+    }, 1_000);
 
     return () => clearInterval(interval);
   }, []);

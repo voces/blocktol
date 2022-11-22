@@ -14,10 +14,10 @@ const _trackLeadership = (
       value = -Infinity;
       status = "leader";
       clearTimeout(autoStart);
-      setInterval(() => channel.postMessage({ kind: "heartbeat" }), 1000);
+      setInterval(() => channel.postMessage({ kind: "heartbeat" }), 1_000);
       callback();
       channel.postMessage({ kind: "veto" }); // Stop the count!
-    }, 1000);
+    }, 1_000);
 
     cancelElection = () => {
       value = -Infinity;

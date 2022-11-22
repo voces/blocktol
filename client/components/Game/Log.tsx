@@ -48,7 +48,7 @@ const useLogLocation = () => {
   const { width, height: fullHeight } = useWindowDimensions();
   const height = fullHeight - 110;
 
-  return width - height >= 300 || width > 1000
+  return width - height >= 300 || width > 1_000
     ? "side"
     : width - height <= -100
     ? "bottom"

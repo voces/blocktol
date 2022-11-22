@@ -1,7 +1,14 @@
-import { findPath, pathDuration } from "../common/pathing.ts";
+import { offsets } from "../common/constants.ts";
+import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
-import { game } from "./Game.ts";
+import {
+  getDailyIteration,
+  getIterationTimes,
+  logRuns,
+} from "./db/iteration.ts";
+import { dailyAttempts } from "./db/user.ts";
+import { BUILD_TIME, game } from "./Game.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
@@ -60,6 +67,11 @@ export class Player {
   power = 0;
   #gameThunders: Point[] = [];
   tokens = 10;
+  remainingDailyAttempts: number;
+  dailyTimeout: number | undefined;
+  #dailyTimes: Promise<number[]> | undefined;
+  #dailyMinTime: number | undefined;
+  #dailyIteration: number | undefined;
 
   private static map = new WeakMap<WebSocket, Player>();
 
@@ -69,10 +81,13 @@ export class Player {
     readonly username: string,
     rating: number,
     plays: number,
+    remainingDailyAttempts: number,
+    readonly daily: { year: number; month: number; date: number },
   ) {
     this.#websocket = websocket;
     this.plays = plays;
     this.rating = rating;
+    this.remainingDailyAttempts = remainingDailyAttempts;
 
     websocket.addEventListener("close", () => game.removePlayer(this));
 
@@ -106,6 +121,7 @@ export class Player {
   close(reason: string) {
     console.log(new Date(), "Closing", reason);
     this.#websocket.close();
+    clearInterval(this.dailyTimeout);
   }
 
   run(times: number[], min: number) {
@@ -132,6 +148,115 @@ export class Player {
     this.send({ kind: "run", path, duration, slows, rating: this.rating });
 
     return [duration, this.status === "playing"] as const;
+  }
+
+  async dailyStep() {
+    const attempts = await dailyAttempts(
+      this.id,
+      this.daily.year,
+      this.daily.month,
+      this.daily.date,
+    );
+    this.remainingDailyAttempts = 3 - attempts.length;
+
+    if (this.remainingDailyAttempts === 0) {
+      this.send({
+        kind: "daily",
+        times: attempts,
+        score: attempts.reduce((s, a) => s + a ** 2, 0),
+      });
+
+      return game.addPlayer(this, true);
+    }
+
+    const daily = await getDailyIteration(
+      this.daily.year,
+      this.daily.month,
+      this.daily.date,
+    );
+    if (!daily) return this.close("missing daily");
+
+    console.log(
+      new Date(),
+      "performing daily",
+      this.daily,
+      `(${daily.iteration})`,
+      "with",
+      this.remainingDailyAttempts,
+      "attempts remaining",
+    );
+
+    const grid = newGrid();
+    grid[daily.checkpoint.y + 0.5][daily.checkpoint.x + 0.5] = true;
+    for (const { x, y } of daily.thunders) {
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    }
+    for (const { x, y } of daily.blocks) {
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    }
+
+    this.startRound(
+      grid,
+      daily.checkpoint,
+      daily.bricks,
+      daily.power,
+      daily.thunders,
+    );
+
+    this.#dailyMinTime = pathDuration(
+      findPath(this.grid, this.checkpoint) ?? [],
+      daily.thunders,
+    )[0];
+    this.#dailyIteration = daily.iteration;
+
+    this.send({
+      kind: "start",
+      date: new Date(daily.date).getTime(),
+      time: BUILD_TIME,
+      checkpoint: this.checkpoint,
+      thunders: daily.thunders,
+      blocks: daily.blocks,
+      power: this.power,
+      bricks: this.bricks,
+      minTime: 0, // Only used S <-> S
+      rating: this.rating,
+    });
+
+    this.dailyTimeout = setTimeout(
+      () => this.#startDailyRunner(),
+      BUILD_TIME * 1_000,
+    );
+
+    this.#dailyTimes = getIterationTimes(daily.iteration);
+  }
+
+  async #startDailyRunner() {
+    const times = await this.#dailyTimes;
+    const minTime = this.#dailyMinTime;
+    const iteration = this.#dailyIteration;
+    if (!times || !minTime || iteration === undefined) {
+      return this.close("missing times");
+    }
+
+    let max = -Infinity;
+    const [duration, log] = this.run(times, minTime);
+
+    if (duration > max) max = duration;
+
+    const now = Date.now();
+    this.send({
+      kind: "log",
+      source: "server",
+      time: now + duration * 1_000,
+      message: `${this.username} lasted ${duration} seconds.`,
+    });
+
+    if (log) {
+      console.log(new Date(), "Daily time of", duration);
+      logRuns([{ player: this.id, rating: this.rating, duration }], iteration);
+    }
+
+    this.dailyTimeout = setTimeout(() => this.dailyStep(), duration * 1_000);
   }
 
   static from(socket: WebSocket) {

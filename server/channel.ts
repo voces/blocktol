@@ -10,7 +10,7 @@ import { isLeader, trackLeadership } from "./trackLeadership.ts";
 const channel = new BroadcastChannel("global");
 trackLeadership(channel, () => {
   console.log(new Date(), "Elected leader");
-  game.start();
+  game.start(true);
 });
 
 export const broadcast = (message: ServerMessage) => {

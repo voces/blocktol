@@ -1,3 +1,4 @@
+import { getDailyIterationId } from "./iteration.ts";
 import { sql } from "./query.ts";
 
 type User = {
@@ -27,3 +28,18 @@ export const getUserPlays = (id: string) =>
   sql<({ count: number } | undefined)[]>`
     SELECT COUNT(*) count FROM run WHERE user = ${id};
   `.then((r) => r[0]?.count ?? 0);
+
+export const dailyAttempts = async (
+  user: string,
+  year: number,
+  month: number,
+  day: number,
+) =>
+  sql<{ time: number }[]>`
+    SELECT time
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${await getDailyIterationId(year, month, day)}
+    ORDER BY created ASC
+    LIMIT 3;
+  `.then((r) => r.map((r) => r.time));
