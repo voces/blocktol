@@ -86,11 +86,6 @@ export const logRuns = (
     )
   }`;
 
-export const getLastIteration = () =>
-  sql<
-    { created: string }[]
-  >`SELECT created FROM iteration ORDER BY created DESC LIMIT 1;`;
-
 export const getDailyIterationId = (year: number, month: number, day: number) =>
   sql<{ id: number }[]>`
     SELECT id

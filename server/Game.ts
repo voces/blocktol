@@ -6,10 +6,10 @@ import { Point } from "../common/types.ts";
 import { broadcast } from "./channel.ts";
 import {
   createIteration,
+  getDailyIteration,
   getIteration,
   getIterationCount,
   getIterationTimes,
-  getLastIteration,
   logRuns,
 } from "./db/iteration.ts";
 import { Player, TOKEN_MAX } from "./Player.ts";
@@ -23,7 +23,7 @@ const ONE_MINUTE = 60 * 1_000;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
 
 const newIteration = (date: Date) => {
-  console.log(new Date(), "New iteration");
+  console.log(new Date(), "New iteration for", date.toDateString());
 
   const checkpoint = {
     x: 1.5 + Math.floor(Math.random() * 17),
@@ -105,12 +105,34 @@ class Game {
 
   start(electedLeader = false) {
     if (electedLeader) {
+      const todayDate = new Date();
+      const now = todayDate.getTime();
+      const yesterdayDate = new Date(now - ONE_DAY);
+      const tomorrowDate = new Date(now + ONE_DAY);
+      const overmorrowDate = new Date(now + ONE_DAY * 2);
+
+      [yesterdayDate, todayDate, tomorrowDate, overmorrowDate].forEach(
+        async (date) => {
+          const iteration = await getDailyIteration(
+            date.getFullYear(),
+            date.getMonth() + 1,
+            date.getDate(),
+          );
+
+          if (!iteration) newIteration(date);
+        },
+      );
+
       setInterval(async () => {
-        const last = await getLastIteration();
-        const lastDate = new Date(last[0]?.created ?? 0).toDateString();
-        const tomorrow = new Date(Date.now() + ONE_DAY);
-        const tomorrowDate = tomorrow.toDateString();
-        if (lastDate !== tomorrowDate) newIteration(tomorrow);
+        const overmorrowDate = new Date(Date.now() + ONE_DAY * 2);
+
+        const iteration = await getDailyIteration(
+          overmorrowDate.getFullYear(),
+          overmorrowDate.getMonth() + 1,
+          overmorrowDate.getDate(),
+        );
+
+        if (!iteration) newIteration(overmorrowDate);
       }, ONE_MINUTE);
     }
 
@@ -138,7 +160,8 @@ class Game {
     this.#grid = newGrid();
     this.#playerRuns = [];
 
-    this.#iteration = Math.floor(Math.random() * this.#iterationCount) + 1;
+    this.#iteration = Math.floor(Math.random() * (this.#iterationCount - 3)) +
+      1;
 
     const values = await getIteration(this.#iteration);
     this.#checkpoint = values.checkpoint;

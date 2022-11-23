@@ -22,7 +22,7 @@ const reverseInterpolate = (left: number, right: number, value: number) =>
 const reverseTween = (data: number[], value: number, min: number): number => {
   if (value < data[0]) return reverseInterpolate(min, data[0], value);
   const length = data.length - 1;
-  if (value > data[length]) return (length * 2 + 1) / data.length;
+  if (value >= data[length]) return 1;
 
   let left = 0;
   let right = length;
@@ -94,6 +94,10 @@ export class Player {
     Player.map.set(websocket, this);
   }
 
+  get logName() {
+    return `'${this.id.slice(0, 8)}...${this.id.slice(-8)}'`;
+  }
+
   startRound(
     grid: boolean[][],
     checkpoint: Point,
@@ -138,7 +142,7 @@ export class Player {
       const actualPercentile = times.length === 0
         ? expectedPercentile
         : reverseTween(times, duration, min);
-      const change = K / Math.sqrt(this.plays) *
+      const change = K / Math.sqrt(this.plays + 1) *
         (actualPercentile - expectedPercentile);
 
       this.rating += change;
@@ -178,6 +182,7 @@ export class Player {
 
     console.log(
       new Date(),
+      this.logName,
       "performing daily",
       this.daily,
       `(${daily.iteration})`,
@@ -252,7 +257,6 @@ export class Player {
     });
 
     if (log) {
-      console.log(new Date(), "Daily time of", duration);
       logRuns([{ player: this.id, rating: this.rating, duration }], iteration);
     }
 
