@@ -4,11 +4,7 @@ const isLoginMessage = is.object({
   kind: is.const("login"),
   username: is.union(is.string, is.undefined),
   id: is.string,
-  date: is.object({
-    year: is.number,
-    month: is.number,
-    day: is.number,
-  }),
+  timeZone: is.string,
 });
 export type LoginMessage = GuardedType<typeof isLoginMessage>;
 

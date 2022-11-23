@@ -34,7 +34,7 @@ export const Input = forwardRef<
           setFocused(false);
           onBlur?.call(e.currentTarget as never, e);
         }}
-        ref={ref as any}
+        ref={ref}
       />
     </>
   );

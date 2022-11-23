@@ -10,15 +10,6 @@ import { createOrUpdateUser, dailyAttempts, getUserPlays } from "./db/user.ts";
 import { game } from "./Game.ts";
 import { Player } from "./Player.ts";
 
-const EIGHT_HOURS = 8 * 60 * 60 * 1_000;
-
-const loginDate = (date: LoginMessage["date"]) => {
-  const d = new Date(date.year, date.month - 1, date.day);
-  const now = Date.now();
-  if (Math.abs(d.getTime() - now) > EIGHT_HOURS) return new Date();
-  return d;
-};
-
 export const clientHandlers = {
   login: async (socket: WebSocket, message: LoginMessage) => {
     const [{ rating, name }, plays] = await Promise.all([
@@ -32,15 +23,24 @@ export const clientHandlers = {
       }' logged in as ${name} (${rating.toFixed(0)} rating, ${plays} plays)`,
     );
 
-    const localDate = loginDate(message.date);
-    const year = localDate.getFullYear();
-    const month = localDate.getMonth() + 1;
-    const date = localDate.getDate();
+    let parts: string[];
+    try {
+      parts = new Date().toLocaleDateString("en-US", {
+        timeZone: "America/Los_Angeles",
+      }).split("/");
+    } catch (err) {
+      console.error(err);
+      return socket.close();
+    }
+
+    const month = parseInt(parts[0]);
+    const day = parseInt(parts[1]);
+    const year = parseInt(parts[2]);
     const remainingDailyAttempts = 3 - (await dailyAttempts(
       message.id,
       year,
       month,
-      date,
+      day,
     )).length;
 
     game.addPlayer(
@@ -51,7 +51,7 @@ export const clientHandlers = {
         rating,
         plays,
         remainingDailyAttempts,
-        { year, month, date },
+        { year, month, day },
       ),
     );
   },

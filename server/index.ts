@@ -50,7 +50,7 @@ serve((req, connInfo) => {
         // deno-lint-ignore no-explicit-any
         clientHandlers[message.kind](socket, message as any);
       } else {
-        console.log(new Date(), "Closing bad message");
+        console.log(new Date(), "Closing bad message", message);
         socket.close();
       }
     } catch (err) {

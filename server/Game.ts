@@ -110,7 +110,6 @@ class Game {
         const lastDate = new Date(last[0]?.created ?? 0).toDateString();
         const tomorrow = new Date(Date.now() + ONE_DAY);
         const tomorrowDate = tomorrow.toDateString();
-        console.log({ lastDate, tomorrowDate });
         if (lastDate !== tomorrowDate) newIteration(tomorrow);
       }, ONE_MINUTE);
     }

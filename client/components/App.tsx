@@ -15,15 +15,6 @@ const Shell = ({ children }: { children: ComponentChildren }) => (
   </div>
 );
 
-const getDate = () => {
-  const date = new Date();
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-    day: date.getDate(),
-  };
-};
-
 export const App = () => {
   const id = getId();
   const [username, setUsername] = useState<string>();
@@ -34,7 +25,12 @@ export const App = () => {
   useEffect(() => {
     if (connected && username) {
       clearTimeout(logInTimeout.current);
-      connection.send({ kind: "login", username, id, date: getDate() });
+      connection.send({
+        kind: "login",
+        username,
+        id,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
     }
   }, [connected]);
 
@@ -62,7 +58,8 @@ export const App = () => {
                         kind: "login",
                         username,
                         id,
-                        date: getDate(),
+                        timeZone:
+                          Intl.DateTimeFormat().resolvedOptions().timeZone,
                       }),
                     250,
                   );

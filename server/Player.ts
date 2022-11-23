@@ -82,7 +82,7 @@ export class Player {
     rating: number,
     plays: number,
     remainingDailyAttempts: number,
-    readonly daily: { year: number; month: number; date: number },
+    readonly daily: { year: number; month: number; day: number },
   ) {
     this.#websocket = websocket;
     this.plays = plays;
@@ -155,7 +155,7 @@ export class Player {
       this.id,
       this.daily.year,
       this.daily.month,
-      this.daily.date,
+      this.daily.day,
     );
     this.remainingDailyAttempts = 3 - attempts.length;
 
@@ -172,7 +172,7 @@ export class Player {
     const daily = await getDailyIteration(
       this.daily.year,
       this.daily.month,
-      this.daily.date,
+      this.daily.day,
     );
     if (!daily) return this.close("missing daily");
 
