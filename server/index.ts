@@ -68,7 +68,6 @@ serve((req, connInfo) => {
     const player = Player.from(socket);
     if (player) player.close("socket closed");
     else console.log(new Date(), "Socket closed");
-    Player.from(socket)?.close("socket closed");
   };
 
   return response;
