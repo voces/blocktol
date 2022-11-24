@@ -23,19 +23,23 @@ export const getIteration = (id: number) =>
   >`
     SELECT id, bricks, created, power, checkpoint_x, checkpoint_y FROM iteration WHERE id = ${id};
     SELECT x, y, kind FROM block WHERE iteration = ${id};
-  `.then(([[i], blocks]) => ({
-    iteration: i.id,
-    date: i.created,
-    bricks: i.bricks,
-    power: i.power,
-    checkpoint: { x: i.checkpoint_x, y: i.checkpoint_y },
-    blocks: blocks
-      .filter((b) => b.kind === "block")
-      .map(({ x, y }) => ({ x, y })),
-    thunders: blocks
-      .filter((b) => b.kind === "thunder")
-      .map(({ x, y }) => ({ x, y })),
-  }));
+  `.then(([[i], blocks]) => {
+    if (!i) throw new Error(`Iteration ${id} does not exist`);
+
+    return ({
+      iteration: i.id,
+      date: i.created,
+      bricks: i.bricks,
+      power: i.power,
+      checkpoint: { x: i.checkpoint_x, y: i.checkpoint_y },
+      blocks: blocks
+        .filter((b) => b.kind === "block")
+        .map(({ x, y }) => ({ x, y })),
+      thunders: blocks
+        .filter((b) => b.kind === "thunder")
+        .map(({ x, y }) => ({ x, y })),
+    });
+  });
 
 const raw = ({ raw }: { raw: readonly string[] }) => ({
   toSqlString: () => raw.join(""),
