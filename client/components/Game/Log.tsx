@@ -9,6 +9,7 @@ import { h } from "preact";
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { LogMessage } from "../../../common/serverToClientMessage.ts";
 import { Input } from "../Input.tsx";
+import { Markdown } from "./Markdown.tsx";
 
 const getWindowDimensions = () => {
   const { innerWidth: width, innerHeight: height } = window;
@@ -61,15 +62,16 @@ export const Log = () => {
   const logLocation = useLogLocation();
   const connection = useContext(ConnectionContext);
   const [queue, setQueue] = useState<LogMessage[]>([]);
-  const [colors, setColors] = useState<Record<string, string | undefined>>({});
+  const colors = useRef<Record<string, string | undefined>>({}).current;
   const [log, setLog] = useState<LogMessage[]>([]);
 
   useEffect(() => {
     const logCallback = (message: LogMessage) => {
       if (message.time > Date.now()) setQueue((q) => [...q, message]);
-      else {
-        setLog((l) => [...l, message]);
-      }
+      else setLog((l) => [...l, message]);
+
+      colors[message.source] = colors[message.source] ??
+        `hsl(${Math.random() * 360} 100% 40%)`;
     };
 
     connection.addEventListener("log", logCallback);
@@ -106,22 +108,6 @@ export const Log = () => {
   useEffect(() => {
     scrollLogRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [log, scrollLogRef.current]);
-
-  useEffect(() => {
-    const users = Array.from(new Set(log.map((l) => l.source)));
-    if (
-      users.length === Object.keys(colors).length &&
-      users.every((u) => u in colors)
-    ) return;
-    setColors((colors) => {
-      const newcolors = Object.fromEntries(
-        users.map((
-          u,
-        ) => [u, colors[u] ?? `hsl(${Math.random() * 360} 100% 40%)`]),
-      );
-      return newcolors;
-    });
-  }, [log, colors]);
 
   const onKeyDown = useCallback(
     (e: h.JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
@@ -170,7 +156,7 @@ export const Log = () => {
                 </span>
               )
               : null}
-            <span>{l.message}</span>
+            <Markdown message={l.message} colors={colors} />
           </div>
         ))}
         <div ref={scrollLogRef} />

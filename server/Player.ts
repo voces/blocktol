@@ -122,6 +122,19 @@ export class Player {
     }
   }
 
+  sendRunLog(username: string, duration: number, percentile: number | null) {
+    this.send({
+      kind: "log",
+      source: "server",
+      time: Date.now() + duration * 1_000,
+      message: `\\c${username}\\c lasted ${duration} seconds${
+        typeof percentile === "number"
+          ? ` (p${Math.round(percentile * 100)})`
+          : ""
+      }.`,
+    });
+  }
+
   close(reason: string) {
     console.log(new Date(), "Closing", reason);
     this.#websocket.close();

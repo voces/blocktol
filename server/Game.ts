@@ -196,23 +196,13 @@ class Game {
           rating: player.rating,
           duration,
         });
-      }
 
-      const now = Date.now();
-      for (const p2 of this.#players) {
-        if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
-        p2.send({
-          kind: "log",
-          source: "server",
-          time: now + duration * 1_000,
-          message: `&${player.username}& lasted ${duration} seconds${
-            typeof percentile === "number"
-              ? ` (p${Math.round(percentile * 100)})`
-              : ""
-          }.`,
-        });
-        if (p2 !== player) p2.tokens--;
-      }
+        for (const p2 of this.#players) {
+          if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
+          p2.sendRunLog(player.username, duration, percentile);
+          if (p2 !== player) p2.tokens--;
+        }
+      } else player.sendRunLog(player.username, duration, percentile);
     }
 
     broadcast({ kind: "startRun", times });
@@ -291,21 +281,13 @@ class Game {
         log,
       });
 
-      const now = Date.now();
-      for (const p2 of this.#players) {
-        if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
-        p2.send({
-          kind: "log",
-          source: "server",
-          time: now + duration * 1_000,
-          message: `${player.username} lasted ${duration} seconds${
-            typeof percentile === "number"
-              ? ` (p${Math.round(percentile * 100)})`
-              : ""
-          }.`,
-        });
-        if (p2 !== player) p2.tokens--;
-      }
+      if (log) {
+        for (const p2 of this.#players) {
+          if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
+          p2.sendRunLog(player.username, duration, percentile);
+          if (p2 !== player) p2.tokens--;
+        }
+      } else player.sendRunLog(player.username, duration, percentile);
     }
 
     broadcast({ kind: "playerRuns", playerRuns });
@@ -319,7 +301,7 @@ class Game {
         source: "server",
         time: Date.now(),
         message:
-          `Welcome ${player.username}! You have ${player.remainingDailyAttempts} remaining attempts on your daily maze.`,
+          `Welcome \\c${player.username}\\c! You have ${player.remainingDailyAttempts} remaining attempts on your daily maze.`,
       });
       return;
     }
@@ -353,7 +335,7 @@ class Game {
         kind: "log",
         source: "server",
         time: Date.now(),
-        message: `Welcome ${player.username}${
+        message: `Welcome \\c${player.username}\\c${
           this.#players.size === 1
             ? "!"
             : `, there ${this.#players.size === 2 ? "is" : "are"} ${
