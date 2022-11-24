@@ -135,23 +135,31 @@ export class Player {
       [...this.#gameThunders, ...this.blocks.filter((b) => b.thunder)],
     );
 
+    // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
+    const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
+    const actualPercentile = times.length === 0
+      ? expectedPercentile
+      : reverseTween(times, duration, min);
     // A player is only ranked if they place a block (i.e., AFKs are ignored)
-    if (this.status === "playing") {
-      // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
-      const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
-      const actualPercentile = times.length === 0
-        ? expectedPercentile
-        : reverseTween(times, duration, min);
+    if (this.status === "playing" && times.length > 0) {
       const change = K / Math.sqrt(this.plays + 1) *
         (actualPercentile - expectedPercentile);
 
       this.rating += change;
       this.plays++;
     }
+    const percentile = times.length === 0 ? null : actualPercentile;
 
-    this.send({ kind: "run", path, duration, slows, rating: this.rating });
+    this.send({
+      kind: "run",
+      path,
+      duration,
+      percentile,
+      slows,
+      rating: this.rating,
+    });
 
-    return [duration, this.status === "playing"] as const;
+    return [duration, percentile, this.status === "playing"] as const;
   }
 
   async dailyStep() {
@@ -244,7 +252,7 @@ export class Player {
     }
 
     let max = -Infinity;
-    const [duration, log] = this.run(times, minTime);
+    const [duration, percentile, log] = this.run(times, minTime);
 
     if (duration > max) max = duration;
 
@@ -253,7 +261,11 @@ export class Player {
       kind: "log",
       source: "server",
       time: now + duration * 1_000,
-      message: `${this.username} lasted ${duration} seconds.`,
+      message: `${this.username} lasted ${duration} seconds${
+        typeof percentile === "number"
+          ? ` (p${Math.round(percentile * 100)})`
+          : ""
+      }.`,
     });
 
     if (log) {

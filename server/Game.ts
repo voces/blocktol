@@ -5,7 +5,6 @@ import { Message, StartMessage } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
 import { broadcast } from "./channel.ts";
 import {
-  createIteration,
   getDailyIteration,
   getIteration,
   getIterationCount,
@@ -15,69 +14,13 @@ import {
 import { Player, TOKEN_MAX } from "./Player.ts";
 import { PlayerRunsMessage } from "./ServerMessage.ts";
 import { isLeader } from "./trackLeadership.ts";
+import { newIteration } from "./util/newIteration.ts";
 
 type Status = "idle" | "build" | "run";
 
 export const BUILD_TIME = 60;
 const ONE_MINUTE = 60 * 1_000;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
-
-const newIteration = (date: Date) => {
-  console.log(new Date(), "New iteration for", date.toDateString());
-
-  const checkpoint = {
-    x: 1.5 + Math.floor(Math.random() * 17),
-    y: 1.5 + Math.floor(Math.random() * 17),
-  };
-  const grid = newGrid();
-
-  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
-
-  let r = Math.random();
-  let n = r < 0.04 ? 2 : r < 0.2 ? 1 : 0;
-  const thunders: Point[] = [];
-  while (n--) {
-    const x = 2 + Math.floor(Math.random() * 17);
-    const y = 2 + Math.floor(Math.random() * 17);
-
-    if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
-
-    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-
-    if (!findPath(grid, checkpoint)) {
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
-    } else thunders.push({ x, y });
-  }
-
-  n = Math.floor((1 - Math.random()) ** 0.5 * 49);
-  const blocks: Point[] = [];
-  while (n-- > 0 || blocks.length === 0) {
-    const x = 2 + Math.floor(Math.random() * 17);
-    const y = 2 + Math.floor(Math.random() * 17);
-
-    if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
-
-    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-
-    if (!findPath(grid, checkpoint)) {
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
-    } else blocks.push({ x, y });
-  }
-
-  r = Math.random();
-  const power = r < 0.09 ? 2 : r < 0.3 ? 1 : 0;
-  const bricks = power +
-    Math.floor((1 - Math.random() ** 0.7) * 20) + 3;
-
-  createIteration(
-    date,
-    bricks,
-    power,
-    checkpoint,
-    blocks,
-    thunders,
-  );
-};
 
 class Game {
   #players = new Set<Player>();
@@ -111,17 +54,19 @@ class Game {
       const tomorrowDate = new Date(now + ONE_DAY);
       const overmorrowDate = new Date(now + ONE_DAY * 2);
 
-      [yesterdayDate, todayDate, tomorrowDate, overmorrowDate].forEach(
-        async (date) => {
+      (async () => {
+        for (
+          const date of [yesterdayDate, todayDate, tomorrowDate, overmorrowDate]
+        ) {
           const iteration = await getDailyIteration(
             date.getFullYear(),
             date.getMonth() + 1,
             date.getDate(),
           );
 
-          if (!iteration) newIteration(date);
-        },
-      );
+          if (!iteration) await newIteration(date);
+        }
+      })();
 
       setInterval(async () => {
         const overmorrowDate = new Date(Date.now() + ONE_DAY * 2);
@@ -132,7 +77,7 @@ class Game {
           overmorrowDate.getDate(),
         );
 
-        if (!iteration) newIteration(overmorrowDate);
+        if (!iteration) await newIteration(overmorrowDate);
       }, ONE_MINUTE);
     }
 
@@ -241,7 +186,7 @@ class Game {
 
     this.#max = -Infinity;
     for (const player of this.#players) {
-      const [duration, log] = player.run(times, this.#minTime);
+      const [duration, percentile, log] = player.run(times, this.#minTime);
 
       if (duration > this.#max) this.#max = duration;
 
@@ -260,7 +205,11 @@ class Game {
           kind: "log",
           source: "server",
           time: now + duration * 1_000,
-          message: `${player.username} lasted ${duration} seconds.`,
+          message: `&${player.username}& lasted ${duration} seconds${
+            typeof percentile === "number"
+              ? ` (p${Math.round(percentile * 100)})`
+              : ""
+          }.`,
         });
         if (p2 !== player) p2.tokens--;
       }
@@ -333,7 +282,7 @@ class Game {
     const playerRuns: PlayerRunsMessage["playerRuns"] = [];
 
     for (const player of this.#players) {
-      const [duration, log] = player.run(times, this.#minTime);
+      const [duration, percentile, log] = player.run(times, this.#minTime);
 
       playerRuns.push({
         player: player.id,
@@ -349,7 +298,11 @@ class Game {
           kind: "log",
           source: "server",
           time: now + duration * 1_000,
-          message: `${player.username} lasted ${duration} seconds.`,
+          message: `${player.username} lasted ${duration} seconds${
+            typeof percentile === "number"
+              ? ` (p${Math.round(percentile * 100)})`
+              : ""
+          }.`,
         });
         if (p2 !== player) p2.tokens--;
       }
