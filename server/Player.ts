@@ -12,8 +12,6 @@ import { BUILD_TIME, game } from "./Game.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
-export const TOKEN_MAX = 10;
-
 const K = 32;
 
 const reverseInterpolate = (left: number, right: number, value: number) =>

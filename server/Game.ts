@@ -11,7 +11,7 @@ import {
   getIterationTimes,
   logRuns,
 } from "./db/iteration.ts";
-import { Player, TOKEN_MAX } from "./Player.ts";
+import { Player } from "./Player.ts";
 import { PlayerRunsMessage } from "./ServerMessage.ts";
 import { isLeader } from "./trackLeadership.ts";
 import { newIteration } from "./util/newIteration.ts";
@@ -19,8 +19,11 @@ import { newIteration } from "./util/newIteration.ts";
 type Status = "idle" | "build" | "run";
 
 export const BUILD_TIME = 60;
-const ONE_MINUTE = 60 * 1_000;
+const ONE_SECOND = 1_000;
+const ONE_MINUTE = 60 * ONE_SECOND;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
+
+const TOKEN_MAX = 10;
 
 class Game {
   #players = new Set<Player>();
@@ -45,6 +48,14 @@ class Game {
   #max = -Infinity;
   #timeout = 0;
   timeoutStart = 0;
+
+  constructor() {
+    setInterval(() => {
+      for (const player of this.#players) {
+        player.tokens = Math.min(player.tokens + 1, TOKEN_MAX);
+      }
+    }, ONE_SECOND);
+  }
 
   start(electedLeader = false) {
     if (electedLeader) {
@@ -198,7 +209,7 @@ class Game {
         });
 
         for (const p2 of this.#players) {
-          if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
+          if (p2 !== player && p2.tokens === 0) continue;
           p2.sendRunLog(player.username, duration, percentile);
           if (p2 !== player) p2.tokens--;
         }
@@ -283,7 +294,7 @@ class Game {
 
       if (log) {
         for (const p2 of this.#players) {
-          if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
+          if (p2 !== player && p2.tokens === 0) continue;
           p2.sendRunLog(player.username, duration, percentile);
           if (p2 !== player) p2.tokens--;
         }
@@ -360,16 +371,10 @@ class Game {
     }
   }
 
-  incTokens() {
-    for (const player of this.#players) {
-      player.tokens = Math.min(player.tokens + 1, TOKEN_MAX);
-    }
-  }
-
   chat(player: Player, message: string) {
     const now = Date.now();
     for (const p2 of this.#players) {
-      if (p2 !== player && Math.random() * TOKEN_MAX > p2.tokens) continue;
+      if (p2 !== player && p2.tokens === 0) continue;
       p2.send({
         kind: "log",
         source: player.username.replace(/^server$/, "_server"),
