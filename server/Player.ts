@@ -12,6 +12,9 @@ import { BUILD_TIME, game } from "./Game.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
+export const TOKEN_MAX = 10;
+export const CHAT_TOKEN_MAX = 5;
+
 const K = 32;
 
 const reverseInterpolate = (left: number, right: number, value: number) =>
@@ -64,7 +67,8 @@ export class Player {
   bricks = 0;
   power = 0;
   #gameThunders: Point[] = [];
-  tokens = 10;
+  tokens = TOKEN_MAX;
+  chatTokens = CHAT_TOKEN_MAX;
   remainingDailyAttempts: number;
   dailyTimeout: number | undefined;
   #dailyTimes: Promise<number[]> | undefined;

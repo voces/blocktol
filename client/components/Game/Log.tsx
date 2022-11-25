@@ -74,9 +74,24 @@ export const Log = () => {
         `hsl(${Math.random() * 360} 100% 40%)`;
     };
 
-    connection.addEventListener("log", logCallback);
+    const disconnectCallback = () => {
+      setLog(
+        (l) => [...l, {
+          kind: "log",
+          source: "server",
+          message: "You've been disconnected.",
+          time: Date.now(),
+        }],
+      );
+    };
 
-    return () => connection.removeEventListener("log", logCallback);
+    connection.addEventListener("log", logCallback);
+    connection.addEventListener("disconnect", disconnectCallback);
+
+    return () => {
+      connection.removeEventListener("log", logCallback);
+      connection.removeEventListener("disconnect", disconnectCallback);
+    };
   }, [colors]);
 
   useEffect(() => {

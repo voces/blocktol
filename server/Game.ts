@@ -11,7 +11,7 @@ import {
   getIterationTimes,
   logRuns,
 } from "./db/iteration.ts";
-import { Player } from "./Player.ts";
+import { CHAT_TOKEN_MAX, Player, TOKEN_MAX } from "./Player.ts";
 import { PlayerRunsMessage } from "./ServerMessage.ts";
 import { isLeader } from "./trackLeadership.ts";
 import { newIteration } from "./util/newIteration.ts";
@@ -22,8 +22,6 @@ export const BUILD_TIME = 60;
 const ONE_SECOND = 1_000;
 const ONE_MINUTE = 60 * ONE_SECOND;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
-
-const TOKEN_MAX = 10;
 
 class Game {
   #players = new Set<Player>();
@@ -53,6 +51,7 @@ class Game {
     setInterval(() => {
       for (const player of this.#players) {
         player.tokens = Math.min(player.tokens + 1, TOKEN_MAX);
+        player.chatTokens = Math.min(player.chatTokens + 1, CHAT_TOKEN_MAX);
       }
     }, ONE_SECOND);
   }
@@ -371,17 +370,18 @@ class Game {
     }
   }
 
-  chat(player: Player, message: string) {
+  chat(player: Player, message: string, self = false) {
     const now = Date.now();
 
-    // Doing daily
-    if (!this.#players.has(player)) {
+    // Doing daily or just self
+    if (!this.#players.has(player) || self) {
       player.send({
         kind: "log",
         source: player.username.replace(/^server$/, "_server"),
         time: now,
         message,
       });
+      return;
     }
 
     for (const p2 of this.#players) {

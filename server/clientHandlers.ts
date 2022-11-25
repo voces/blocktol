@@ -115,6 +115,8 @@ export const clientHandlers = {
 
     if (message.length > 100) return player.close("invalid chat message");
 
-    game.chat(player, message);
+    const self = player.chatTokens === 0;
+    player.chatTokens = Math.max(player.chatTokens - 1, 0);
+    game.chat(player, message, self);
   },
 };
