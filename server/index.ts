@@ -1,14 +1,36 @@
-import { serve } from "https://deno.land/std@0.165.0/http/server.ts";
+import { ConnInfo, serve } from "https://deno.land/std@0.165.0/http/server.ts";
 import { serveFile } from "https://deno.land/std@0.165.0/http/file_server.ts";
 import { join, normalize } from "https://deno.land/std@0.165.0/path/posix.ts";
 import { isMessage } from "../common/clientToServerMessage.ts";
 import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";
 import { Player } from "./Player.ts";
+import { LRUMap } from "./util/LRUMap.ts";
 
 const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 
 console.log(new Date(), "Listening on", port);
+
+const hostLru = new LRUMap<string, [time: number, value: number]>();
+const HOST_SPAM_MAX = 20; // max tokens allowed
+const HOST_SPAM_FREQ = 6; // tokens per second
+const isSpamming = (connInfo: ConnInfo, tokens = 1) => {
+  if (connInfo.remoteAddr.transport !== "tcp") return false;
+
+  const value = hostLru.getAndSet(
+    connInfo.remoteAddr.hostname,
+    (v) => {
+      if (!v) return [Date.now(), tokens];
+      const now = Date.now();
+      return [
+        now,
+        Math.max(v[1] - HOST_SPAM_FREQ * (now - v[0]) / 1000, 0) + tokens,
+      ];
+    },
+  )[1];
+
+  return value > HOST_SPAM_MAX;
+};
 
 serve((req, connInfo) => {
   const upgrade = req.headers.get("upgrade") || "";
@@ -34,6 +56,8 @@ serve((req, connInfo) => {
 
   const { socket, response } = Deno.upgradeWebSocket(req);
 
+  if (isSpamming(connInfo, 5)) setTimeout(() => socket.close());
+
   socket.onopen = () =>
     console.log(
       new Date(),
@@ -44,6 +68,8 @@ serve((req, connInfo) => {
     );
 
   socket.onmessage = (e) => {
+    if (isSpamming(connInfo)) socket.close();
+
     try {
       const message = JSON.parse(e.data);
       if (isMessage(message) && message.kind in clientHandlers) {

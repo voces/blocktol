@@ -373,6 +373,17 @@ class Game {
 
   chat(player: Player, message: string) {
     const now = Date.now();
+
+    // Doing daily
+    if (!this.#players.has(player)) {
+      player.send({
+        kind: "log",
+        source: player.username.replace(/^server$/, "_server"),
+        time: now,
+        message,
+      });
+    }
+
     for (const p2 of this.#players) {
       if (p2 !== player && p2.tokens === 0) continue;
       p2.send({

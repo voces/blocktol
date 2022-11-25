@@ -5,6 +5,8 @@ import { Emitter, emitter } from "../util/emitter.ts";
 
 class Connection implements Emitter<MessageMap> {
   #ws!: WebSocket;
+  #lastDisconnect: number | undefined;
+  #openValue: number | undefined;
 
   declare addEventListener: Emitter<MessageMap>["addEventListener"];
   declare removeEventListener: Emitter<MessageMap>["removeEventListener"];
@@ -23,6 +25,11 @@ class Connection implements Emitter<MessageMap> {
 
     this.#ws.addEventListener("open", () => {
       this.dispatchEvent("connect", undefined as never);
+
+      const openValue = this.#openValue = Math.random();
+      setTimeout(() => {
+        if (openValue === this.#openValue) this.#lastDisconnect = undefined;
+      }, 250);
     });
 
     this.#ws.addEventListener("message", (e) => {
@@ -37,8 +44,17 @@ class Connection implements Emitter<MessageMap> {
 
     this.#ws.addEventListener("close", () => {
       console.log("Disconnected, reconnecting...");
-      this.#setupSocket();
       this.dispatchEvent("disconnect", undefined as never);
+
+      this.#openValue = undefined;
+      const now = Date.now();
+      const timeout = Math.min(
+        10_000,
+        now - (this.#lastDisconnect ?? now + 900) + 1_000,
+      );
+      this.#lastDisconnect = now;
+      console.log("timeout", timeout);
+      setTimeout(() => this.#setupSocket(), timeout);
     });
   }
 
