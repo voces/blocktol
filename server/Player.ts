@@ -45,6 +45,9 @@ const reverseTween = (data: number[], value: number, min: number): number => {
     return (left + right) / 2 / length;
   }
 
+  // No match + did worse than not doing anything by shifted away from a thunder
+  if (value <= min) return 0;
+
   const leftvalue = data[middle];
   const rightValue = data[middle + 1];
   const relativePercent = reverseInterpolate(leftvalue, rightValue, value);
@@ -53,6 +56,23 @@ const reverseTween = (data: number[], value: number, min: number): number => {
     (middle * (1 - relativePercent) + (middle + 1) * relativePercent) /
     length
   );
+};
+
+const formatPercentile = (percentile: number) => {
+  const m = (percentile * 100).toString().match(
+    /\d+(?:\.[0-9])?(?:(?<=9)9*[0-8]?)*[0-9]/,
+  )?.[0];
+  if (!m) return "??";
+  const v = parseFloat(m);
+
+  if (v >= 100) return Math.round(v).toString();
+
+  if (v > 99) {
+    return (Math.round(v * 10 ** (m.length - 4)) / 10 ** (m.length - 4))
+      .toString();
+  }
+
+  return Math.round(v).toString();
 };
 
 export class Player {
@@ -154,7 +174,7 @@ export class Player {
     const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
     const actualPercentile = times.length === 0
       ? expectedPercentile
-      : reverseTween(times, duration, min);
+      : reverseTween(times, duration, min < duration ? min : duration);
     // A player is only ranked if they place a block (i.e., AFKs are ignored)
     if (this.status === "playing" && times.length > 0) {
       const change = K / Math.sqrt(this.plays + 1) *
@@ -276,9 +296,9 @@ export class Player {
       kind: "log",
       source: "server",
       time: now + duration * 1_000,
-      message: `${this.username} lasted ${duration} seconds${
+      message: `\\c${this.username}\\c lasted ${duration} seconds${
         typeof percentile === "number"
-          ? ` (p${Math.round(percentile * 100)})`
+          ? ` (p${formatPercentile(percentile)})`
           : ""
       }.`,
     });

@@ -31,11 +31,8 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       if (svg) svg.style.transform = "";
 
       if (transitionBlock) {
-        connection.send({
-          kind: "transition",
-          x: transitionBlock.x,
-          y: transitionBlock.y,
-        });
+        const { x, y } = transitionBlock;
+        connection.send({ kind: "transition", x, y });
 
         // Remove from blocks
         setBlocks((blocks) =>
@@ -63,9 +60,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         } else {
           setBricks((bricks) => bricks + 1);
           if (isThunder) setPower((power) => power + 1);
-          offsets.forEach(([xd, yd]) =>
-            grid[transitionBlock.y + yd][transitionBlock.x + xd] = false
-          );
+          offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
         }
 
         setTransitionBlock(undefined);
@@ -73,35 +68,20 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         return;
       }
 
+      const { x, y } = placingBlockRef.current;
+
       if (bricks <= 0) return;
 
-      if (
-        offsets.some(([xd, yd]) =>
-          grid[placingBlockRef.current.y + yd][placingBlockRef.current.x + xd]
-        )
-      ) return false;
+      if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return false;
 
       try {
         if (!findPath(grid, checkpoint)) return false;
       } catch { /* do nothing */ }
 
-      offsets.forEach(([xd, yd]) =>
-        grid[placingBlockRef.current.y + yd][placingBlockRef.current.x + xd] =
-          true
-      );
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
 
-      connection.send({
-        kind: "block",
-        x: placingBlockRef.current.x,
-        y: placingBlockRef.current.y,
-      });
-      setBlocks((
-        blocks,
-      ) => [...blocks, {
-        x: placingBlockRef.current.x,
-        y: placingBlockRef.current.y,
-        local: true,
-      }]);
+      connection.send({ kind: "block", x, y });
+      setBlocks((blocks) => [...blocks, { x, y, local: true }]);
       setBricks((bricks) => bricks - 1);
 
       setPlacingBlock({ ...placingBlockRef.current, placing: false });

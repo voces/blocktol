@@ -47,11 +47,12 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
 
       let invalid = (!!overlap && !overlap.local) ||
-        (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
+        (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1 ||
+        (offsets.some(([xd, yd]) =>
+          grid[y + yd][x + xd]
+        ));
       if (!invalid && !overlap) {
-        offsets.forEach(([xd, yd]) =>
-          grid[y + yd][x + xd] = true
-        );
+        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
         try {
           if (!findPath(grid, checkpoint)) invalid = true;
         } catch (err) {
