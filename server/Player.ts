@@ -9,6 +9,7 @@ import {
 } from "./db/iteration.ts";
 import { dailyAttempts } from "./db/user.ts";
 import { BUILD_TIME, game } from "./Game.ts";
+import { reverseTween } from "./util/math.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
@@ -16,47 +17,6 @@ export const TOKEN_MAX = 10;
 export const CHAT_TOKEN_MAX = 5;
 
 const K = 32;
-
-const reverseInterpolate = (left: number, right: number, value: number) =>
-  (value - left) / (right - left);
-
-const reverseTween = (data: number[], value: number, min: number): number => {
-  if (value < data[0]) return reverseInterpolate(min, data[0], value);
-  const length = data.length - 1;
-  if (value >= data[length]) return 1;
-
-  let left = 0;
-  let right = length;
-  let middle = Math.floor((left + right) / 2);
-  while (left <= right) {
-    if (data[middle] < value) left = middle + 1;
-    else if (data[middle] > value) right = middle - 1;
-    else break;
-
-    middle = Math.floor((left + right) / 2);
-  }
-
-  // Exact match, find center for duplicates
-  if (value === data[middle]) {
-    left = middle;
-    while (data[left - 1] === value) left--;
-    right = middle;
-    while (data[right + 1] === value) right++;
-    return (left + right) / 2 / length;
-  }
-
-  // No match + did worse than not doing anything by shifted away from a thunder
-  if (value <= min) return 0;
-
-  const leftvalue = data[middle];
-  const rightValue = data[middle + 1];
-  const relativePercent = reverseInterpolate(leftvalue, rightValue, value);
-
-  return (
-    (middle * (1 - relativePercent) + (middle + 1) * relativePercent) /
-    length
-  );
-};
 
 const formatPercentile = (percentile: number) => {
   const m = (percentile * 100).toString().match(
@@ -73,6 +33,12 @@ const formatPercentile = (percentile: number) => {
   }
 
   return Math.round(v).toString();
+};
+
+type Daily = {
+  year: number;
+  month: number;
+  day: number;
 };
 
 export class Player {
@@ -104,7 +70,7 @@ export class Player {
     rating: number,
     plays: number,
     remainingDailyAttempts: number,
-    readonly daily: { year: number; month: number; day: number },
+    readonly daily: Daily,
   ) {
     this.#websocket = websocket;
     this.plays = plays;
@@ -114,6 +80,8 @@ export class Player {
     websocket.addEventListener("close", () => game.removePlayer(this));
 
     Player.map.set(websocket, this);
+
+    setTimeout(() => this.sendDailyTimes(), 250);
   }
 
   get logName() {
@@ -197,6 +165,61 @@ export class Player {
     return [duration, percentile, this.status === "playing"] as const;
   }
 
+  async sendDailyTimes(daily?: Daily) {
+    daily = daily ?? this.daily;
+    const loaded = daily.year === this.daily.year &&
+      daily.month === this.daily.month &&
+      daily.day === this.daily.day;
+
+    // We don't need to refetch if loaded...
+    const iterationPromise = getDailyIteration(
+      daily.year,
+      daily.month,
+      daily.day,
+    );
+
+    const [iteration, times, attempts] = await Promise.all([
+      iterationPromise,
+
+      (this.#dailyTimes &&
+          (!daily ||
+            loaded))
+        ? this.#dailyTimes
+        : (async () => {
+          const iteration = await iterationPromise;
+          if (!iteration) return;
+          return getIterationTimes(iteration.iteration);
+        })(),
+
+      dailyAttempts(this.id, daily.year, daily.month, daily.day),
+    ]);
+
+    if (!iteration) return this.close(`missing daily ${JSON.stringify(daily)}`);
+    if (!times) return this.close("could not get daily times");
+
+    const grid = newGrid();
+    grid[iteration.checkpoint.y + 0.5][iteration.checkpoint.x + 0.5] = true;
+    for (const { x, y } of iteration.thunders) {
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    }
+    for (const { x, y } of iteration.blocks) {
+      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    }
+
+    const minTime = pathDuration(
+      findPath(grid, iteration.checkpoint) ?? [],
+      iteration.thunders,
+    )[0];
+
+    this.send({
+      kind: "daily",
+      attempts: attempts.map((duration) => ({
+        duration,
+        percentile: reverseTween(times, duration, minTime),
+      })),
+    });
+  }
+
   async dailyStep() {
     const attempts = await dailyAttempts(
       this.id,
@@ -207,12 +230,7 @@ export class Player {
     this.remainingDailyAttempts = 3 - attempts.length;
 
     if (this.remainingDailyAttempts === 0) {
-      this.send({
-        kind: "daily",
-        times: attempts,
-        score: attempts.reduce((s, a) => s + a ** 2, 0),
-      });
-
+      this.sendDailyTimes();
       return game.addPlayer(this, true);
     }
 

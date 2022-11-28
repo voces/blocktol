@@ -34,8 +34,7 @@ export type LogMessage = GuardedType<typeof isLogMessage>;
 
 const isDailyMessage = is.object({
   kind: is.const("daily"),
-  times: is.array(is.number),
-  score: is.number,
+  attempts: is.array(is.object({ duration: is.number, percentile: is.number })),
 });
 export type DailyMessage = GuardedType<typeof isDailyMessage>;
 export type MessageMap = {
