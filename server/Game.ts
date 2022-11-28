@@ -87,7 +87,10 @@ class Game {
           overmorrowDate.getDate(),
         );
 
-        if (!iteration) await newIteration(overmorrowDate);
+        if (!iteration) {
+          await newIteration(overmorrowDate);
+          this.#iterationCount = await getIterationCount();
+        }
       }, ONE_MINUTE);
     }
 
