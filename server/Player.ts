@@ -177,7 +177,7 @@ export class Player {
       : reverseTween(times, duration, min < duration ? min : duration);
     // A player is only ranked if they place a block (i.e., AFKs are ignored)
     if (this.status === "playing" && times.length > 0) {
-      const change = K / Math.sqrt(this.plays + 1) *
+      const change = K / Math.log2(this.plays + 2) *
         (actualPercentile - expectedPercentile);
 
       this.rating += change;
