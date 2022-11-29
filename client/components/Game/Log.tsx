@@ -56,6 +56,12 @@ const useLogLocation = () => {
     : "none";
 };
 
+const isTouchEvent = (
+  e:
+    | h.JSX.TargetedTouchEvent<HTMLDivElement>
+    | h.JSX.TargetedMouseEvent<HTMLDivElement>,
+): e is h.JSX.TargetedTouchEvent<HTMLDivElement> => e.type === "touchstart";
+
 const Message = (
   { message, colors }: { message: LogMessage; colors: Colors },
 ) => {
@@ -66,6 +72,42 @@ const Message = (
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
+  const clipboardHandler = useCallback(
+    (
+      e:
+        | h.JSX.TargetedTouchEvent<HTMLDivElement>
+        | h.JSX.TargetedMouseEvent<HTMLDivElement>,
+    ) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      navigator.clipboard.write(
+        [
+          new ClipboardItem({
+            "text/plain": new Blob([e.currentTarget.innerText], {
+              type: "text/plain",
+            }),
+            "text/html": new Blob([e.currentTarget.innerHTML], {
+              type: "text/html",
+            }),
+          }),
+        ],
+      );
+
+      const rect = e.currentTarget.parentElement!.parentElement!
+        .getBoundingClientRect();
+      setTooltip({
+        left: (isTouchEvent(e) ? e.touches[0].clientX : e.clientX) - rect.left -
+          20,
+        top: (isTouchEvent(e) ? e.touches[0].clientY : e.clientY) - rect.top -
+          20,
+        tooltip: "Copied!",
+      });
+      setTimeoutId(setTimeout(() => setTooltip(null), 750));
+    },
+    [],
+  );
+
   return (
     <>
       <div
@@ -75,32 +117,8 @@ const Message = (
           textIndent: -16,
           cursor: "pointer",
         }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          navigator.clipboard.write(
-            [
-              new ClipboardItem({
-                "text/plain": new Blob([e.currentTarget.innerText], {
-                  type: "text/plain",
-                }),
-                "text/html": new Blob([e.currentTarget.innerHTML], {
-                  type: "text/html",
-                }),
-              }),
-            ],
-          );
-
-          const rect = e.currentTarget.parentElement!.parentElement!
-            .getBoundingClientRect();
-          setTooltip({
-            left: e.clientX - rect.left - 20,
-            top: e.clientY - rect.top - 20,
-            tooltip: "Copied!",
-          });
-          setTimeoutId(setTimeout(() => setTooltip(null), 750));
-        }}
+        onMouseDown={clipboardHandler}
+        onTouchStart={clipboardHandler}
       >
         {message.source !== "server"
           ? (
