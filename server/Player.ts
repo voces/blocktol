@@ -233,10 +233,7 @@ export class Player {
     );
     this.remainingDailyAttempts = 3 - attempts.length;
 
-    if (this.remainingDailyAttempts === 0) {
-      this.sendDailyTimes();
-      return game.addPlayer(this, true);
-    }
+    if (this.remainingDailyAttempts === 0) return game.addPlayer(this, true);
 
     const daily = await getDailyIteration(
       this.daily.year,
