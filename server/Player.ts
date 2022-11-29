@@ -101,7 +101,7 @@ export class Player {
       time: Date.now() + duration * 1_000,
       message: `\\c${username}\\c lasted ${duration} seconds${
         typeof percentile === "number"
-          ? ` (p${formatPercentile(percentile * 100)})`
+          ? ` (p${formatPercentile(percentile)})`
           : ""
       }.`,
     });
