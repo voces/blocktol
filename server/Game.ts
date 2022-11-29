@@ -1,4 +1,5 @@
 import { offsets } from "../common/constants.ts";
+import { formatPercentile } from "../common/formatPercentile.ts";
 import { gridToString } from "../common/gridToString.ts";
 import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message, StartMessage } from "../common/serverToClientMessage.ts";
@@ -233,7 +234,7 @@ class Game {
       new Date(),
       "Start run, local best is",
       this.#max,
-      `(p${bestPercentile})`,
+      `(p${formatPercentile(bestPercentile)})`,
     );
 
     this.#startRunTimeout(this.#max * 1_000);

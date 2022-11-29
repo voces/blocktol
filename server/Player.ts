@@ -1,4 +1,5 @@
 import { offsets } from "../common/constants.ts";
+import { formatPercentile } from "../common/formatPercentile.ts";
 import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
@@ -17,23 +18,6 @@ export const TOKEN_MAX = 10;
 export const CHAT_TOKEN_MAX = 5;
 
 const K = 32;
-
-const formatPercentile = (percentile: number) => {
-  const m = (percentile * 100).toString().match(
-    /\d+(?:\.[0-9])?(?:(?<=9)9*[0-8]?)*[0-9]/,
-  )?.[0];
-  if (!m) return "??";
-  const v = parseFloat(m);
-
-  if (v >= 100) return Math.round(v).toString();
-
-  if (v > 99) {
-    return (Math.round(v * 10 ** (m.length - 4)) / 10 ** (m.length - 4))
-      .toString();
-  }
-
-  return Math.round(v).toString();
-};
 
 type Daily = {
   year: number;
@@ -117,7 +101,7 @@ export class Player {
       time: Date.now() + duration * 1_000,
       message: `\\c${username}\\c lasted ${duration} seconds${
         typeof percentile === "number"
-          ? ` (p${Math.round(percentile * 100)})`
+          ? ` (p${formatPercentile(percentile * 100)})`
           : ""
       }.`,
     });
