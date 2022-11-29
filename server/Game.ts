@@ -139,7 +139,12 @@ class Game {
 
     this.#times = getIterationTimes(this.#iteration);
 
-    console.log(new Date(), `Starting round. iteration=${this.#iteration}`);
+    console.log(
+      new Date(),
+      `Starting round. iteration=${this.#iteration} (${
+        new Date(this.#date).toDateString()
+      })`,
+    );
 
     const path = findPath(this.#grid, this.#checkpoint) ?? [];
     const [duration] = pathDuration(path, this.#thunders);
@@ -198,10 +203,14 @@ class Game {
     const times = await this.#times;
 
     this.#max = -Infinity;
+    let bestPercentile = -Infinity;
     for (const player of this.#players) {
       const [duration, percentile, log] = player.run(times, this.#minTime);
 
       if (duration > this.#max) this.#max = duration;
+      if (typeof percentile === "number" && percentile > bestPercentile) {
+        bestPercentile = percentile;
+      }
 
       if (log) {
         this.#playerRuns.push({
@@ -220,7 +229,12 @@ class Game {
 
     broadcast({ kind: "startRun", times });
 
-    console.log(new Date(), "Start run, local best is", this.#max);
+    console.log(
+      new Date(),
+      "Start run, local best is",
+      this.#max,
+      `(p${bestPercentile})`,
+    );
 
     this.#startRunTimeout(this.#max * 1_000);
   }
