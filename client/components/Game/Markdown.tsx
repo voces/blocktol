@@ -3,7 +3,7 @@ import { Fragment, h, JSX } from "preact";
 import { useRefState } from "../../hooks/useRefState.ts";
 
 type Token = {
-  kind: "text" | "inline" | "newline";
+  kind: "text" | "inline" | "newline" | "localDate";
   content: string;
 };
 
@@ -23,8 +23,11 @@ const tokenize = (string: string) => {
   };
   while (index < string.length) {
     if (test("inline", /(?<!\\)(?:\\c)/y)) continue;
+    if (test("localDate", /\\localDate\(\d+, \d+, \d+\)/y)) continue;
     if (test("newline", /\n/y)) continue;
-    if (test("text", /(?:\\\\c|(?!\\c|\n)[\s\S])+/y)) continue;
+    if (
+      test("text", /(?:\\\\c|(?!\\c|\n|\\localDate\(\d+, \d+, \d+\))[\s\S])+/y)
+    ) continue;
 
     throw new Error(`Untokenizable at ${string.slice(index, index + 20)}`);
   }
@@ -84,13 +87,31 @@ const parse = (string: string) => {
       continue;
     }
 
+    if (token.kind === "localDate") {
+      const parts = token.content.match(/\\localDate\((\d+), (\d+), (\d+)\)/);
+      if (!parts || parts.length !== 4) {
+        chain[chain.length - 1].children.push(token.content);
+        continue;
+      }
+      chain[chain.length - 1].children.push(
+        new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+          new Date(
+            parseInt(parts[1]),
+            parseInt(parts[2]) - 1,
+            parseInt(parts[3]),
+          ),
+        ),
+      );
+      continue;
+    }
+
     throw new Error(`Unparseable token: ${JSON.stringify(token)}`);
   }
 
   return root;
 };
 
-type Colors = Record<string, string | undefined>;
+export type Colors = Record<string, string | undefined>;
 
 const ColorMarkdown = (
   { node, colors }: { node: NodeWithChildren; colors: Colors },
@@ -141,9 +162,23 @@ export const Markdown = (
     colors: Colors;
   },
 ) => {
-  const [tree, setTree] = useState(() => parse(message));
+  const [tree, setTree] = useState(() => {
+    try {
+      return parse(message);
+    } catch (err) {
+      console.error(err);
+      return "";
+    }
+  });
 
-  useEffect(() => setTree(parse(message)), [message]);
+  useEffect(() => {
+    try {
+      setTree(parse(message));
+    } catch (err) {
+      console.error(err);
+      setTree("");
+    }
+  }, [message]);
 
   return <InnerMarkdown node={tree} colors={colors} />;
 };

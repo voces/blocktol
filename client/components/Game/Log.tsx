@@ -5,11 +5,11 @@ import {
   useRef,
   useState,
 } from "preact/compat";
-import { h } from "preact";
+import { ComponentChildren, Fragment, h } from "preact";
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { LogMessage } from "../../../common/serverToClientMessage.ts";
 import { Input } from "../Input.tsx";
-import { Markdown } from "./Markdown.tsx";
+import { Colors, Markdown } from "./Markdown.tsx";
 
 const getWindowDimensions = () => {
   const { innerWidth: width, innerHeight: height } = window;
@@ -56,13 +56,89 @@ const useLogLocation = () => {
     : "none";
 };
 
+const Message = (
+  { message, colors }: { message: LogMessage; colors: Colors },
+) => {
+  const [tooltip, setTooltip] = useState<
+    { left: number; top: number; tooltip: ComponentChildren } | null
+  >(null);
+  const [timeout, setTimeoutId] = useState(-1);
+
+  useEffect(() => () => clearTimeout(timeout), [timeout]);
+
+  return (
+    <>
+      <div
+        style={{
+          wordBreak: "break-word",
+          marginLeft: 16,
+          textIndent: -16,
+          cursor: "pointer",
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          navigator.clipboard.write(
+            [
+              new ClipboardItem({
+                "text/plain": new Blob([e.currentTarget.innerText], {
+                  type: "text/plain",
+                }),
+                "text/html": new Blob([e.currentTarget.innerHTML], {
+                  type: "text/html",
+                }),
+              }),
+            ],
+          );
+
+          const rect = e.currentTarget.parentElement!.parentElement!
+            .getBoundingClientRect();
+          setTooltip({
+            left: e.clientX - rect.left - 20,
+            top: e.clientY - rect.top - 20,
+            tooltip: "Copied!",
+          });
+          setTimeoutId(setTimeout(() => setTooltip(null), 750));
+        }}
+      >
+        {message.source !== "server"
+          ? (
+            <span style={{ color: colors[message.source] }}>
+              {`${message.source}: `}
+            </span>
+          )
+          : null}
+        <Markdown message={message.message} colors={colors} />
+      </div>
+      {tooltip
+        ? (
+          <div
+            style={{
+              position: "absolute",
+              left: tooltip.left,
+              top: tooltip.top,
+              color: "white",
+              background: "#444d",
+              borderRadius: 2,
+              padding: "1px 2px",
+            }}
+          >
+            {tooltip.tooltip}
+          </div>
+        )
+        : null}
+    </>
+  );
+};
+
 export const Log = () => {
   const scrollLogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const logLocation = useLogLocation();
   const connection = useContext(ConnectionContext);
   const [queue, setQueue] = useState<LogMessage[]>([]);
-  const colors = useRef<Record<string, string | undefined>>({}).current;
+  const colors = useRef<Colors>({}).current;
   const [log, setLog] = useState<LogMessage[]>([]);
 
   useEffect(() => {
@@ -160,19 +236,8 @@ export const Log = () => {
       }}
     >
       <div style={{ flexGrow: 1, overflowY: "auto" }}>
-        {log.filter((l) => l.time < Date.now()).map((l) => (
-          <div
-            style={{ wordBreak: "break-word", marginLeft: 16, textIndent: -16 }}
-          >
-            {l.source !== "server"
-              ? (
-                <span style={{ color: colors[l.source] }}>
-                  {`${l.source}: `}
-                </span>
-              )
-              : null}
-            <Markdown message={l.message} colors={colors} />
-          </div>
+        {log.filter((m) => m.time < Date.now()).map((m) => (
+          <Message message={m} colors={colors} />
         ))}
         <div ref={scrollLogRef} />
       </div>

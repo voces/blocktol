@@ -80,8 +80,6 @@ export class Player {
     websocket.addEventListener("close", () => game.removePlayer(this));
 
     Player.map.set(websocket, this);
-
-    setTimeout(() => this.sendDailyTimes(), 250);
   }
 
   get logName() {
@@ -212,11 +210,17 @@ export class Player {
     )[0];
 
     this.send({
-      kind: "daily",
-      attempts: attempts.map((duration) => ({
-        duration,
-        percentile: reverseTween(times, duration, minTime),
-      })),
+      kind: "log",
+      source: "server",
+      time: Date.now(),
+      message:
+        `Blocktol \\localDate(${daily.year}, ${daily.month}, ${daily.day})\n${
+          attempts.map((duration) =>
+            `${duration}s (p${
+              formatPercentile(reverseTween(times, duration, minTime))
+            })`
+          ).join("\n")
+        }`,
     });
   }
 

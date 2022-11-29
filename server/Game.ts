@@ -319,6 +319,8 @@ class Game {
       return;
     }
 
+    player.sendDailyTimes();
+
     this.#players.add(player);
     if (this.#status === "idle") {
       if (isLeader() && !this.#started) this.start();
