@@ -1,5 +1,6 @@
 import { offsets } from "../common/constants.ts";
 import { formatPercentile } from "../common/formatPercentile.ts";
+import { gridToString } from "../common/gridToString.ts";
 import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
@@ -114,7 +115,13 @@ export class Player {
   }
 
   run(times: number[], min: number) {
-    const path = findPath(this.grid, this.checkpoint) ?? [];
+    const path = findPath(this.grid, this.checkpoint);
+
+    if (!path) {
+      console.log(new Date(), "no path?");
+      console.log(gridToString(this.grid, undefined, this.checkpoint));
+    }
+
     const [duration, slows] = pathDuration(
       path,
       [...this.#gameThunders, ...this.blocks.filter((b) => b.thunder)],
@@ -137,7 +144,7 @@ export class Player {
 
     this.send({
       kind: "run",
-      path,
+      path: path ?? [],
       duration,
       percentile,
       slows,
