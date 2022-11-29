@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/compat";
 import { Fragment, h, JSX } from "preact";
 import { useRefState } from "../../hooks/useRefState.ts";
+import { randomColor } from "./helpers.ts";
 
 type Token = {
   kind: "text" | "inline" | "newline" | "localDate";
@@ -119,8 +120,7 @@ const ColorMarkdown = (
   const ref = useRefState<HTMLSpanElement | null>(null);
   const content = ref.current?.textContent;
   const color = content
-    ? (colors[content] ??
-      (colors[content] = `hsl(${Math.random() * 360} 100% 40%)`))
+    ? (colors[content] ?? (colors[content] = randomColor()))
     : undefined;
 
   return (

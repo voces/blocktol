@@ -10,6 +10,7 @@ import { ConnectionContext } from "../../contexts/Connection.ts";
 import { LogMessage } from "../../../common/serverToClientMessage.ts";
 import { Input } from "../Input.tsx";
 import { Colors, Markdown } from "./Markdown.tsx";
+import { randomColor } from "./helpers.ts";
 
 const getWindowDimensions = () => {
   const { innerWidth: width, innerHeight: height } = window;
@@ -166,8 +167,7 @@ export const Log = () => {
       if (message.time > Date.now()) setQueue((q) => [...q, message]);
       else setLog((l) => [...l, message]);
 
-      colors[message.source] = colors[message.source] ??
-        `hsl(${Math.random() * 360} 100% 40%)`;
+      colors[message.source] = colors[message.source] ?? randomColor();
     };
 
     const disconnectCallback = () => {
