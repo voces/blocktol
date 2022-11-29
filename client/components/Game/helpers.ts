@@ -5,6 +5,4 @@ export const isTouchSource = is.object({
 });
 
 export const randomColor = () =>
-  `hsl(${Math.random() * 360} 100% ${
-    window.matchMedia("(prefers-color-scheme: dark)").matches ? 70 : 40
-  }%)`;
+  `hsl(${Math.random() * 360} 100% var(--brightness))`;
