@@ -81,6 +81,8 @@ const Message = (
       e.preventDefault();
       e.stopPropagation();
 
+      if (!("clipboard" in navigator)) return;
+
       navigator.clipboard.write(
         [
           new ClipboardItem({
