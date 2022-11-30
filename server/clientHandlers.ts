@@ -9,6 +9,7 @@ import { findPath } from "../common/pathing.ts";
 import { createOrUpdateUser, dailyAttempts, getUserPlays } from "./db/user.ts";
 import { game } from "./Game.ts";
 import { Player } from "./Player.ts";
+import { loginEvent } from "./util/metrics.ts";
 
 export const clientHandlers = {
   login: async (socket: WebSocket, message: LoginMessage) => {
@@ -16,6 +17,7 @@ export const clientHandlers = {
       createOrUpdateUser(message.id, message.username),
       getUserPlays(message.id),
     ]);
+    loginEvent(message.id);
     console.log(
       new Date(),
       `'${message.id.slice(0, 8)}...${

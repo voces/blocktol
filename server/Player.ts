@@ -12,6 +12,7 @@ import {
 import { dailyAttempts } from "./db/user.ts";
 import { BUILD_TIME, game } from "./Game.ts";
 import { reverseTween } from "./util/math.ts";
+import { runEvents } from "./util/metrics.ts";
 
 type PlayerStatus = "midjoin" | "afk" | "playing";
 
@@ -314,6 +315,13 @@ export class Player {
     });
 
     if (log) {
+      runEvents([{
+        userId: this.id,
+        iteration,
+        duration,
+        percentile: percentile ?? 1,
+      }]);
+
       logRuns([{ player: this.id, rating: this.rating, duration }], iteration);
     }
 

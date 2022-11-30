@@ -2,7 +2,7 @@ deno run \
     --config deno.jsonc \
     --no-check=remote \
     --allow-net \
-    --allow-env=PORT,DENO_ENV,SQL_PASSWORD \
+    --allow-env=PORT,DENO_ENV,SQL_PASSWORD,NEW_RELIC_API_KEY \
     --allow-read \
     --unstable \
     "$@" \

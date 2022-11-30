@@ -15,6 +15,7 @@ import {
 import { CHAT_TOKEN_MAX, Player, TOKEN_MAX } from "./Player.ts";
 import { PlayerRunsMessage } from "./ServerMessage.ts";
 import { isLeader } from "./trackLeadership.ts";
+import { runEvents } from "./util/metrics.ts";
 import { newIteration } from "./util/newIteration.ts";
 
 type Status = "idle" | "build" | "run";
@@ -214,6 +215,13 @@ class Game {
       }
 
       if (log) {
+        runEvents([{
+          userId: player.id,
+          iteration: this.#iteration,
+          duration,
+          percentile: percentile ?? 1,
+        }]);
+
         this.#playerRuns.push({
           player: player.id,
           rating: player.rating,
@@ -310,6 +318,13 @@ class Game {
       });
 
       if (log) {
+        runEvents([{
+          userId: player.id,
+          iteration: this.#iteration,
+          duration,
+          percentile: percentile ?? 1,
+        }]);
+
         for (const p2 of this.#players) {
           if (p2 !== player && p2.tokens === 0) continue;
           p2.sendRunLog(player.username, duration, percentile);
