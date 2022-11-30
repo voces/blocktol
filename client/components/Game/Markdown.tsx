@@ -95,7 +95,10 @@ const parse = (string: string) => {
         continue;
       }
       chain[chain.length - 1].children.push(
-        new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+        new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+          timeZone: "UTC",
+        }).format(
           new Date(
             parseInt(parts[1]),
             parseInt(parts[2]) - 1,

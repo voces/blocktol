@@ -28,7 +28,7 @@ export const clientHandlers = {
     let parts: string[];
     try {
       parts = new Date().toLocaleDateString("en-US", {
-        timeZone: "America/Los_Angeles",
+        timeZone: message.timeZone,
       }).split("/");
     } catch (err) {
       console.error(err);

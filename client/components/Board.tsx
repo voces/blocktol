@@ -156,7 +156,10 @@ export const Board = (
       )}
       {!Number.isNaN(date) && (
         <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
-          {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+          {new Intl.DateTimeFormat(undefined, {
+            dateStyle: "medium",
+            timeZone: "UTC",
+          }).format(
             new Date(date),
           )}
         </text>

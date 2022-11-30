@@ -157,9 +157,6 @@ export class Player {
 
   async sendDailyTimes(daily?: Daily) {
     daily = daily ?? this.daily;
-    const loaded = daily.year === this.daily.year &&
-      daily.month === this.daily.month &&
-      daily.day === this.daily.day;
 
     // We don't need to refetch if loaded...
     const iterationPromise = getDailyIteration(
@@ -168,18 +165,13 @@ export class Player {
       daily.day,
     );
 
-    const [iteration, times, attempts] = await Promise.all([
-      iterationPromise,
-
-      (this.#dailyTimes &&
-          (!daily ||
-            loaded))
-        ? this.#dailyTimes
-        : (async () => {
-          const iteration = await iterationPromise;
-          if (!iteration) return;
-          return getIterationTimes(iteration.iteration);
-        })(),
+    const [[iteration, times], attempts] = await Promise.all([
+      iterationPromise.then(async (iteration) =>
+        [
+          iteration,
+          iteration && await getIterationTimes(iteration.iteration),
+        ] as const
+      ),
 
       dailyAttempts(this.id, daily.year, daily.month, daily.day),
     ]);
