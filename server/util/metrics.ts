@@ -1,3 +1,5 @@
+import { Env, env } from "./env.ts";
+
 const apiKey = Deno.env.get("NEW_RELIC_API_KEY");
 
 if (!apiKey) throw new Error("NEW_RELIC_API_KEY unset");
@@ -32,6 +34,7 @@ setInterval(() => {
           value,
           timestamp: start,
           "interval.ms": now - start,
+          attributes: { env },
         })),
       }]),
     });
@@ -53,7 +56,7 @@ setInterval(() => {
   }
 }, 15_000);
 
-const postEvents = <T extends { eventType: EventType }>(
+const postEvents = <T extends { eventType: EventType; env: Env }>(
   event: T | T[],
 ) => {
   if (Array.isArray(event)) events.push(...event);
@@ -61,7 +64,7 @@ const postEvents = <T extends { eventType: EventType }>(
 };
 
 export const loginEvent = (userId: string) =>
-  postEvents({ eventType: "blocktol_login", userId });
+  postEvents({ eventType: "blocktol_login", env, userId });
 
 export const runEvents = (
   events: {
@@ -70,4 +73,4 @@ export const runEvents = (
     duration: number;
     percentile: number;
   }[],
-) => postEvents(events.map((e) => ({ eventType: "blocktol_run", ...e })));
+) => postEvents(events.map((e) => ({ eventType: "blocktol_run", env, ...e })));
