@@ -10,7 +10,7 @@ export const Button = (
         padding: 8,
         borderRadius: 4,
         margin: 1,
-        backgroundColor: "var(--maze-player-thunder)",
+        backgroundColor: "var(--maze-checkpoint)",
         color: "white",
         fontWeight: "bold",
         border: 0,

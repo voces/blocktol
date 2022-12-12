@@ -2,6 +2,7 @@ import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { newGrid } from "../../../common/pathing.ts";
 import {
+  DailyMessage,
   RunMessage,
   StartMessage,
 } from "../../../common/serverToClientMessage.ts";
@@ -29,6 +30,7 @@ export const useInit = () => {
     setLastRating,
     rating: lastRating,
     setDate,
+    setAttempts,
   } = useContext(GameStateContext);
 
   useEffect(() => {
@@ -68,8 +70,8 @@ export const useInit = () => {
       setCheckpoint({ x: -2, y: -2 });
       setBlocks([]);
       setThunders([]);
-      setBricks(0);
-      setPower(0);
+      setBricks(-1);
+      setPower(-1);
       setRun(undefined);
       setInvalid(false);
       setTransitionBlock(undefined);
@@ -77,10 +79,14 @@ export const useInit = () => {
     };
     connection.addEventListener("connect", connectCallback);
 
+    const dailyCallback = ({ attempts }: DailyMessage) => setAttempts(attempts);
+    connection.addEventListener("daily", dailyCallback);
+
     return () => {
       connection.removeEventListener("start", startCallback);
       connection.removeEventListener("disconnect", disconnectCallback);
       connection.removeEventListener("connect", connectCallback);
+      connection.removeEventListener("daily", dailyCallback);
     };
   }, [connection]);
 

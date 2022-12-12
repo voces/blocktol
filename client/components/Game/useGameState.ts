@@ -1,6 +1,7 @@
 import { createContext } from "preact";
 import { useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
+import { DailyMessage } from "../../../common/serverToClientMessage.ts";
 import { Point } from "../../../common/types.ts";
 
 export const GameStateContext = createContext<
@@ -51,6 +52,7 @@ export const useGameState = () => {
   const [lastRating, setLastRating] = useState(NaN);
   const [rating, setRating] = useState(NaN);
   const [date, setDate] = useState(NaN);
+  const [attempts, setAttempts] = useState<DailyMessage["attempts"]>();
 
   return {
     blocks,
@@ -86,5 +88,7 @@ export const useGameState = () => {
     time,
     touching,
     transitionBlock,
+    attempts,
+    setAttempts,
   };
 };

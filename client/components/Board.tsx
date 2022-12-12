@@ -5,6 +5,7 @@ import { Disconnected } from "./Disconnected.tsx";
 import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
+import { Timer } from "./Timer.tsx";
 
 export const Board = (
   {
@@ -118,12 +119,12 @@ export const Board = (
       <rect x={19} y={0} width={1} height={20} fill="var(--maze-wall)" />
       {bricks >= 0 && (
         <text x={1} y={0.8} font-size={0.8} fill="var(--maze-text)">
-          🧱{bricks}
+          🧱 {bricks}
         </text>
       )}
       {power >= 0 && (
         <text x={3.4} y={0.8} font-size={0.8} fill="var(--maze-text)">
-          ⚡{power}
+          ❄️ {power}
         </text>
       )}
       {time > 0 && (
@@ -215,14 +216,25 @@ export const Board = (
         />
       )}
       {run && (
-        <Runner
-          {...run}
-          onFinish={onFinish}
-          onSlow={(thunder) =>
-            onSlow(
-              thunders.find((t) => thunder.x === t.x && thunder.y === t.y)!,
-            )}
-        />
+        <>
+          <text
+            x={18.8}
+            y={0.8}
+            font-size={0.8}
+            fill="var(--maze-text)"
+            text-anchor="end"
+          >
+            <Timer to={run.duration} /> seconds
+          </text>
+          <Runner
+            {...run}
+            onFinish={onFinish}
+            onSlow={(thunder) =>
+              onSlow(
+                thunders.find((t) => thunder.x === t.x && thunder.y === t.y)!,
+              )}
+          />
+        </>
       )}
       {debug && grid.flatMap((row, y) =>
         row.map((value, x) =>

@@ -1,6 +1,12 @@
-import { h } from "preact";
+import { ComponentChildren, Fragment, h } from "preact";
 import { Board } from "./Board.tsx";
-import { useCallback, useEffect, useRef, useState } from "preact/compat";
+import {
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "preact/compat";
 import { Point } from "../../common/types.ts";
 
 const initialBlocks = [
@@ -91,11 +97,66 @@ const storedRun = {
   ],
 };
 
-export const IntroBoard = () => {
+const Tooltip = (
+  { children, left, right, top, bottom }: {
+    children: ComponentChildren;
+    left?: CSSProperties["left"];
+    right?: CSSProperties["left"];
+    top?: CSSProperties["top"];
+    bottom?: CSSProperties["bottom"];
+  },
+) => (
+  <>
+    <div
+      className={`tooltip-arrow ${top !== undefined ? "top" : "bottom"}`}
+      style={{
+        top,
+        bottom,
+        left: left !== undefined ? `calc(${left} + 3%)` : undefined,
+        right: right !== undefined ? `calc(${right} + 3%)` : undefined,
+      }}
+    />
+    <div className="tooltip" style={{ top, left, right, bottom }}>
+      {children}
+    </div>
+  </>
+);
+
+const Tip = ({ children, left, right, top, bottom, onSkip, onNext }: {
+  children: ComponentChildren;
+  left?: CSSProperties["left"];
+  right?: CSSProperties["right"];
+  top?: CSSProperties["top"];
+  bottom?: CSSProperties["bottom"];
+  onSkip: () => void;
+  onNext: () => void;
+}) => (
+  <Tooltip
+    left={left}
+    right={right}
+    top={top}
+    bottom={bottom}
+  >
+    {children}
+    <div
+      style={{
+        justifyContent: "right",
+        marginTop: 4,
+        display: "flex",
+        gap: 16,
+      }}
+    >
+      <a onClick={onSkip}>Skip</a>
+      <a onClick={onNext}>Next</a>
+    </div>
+  </Tooltip>
+);
+
+export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [blocks, setBlocks] = useState(initialBlocks);
   const [thunders, setThunders] = useState<typeof initialBlocks>([]);
-  const [time, setTime] = useState(9);
+  const [time, setTime] = useState(7);
   const [run, setRun] = useState<
     {
       path: Point[];
@@ -103,36 +164,77 @@ export const IntroBoard = () => {
       slows: { time: number; thunder: Point }[];
     }
   >();
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [attemptStep, setAttemptStep] = useState(0);
+  const lastAttemptStepRef = useRef(0);
+
+  const advance = useCallback(() => {
+    setOnboardingStep((step) => {
+      step++;
+
+      if (step === 6) setAttemptStep(7);
+      else if (step === 7) setAttemptStep(9);
+      else if (step === 8) onDone();
+
+      return step;
+    });
+  }, []);
 
   useEffect(() => {
-    let step = 0;
-    const interval = setInterval(() => {
+    let interval = -1;
+
+    if (onboardingStep === 5) {
+      interval = setInterval(() => {
+        setAttemptStep((step) => {
+          if (step > 6) {
+            clearInterval(interval);
+            return step;
+          }
+          return step + 1;
+        });
+      }, 750);
+    } else if (onboardingStep === 6) {
+      interval = setInterval(() => {
+        setAttemptStep((step) => {
+          if (step > 7) {
+            clearInterval(interval);
+            return step;
+          }
+          return step + 1;
+        });
+      }, 750);
+    }
+
+    return () => clearInterval(interval);
+  }, [onboardingStep]);
+
+  useEffect(() => {
+    for (
+      let step = lastAttemptStepRef.current;
+      step < attemptStep;
+      step++
+    ) {
       if (step === 0) setBlocks((b) => [...b, { x: 16, y: 14, local: true }]);
       if (step === 1) setBlocks((b) => b.filter((_, i) => i !== 32));
       if (step === 2) setBlocks((b) => [...b, { x: 12, y: 12, local: true }]);
       if (step === 3) setBlocks((b) => [...b, { x: 10, y: 12, local: true }]);
-      if (step === 4) {
-        setBlocks((b) => b.filter((_, i) => i !== 34));
+      if (step === 4) setBlocks((b) => b.filter((_, i) => i !== 32));
+      if (step === 5) setBlocks((b) => [...b, { x: 2, y: 2, local: true }]);
+      if (step === 6) setBlocks((b) => [...b, { x: 2, y: 4, local: true }]);
+      if (step === 7) {
+        setBlocks((b) => b.filter((_, i) => i !== 33));
         setThunders((t) => [...t, { x: 12, y: 12, local: true }]);
       }
-      if (step === 5) setBlocks((b) => b.filter((_, i) => i !== 32));
-      if (step === 6) setBlocks((b) => [...b, { x: 2, y: 2, local: true }]);
-      if (step === 7) setBlocks((b) => [...b, { x: 2, y: 4, local: true }]);
-      if (step === 8) setRun(storedRun);
-      if (step === 40) {
-        setBlocks(initialBlocks);
-        setThunders([]);
-        setRun(undefined);
-        setTime(9);
-        step = -1;
+      if (step === 8) {
+        setTime(-1);
+        setRun(storedRun);
       }
 
-      setTime((t) => t - 1);
-      step++;
-    }, 1_000);
+      setTime((t) => t - 0.75);
+    }
 
-    return () => clearInterval(interval);
-  }, []);
+    lastAttemptStepRef.current = attemptStep;
+  }, [attemptStep]);
 
   const onSlow = useCallback((thunder: Point) => {
     // Animate thunder tower
@@ -159,27 +261,78 @@ export const IntroBoard = () => {
   }, []);
 
   return (
-    <Board
-      placingBlock={{ x: 0, y: 0, placing: false }}
-      touching={false}
-      time={time}
-      svgRef={svgRef}
-      transitionBlock={undefined}
-      power={run ? -1 : 1 - thunders.length}
-      thunders={thunders}
-      thunderHover={undefined}
-      bricks={run ? -1 : 37 - blocks.length - thunders.length}
-      blocks={blocks}
-      checkpoint={{ x: 10.5, y: 4.5 }}
-      invalid={false}
-      run={run}
-      onFinish={() => {}}
-      grid={[]}
-      disconnected={false}
-      onSlow={onSlow}
-      rating={NaN}
-      lastRating={NaN}
-      date={NaN}
-    />
+    <>
+      <Board
+        placingBlock={{ x: 0, y: 0, placing: false }}
+        touching={false}
+        time={Math.round(time)}
+        svgRef={svgRef}
+        transitionBlock={undefined}
+        power={run ? -1 : 1 - thunders.length}
+        thunders={thunders}
+        thunderHover={undefined}
+        bricks={run ? -1 : 37 - blocks.length - thunders.length}
+        blocks={blocks}
+        checkpoint={{ x: 10.5, y: 4.5 }}
+        invalid={false}
+        run={run}
+        onFinish={onDone}
+        grid={[]}
+        disconnected={false}
+        onSlow={onSlow}
+        rating={NaN}
+        lastRating={NaN}
+        date={NaN}
+      />
+      <div
+        style={{
+          width: "min(800px, 100vw, calc(100vh - 110px))",
+          height: 0,
+          paddingBottom: "min(800px, 100vw, 100vh - 110px)",
+          margin: "calc(-1 * min(800px, 100vw, 100vh - 110px)) auto 0",
+          position: "relative",
+          fontSize: "calc(min(400px, 100vw, 100vh - 110px) / 20)",
+          filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
+          backgroundColor: onboardingStep < 7 ? "#0001" : undefined,
+        }}
+        onClick={advance}
+      >
+        {onboardingStep === 0 && (
+          <Tip top="6.5%" left="2%" onNext={advance} onSkip={onDone}>
+            Bricks indicate how many blocks you can place.
+          </Tip>
+        )}
+        {onboardingStep === 1 && (
+          <Tip top="6.5%" left="14%" onNext={advance} onSkip={onDone}>
+            Snowflakes indicate how many blocks you can upgrade.
+          </Tip>
+        )}
+        {onboardingStep === 2 && (
+          <Tip bottom="6.5%" left="42.5%" onNext={advance} onSkip={onDone}>
+            The runner is released from the bottom…
+          </Tip>
+        )}
+        {onboardingStep === 3 && (
+          <Tip top="31%" left="52.5%" onNext={advance} onSkip={onDone}>
+            …heads towards the checkpoint…
+          </Tip>
+        )}
+        {onboardingStep === 4 && (
+          <Tip top="6.5%" left="47.5%" onNext={advance} onSkip={onDone}>
+            …and then towards the top.
+          </Tip>
+        )}
+        {onboardingStep === 5 && (
+          <Tip bottom="30.75%" right="10%" onNext={advance} onSkip={onDone}>
+            Place blocks to elongate the runner's path.
+          </Tip>
+        )}
+        {onboardingStep === 6 && (
+          <Tip bottom="40.75%" right="30%" onNext={advance} onSkip={onDone}>
+            Upgrade blocks to slow the runner as they pass.
+          </Tip>
+        )}
+      </div>
+    </>
   );
 };

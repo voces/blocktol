@@ -11,6 +11,7 @@ const isStartMessage = is.object({
   bricks: is.number,
   minTime: is.number,
   rating: is.number,
+  attempts: is.number,
 });
 export type StartMessage = GuardedType<typeof isStartMessage>;
 

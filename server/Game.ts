@@ -164,6 +164,7 @@ class Game {
       power: this.#power,
       bricks: this.#bricks,
       minTime: this.#minTime,
+      attempts: -1,
     } as const;
 
     broadcast(message);
@@ -351,6 +352,8 @@ class Game {
 
     player.sendDailyTimes();
 
+    return;
+
     this.#players.add(player);
     if (this.#status === "idle") {
       if (isLeader() && !this.#started) this.start();
@@ -372,6 +375,7 @@ class Game {
         bricks: this.#bricks,
         minTime: this.#minTime,
         rating: player.rating,
+        attempts: -1,
       });
     }
 

@@ -194,18 +194,26 @@ export class Player {
     )[0];
 
     this.send({
-      kind: "log",
-      source: "server",
-      time: Date.now(),
-      message:
-        `Blocktol \\localDate(${daily.year}, ${daily.month}, ${daily.day})\n${
-          attempts.map((duration) =>
-            `${duration}s (p${
-              formatPercentile(reverseTween(times, duration, minTime))
-            })`
-          ).join("\n")
-        }`,
+      kind: "daily",
+      attempts: attempts.map((duration) => ({
+        duration,
+        percentile: reverseTween(times, duration, minTime),
+      })),
     });
+
+    // this.send({
+    //   kind: "log",
+    //   source: "server",
+    //   time: Date.now(),
+    //   message:
+    //     `Blocktol \\localDate(${daily.year}, ${daily.month}, ${daily.day})\n${
+    //       attempts.map((duration) =>
+    //         `${duration}s (p${
+    //           formatPercentile(reverseTween(times, duration, minTime))
+    //         })`
+    //       ).join("\n")
+    //     }`,
+    // });
   }
 
   async dailyStep() {
@@ -217,7 +225,7 @@ export class Player {
     );
     this.remainingDailyAttempts = 3 - attempts.length;
 
-    if (this.remainingDailyAttempts === 0) return game.addPlayer(this, true);
+    if (this.remainingDailyAttempts === 0) return this.sendDailyTimes(); // game.addPlayer(this, true);
 
     const daily = await getDailyIteration(
       this.daily.year,
@@ -271,6 +279,7 @@ export class Player {
       bricks: this.bricks,
       minTime: 0, // Only used S <-> S
       rating: this.rating,
+      attempts: this.remainingDailyAttempts,
     });
 
     this.dailyTimeout = setTimeout(
