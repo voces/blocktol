@@ -240,7 +240,7 @@ export class Player {
 
       if (this.#remainingDailyAttempts === 0) {
         this.#doingDaily = false;
-        this.status = "afk";
+        this.status = "init";
         return this.sendDailyTimes();
       }
     }
@@ -341,7 +341,7 @@ export class Player {
       logRuns([{ player: this.id, rating: this.rating, duration }], iteration);
     }
 
-    this.status = "afk";
+    this.status = "init";
     this.#timeout = setTimeout(() => this.play(), duration * 1_000);
   }
 
