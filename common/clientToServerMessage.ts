@@ -24,16 +24,20 @@ export type TransitionBlockMessage = GuardedType<
   typeof isTransitionBlockMessage
 >;
 
-const isChatMessage = is.object({
-  kind: is.const("chat"),
-  message: is.string,
+const isListMessage = is.object({ kind: is.const("list") });
+export type ListMessage = GuardedType<typeof isListMessage>;
+
+const isPlayMessage = is.object({
+  kind: is.const("play"),
+  iteration: is.union(is.number, is.undefined),
 });
-export type ChatMessage = GuardedType<typeof isChatMessage>;
+export type PlayMessage = GuardedType<typeof isPlayMessage>;
 
 export const isMessage = is.union(
   isLoginMessage,
   isBlockMessage,
   isTransitionBlockMessage,
-  isChatMessage,
+  isListMessage,
+  isPlayMessage,
 );
 export type ClientToServerMessage = GuardedType<typeof isMessage>;

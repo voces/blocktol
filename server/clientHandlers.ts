@@ -1,13 +1,17 @@
 import {
   BlockMessage,
-  ChatMessage,
   LoginMessage,
+  PlayMessage,
   TransitionBlockMessage,
 } from "../common/clientToServerMessage.ts";
 import { offsets } from "../common/constants.ts";
 import { findPath } from "../common/pathing.ts";
-import { createOrUpdateUser, dailyAttempts, getUserPlays } from "./db/user.ts";
-import { game } from "./Game.ts";
+import {
+  createOrUpdateUser,
+  dailyAttempts,
+  getUserPlays,
+  listDailies,
+} from "./db/user.ts";
 import { Player } from "./Player.ts";
 import { loginEvent } from "./util/metrics.ts";
 
@@ -45,16 +49,14 @@ export const clientHandlers = {
       day,
     )).length;
 
-    game.addPlayer(
-      new Player(
-        socket,
-        message.id,
-        name,
-        rating,
-        plays,
-        remainingDailyAttempts,
-        { year, month, day },
-      ),
+    new Player(
+      socket,
+      message.id,
+      name,
+      rating,
+      plays,
+      remainingDailyAttempts,
+      { year, month, day },
     );
   },
   block: (socket: WebSocket, { x, y }: BlockMessage) => {
@@ -107,7 +109,7 @@ export const clientHandlers = {
     if (block.thunder) player.power++;
     player.blocks.splice(player.blocks.indexOf(block), 1);
   },
-  chat: (socket: WebSocket, { message }: ChatMessage) => {
+  list: async (socket: WebSocket) => {
     const player = Player.from(socket);
 
     if (!player) {
@@ -115,10 +117,18 @@ export const clientHandlers = {
       return socket.close();
     }
 
-    if (message.length > 100) return player.close("invalid chat message");
+    player.send({ kind: "list", items: await listDailies(player.id) });
+  },
+  play: (socket: WebSocket, { iteration }: PlayMessage) => {
+    const player = Player.from(socket);
 
-    const self = player.chatTokens === 0;
-    player.chatTokens = Math.max(player.chatTokens - 1, 0);
-    game.chat(player, message, self);
+    if (!player) {
+      console.log(new Date(0), "Closing missing player");
+      return socket.close();
+    }
+
+    if (player.status !== "afk") return;
+
+    player.play(iteration);
   },
 };

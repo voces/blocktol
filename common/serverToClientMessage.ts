@@ -17,9 +17,10 @@ export type StartMessage = GuardedType<typeof isStartMessage>;
 
 const isRunMessage = is.object({
   kind: is.const("run"),
+  iteration: is.number,
   path: is.array(isPoint),
   duration: is.number,
-  percentile: is.union(is.number, is.null),
+  percentile: is.number,
   slows: is.array(is.object({ time: is.number, thunder: isPoint })),
   rating: is.number,
 });
@@ -38,6 +39,19 @@ const isDailyMessage = is.object({
   attempts: is.array(is.object({ duration: is.number, percentile: is.number })),
 });
 export type DailyMessage = GuardedType<typeof isDailyMessage>;
+
+const isListMessage = is.object({
+  kind: is.const("list"),
+  items: is.array(
+    is.object({
+      iteration: is.number,
+      daily: is.tuple(is.number, is.number, is.number),
+      percent: is.union(is.number, is.null),
+    }),
+  ),
+});
+export type ListMessage = GuardedType<typeof isListMessage>;
+
 export type MessageMap = {
   start: StartMessage;
   run: RunMessage;
@@ -45,10 +59,11 @@ export type MessageMap = {
   daily: DailyMessage;
   disconnect: never;
   connect: never;
+  list: ListMessage;
 };
 
 export type Message = MessageMap[keyof MessageMap];
 
 export const isMessage = (value: unknown): value is Message =>
   isStartMessage(value) || isRunMessage(value) || isLogMessage(value) ||
-  isDailyMessage(value);
+  isDailyMessage(value) || isListMessage(value);

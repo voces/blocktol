@@ -4,15 +4,11 @@ import { GameStateContext } from "./useGameState.ts";
 import { Card } from "../Card.tsx";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import { Button } from "../Button.tsx";
-
-const isTouchEvent = (
-  e:
-    | h.JSX.TargetedTouchEvent<HTMLDivElement>
-    | h.JSX.TargetedMouseEvent<HTMLDivElement>,
-): e is h.JSX.TargetedTouchEvent<HTMLDivElement> => e.type === "touchstart";
+import { ConnectionContext } from "../../contexts/Connection.ts";
 
 export const Daily = () => {
-  const { attempts } = useContext(GameStateContext);
+  const connection = useContext(ConnectionContext);
+  const { attempts, setAttempts } = useContext(GameStateContext);
   const [tooltip, setTooltip] = useState<
     { left: number; top: number; tooltip: ComponentChildren } | null
   >(null);
@@ -31,7 +27,9 @@ export const Daily = () => {
     navigator.clipboard.write([
       new ClipboardItem({
         "text/plain": new Blob([
-          e.currentTarget.parentElement!.innerText.slice(0, -6), // -6 removes "\nShare"
+          (e.currentTarget.parentElement!.parentElement!
+            .firstElementChild as HTMLDivElement)
+            .innerText,
         ], {
           type: "text/plain",
         }),
@@ -39,11 +37,11 @@ export const Daily = () => {
     ]);
 
     const rect = e.currentTarget.parentElement!.parentElement!.parentElement!
-      .parentElement!
+      .parentElement!.parentElement!
       .getBoundingClientRect();
     setTooltip({
       left: e.clientX - rect.left - 20,
-      top: e.clientY - rect.top,
+      top: e.clientY - rect.top - 20,
       tooltip: "Copied!",
     });
     setTimeoutId(setTimeout(() => setTooltip(null), 750));
@@ -62,6 +60,9 @@ export const Daily = () => {
           left: "50%",
           transform: "translate(-50%, -50%)",
           fontSize: "125%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
         }}
       >
         <div>
@@ -73,9 +74,23 @@ export const Daily = () => {
           {attempts.map(({ duration, percentile }) => (
             <div>{duration}s (p{formatPercentile(percentile)})</div>
           ))}
-          <div style={{ height: 8 }} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <Button style={{ width: "100%" }} onClick={clipboardHandler}>
             Share
+          </Button>
+          <Button
+            style={{
+              width: "100%",
+              backgroundColor: "var(--slow-runner)",
+            }}
+            onClick={() => {
+              connection.send({ kind: "list" });
+              // connection.send({ kind: "play" });
+              setAttempts(undefined);
+            }}
+          >
+            Keep playing
           </Button>
         </div>
       </Card>

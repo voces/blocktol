@@ -6,15 +6,19 @@ import { Message } from "../common/serverToClientMessage.ts";
 import { Point } from "../common/types.ts";
 import {
   getDailyIteration,
+  getDailyIterationId,
+  getIteration,
+  getIterationCount,
   getIterationTimes,
   logRuns,
 } from "./db/iteration.ts";
 import { dailyAttempts } from "./db/user.ts";
-import { BUILD_TIME, game } from "./Game.ts";
 import { reverseTween } from "./util/math.ts";
 import { runEvents } from "./util/metrics.ts";
 
-type PlayerStatus = "midjoin" | "afk" | "playing";
+type PlayerStatus = "init" | "afk" | "loading" | "playing";
+
+const BUILD_TIME = 60;
 
 export const TOKEN_MAX = 10;
 export const CHAT_TOKEN_MAX = 5;
@@ -31,7 +35,7 @@ export class Player {
   #websocket: WebSocket;
   plays: number;
   rating: number;
-  status: PlayerStatus = "midjoin";
+  status: PlayerStatus = "init";
 
   grid: boolean[][] = [];
   checkpoint: Point = { x: 0, y: 0 };
@@ -39,13 +43,12 @@ export class Player {
   bricks = 0;
   power = 0;
   #gameThunders: Point[] = [];
-  tokens = TOKEN_MAX;
-  chatTokens = CHAT_TOKEN_MAX;
-  remainingDailyAttempts: number;
-  dailyTimeout: number | undefined;
-  #dailyTimes: Promise<number[]> | undefined;
-  #dailyMinTime: number | undefined;
-  #dailyIteration: number | undefined;
+  #remainingDailyAttempts: number;
+  #timeout: number | undefined;
+  #iteration: number | undefined;
+  #iterationTimes: Promise<number[]> | undefined;
+  #iterationMinTime: number | undefined;
+  #doingDaily = true;
 
   private static map = new WeakMap<WebSocket, Player>();
 
@@ -61,11 +64,11 @@ export class Player {
     this.#websocket = websocket;
     this.plays = plays;
     this.rating = rating;
-    this.remainingDailyAttempts = remainingDailyAttempts;
-
-    websocket.addEventListener("close", () => game.removePlayer(this));
+    this.#remainingDailyAttempts = remainingDailyAttempts;
 
     Player.map.set(websocket, this);
+
+    this.play();
   }
 
   get logName() {
@@ -112,7 +115,7 @@ export class Player {
   close(reason: string) {
     console.log(new Date(), "Closing", reason);
     this.#websocket.close();
-    clearInterval(this.dailyTimeout);
+    clearInterval(this.#timeout);
   }
 
   run(times: number[], min: number) {
@@ -132,7 +135,11 @@ export class Player {
     const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
     const actualPercentile = times.length === 0
       ? expectedPercentile
-      : reverseTween(times, duration, min < duration ? min : duration);
+      : reverseTween(
+        [...times.slice(0, 1000), duration].sort((a, b) => a - b),
+        duration,
+        min < duration ? min : duration,
+      );
     // A player is only ranked if they place a block (i.e., AFKs are ignored)
     if (this.status === "playing" && times.length > 0) {
       const change = K / Math.log2(this.plays + 2) *
@@ -141,10 +148,11 @@ export class Player {
       this.rating += change;
       this.plays++;
     }
-    const percentile = times.length === 0 ? null : actualPercentile;
+    const percentile = times.length === 0 ? 1 : actualPercentile;
 
     this.send({
       kind: "run",
+      iteration: this.#iteration!,
       path: path ?? [],
       duration,
       percentile,
@@ -200,108 +208,115 @@ export class Player {
         percentile: reverseTween(times, duration, minTime),
       })),
     });
-
-    // this.send({
-    //   kind: "log",
-    //   source: "server",
-    //   time: Date.now(),
-    //   message:
-    //     `Blocktol \\localDate(${daily.year}, ${daily.month}, ${daily.day})\n${
-    //       attempts.map((duration) =>
-    //         `${duration}s (p${
-    //           formatPercentile(reverseTween(times, duration, minTime))
-    //         })`
-    //       ).join("\n")
-    //     }`,
-    // });
   }
 
-  async dailyStep() {
-    const attempts = await dailyAttempts(
-      this.id,
-      this.daily.year,
-      this.daily.month,
-      this.daily.day,
-    );
-    this.remainingDailyAttempts = 3 - attempts.length;
+  async play(iteration?: number) {
+    if (this.status === "playing" || this.status === "loading") {
+      this.close("attempt to start new round while playing");
+    }
 
-    if (this.remainingDailyAttempts === 0) return this.sendDailyTimes(); // game.addPlayer(this, true);
+    if (this.#doingDaily) {
+      iteration = await getDailyIterationId(
+        this.daily.year,
+        this.daily.month,
+        this.daily.day,
+      );
+    }
 
-    const daily = await getDailyIteration(
-      this.daily.year,
-      this.daily.month,
-      this.daily.day,
-    );
-    if (!daily) return this.close("missing daily");
+    if (iteration === undefined) iteration = this.#iteration;
 
-    console.log(
-      new Date(),
-      this.logName,
-      "performing daily",
-      this.daily,
-      `(${daily.iteration})`,
-      "with",
-      this.remainingDailyAttempts,
-      "attempts remaining",
-    );
+    if (this.#doingDaily) {
+      if (this.status === "afk") {
+        this.close("attempt to start new round while doing daily");
+      }
+
+      const attempts = await dailyAttempts(
+        this.id,
+        this.daily.year,
+        this.daily.month,
+        this.daily.day,
+      );
+      this.#remainingDailyAttempts = 3 - attempts.length;
+
+      if (this.#remainingDailyAttempts === 0) {
+        this.#doingDaily = false;
+        this.status = "afk";
+        return this.sendDailyTimes();
+      }
+    }
+
+    if (!iteration) iteration = await this.getRandomIteration();
+
+    clearTimeout(this.#timeout);
+    this.status = "loading";
+
+    const details = await getIteration(iteration);
+    if (!details) return this.close("missing iteration");
+
+    if (this.#doingDaily) {
+      console.log(
+        new Date(),
+        this.logName,
+        "playing daily",
+        this.daily,
+        `(${details.iteration})`,
+        "with",
+        this.#remainingDailyAttempts,
+        "attempts remaining",
+      );
+    } else console.log(new Date(), this.logName, "playing", details.iteration);
 
     const grid = newGrid();
-    grid[daily.checkpoint.y + 0.5][daily.checkpoint.x + 0.5] = true;
-    for (const { x, y } of daily.thunders) {
+    grid[details.checkpoint.y + 0.5][details.checkpoint.x + 0.5] = true;
+    for (const { x, y } of details.thunders) {
       offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
     }
-    for (const { x, y } of daily.blocks) {
+    for (const { x, y } of details.blocks) {
       offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
     }
 
     this.startRound(
       grid,
-      daily.checkpoint,
-      daily.bricks,
-      daily.power,
-      daily.thunders,
+      details.checkpoint,
+      details.bricks,
+      details.power,
+      details.thunders,
     );
 
-    this.#dailyMinTime = pathDuration(
+    this.#iterationMinTime = pathDuration(
       findPath(this.grid, this.checkpoint) ?? [],
-      daily.thunders,
+      details.thunders,
     )[0];
-    this.#dailyIteration = daily.iteration;
+    this.#iteration = details.iteration;
 
     this.send({
       kind: "start",
-      date: new Date(daily.date).getTime(),
+      date: new Date(details.date).getTime(),
       time: BUILD_TIME,
       checkpoint: this.checkpoint,
-      thunders: daily.thunders,
-      blocks: daily.blocks,
+      thunders: details.thunders,
+      blocks: details.blocks,
       power: this.power,
       bricks: this.bricks,
       minTime: 0, // Only used S <-> S
       rating: this.rating,
-      attempts: this.remainingDailyAttempts,
+      attempts: this.#remainingDailyAttempts,
     });
 
-    this.dailyTimeout = setTimeout(
-      () => this.#startDailyRunner(),
-      BUILD_TIME * 1_000,
-    );
+    this.#timeout = setTimeout(() => this.#startRunner(), BUILD_TIME * 1_000);
 
-    this.#dailyTimes = getIterationTimes(daily.iteration);
+    this.#iterationTimes = getIterationTimes(details.iteration);
   }
 
-  async #startDailyRunner() {
-    const times = await this.#dailyTimes;
-    const minTime = this.#dailyMinTime;
-    const iteration = this.#dailyIteration;
+  async #startRunner() {
+    const times = await this.#iterationTimes;
+    const minTime = this.#iterationMinTime;
+    const iteration = this.#iteration;
     if (!times || !minTime || iteration === undefined) {
       return this.close("missing times");
     }
 
-    let max = -Infinity;
     const [duration, percentile, log] = this.run(times, minTime);
-
-    if (duration > max) max = duration;
 
     const now = Date.now();
     this.send({
@@ -326,7 +341,17 @@ export class Player {
       logRuns([{ player: this.id, rating: this.rating, duration }], iteration);
     }
 
-    this.dailyTimeout = setTimeout(() => this.dailyStep(), duration * 1_000);
+    this.status = "afk";
+    this.#timeout = setTimeout(() => this.play(), duration * 1_000);
+  }
+
+  #iterationCount = NaN;
+  async getRandomIteration() {
+    if (isNaN(this.#iterationCount)) {
+      this.#iterationCount = await getIterationCount();
+    }
+
+    return Math.ceil(Math.random() * this.#iterationCount);
   }
 
   static from(socket: WebSocket) {

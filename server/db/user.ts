@@ -1,3 +1,4 @@
+import { ListMessage } from "../../common/serverToClientMessage.ts";
 import { getDailyIterationId } from "./iteration.ts";
 import { sql } from "./query.ts";
 
@@ -51,3 +52,45 @@ export const dailyAttempts = async (
     ORDER BY created ASC
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
+
+export const listDailies = (
+  user: string,
+) =>
+  sql<
+    {
+      iteration: number;
+      created: number;
+      personalBest: number | null;
+      best: number | null;
+      worst: number | null;
+    }[]
+  >`
+  SELECT
+    id iteration,
+    iteration.created created,
+    ROUND(MAX(CASE WHEN user = ${user} THEN time ELSE null END), 2) personalBest,
+    MAX(time) best,
+    MIN(time) worst
+  FROM iteration
+  LEFT JOIN run ON iteration.id = run.iteration
+  WHERE id <= (
+    SELECT MAX(iteration) max
+    FROM run
+    WHERE user = ${user}
+  )
+  GROUP BY 1, 2
+  ORDER BY id DESC;`.then((d) =>
+    d.map((r): ListMessage["items"][number] => ({
+      iteration: r.iteration,
+      daily: [
+        new Date(r.created).getUTCFullYear(),
+        new Date(r.created).getUTCMonth() + 1,
+        new Date(r.created).getUTCDate(),
+      ],
+      percent: r.best && r.worst && r.personalBest
+        ? r.best === r.worst
+          ? 1
+          : (r.personalBest - r.worst) / (r.best - r.worst)
+        : null,
+    }))
+  );

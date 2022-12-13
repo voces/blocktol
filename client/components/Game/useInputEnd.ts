@@ -89,6 +89,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
     const mousedownCallback = (e: MouseEvent) => {
       if (isTouchSource(e)) return;
+      if (!(e.target instanceof SVGElement)) return;
       callback();
     };
     globalThis.addEventListener("mousedown", mousedownCallback);

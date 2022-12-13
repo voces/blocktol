@@ -276,7 +276,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         checkpoint={{ x: 10.5, y: 4.5 }}
         invalid={false}
         run={run}
-        onFinish={onDone}
+        onFinish={() => setTimeout(onDone, 1_000)}
         grid={[]}
         disconnected={false}
         onSlow={onSlow}
@@ -286,12 +286,12 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       />
       <div
         style={{
-          width: "min(800px, 100vw, calc(100vh - 110px))",
+          width: "var(--maze-size)",
           height: 0,
-          paddingBottom: "min(800px, 100vw, 100vh - 110px)",
-          margin: "calc(-1 * min(800px, 100vw, 100vh - 110px)) auto 0",
+          paddingBottom: "var(--maze-size)",
+          margin: "calc(-1 * var(--maze-size)) auto 0",
           position: "relative",
-          fontSize: "calc(min(400px, 100vw, 100vh - 110px) / 20)",
+          fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
           backgroundColor: onboardingStep < 7 ? "#0001" : undefined,
         }}

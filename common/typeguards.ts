@@ -85,7 +85,7 @@ type union = {
     typeguardD: (value: unknown) => value is D,
     typeguardE: (value: unknown) => value is E,
     typeguardF: (value: unknown) => value is F,
-  ): (value: unknown) => value is A | B | C | D | E;
+  ): (value: unknown) => value is A | B | C | D | E | F;
   <T>(
     ...typeguards: ((value: unknown) => value is T)[]
   ): (value: unknown) => value is T;

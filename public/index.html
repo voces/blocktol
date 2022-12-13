@@ -40,6 +40,8 @@
       --runner: hsl(300, 60%, 60%);
       --slow-runner: hsl(258, 36%, 53%);
       --brightness: 40%;
+      --maze-size: min(800px, 100vw, 100vh - 110px);
+      --header-size: 79.88px;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -75,7 +77,7 @@
 
     .tooltip {
       max-width: max(30%, 200px);
-      background: white;
+      background: var(--background);
       padding: 8px;
       border-radius: 4px;
       position: absolute;
@@ -84,18 +86,58 @@
 
     .tooltip-arrow {
       position: absolute;
-      border-width: calc(min(800px, 100vw, calc(100vh - 110px)) / 50);
+      border-width: calc(var(--maze-size) / 50);
       border-style: solid;
     }
 
     .tooltip-arrow.bottom {
-      margin-bottom: calc(min(800px, 100vw, calc(100vh - 110px)) / -25);
-      border-color: white transparent transparent transparent;
+      margin-bottom: calc(var(--maze-size) / -25);
+      border-color: var(--background) transparent transparent transparent;
     }
 
     .tooltip-arrow.top {
-      margin-top: calc(min(800px, 100vw, calc(100vh - 110px)) / -25);
-      border-color: transparent transparent white transparent;
+      margin-top: calc(var(--maze-size) / -25);
+      border-color: transparent transparent var(--background) transparent;
+    }
+
+    .daily-selector {
+      position: absolute;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+      padding: 8px 8px 0;
+      margin-top: -8px;
+      width: calc((100vw - var(--maze-size)) / 2);
+      max-height: calc(100vh - var(--header-size) + 8px);
+      overflow-y: auto;
+      overflow-x: visible;
+      color: white;
+    }
+
+    @media (orientation: portrait) {
+      .daily-selector {
+        top: calc(var(--maze-size) + var(--header-size) + 8px);
+        left: 0;
+        right: 0;
+        max-height: calc(100vh - var(--maze-size) - var(--header-size));
+        width: unset;
+      }
+    }
+
+    .daily-selector>span {
+      height: 0;
+      padding-top: 50%;
+      padding-bottom: 50%;
+      border-radius: 25%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .daily-selector>span.selected {
+      filter: drop-shadow(-0 0 4px var(--color));
     }
   </style>
 </head>

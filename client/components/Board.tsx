@@ -58,7 +58,7 @@ export const Board = (
 ) => (
   <div
     style={{
-      maxWidth: "min(800px, 100vw, calc(100vh - 110px))",
+      maxWidth: "var(--maze-size)",
       margin: "0 auto",
     }}
   >

@@ -10,6 +10,7 @@ import { GameStateContext } from "./useGameState.ts";
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { StartMessage } from "../../../common/serverToClientMessage.ts";
 import { Daily } from "./Daily.tsx";
+import { DailySelector } from "./DailySelector.tsx";
 
 export const Game = (
   { extraAttemptBannerTime }: { extraAttemptBannerTime?: boolean },
@@ -67,6 +68,7 @@ export const Game = (
 
   return (
     <>
+      <DailySelector />
       {/* <Log /> */}
       <Board
         placingBlock={placingBlockRef.current}
@@ -93,13 +95,13 @@ export const Game = (
       {attemptsRemaining > 0 && (
         <div
           style={{
-            width: "min(800px, 100vw, calc(100vh - 110px))",
+            width: "var(--maze-size)",
             height: 0,
-            paddingBottom: "min(800px, 100vw, 100vh - 110px)",
-            margin: "calc(-1 * min(800px, 100vw, 100vh - 110px)) auto 0",
+            paddingBottom: "var(--maze-size)",
+            margin: "calc(-1 * var(--maze-size)) auto 0",
             position: "relative",
             color: "var(--maze-text)",
-            lineHeight: "calc(min(800px, 100vw, calc(100vh - 110px)) / 3)",
+            lineHeight: "calc(var(--maze-size) / 3)",
             animation: `1s ease-out ${
               attemptsRemaining + (extraAttemptBannerTime ? 2 : 0) - 1
             }s attemptsLoad`,
