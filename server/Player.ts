@@ -323,6 +323,7 @@ export class Player {
 
       if (timeCounts.length > 0) {
         const best = Math.max(...attempts);
+        // Note: timeCounts has a length, so actualPercentile shouldn't ever fallback
         const actualPercentile = percentileFromTimeCounts(timeCounts, best) ??
           expectedPercentile;
         const change = K / Math.log2(this.plays + 2) *

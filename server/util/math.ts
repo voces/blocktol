@@ -63,6 +63,9 @@ export const percentileFromTimeCounts = (
     else if (time === duration) equal += count;
     else more += count;
   }
+
+  if (more === 0) return 1;
+
   const denominator = less + equal + more;
 
   if (denominator === 0) return;
