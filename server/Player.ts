@@ -45,10 +45,10 @@ export class Player {
 
   grid: boolean[][] = [];
   checkpoint: Point = { x: 0, y: 0 };
-  blocks: (Point & { thunder?: boolean })[] = [];
+  blocks: (Point & { thunder?: boolean; player?: boolean })[] = [];
   bricks = 0;
   power = 0;
-  #gameThunders: Point[] = [];
+  #thunders: Point[] = [];
   #remainingDailyAttempts: number;
   #timeout: number | undefined;
   #iteration: number | undefined;
@@ -107,7 +107,7 @@ export class Player {
       path ?? [],
       ...pathDuration(
         path,
-        [...this.#gameThunders, ...this.blocks.filter((b) => b.thunder)],
+        [...this.#thunders, ...this.blocks.filter((b) => b.thunder)],
       ),
     ] as const;
   }
@@ -162,7 +162,7 @@ export class Player {
     this.bricks = details.bricks;
     this.power = details.power;
     this.blocks = [];
-    this.#gameThunders = details.thunders;
+    this.#thunders = details.thunders;
 
     this.#iterationMinTime = pathDuration(
       findPath(this.grid, this.checkpoint) ?? [],
@@ -247,7 +247,7 @@ export class Player {
       date: new Date(details.date).getTime(),
       time: BUILD_TIME,
       checkpoint: this.checkpoint,
-      thunders: this.#gameThunders,
+      thunders: this.#thunders,
       blocks: details.blocks,
       power: this.power,
       bricks: this.bricks,
@@ -269,7 +269,16 @@ export class Player {
 
     if (this.status === "playing" || this.#doingDaily) {
       runEvents([{ userId: this.id, iteration, duration }]);
-      await logRun(iteration, this.id, duration, this.status !== "playing");
+      const serializedRun = this.blocks.filter((b) => b.player).map((b) =>
+        `${b.thunder ? "t" : ""}${b.x.toString().padStart(2, "0")}${b.y}`
+      ).join("\n");
+      await logRun(
+        iteration,
+        this.id,
+        duration,
+        this.status !== "playing",
+        serializedRun,
+      );
     }
 
     if (this.#doingDaily && this.#remainingDailyAttempts === 1) {

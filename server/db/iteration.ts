@@ -89,10 +89,11 @@ export const logRun = (
   user: string,
   duration: number,
   voidRun: boolean,
+  data: string,
 ) =>
   sql`
     INSERT INTO run (user, iteration, time, void, data)
-    VALUES (${user}, ${iteration}, ${duration}, ${voidRun}, "");`;
+    VALUES (${user}, ${iteration}, ${duration}, ${voidRun}, ${data});`;
 
 export const getDailyIterationId = (year: number, month: number, day: number) =>
   sql<{ id: number }[]>`

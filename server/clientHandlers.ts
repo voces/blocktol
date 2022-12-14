@@ -80,7 +80,7 @@ export const clientHandlers = {
 
     offsets.forEach(([xd, yd]) => player.grid[y + yd][x + xd] = true);
 
-    player.blocks.push({ x, y });
+    player.blocks.push({ x, y, player: true });
     player.bricks--;
   },
   transition: (socket: WebSocket, { x, y }: TransitionBlockMessage) => {
@@ -93,9 +93,7 @@ export const clientHandlers = {
 
     const block = player.blocks.find((b) => b.x === x && b.y === y);
 
-    if (!block) {
-      return player.close("invalid block");
-    }
+    if (!block) return player.close("invalid block");
 
     if (player.power && !block.thunder) {
       block.thunder = true;
