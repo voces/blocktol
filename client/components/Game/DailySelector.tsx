@@ -27,10 +27,10 @@ export const DailySelector = () => {
       setList((list): ListMessage["items"] => {
         const row = list.find((row) => row.iteration === run.iteration);
         if (!row) return list;
-        if (row.percent === null || row.percent < run.percentile) {
+        if (row.percent === null || row.percent < run.percent) {
           return list.map((row) =>
             row.iteration === run.iteration
-              ? ({ ...row, percent: run.percentile })
+              ? ({ ...row, percent: run.percent })
               : row
           );
         }

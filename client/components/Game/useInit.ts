@@ -37,6 +37,7 @@ export const useInit = () => {
     const startCallback = (
       { checkpoint, blocks, thunders, ...event }: StartMessage,
     ) => {
+      setRun(undefined);
       setLastRating(NaN);
       setCheckpoint(checkpoint);
       setThunders(thunders);

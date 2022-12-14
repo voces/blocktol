@@ -76,24 +76,8 @@ export class Player {
     this.play();
   }
 
-  get logName() {
+  get #logName() {
     return `'${this.id.slice(0, 8)}...${this.id.slice(-8)}'`;
-  }
-
-  startRound(
-    grid: boolean[][],
-    checkpoint: Point,
-    bricks: number,
-    power: number,
-    thunders: Point[],
-  ) {
-    this.grid = grid;
-    this.checkpoint = checkpoint;
-    this.bricks = bricks;
-    this.power = power;
-    this.blocks = [];
-    this.#gameThunders = thunders;
-    this.status = "afk";
   }
 
   send(message: Message) {
@@ -104,30 +88,18 @@ export class Player {
     }
   }
 
-  sendRunLog(username: string, duration: number, percentile: number | null) {
-    this.send({
-      kind: "log",
-      source: "server",
-      time: Date.now() + duration * 1_000,
-      message: `\\c${username}\\c lasted ${duration} seconds${
-        typeof percentile === "number"
-          ? ` (p${formatPercentile(percentile)})`
-          : ""
-      }.`,
-    });
-  }
-
   close(reason: string) {
-    console.log(new Date(), "Closing", reason);
+    console.log(new Date(), this.#logName, "Closing", reason);
     this.#websocket.close();
     clearInterval(this.#timeout);
   }
 
+  /** Calculates the path, duration, and slows for the current iteration. */
   run() {
     const path = findPath(this.grid, this.checkpoint);
 
     if (!path) {
-      console.log(new Date(), "no path?");
+      console.log(new Date(), this.#logName, "no path?");
       console.log(gridToString(this.grid, undefined, this.checkpoint));
     }
 
@@ -140,7 +112,11 @@ export class Player {
     ] as const;
   }
 
-  async sendDailyTimes(daily?: Daily) {
+  /**
+   * Send's the player the attempts for their daily, which includes the
+   * duration, percent, and percentile of feach attempt.
+   */
+  async #sendDailyTimes(daily?: Daily) {
     daily = daily ?? this.daily;
 
     // We don't need to refetch if loaded...
@@ -163,12 +139,40 @@ export class Player {
       kind: "daily",
       attempts: attempts.map((duration) => ({
         duration,
-        percentile: percentileFromTimeCounts(timeCounts, duration) ?? 1,
+        percentile: percentileFromTimeCounts(timeCounts, duration) ?? NaN,
       })),
     });
   }
 
-  async play(iteration?: number) {
+  async #initializeRun(iteration: number) {
+    const details = await getIteration(iteration);
+    if (!details) return this.close("missing iteration");
+
+    this.grid = newGrid();
+    this.grid[details.checkpoint.y + 0.5][details.checkpoint.x + 0.5] = true;
+    for (const { x, y } of details.thunders) {
+      offsets.forEach(([xd, yd]) => this.grid[y + yd][x + xd] = true);
+    }
+    for (const { x, y } of details.blocks) {
+      offsets.forEach(([xd, yd]) => this.grid[y + yd][x + xd] = true);
+    }
+
+    this.checkpoint = details.checkpoint;
+    this.bricks = details.bricks;
+    this.bricks = details.bricks;
+    this.power = details.power;
+    this.blocks = [];
+    this.#gameThunders = details.thunders;
+
+    this.#iterationMinTime = pathDuration(
+      findPath(this.grid, this.checkpoint) ?? [],
+      details.thunders,
+    )[0];
+
+    return details;
+  }
+
+  async playPrevalidate(iteration?: number) {
     if (this.status === "playing" || this.status === "loading") {
       this.close("attempt to start new round while playing");
     }
@@ -199,60 +203,51 @@ export class Player {
       if (this.#remainingDailyAttempts === 0) {
         this.#doingDaily = false;
         this.status = "init";
-        return this.sendDailyTimes();
+        return this.#sendDailyTimes();
       }
     }
 
-    if (!iteration) iteration = await this.getRandomIteration();
+    return iteration;
+  }
+
+  /**
+   * Attempts to start a new round. This includes
+   */
+  // TODO: need locking on this entire function
+  async play(iteration?: number) {
+    iteration = await this.playPrevalidate(iteration) ?? undefined;
+    if (iteration === undefined) return;
 
     clearTimeout(this.#timeout);
     this.status = "loading";
 
-    const details = await getIteration(iteration);
-    if (!details) return this.close("missing iteration");
+    if (!iteration) iteration = await this.#getRandomIteration();
+
+    const details = await this.#initializeRun(iteration);
+    if (!details) return;
+
+    this.#iteration = iteration;
+    this.status = "afk";
 
     if (this.#doingDaily) {
       console.log(
         new Date(),
-        this.logName,
+        this.#logName,
         "playing daily",
         this.daily,
-        `(${details.iteration})`,
+        `(${iteration})`,
         "with",
         this.#remainingDailyAttempts,
         "attempts remaining",
       );
-    } else console.log(new Date(), this.logName, "playing", details.iteration);
-
-    const grid = newGrid();
-    grid[details.checkpoint.y + 0.5][details.checkpoint.x + 0.5] = true;
-    for (const { x, y } of details.thunders) {
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-    }
-    for (const { x, y } of details.blocks) {
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-    }
-
-    this.startRound(
-      grid,
-      details.checkpoint,
-      details.bricks,
-      details.power,
-      details.thunders,
-    );
-
-    this.#iterationMinTime = pathDuration(
-      findPath(this.grid, this.checkpoint) ?? [],
-      details.thunders,
-    )[0];
-    this.#iteration = details.iteration;
+    } else console.log(new Date(), this.#logName, "playing", iteration);
 
     this.send({
       kind: "start",
       date: new Date(details.date).getTime(),
       time: BUILD_TIME,
       checkpoint: this.checkpoint,
-      thunders: details.thunders,
+      thunders: this.#gameThunders,
       blocks: details.blocks,
       power: this.power,
       bricks: this.bricks,
@@ -274,11 +269,11 @@ export class Player {
 
     if (this.status === "playing" || this.#doingDaily) {
       runEvents([{ userId: this.id, iteration, duration }]);
-      logRun(iteration, this.id, duration, this.status !== "playing");
+      await logRun(iteration, this.id, duration, this.status !== "playing");
     }
 
     if (this.#doingDaily && this.#remainingDailyAttempts === 1) {
-      markDaily(this.id, iteration);
+      await markDaily(this.id, iteration);
     }
 
     const [timeCounts, max] = await Promise.all([
@@ -288,7 +283,7 @@ export class Player {
     // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
     const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
     const percentile = percentileFromTimeCounts(timeCounts, duration) ??
-      1;
+      expectedPercentile;
 
     this.send({
       kind: "run",
@@ -314,7 +309,7 @@ export class Player {
     });
 
     if (this.#doingDaily && this.#remainingDailyAttempts === 1) {
-      console.log(new Date(), this.logName, "daily complete, logging result");
+      console.log(new Date(), this.#logName, "daily complete, logging result");
 
       const attempts = await dailyAttemptsByIteration(this.id, iteration);
 
@@ -336,7 +331,7 @@ export class Player {
   }
 
   #iterationCount = NaN;
-  async getRandomIteration() {
+  async #getRandomIteration() {
     if (isNaN(this.#iterationCount)) {
       this.#iterationCount = await getIterationCount();
     }
