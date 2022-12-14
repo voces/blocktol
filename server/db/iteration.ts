@@ -1,5 +1,4 @@
 import { Point } from "../../common/types.ts";
-import { PlayerRunsMessage } from "../ServerMessage.ts";
 import { ExecResult, format, sql } from "./query.ts";
 
 export const getIterationCount = () =>
@@ -70,25 +69,30 @@ export const createIteration = (
     ]};`)
   }`.then(([q]) => q.insertId);
 
-export const getIterationTimes = (iteration: number) =>
-  sql<{ time: number }[]>`
-    SELECT time FROM run WHERE iteration = ${iteration} ORDER BY created DESC LIMIT 1000;
-  `.then((r) => r.map((r) => r.time).sort((a, b) => a - b));
+export const getMaxIterationTime = (iteration: number) =>
+  sql<{ max: number }[] | undefined>`
+    SELECT MAX(time) max FROM run WHERE iteration = ${iteration};
+  `.then((r) => r?.[0]?.max);
 
-export const logRuns = (
-  runs: Omit<PlayerRunsMessage["playerRuns"][number], "log">[],
+export const getIterationTimeCounts = (iteration: number, dailyOnly = true) =>
+  sql<{ time: number; count: number }[]>`
+      SELECT time, COUNT(1) count
+      FROM run
+      WHERE iteration = ${iteration}
+        AND daily = ${dailyOnly}
+        AND void = FALSE
+      GROUP BY 1
+      ORDER BY time;`;
+
+export const logRun = (
   iteration: number,
+  user: string,
+  duration: number,
+  voidRun: boolean,
 ) =>
   sql`
-    INSERT INTO run (user, iteration, time)
-    VALUES ${runs.map(({ player, duration }) => [player, iteration, duration])};
-    ${
-    raw2(
-      runs.map(({ player, rating }) =>
-        format`UPDATE user SET rating = ${rating} WHERE id = ${player};`
-      ).join("\n"),
-    )
-  }`;
+    INSERT INTO run (user, iteration, time, void)
+    VALUES (${user}, ${iteration}, ${duration}, ${voidRun});`;
 
 export const getDailyIterationId = (year: number, month: number, day: number) =>
   sql<{ id: number }[]>`

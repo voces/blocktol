@@ -8,7 +8,7 @@ type User = {
   rating: number;
 };
 
-export const getUser = (id: string) =>
+const getUser = (id: string) =>
   sql<(User | undefined)[]>`
     SELECT id, name, rating FROM user WHERE id = ${id};
   `.then((r) => r[0]);
@@ -19,7 +19,7 @@ export const createUser = (id: string, name: string) =>
     SELECT id, name, rating FROM user WHERE id = ${id};
   `.then(() => getUser(id)!);
 
-export const createOrUpdateUserWithName = (id: string, name: string) =>
+const createOrUpdateUserWithName = (id: string, name: string) =>
   sql<[unknown, User[]]>`
     INSERT INTO user (id, name) VALUES (${id}, ${name}) ON DUPLICATE KEY UPDATE name = ${name};
     SELECT id, name, rating FROM user WHERE id = ${id};
@@ -35,7 +35,7 @@ export const createOrUpdateUser = (id: string, name?: string) =>
 
 export const getUserPlays = (id: string) =>
   sql<({ count: number } | undefined)[]>`
-    SELECT COUNT(*) count FROM run WHERE user = ${id};
+    SELECT COUNT(1) count FROM run WHERE user = ${id};
   `.then((r) => r[0]?.count ?? 0);
 
 export const dailyAttempts = async (
@@ -53,6 +53,17 @@ export const dailyAttempts = async (
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
 
+export const dailyAttemptsByIteration = (user: string, iteration: number) =>
+  sql<{ time: number }[]>`
+    SELECT time
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND void = FALSE
+    ORDER BY created ASC
+    LIMIT 3;
+  `.then((r) => r.map((r) => r.time));
+
 export const listDailies = (
   user: string,
 ) =>
@@ -61,6 +72,7 @@ export const listDailies = (
       iteration: number;
       created: number;
       personalBest: number | null;
+      daily: number | null;
       best: number | null;
       worst: number | null;
     }[]
@@ -69,6 +81,7 @@ export const listDailies = (
     id iteration,
     iteration.created created,
     ROUND(MAX(CASE WHEN user = ${user} THEN time ELSE null END), 2) personalBest,
+    ROUND(MAX(CASE WHEN user = ${user} AND daily = TRUE THEN time ELSE null END), 2) daily,
     MAX(time) best,
     MIN(time) worst
   FROM iteration
@@ -87,6 +100,9 @@ export const listDailies = (
         new Date(r.created).getUTCMonth() + 1,
         new Date(r.created).getUTCDate(),
       ],
+      dailyPercent: r.best && r.worst && r.daily
+        ? r.best === r.worst ? 1 : (r.daily - r.worst) / (r.best - r.worst)
+        : null,
       percent: r.best && r.worst && r.personalBest
         ? r.best === r.worst
           ? 1
@@ -94,3 +110,15 @@ export const listDailies = (
         : null,
     }))
   );
+
+export const markDaily = (user: string, iteration: number) =>
+  sql`
+    UPDATE run
+    SET daily = TRUE
+    WHERE user = ${user} AND iteration = ${iteration} AND void = FALSE
+    ORDER BY time DESC
+    LIMIT 1;
+  `;
+
+export const updateRating = (user: string, rating: number) =>
+  sql`UPDATE user SET rating = ${rating} WHERE id = ${user};`;

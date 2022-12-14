@@ -50,3 +50,22 @@ export const reverseTween = (
 
   return (middle + relativePercent + 1) / data.length;
 };
+
+export const percentileFromTimeCounts = (
+  timeCounts: { time: number; count: number }[],
+  duration: number,
+) => {
+  let less = 0;
+  let equal = 0;
+  let more = 0;
+  for (const { time, count } of timeCounts) {
+    if (time < duration) less += count;
+    else if (time === duration) equal += count;
+    else more += count;
+  }
+  const denominator = less + equal + more;
+
+  if (denominator === 0) return;
+
+  return (less + equal / 2) / denominator;
+};

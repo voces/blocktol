@@ -63,7 +63,7 @@ export const clientHandlers = {
     const player = Player.from(socket);
 
     if (!player) {
-      console.log(new Date(0), "Closing missing player");
+      console.log(new Date(), "Closing missing player");
       return socket.close();
     }
 
@@ -87,7 +87,7 @@ export const clientHandlers = {
     const player = Player.from(socket);
 
     if (!player) {
-      console.log(new Date(0), "Closing missing player");
+      console.log(new Date(), "Closing missing player");
       return socket.close();
     }
 
@@ -113,7 +113,7 @@ export const clientHandlers = {
     const player = Player.from(socket);
 
     if (!player) {
-      console.log(new Date(0), "Closing missing player");
+      console.log(new Date(), "Closing missing player");
       return socket.close();
     }
 
@@ -123,11 +123,11 @@ export const clientHandlers = {
     const player = Player.from(socket);
 
     if (!player) {
-      console.log(new Date(0), "Closing missing player");
+      console.log(new Date(), "Closing missing player");
       return socket.close();
     }
 
-    if (player.status !== "afk") return;
+    if (player.status !== "afk" && player.status !== "init") return;
 
     player.play(iteration);
   },

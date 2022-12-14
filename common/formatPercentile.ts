@@ -1,14 +1,15 @@
 export const formatPercentile = (percentile: number) => {
-  const m = (percentile * 100).toString().match(
-    /\d+(?:\.[0-9])?(?:(?<=9)9*[0-8]?)*[0-9]/,
-  )?.[0];
-  if (!m) return "??";
-  const v = parseFloat(m);
+  const m = (percentile / 10).toFixed(10).match(
+    /0\.[01]\d(?:(?:(?<=9)9)+|(?:(?<=0)0)+)?\d\d/,
+  )
+    ?.[0];
+  if (m === undefined) return "??";
+  const v = parseFloat(m) * 1000;
 
   if (v >= 100) return Math.round(v).toString();
 
-  if (v > 99) {
-    return (Math.round(v * 10 ** (m.length - 4)) / 10 ** (m.length - 4))
+  if (v > 99 || v < 1) {
+    return (Math.round(v * 10 ** (m.length - 6)) / 10 ** (m.length - 6))
       .toString();
   }
 

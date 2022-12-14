@@ -13,10 +13,8 @@ let intervalStart = Date.now();
 
 const events: { eventType: EventType }[] = [];
 
-export const incrementMetric = (name: CountMetric) => {
-  console.log("increment", name);
+export const incrementMetric = (name: CountMetric) =>
   countMetrics.set(name, countMetrics.get(name) ?? 0 + 1);
-};
 
 setInterval(() => {
   const now = Date.now();
@@ -71,6 +69,5 @@ export const runEvents = (
     userId: string;
     iteration: number;
     duration: number;
-    percentile: number;
   }[],
 ) => postEvents(events.map((e) => ({ eventType: "blocktol_run", env, ...e })));

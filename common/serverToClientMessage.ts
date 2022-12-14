@@ -9,7 +9,6 @@ const isStartMessage = is.object({
   blocks: is.array(isPoint),
   power: is.number,
   bricks: is.number,
-  minTime: is.number,
   rating: is.number,
   attempts: is.number,
 });
@@ -21,6 +20,7 @@ const isRunMessage = is.object({
   path: is.array(isPoint),
   duration: is.number,
   percentile: is.number,
+  percent: is.number,
   slows: is.array(is.object({ time: is.number, thunder: isPoint })),
   rating: is.number,
 });
@@ -47,6 +47,7 @@ const isListMessage = is.object({
       iteration: is.number,
       daily: is.tuple(is.number, is.number, is.number),
       percent: is.union(is.number, is.null),
+      dailyPercent: is.union(is.number, is.null),
     }),
   ),
 });

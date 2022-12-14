@@ -53,7 +53,6 @@ class Connection implements Emitter<MessageMap> {
         now - (this.#lastDisconnect ?? now + 900) + 1_000,
       );
       this.#lastDisconnect = now;
-      console.log("timeout", timeout);
       setTimeout(() => this.#setupSocket(), timeout);
     });
   }

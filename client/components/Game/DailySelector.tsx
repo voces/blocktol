@@ -69,6 +69,25 @@ export const DailySelector = () => {
             connection.send({ kind: "play", iteration: item.iteration });
           }}
         >
+          <div
+            title={`Daily percent: ${
+              item.dailyPercent == null
+                ? "N/A"
+                : Math.floor(item.dailyPercent * 100).toString()
+            }`}
+            className="daily"
+            style={{
+              backgroundColor: item.dailyPercent == null ? "gray" : `#${
+                [
+                  r0 * item.dailyPercent + r1 * (1 - item.dailyPercent),
+                  g0 * item.dailyPercent + g1 * (1 - item.dailyPercent),
+                  b0 * item.dailyPercent + b1 * (1 - item.dailyPercent),
+                ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
+                  "",
+                )
+              }`,
+            }}
+          />
           {item.percent == null
             ? "-"
             : Math.floor(item.percent * 100).toString()}

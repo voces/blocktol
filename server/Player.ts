@@ -9,11 +9,17 @@ import {
   getDailyIterationId,
   getIteration,
   getIterationCount,
-  getIterationTimes,
-  logRuns,
+  getIterationTimeCounts,
+  getMaxIterationTime,
+  logRun,
 } from "./db/iteration.ts";
-import { dailyAttempts } from "./db/user.ts";
-import { reverseTween } from "./util/math.ts";
+import {
+  dailyAttempts,
+  dailyAttemptsByIteration,
+  markDaily,
+  updateRating,
+} from "./db/user.ts";
+import { percentileFromTimeCounts } from "./util/math.ts";
 import { runEvents } from "./util/metrics.ts";
 
 type PlayerStatus = "init" | "afk" | "loading" | "playing";
@@ -23,7 +29,7 @@ const BUILD_TIME = 60;
 export const TOKEN_MAX = 10;
 export const CHAT_TOKEN_MAX = 5;
 
-const K = 32;
+const K = 64;
 
 type Daily = {
   year: number;
@@ -46,7 +52,6 @@ export class Player {
   #remainingDailyAttempts: number;
   #timeout: number | undefined;
   #iteration: number | undefined;
-  #iterationTimes: Promise<number[]> | undefined;
   #iterationMinTime: number | undefined;
   #doingDaily = true;
 
@@ -118,7 +123,7 @@ export class Player {
     clearInterval(this.#timeout);
   }
 
-  run(times: number[], min: number) {
+  run() {
     const path = findPath(this.grid, this.checkpoint);
 
     if (!path) {
@@ -126,41 +131,13 @@ export class Player {
       console.log(gridToString(this.grid, undefined, this.checkpoint));
     }
 
-    const [duration, slows] = pathDuration(
-      path,
-      [...this.#gameThunders, ...this.blocks.filter((b) => b.thunder)],
-    );
-
-    // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
-    const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
-    const actualPercentile = times.length === 0
-      ? expectedPercentile
-      : reverseTween(
-        [...times.slice(0, 1000), duration].sort((a, b) => a - b),
-        duration,
-        min < duration ? min : duration,
-      );
-    // A player is only ranked if they place a block (i.e., AFKs are ignored)
-    if (this.status === "playing" && times.length > 0) {
-      const change = K / Math.log2(this.plays + 2) *
-        (actualPercentile - expectedPercentile);
-
-      this.rating += change;
-      this.plays++;
-    }
-    const percentile = times.length === 0 ? 1 : actualPercentile;
-
-    this.send({
-      kind: "run",
-      iteration: this.#iteration!,
-      path: path ?? [],
-      duration,
-      percentile,
-      slows,
-      rating: this.rating,
-    });
-
-    return [duration, percentile, this.status === "playing"] as const;
+    return [
+      path ?? [],
+      ...pathDuration(
+        path,
+        [...this.#gameThunders, ...this.blocks.filter((b) => b.thunder)],
+      ),
+    ] as const;
   }
 
   async sendDailyTimes(daily?: Daily) {
@@ -173,39 +150,20 @@ export class Player {
       daily.day,
     );
 
-    const [[iteration, times], attempts] = await Promise.all([
-      iterationPromise.then(async (iteration) =>
-        [
-          iteration,
-          iteration && await getIterationTimes(iteration.iteration),
-        ] as const
+    const [timeCounts, attempts] = await Promise.all([
+      iterationPromise.then((iteration) =>
+        iteration ? getIterationTimeCounts(iteration.iteration) : null
       ),
-
       dailyAttempts(this.id, daily.year, daily.month, daily.day),
     ]);
 
-    if (!iteration) return this.close(`missing daily ${JSON.stringify(daily)}`);
-    if (!times) return this.close("could not get daily times");
-
-    const grid = newGrid();
-    grid[iteration.checkpoint.y + 0.5][iteration.checkpoint.x + 0.5] = true;
-    for (const { x, y } of iteration.thunders) {
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-    }
-    for (const { x, y } of iteration.blocks) {
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-    }
-
-    const minTime = pathDuration(
-      findPath(grid, iteration.checkpoint) ?? [],
-      iteration.thunders,
-    )[0];
+    if (!timeCounts) return this.close("could not get daily time counts");
 
     this.send({
       kind: "daily",
       attempts: attempts.map((duration) => ({
         duration,
-        percentile: reverseTween(times, duration, minTime),
+        percentile: percentileFromTimeCounts(timeCounts, duration) ?? 1,
       })),
     });
   }
@@ -298,25 +256,50 @@ export class Player {
       blocks: details.blocks,
       power: this.power,
       bricks: this.bricks,
-      minTime: 0, // Only used S <-> S
       rating: this.rating,
       attempts: this.#remainingDailyAttempts,
     });
 
     this.#timeout = setTimeout(() => this.#startRunner(), BUILD_TIME * 1_000);
-
-    this.#iterationTimes = getIterationTimes(details.iteration);
   }
 
   async #startRunner() {
-    const times = await this.#iterationTimes;
     const minTime = this.#iterationMinTime;
     const iteration = this.#iteration;
-    if (!times || !minTime || iteration === undefined) {
+    if (!minTime || iteration === undefined) {
       return this.close("missing times");
     }
 
-    const [duration, percentile, log] = this.run(times, minTime);
+    const [path, duration, slows] = this.run();
+
+    if (this.status === "playing" || this.#doingDaily) {
+      runEvents([{ userId: this.id, iteration, duration }]);
+      logRun(iteration, this.id, duration, this.status !== "playing");
+    }
+
+    if (this.#doingDaily && this.#remainingDailyAttempts === 1) {
+      markDaily(this.id, iteration);
+    }
+
+    const [timeCounts, max] = await Promise.all([
+      getIterationTimeCounts(iteration),
+      getMaxIterationTime(iteration),
+    ]);
+    // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
+    const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
+    const percentile = percentileFromTimeCounts(timeCounts, duration) ??
+      1;
+
+    this.send({
+      kind: "run",
+      iteration: this.#iteration!,
+      path: path ?? [],
+      duration,
+      percentile,
+      percent: (duration - minTime) / (Math.max(max ?? 0, duration) - minTime),
+      slows,
+      rating: this.rating,
+    });
 
     const now = Date.now();
     this.send({
@@ -330,15 +313,22 @@ export class Player {
       }.`,
     });
 
-    if (log) {
-      runEvents([{
-        userId: this.id,
-        iteration,
-        duration,
-        percentile: percentile ?? 1,
-      }]);
+    if (this.#doingDaily && this.#remainingDailyAttempts === 1) {
+      console.log(new Date(), this.logName, "daily complete, logging result");
 
-      logRuns([{ player: this.id, rating: this.rating, duration }], iteration);
+      const attempts = await dailyAttemptsByIteration(this.id, iteration);
+
+      if (timeCounts.length > 0) {
+        const best = Math.max(...attempts);
+        const actualPercentile = percentileFromTimeCounts(timeCounts, best) ??
+          expectedPercentile;
+        const change = K / Math.log2(this.plays + 2) *
+          (actualPercentile - expectedPercentile);
+
+        this.rating += change;
+        this.plays++;
+        updateRating(this.id, this.rating);
+      }
     }
 
     this.status = "init";
