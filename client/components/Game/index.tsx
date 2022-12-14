@@ -107,6 +107,7 @@ export const Game = (
             }s attemptsLoad`,
             fontSize: "calc(min(400px, 100vw, 100vh - 110px) / 10)",
             filter: "drop-shadow(1px 1px 4px var(--color))",
+            pointerEvents: "none",
           }}
         >
           {attemptsRemaining} attempts remaining
