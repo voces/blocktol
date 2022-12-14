@@ -35,7 +35,7 @@ export const createOrUpdateUser = (id: string, name?: string) =>
 
 export const getUserPlays = (id: string) =>
   sql<({ count: number } | undefined)[]>`
-    SELECT COUNT(1) count FROM run WHERE user = ${id};
+    SELECT COUNT(1) count FROM run WHERE user = ${id} AND daily = TRUE;
   `.then((r) => r[0]?.count ?? 0);
 
 export const dailyAttempts = async (
