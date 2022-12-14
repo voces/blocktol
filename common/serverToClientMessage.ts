@@ -19,7 +19,7 @@ const isRunMessage = is.object({
   iteration: is.number,
   path: is.array(isPoint),
   duration: is.number,
-  percentile: is.number,
+  percentile: is.union(is.number, is.undefined),
   percent: is.number,
   slows: is.array(is.object({ time: is.number, thunder: isPoint })),
   rating: is.number,

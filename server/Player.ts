@@ -291,8 +291,7 @@ export class Player {
     ]);
     // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
     const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
-    const percentile = percentileFromTimeCounts(timeCounts, duration) ??
-      expectedPercentile;
+    const percentile = percentileFromTimeCounts(timeCounts, duration);
 
     this.send({
       kind: "run",
