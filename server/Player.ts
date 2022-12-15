@@ -183,6 +183,7 @@ export class Player {
         this.daily.month,
         this.daily.day,
       );
+      console.log("doing daily, iteration is", iteration, "for", this.daily);
     }
 
     if (iteration === undefined) iteration = this.#iteration;

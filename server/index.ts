@@ -6,6 +6,7 @@ import { clientHandlers } from "./clientHandlers.ts";
 import "./channel.ts";
 import { Player } from "./Player.ts";
 import { LRUMap } from "./util/LRUMap.ts";
+import "./util/gen.ts";
 
 const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
 

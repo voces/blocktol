@@ -31,6 +31,8 @@ export const useInit = () => {
     rating: lastRating,
     setDate,
     setAttempts,
+    run,
+    power,
   } = useContext(GameStateContext);
 
   useEffect(() => {
@@ -90,6 +92,16 @@ export const useInit = () => {
       connection.removeEventListener("daily", dailyCallback);
     };
   }, [connection]);
+
+  useEffect(() => {
+    const keyDownCallback = (e: KeyboardEvent) => {
+      if (e.code !== "KeyR") return;
+      console.log(power);
+    };
+    globalThis.addEventListener("keydown", keyDownCallback);
+
+    return () => globalThis.removeEventListener("keydown", keyDownCallback);
+  }, [connection, run, power]);
 
   useEffect(() => {
     const runCallback = ({ path, duration, slows, rating }: RunMessage) => {
