@@ -82,7 +82,10 @@ export const useInit = () => {
     };
     connection.addEventListener("connect", connectCallback);
 
-    const dailyCallback = ({ attempts }: DailyMessage) => setAttempts(attempts);
+    const dailyCallback = ({ attempts, rating }: DailyMessage) => {
+      setAttempts(attempts);
+      setRating(rating);
+    };
     connection.addEventListener("daily", dailyCallback);
 
     return () => {
@@ -95,8 +98,12 @@ export const useInit = () => {
 
   useEffect(() => {
     const keyDownCallback = (e: KeyboardEvent) => {
-      if (e.code !== "KeyR") return;
-      console.log(power);
+      if (e.code !== "KeyR" || (!run && power === -1)) return;
+      if (run) {
+        console.log("send play");
+        return;
+      }
+      connection.send({ kind: "ready" });
     };
     globalThis.addEventListener("keydown", keyDownCallback);
 

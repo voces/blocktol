@@ -129,4 +129,16 @@ export const clientHandlers = {
 
     player.play(iteration);
   },
+  ready: (socket: WebSocket) => {
+    const player = Player.from(socket);
+
+    if (!player) {
+      console.log(new Date(), "Closing missing player");
+      return socket.close();
+    }
+
+    if (player.status === "afk" || player.status === "playing") {
+      player.startRunner();
+    }
+  },
 };

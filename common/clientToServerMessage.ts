@@ -33,11 +33,17 @@ const isPlayMessage = is.object({
 });
 export type PlayMessage = GuardedType<typeof isPlayMessage>;
 
+const isReadyMessage = is.object({
+  kind: is.const("ready"),
+});
+export type ReadyMessage = GuardedType<typeof isReadyMessage>;
+
 export const isMessage = is.union(
   isLoginMessage,
   isBlockMessage,
   isTransitionBlockMessage,
   isListMessage,
   isPlayMessage,
+  isReadyMessage,
 );
 export type ClientToServerMessage = GuardedType<typeof isMessage>;

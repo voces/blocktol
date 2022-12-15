@@ -8,11 +8,12 @@ import { ConnectionContext } from "../../contexts/Connection.ts";
 
 export const Daily = () => {
   const connection = useContext(ConnectionContext);
-  const { attempts, setAttempts } = useContext(GameStateContext);
+  const { attempts, clear } = useContext(GameStateContext);
   const [tooltip, setTooltip] = useState<
     { left: number; top: number; tooltip: ComponentChildren } | null
   >(null);
   const [timeout, setTimeoutId] = useState(-1);
+  const [hideDailyResult, setHideDailyResult] = useState(false);
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
@@ -47,7 +48,7 @@ export const Daily = () => {
     setTimeoutId(setTimeout(() => setTooltip(null), 750));
   };
 
-  if (!attempts) return null;
+  if (!attempts || hideDailyResult) return null;
 
   return (
     <>
@@ -86,8 +87,9 @@ export const Daily = () => {
             }}
             onClick={() => {
               connection.send({ kind: "list" });
+              clear();
               // connection.send({ kind: "play" });
-              setAttempts(undefined);
+              setHideDailyResult(true);
             }}
           >
             Keep playing

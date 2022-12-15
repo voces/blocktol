@@ -54,6 +54,19 @@ export const useGameState = () => {
   const [date, setDate] = useState(NaN);
   const [attempts, setAttempts] = useState<DailyMessage["attempts"]>();
 
+  const clear = () => {
+    setRun(undefined);
+    setLastRating(NaN);
+    setCheckpoint({ x: -2, y: -2 });
+    setThunders([]);
+    setBlocks([]);
+    setBricks(-1);
+    setPower(-1);
+    setTime(-1);
+    setDate(NaN);
+    setRating(NaN);
+  };
+
   return {
     blocks,
     bricks,
@@ -90,5 +103,6 @@ export const useGameState = () => {
     transitionBlock,
     attempts,
     setAttempts,
+    clear,
   };
 };

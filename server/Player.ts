@@ -137,6 +137,7 @@ export class Player {
 
     this.send({
       kind: "daily",
+      rating: this.rating,
       attempts: attempts.map((duration) => ({
         duration,
         percentile: percentileFromTimeCounts(timeCounts, duration) ?? NaN,
@@ -256,10 +257,11 @@ export class Player {
       attempts: this.#remainingDailyAttempts,
     });
 
-    this.#timeout = setTimeout(() => this.#startRunner(), BUILD_TIME * 1_000);
+    this.#timeout = setTimeout(() => this.startRunner(), BUILD_TIME * 1_000);
   }
 
-  async #startRunner() {
+  async startRunner() {
+    clearTimeout(this.#timeout);
     const minTime = this.#iterationMinTime;
     const iteration = this.#iteration;
     if (!minTime || iteration === undefined) {
