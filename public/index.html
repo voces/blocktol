@@ -40,6 +40,7 @@
       --runner: hsl(300, 60%, 60%);
       --slow-runner: hsl(258, 36%, 53%);
       --brightness: 40%;
+
       --maze-size: min(800px, 100vw, 100vh - 110px);
       --header-size: 79.88px;
     }
@@ -148,6 +149,18 @@
       height: 8px;
       border-radius: 50%;
       border: 1px solid var(--color);
+    }
+
+    .log {
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      text-align: left;
+      font-size: 14px;
+      right: 8px;
+      width: calc((100vw - var(--maze-size)) / 2 - 16px);
+      height: var(--maze-size);
+      overflow-y: auto;
     }
   </style>
 </head>

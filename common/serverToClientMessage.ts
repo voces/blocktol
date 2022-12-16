@@ -26,14 +26,6 @@ const isRunMessage = is.object({
 });
 export type RunMessage = Readonly<GuardedType<typeof isRunMessage>>;
 
-const isLogMessage = is.object({
-  kind: is.const("log"),
-  source: is.string,
-  time: is.number,
-  message: is.string,
-});
-export type LogMessage = GuardedType<typeof isLogMessage>;
-
 const isDailyMessage = is.object({
   kind: is.const("daily"),
   rating: is.number,
@@ -62,7 +54,6 @@ export type ListMessage = GuardedType<typeof isListMessage>;
 export type MessageMap = {
   start: StartMessage;
   run: RunMessage;
-  log: LogMessage;
   daily: DailyMessage;
   disconnect: never;
   connect: never;
@@ -72,5 +63,5 @@ export type MessageMap = {
 export type Message = MessageMap[keyof MessageMap];
 
 export const isMessage = (value: unknown): value is Message =>
-  isStartMessage(value) || isRunMessage(value) || isLogMessage(value) ||
-  isDailyMessage(value) || isListMessage(value);
+  isStartMessage(value) || isRunMessage(value) || isDailyMessage(value) ||
+  isListMessage(value);

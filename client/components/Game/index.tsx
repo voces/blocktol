@@ -11,6 +11,7 @@ import { ConnectionContext } from "../../contexts/Connection.ts";
 import { StartMessage } from "../../../common/serverToClientMessage.ts";
 import { Daily } from "./Daily.tsx";
 import { DailySelector } from "./DailySelector.tsx";
+import { Log } from "./Log.tsx";
 
 export const Game = (
   { extraAttemptBannerTime }: { extraAttemptBannerTime?: boolean },
@@ -69,7 +70,7 @@ export const Game = (
   return (
     <>
       <DailySelector />
-      {/* <Log /> */}
+      <Log />
       <Board
         placingBlock={placingBlockRef.current}
         touching={touching}

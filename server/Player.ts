@@ -1,5 +1,4 @@
 import { offsets } from "../common/constants.ts";
-import { formatPercentile } from "../common/formatPercentile.ts";
 import { gridToString } from "../common/gridToString.ts";
 import { findPath, newGrid, pathDuration } from "../common/pathing.ts";
 import { Message } from "../common/serverToClientMessage.ts";
@@ -316,18 +315,6 @@ export class Player {
       percent: (duration - minTime) / (Math.max(max ?? 0, duration) - minTime),
       slows,
       rating: this.rating,
-    });
-
-    const now = Date.now();
-    this.send({
-      kind: "log",
-      source: "server",
-      time: now + duration * 1_000,
-      message: `\\c${this.username}\\c lasted ${duration} seconds${
-        typeof percentile === "number"
-          ? ` (p${formatPercentile(percentile)})`
-          : ""
-      }.`,
     });
 
     if (this.#doingDaily && this.#remainingDailyAttempts === 1) {
