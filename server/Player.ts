@@ -55,7 +55,7 @@ export class Player {
   #iterationMinTime: number | undefined;
   #doingDaily = true;
 
-  private static map = new WeakMap<WebSocket, Player>();
+  static map = new WeakMap<WebSocket, Player>();
 
   constructor(
     websocket: WebSocket,
@@ -92,6 +92,7 @@ export class Player {
     console.log(new Date(), this.#logName, "Closing", reason);
     this.#websocket.close();
     clearInterval(this.#timeout);
+    Player.map.delete(this.#websocket);
   }
 
   /** Calculates the path, duration, and slows for the current iteration. */
@@ -184,7 +185,6 @@ export class Player {
         this.daily.month,
         this.daily.day,
       );
-      console.log("doing daily, iteration is", iteration, "for", this.daily);
     }
 
     if (iteration === undefined) iteration = this.#iteration;
@@ -207,6 +207,17 @@ export class Player {
         this.status = "init";
         return this.#sendDailyTimes();
       }
+    }
+
+    if (this.#doingDaily) {
+      console.log(
+        new Date(),
+        this.#logName,
+        "doing daily, iteration is",
+        iteration,
+        "for",
+        this.daily,
+      );
     }
 
     return iteration;

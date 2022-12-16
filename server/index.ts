@@ -69,7 +69,7 @@ serve((req, connInfo) => {
     );
 
   socket.onmessage = (e) => {
-    if (isSpamming(connInfo)) socket.close();
+    if (isSpamming(connInfo)) return socket.close();
 
     try {
       const message = JSON.parse(e.data);

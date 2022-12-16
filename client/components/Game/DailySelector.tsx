@@ -5,6 +5,7 @@ import {
   RunMessage,
 } from "../../../common/serverToClientMessage.ts";
 import { ConnectionContext } from "../../contexts/Connection.ts";
+import { GameStateContext } from "./useGameState.ts";
 
 const r0 = 0x00;
 const g0 = 0x55;
@@ -18,6 +19,21 @@ export const DailySelector = () => {
   const connection = useContext(ConnectionContext);
   const [list, setList] = useState<ListMessage["items"]>([]);
   const [selectedIteration, setSelectedIteration] = useState(NaN);
+  const { run, power } = useContext(GameStateContext);
+
+  useEffect(() => {
+    const keyDownCallback = (e: KeyboardEvent) => {
+      if (e.code !== "KeyR" || (!run && power === -1) || e.metaKey) return;
+      if (run) {
+        connection.send({ kind: "play", iteration: selectedIteration });
+        return;
+      }
+      connection.send({ kind: "ready" });
+    };
+    globalThis.addEventListener("keydown", keyDownCallback);
+
+    return () => globalThis.removeEventListener("keydown", keyDownCallback);
+  }, [connection, run, power, selectedIteration]);
 
   useEffect(() => {
     const listCallback = (list: ListMessage) => setList(list.items);
