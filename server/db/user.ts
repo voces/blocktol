@@ -74,7 +74,7 @@ export const listDailies = (
       personalBest: number | null;
       daily: number | null;
       best: number | null;
-      worst: number | null;
+      min: number;
     }[]
   >`
   SELECT
@@ -83,7 +83,7 @@ export const listDailies = (
     ROUND(MAX(CASE WHEN user = ${user} THEN time ELSE null END), 2) personalBest,
     ROUND(MAX(CASE WHEN user = ${user} AND daily = TRUE THEN time ELSE null END), 2) daily,
     MAX(time) best,
-    MIN(time) worst
+    min
   FROM iteration
   LEFT JOIN run ON iteration.id = run.iteration
   WHERE id <= (
@@ -100,13 +100,11 @@ export const listDailies = (
         new Date(r.created).getUTCMonth() + 1,
         new Date(r.created).getUTCDate(),
       ],
-      dailyPercent: r.best && r.worst && r.daily
-        ? r.best === r.worst ? 1 : (r.daily - r.worst) / (r.best - r.worst)
+      dailyPercent: r.best && r.daily
+        ? r.best === r.min ? 1 : (r.daily - r.min) / (r.best - r.min)
         : null,
-      percent: r.best && r.worst && r.personalBest
-        ? r.best === r.worst
-          ? 1
-          : (r.personalBest - r.worst) / (r.best - r.worst)
+      percent: r.best && r.min && r.personalBest
+        ? r.best === r.min ? 1 : (r.personalBest - r.min) / (r.best - r.min)
         : null,
     }))
   );

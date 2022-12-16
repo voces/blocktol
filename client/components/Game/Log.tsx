@@ -88,18 +88,13 @@ const Message = (
 
       if (!("clipboard" in navigator)) return;
 
-      navigator.clipboard.write(
-        [
-          new ClipboardItem({
-            "text/plain": new Blob([e.currentTarget.innerText], {
-              type: "text/plain",
-            }),
-            "text/html": new Blob([e.currentTarget.innerHTML], {
-              type: "text/html",
-            }),
+      navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": new Blob([e.currentTarget.innerText], {
+            type: "text/plain",
           }),
-        ],
-      );
+        }),
+      ]);
 
       const rect = e.currentTarget.parentElement!.parentElement!
         .getBoundingClientRect();

@@ -164,11 +164,7 @@ export class Player {
     this.power = details.power;
     this.blocks = [];
     this.#thunders = details.thunders;
-
-    this.#iterationMinTime = pathDuration(
-      findPath(this.grid, this.checkpoint) ?? [],
-      details.thunders,
-    )[0];
+    this.#iterationMinTime = details.min;
 
     return details;
   }
@@ -274,7 +270,7 @@ export class Player {
     clearTimeout(this.#timeout);
     const minTime = this.#iterationMinTime;
     const iteration = this.#iteration;
-    if (!minTime || iteration === undefined) {
+    if (iteration === undefined || !minTime) {
       return this.close("missing times");
     }
 

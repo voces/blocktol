@@ -1,5 +1,6 @@
 import { h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
+import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
   ListMessage,
   RunMessage,
@@ -104,9 +105,7 @@ export const DailySelector = () => {
               }`,
             }}
           />
-          {item.percent == null
-            ? "-"
-            : Math.floor(item.percent * 100).toString()}
+          {item.percent == null ? "-" : formatPercentile(item.percent)}
         </span>
       ))}
     </div>

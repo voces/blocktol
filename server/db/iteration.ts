@@ -16,11 +16,12 @@ export const getIteration = (id: number) =>
         power: number;
         checkpoint_x: number;
         checkpoint_y: number;
+        min: number;
       }[],
       { x: number; y: number; kind: "block" | "thunder" }[],
     ]
   >`
-    SELECT id, bricks, created, power, checkpoint_x, checkpoint_y FROM iteration WHERE id = ${id};
+    SELECT id, bricks, created, power, checkpoint_x, checkpoint_y, min FROM iteration WHERE id = ${id};
     SELECT x, y, kind FROM block WHERE iteration = ${id};
   `.then(([[i], blocks]) => {
     if (!i) throw new Error(`Iteration ${id} does not exist`);
@@ -37,6 +38,7 @@ export const getIteration = (id: number) =>
       thunders: blocks
         .filter((b) => b.kind === "thunder")
         .map(({ x, y }) => ({ x, y })),
+      min: i.min,
     });
   });
 
@@ -55,10 +57,11 @@ export const createIteration = (
   checkpoint: Point,
   blocks: Point[],
   thunders: Point[],
+  duration: number,
 ) =>
   sql<[ExecResult, ExecResult, ExecResult[] | undefined]>`
-    INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y) 
-    VALUES (${date}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y});
+    INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min) 
+    VALUES (${date}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y}, ${duration});
     SET @last_id = LAST_INSERT_ID();
     ${
     raw2(format`

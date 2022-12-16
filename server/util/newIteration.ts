@@ -1,5 +1,5 @@
 import { offsets } from "../../common/constants.ts";
-import { findPath, newGrid } from "../../common/pathing.ts";
+import { findPath, newGrid, pathDuration } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
 import { createIteration } from "../db/iteration.ts";
 
@@ -50,6 +50,9 @@ export const newIteration = async (date: Date) => {
   const bricks = power +
     Math.floor((1 - Math.random() ** 0.7) * 20) + 3;
 
+  const path = findPath(grid, checkpoint);
+  const [duration] = pathDuration(path, thunders);
+
   await createIteration(
     date,
     bricks,
@@ -57,5 +60,6 @@ export const newIteration = async (date: Date) => {
     checkpoint,
     blocks,
     thunders,
+    duration,
   );
 };

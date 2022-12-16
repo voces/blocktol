@@ -84,8 +84,8 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     globalThis.addEventListener("mousemove", mousemoveCallback);
 
     const touchmoveCallback = (e: TouchEvent) => {
-      e.preventDefault();
       if (!(e.changedTouches[0].target instanceof SVGElement)) return;
+      e.preventDefault();
       callback(e.touches[0].clientX, e.touches[0].clientY);
     };
     globalThis.addEventListener("touchmove", touchmoveCallback, {
@@ -93,6 +93,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     });
 
     const touchstartCallback = (e: TouchEvent) => {
+      if (!(e.changedTouches[0].target instanceof SVGElement)) return;
       setTouching(true);
       callback(e.touches[0].clientX, e.touches[0].clientY);
       e.preventDefault();
