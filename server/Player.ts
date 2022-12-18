@@ -23,11 +23,12 @@ import { runEvents } from "./util/metrics.ts";
 
 type PlayerStatus = "init" | "afk" | "loading" | "playing";
 
-const BUILD_TIME = 60;
-
 export const TOKEN_MAX = 10;
 export const CHAT_TOKEN_MAX = 5;
 
+const ONE_MINUTE = 1_000 * 60;
+
+const BUILD_TIME = 60;
 const K = 64;
 
 type Daily = {
@@ -41,6 +42,8 @@ export class Player {
   plays: number;
   rating: number;
   status: PlayerStatus = "init";
+  username: string;
+  daily: Daily;
 
   grid: boolean[][] = [];
   checkpoint: Point = { x: 0, y: 0 };
@@ -50,22 +53,27 @@ export class Player {
   #thunders: Point[] = [];
   #remainingDailyAttempts: number;
   #timeout: number | undefined;
+  #deleteTimeout: number | undefined;
   #iteration: number | undefined;
   #iterationMinTime: number | undefined;
   #doingDaily = true;
+  #startTime: number | undefined;
+  #iterationCreatedAt: string | undefined;
 
-  static map = new WeakMap<WebSocket, Player>();
+  static map = new Map<WebSocket, Player>();
 
   constructor(
     websocket: WebSocket,
     readonly id: string,
-    readonly username: string,
+    username: string,
     rating: number,
     plays: number,
     remainingDailyAttempts: number,
-    readonly daily: Daily,
+    daily: Daily,
   ) {
     this.#websocket = websocket;
+    this.username = username;
+    this.daily = daily;
     this.plays = plays;
     this.rating = rating;
     this.#remainingDailyAttempts = remainingDailyAttempts;
@@ -83,15 +91,23 @@ export class Player {
     try {
       this.#websocket.send(JSON.stringify(message));
     } catch {
-      this.close("error on send");
+      if (this.#deleteTimeout === undefined) this.close("error on send");
     }
   }
 
   close(reason: string) {
     console.log(new Date(), this.#logName, "Closing", reason);
     this.#websocket.close();
-    clearInterval(this.#timeout);
-    Player.map.delete(this.#websocket);
+
+    if (this.#remainingDailyAttempts === 0) {
+      clearInterval(this.#timeout);
+      Player.map.delete(this.#websocket);
+    } else {
+      this.#deleteTimeout = setTimeout(
+        () => Player.map.delete(this.#websocket),
+        ONE_MINUTE,
+      );
+    }
   }
 
   /** Calculates the path, duration, and slows for the current iteration. */
@@ -162,9 +178,10 @@ export class Player {
     this.bricks = details.bricks;
     this.bricks = details.bricks;
     this.power = details.power;
-    this.blocks = [];
+    this.blocks = details.blocks;
     this.#thunders = details.thunders;
     this.#iterationMinTime = details.min;
+    this.#iterationCreatedAt = details.date;
 
     return details;
   }
@@ -252,17 +269,23 @@ export class Player {
 
     this.send({
       kind: "start",
-      date: new Date(details.date).getTime(),
+      date: new Date(this.#iterationCreatedAt!).getTime(),
       time: BUILD_TIME,
       checkpoint: this.checkpoint,
-      thunders: this.#thunders,
-      blocks: details.blocks,
+      thunders: [
+        ...this.#thunders.map(({ x, y }) => ({ x, y, player: undefined })),
+        ...this.blocks.filter((b) => b.thunder)
+          .map(({ x, y, player }) => ({ x, y, player })),
+      ],
+      blocks: this.blocks.filter((b) => !b.thunder)
+        .map(({ x, y, player }) => ({ x, y, player })),
       power: this.power,
       bricks: this.bricks,
       rating: this.rating,
       attempts: this.#remainingDailyAttempts,
     });
 
+    this.#startTime = Date.now();
     this.#timeout = setTimeout(() => this.startRunner(), BUILD_TIME * 1_000);
   }
 
@@ -333,7 +356,9 @@ export class Player {
     }
 
     this.status = "init";
-    this.#timeout = setTimeout(() => this.play(), duration * 1_000);
+    if (this.#deleteTimeout === undefined) {
+      this.#timeout = setTimeout(() => this.play(), duration * 1_000);
+    }
   }
 
   #iterationCount = NaN;
@@ -347,5 +372,50 @@ export class Player {
 
   static from(socket: WebSocket) {
     return Player.map.get(socket);
+  }
+
+  static revive(
+    ...[websocket, id, username, rating, plays, remainingDailyAttempts, daily]:
+      ConstructorParameters<typeof Player>
+  ): Player | undefined {
+    for (const player of this.map.values()) {
+      if (player.id !== id) continue;
+
+      const oldWebsocket = player.#websocket;
+      player.#websocket = websocket;
+      player.username = username;
+      player.rating = rating;
+      player.plays = plays;
+      player.#remainingDailyAttempts = remainingDailyAttempts;
+      player.daily = daily;
+
+      clearTimeout(player.#deleteTimeout);
+      player.#deleteTimeout = undefined;
+
+      Player.map.delete(oldWebsocket);
+      Player.map.set(websocket, player);
+
+      if (player.status === "init") player.play();
+      else {player.send({
+          kind: "start",
+          date: new Date(player.#iterationCreatedAt!).getTime(),
+          time: BUILD_TIME - (Date.now() - player.#startTime!) / 1_000,
+          checkpoint: player.checkpoint,
+          thunders: [
+            ...player.#thunders
+              .map(({ x, y }) => ({ x, y, player: undefined })),
+            ...player.blocks.filter((b) => b.thunder)
+              .map(({ x, y, player }) => ({ x, y, player })),
+          ],
+          blocks: player.blocks.filter((b) => !b.thunder)
+            .map(({ x, y, player }) => ({ x, y, player })),
+          power: player.power,
+          bricks: player.bricks,
+          rating: player.rating,
+          attempts: player.#remainingDailyAttempts,
+        });}
+
+      return player;
+    }
   }
 }

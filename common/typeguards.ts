@@ -135,6 +135,48 @@ type tuple = {
   ): (value: unknown) => value is T;
 };
 
+type intersection = {
+  <A, B>(
+    typeguardA: (value: unknown) => value is A,
+    typeguardB: (value: unknown) => value is B,
+  ): (value: unknown) => value is A & B;
+  <A, B, C>(
+    typeguardA: (value: unknown) => value is A,
+    typeguardB: (value: unknown) => value is B,
+    typeguardC: (value: unknown) => value is C,
+  ): (value: unknown) => value is A & B & C;
+  <A, B, C, D>(
+    typeguardA: (value: unknown) => value is A,
+    typeguardB: (value: unknown) => value is B,
+    typeguardC: (value: unknown) => value is C,
+    typeguardD: (value: unknown) => value is D,
+  ): (value: unknown) => value is A & B & C & D;
+  <A, B, C, D, E>(
+    typeguardA: (value: unknown) => value is A,
+    typeguardB: (value: unknown) => value is B,
+    typeguardC: (value: unknown) => value is C,
+    typeguardD: (value: unknown) => value is D,
+    typeguardE: (value: unknown) => value is E,
+  ): (value: unknown) => value is A & B & C & D & E;
+  <A, B, C, D, E, F>(
+    typeguardA: (value: unknown) => value is A,
+    typeguardB: (value: unknown) => value is B,
+    typeguardC: (value: unknown) => value is C,
+    typeguardD: (value: unknown) => value is D,
+    typeguardE: (value: unknown) => value is E,
+    typeguardF: (value: unknown) => value is F,
+  ): (value: unknown) => value is A & B & C & D & E & F;
+  <T>(
+    ...typeguards: ((value: unknown) => value is T)[]
+  ): (value: unknown) => value is T;
+};
+
+export const isIntersection = (<T>(
+  ...typeguards: ((value: unknown) => value is T)[]
+) =>
+(value: unknown): value is T =>
+  typeguards.every((tg) => tg(value))) as intersection;
+
 export const isTuple = (<T extends unknown[]>(
   ...typeguards: ((value: unknown) => value is T[number])[]
 ) =>
@@ -158,6 +200,7 @@ export const is = {
   union: isUnion,
   in: isIn,
   tuple: isTuple,
+  intersection: isIntersection,
 };
 
 export const isPoint = is.object({ x: is.number, y: is.number });

@@ -40,8 +40,10 @@ export const useInit = () => {
       setRun(undefined);
       setLastRating(NaN);
       setCheckpoint(checkpoint);
-      setThunders(thunders);
-      setBlocks(blocks);
+      setThunders(
+        thunders.map(({ x, y, player }) => ({ x, y, local: player })),
+      );
+      setBlocks(blocks.map(({ x, y, player }) => ({ x, y, local: player })));
       setBricks(event.bricks);
       setPower(event.power);
       setTime(Math.floor(event.time));

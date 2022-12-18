@@ -1,4 +1,4 @@
-import { GuardedType, is } from "./typeguards.ts";
+import { GuardedType, is, isPoint } from "./typeguards.ts";
 
 const isLoginMessage = is.object({
   kind: is.const("login"),
@@ -8,18 +8,16 @@ const isLoginMessage = is.object({
 });
 export type LoginMessage = GuardedType<typeof isLoginMessage>;
 
-const isBlockMessage = is.object({
-  kind: is.const("block"),
-  x: is.number,
-  y: is.number,
-});
+const isBlockMessage = is.intersection(
+  is.object({ kind: is.const("block") }),
+  isPoint,
+);
 export type BlockMessage = GuardedType<typeof isBlockMessage>;
 
-const isTransitionBlockMessage = is.object({
-  kind: is.const("transition"),
-  x: is.number,
-  y: is.number,
-});
+const isTransitionBlockMessage = is.intersection(
+  is.object({ kind: is.const("transition") }),
+  isPoint,
+);
 export type TransitionBlockMessage = GuardedType<
   typeof isTransitionBlockMessage
 >;

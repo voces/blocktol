@@ -49,6 +49,18 @@ export const clientHandlers = {
       day,
     )).length;
 
+    if (
+      Player.revive(
+        socket,
+        message.id,
+        name,
+        rating,
+        plays,
+        remainingDailyAttempts,
+        { year, month, day },
+      )
+    ) return;
+
     new Player(
       socket,
       message.id,

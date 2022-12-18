@@ -1,12 +1,17 @@
 import { GuardedType, is, isPoint } from "./typeguards.ts";
 
+const isPlayerPoint = is.intersection(
+  isPoint,
+  is.object({ player: is.union(is.boolean, is.undefined) }),
+);
+
 const isStartMessage = is.object({
   kind: is.const("start"),
   date: is.number,
   time: is.number,
   checkpoint: isPoint,
-  thunders: is.array(isPoint),
-  blocks: is.array(isPoint),
+  thunders: is.array(isPlayerPoint),
+  blocks: is.array(isPlayerPoint),
   power: is.number,
   bricks: is.number,
   rating: is.number,
