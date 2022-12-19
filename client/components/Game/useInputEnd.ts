@@ -27,7 +27,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
   useEffect(() => {
     const callback = () => {
-      if (invalid || time <= 0) return;
+      if (time <= 0) return;
       if (svg) svg.style.transform = "";
 
       if (transitionBlock) {
@@ -74,11 +74,14 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
       if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return false;
 
-      try {
-        if (!findPath(grid, checkpoint)) return false;
-      } catch { /* do nothing */ }
-
       offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+
+      try {
+        if (!findPath(grid, checkpoint)) {
+          offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
+          return false;
+        }
+      } catch { /* do nothing */ }
 
       connection.send({ kind: "block", x, y });
       setBlocks((blocks) => [...blocks, { x, y, local: true }]);

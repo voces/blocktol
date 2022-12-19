@@ -87,10 +87,13 @@ export const clientHandlers = {
       return player.close(`invalid placement (grid=(${x},${y}))`);
     }
 
-    const path = findPath(player.grid, player.checkpoint);
-    if (!path) return player.close("invalid placement (path)");
-
     offsets.forEach(([xd, yd]) => player.grid[y + yd][x + xd] = true);
+
+    const path = findPath(player.grid, player.checkpoint);
+    if (!path) {
+      offsets.forEach(([xd, yd]) => player.grid[y + yd][x + xd] = false);
+      return player.close("invalid placement (path)");
+    }
 
     player.blocks.push({ x, y, player: true });
     player.bricks--;
