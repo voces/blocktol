@@ -38,21 +38,6 @@ export const getUserPlays = (id: string) =>
     SELECT COUNT(1) count FROM run WHERE user = ${id} AND daily = TRUE;
   `.then((r) => r[0]?.count ?? 0);
 
-export const dailyAttempts = async (
-  user: string,
-  year: number,
-  month: number,
-  day: number,
-) =>
-  sql<{ time: number }[]>`
-    SELECT time
-    FROM run
-    WHERE user = ${user}
-      AND iteration = ${await getDailyIterationId(year, month, day)}
-    ORDER BY created ASC
-    LIMIT 3;
-  `.then((r) => r.map((r) => r.time));
-
 export const dailyAttemptsByIteration = (user: string, iteration: number) =>
   sql<{ time: number }[]>`
     SELECT time
@@ -63,6 +48,14 @@ export const dailyAttemptsByIteration = (user: string, iteration: number) =>
     ORDER BY created ASC
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
+
+export const dailyAttempts = async (
+  user: string,
+  year: number,
+  month: number,
+  day: number,
+) =>
+  dailyAttemptsByIteration(user, await getDailyIterationId(year, month, day));
 
 export const listDailies = (
   user: string,
@@ -91,7 +84,7 @@ export const listDailies = (
     FROM run
     WHERE user = ${user}
   )
-  GROUP BY 1, 2
+  GROUP BY 1
   ORDER BY id DESC;`.then((d) =>
     d.map((r): ListMessage["items"][number] => ({
       iteration: r.iteration,

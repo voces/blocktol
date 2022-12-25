@@ -43,8 +43,10 @@ class Connection implements Emitter<MessageMap> {
     });
 
     this.#ws.addEventListener("close", () => {
-      console.log("Disconnected, reconnecting...");
-      this.dispatchEvent("disconnect", undefined as never);
+      if (this.#openValue !== undefined) {
+        console.log("Disconnected, reconnecting...");
+        this.dispatchEvent("disconnect", undefined as never);
+      }
 
       this.#openValue = undefined;
       const now = Date.now();

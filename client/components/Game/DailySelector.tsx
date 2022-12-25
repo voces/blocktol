@@ -40,7 +40,8 @@ export const DailySelector = () => {
     const listCallback = (list: ListMessage) => setList(list.items);
     connection.addEventListener("list", listCallback);
 
-    const runCallback = (run: RunMessage) =>
+    const runCallback = (run: RunMessage) => {
+      setSelectedIteration(run.iteration);
       setList((list): ListMessage["items"] => {
         const row = list.find((row) => row.iteration === run.iteration);
         if (!row) return list;
@@ -53,6 +54,7 @@ export const DailySelector = () => {
         }
         return list;
       });
+    };
     connection.addEventListener("run", runCallback);
 
     return () => {

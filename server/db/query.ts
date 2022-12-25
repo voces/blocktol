@@ -1,4 +1,5 @@
 import SqlString from "https://esm.sh/sqlstring@2.3.3?pin=v99";
+import { env } from "../util/env.ts";
 
 const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
   const makeFetch = async () => {
@@ -7,9 +8,9 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
 
     const ret = await fetch("https://w3x.io/sql", {
       headers: {
-        "x-dbproxy-user": "blocktol-dev",
+        "x-dbproxy-user": `blocktol-${env}`,
         "x-dbproxy-password": Deno.env.get("SQL_PASSWORD")!,
-        "x-dbproxy-database": "blocktol-dev",
+        "x-dbproxy-database": `blocktol-${env}`,
       },
       method: "POST",
       body: query,

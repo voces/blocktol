@@ -48,7 +48,7 @@ export const newIteration = async (date: Date) => {
   r = Math.random();
   const power = r < 0.09 ? 2 : r < 0.3 ? 1 : 0;
   const bricks = power +
-    Math.floor((1 - Math.random() ** 0.7) * 20) + 3;
+    Math.floor((1 - Math.random() ** 0.7) ** 0.9 * 20) + 3;
 
   const path = findPath(grid, checkpoint);
   const [duration] = pathDuration(path, thunders);

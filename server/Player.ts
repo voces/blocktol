@@ -99,7 +99,11 @@ export class Player {
     console.log(new Date(), this.#logName, "Closing", reason);
     this.#websocket.close();
 
-    if (this.#remainingDailyAttempts === 0) {
+    // Allow abandoning games if not doing daily OR they're less than 2 seconds in
+    if (
+      this.#remainingDailyAttempts === 0 ||
+      (Date.now() - (this.#startTime ?? Infinity)) < 2_000
+    ) {
       clearInterval(this.#timeout);
       Player.map.delete(this.#websocket);
     } else {

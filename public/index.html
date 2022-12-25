@@ -162,6 +162,20 @@
       height: var(--maze-size);
       overflow-y: auto;
     }
+
+    @media (orientation: portrait) {
+      .log {
+        top: calc(var(--maze-size) + var(--header-size) + 8px);
+        left: 8px;
+        right: 0;
+        max-height: calc(100vh - var(--maze-size) - var(--header-size) - 8px);
+        width: unset;
+      }
+
+      .log.show-list {
+        display: none;
+      }
+    }
   </style>
 </head>
 
