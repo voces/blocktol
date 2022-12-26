@@ -64,8 +64,8 @@ export const listDailies = (
     {
       iteration: number;
       created: number;
-      personalBest: number | null;
-      daily: number | null;
+      ownBest: number | null;
+      ownDailyBest: number | null;
       best: number | null;
       min: number;
     }[]
@@ -73,8 +73,8 @@ export const listDailies = (
   SELECT
     id iteration,
     iteration.created created,
-    ROUND(MAX(CASE WHEN user = ${user} THEN time ELSE null END), 2) personalBest,
-    ROUND(MAX(CASE WHEN user = ${user} AND daily = TRUE THEN time ELSE null END), 2) daily,
+    ROUND(MAX(CASE WHEN user = ${user} THEN time ELSE null END), 2) ownBest,
+    ROUND(MAX(CASE WHEN user = ${user} AND daily = TRUE THEN time ELSE null END), 2) ownDailyBest,
     MAX(time) best,
     min
   FROM iteration
@@ -93,14 +93,18 @@ export const listDailies = (
         new Date(r.created).getUTCMonth() + 1,
         new Date(r.created).getUTCDate(),
       ],
-      dailyPercent: r.best && r.daily
-        ? r.best === r.min ? 1 : (r.daily - r.min) / (r.best - r.min)
-        : null,
-      percent: r.best && r.min && r.personalBest
-        ? r.best === r.min ? 1 : (r.personalBest - r.min) / (r.best - r.min)
-        : null,
+      ownDailyBest: r.ownDailyBest,
+      ownBest: r.ownBest,
+      best: r.best,
     }))
   );
+
+export const getOwnBest = (user: string, iteration: number) =>
+  sql<{ ownBest: number }[] | null>`
+    SELECT max(time) ownBest
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration};`.then((r) => r?.[0].ownBest ?? null);
 
 export const markDaily = (user: string, iteration: number) =>
   sql`

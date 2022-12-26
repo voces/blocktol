@@ -15,6 +15,7 @@ import {
 import {
   dailyAttempts,
   dailyAttemptsByIteration,
+  getOwnBest,
   markDaily,
   updateRating,
 } from "./db/user.ts";
@@ -59,6 +60,7 @@ export class Player {
   #doingDaily = true;
   #startTime: number | undefined;
   #iterationCreatedAt: string | undefined;
+  #ownBest: number | null = null;
 
   static map = new Map<WebSocket, Player>();
 
@@ -166,7 +168,10 @@ export class Player {
   }
 
   async #initializeRun(iteration: number) {
-    const details = await getIteration(iteration);
+    const [details, ownBest] = await Promise.all([
+      getIteration(iteration),
+      getOwnBest(this.id, iteration),
+    ]);
     if (!details) return this.close("missing iteration");
 
     this.grid = newGrid();
@@ -187,7 +192,7 @@ export class Player {
     this.#iterationMinTime = details.min;
     this.#iterationCreatedAt = details.date;
 
-    return details;
+    return ownBest;
   }
 
   async playPrevalidate(iteration?: number) {
@@ -252,8 +257,9 @@ export class Player {
 
     if (!iteration) iteration = await this.#getRandomIteration();
 
-    const details = await this.#initializeRun(iteration);
-    if (!details) return;
+    const ownBest = await this.#initializeRun(iteration);
+    if (ownBest === undefined) return;
+    this.#ownBest = ownBest;
 
     this.#iteration = iteration;
     this.status = "afk";
@@ -287,6 +293,7 @@ export class Player {
       bricks: this.bricks,
       rating: this.rating,
       attempts: this.#remainingDailyAttempts,
+      ownBest,
     });
 
     this.#startTime = Date.now();
@@ -417,6 +424,7 @@ export class Player {
           bricks: player.bricks,
           rating: player.rating,
           attempts: player.#remainingDailyAttempts,
+          ownBest: player.#ownBest,
         });}
 
       return player;

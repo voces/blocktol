@@ -27,7 +27,6 @@ export const useInit = () => {
     setCheckpoint,
     setRating,
     setDisconnected,
-    setLastRating,
     rating: lastRating,
     setDate,
     setAttempts,
@@ -38,7 +37,6 @@ export const useInit = () => {
       { checkpoint, blocks, thunders, ...event }: StartMessage,
     ) => {
       setRun(undefined);
-      setLastRating(NaN);
       setCheckpoint(checkpoint);
       setThunders(
         thunders.map(({ x, y, player }) => ({ x, y, local: player })),
@@ -106,7 +104,6 @@ export const useInit = () => {
       setPower(-1);
       setTouching(false);
       setThunderHover(undefined);
-      setLastRating(lastRating);
       setRating(rating);
     };
     connection.addEventListener("run", runCallback);

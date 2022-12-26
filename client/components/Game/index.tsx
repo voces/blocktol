@@ -35,7 +35,6 @@ export const Game = (
     setRun,
     disconnected,
     rating,
-    lastRating,
     date,
   } = useContext(GameStateContext);
   const [attemptsRemaining, setAttemptsRemaining] = useState(-1);
@@ -90,7 +89,6 @@ export const Game = (
         disconnected={disconnected}
         onSlow={onSlow}
         rating={rating}
-        lastRating={lastRating}
         date={date}
       />
       {attemptsRemaining > 0 && (

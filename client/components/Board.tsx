@@ -6,6 +6,7 @@ import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { Timer } from "./Timer.tsx";
+import { Rating } from "./Board/Rating.tsx";
 
 export const Board = (
   {
@@ -27,7 +28,6 @@ export const Board = (
     disconnected,
     onSlow,
     rating,
-    lastRating,
     date,
   }: {
     placingBlock: Point & { placing: boolean };
@@ -52,7 +52,6 @@ export const Board = (
     disconnected: boolean;
     onSlow: (thunder: Point & { local?: boolean }) => void;
     rating: number;
-    lastRating: number;
     date: number;
   },
 ) => (
@@ -138,23 +137,7 @@ export const Board = (
           {time} seconds to build
         </text>
       )}
-      {!Number.isNaN(rating) && (
-        <text
-          x={18.8}
-          y={19.75}
-          font-size={0.8}
-          fill="var(--maze-text)"
-          text-anchor="end"
-        >
-          {`${Math.round(rating)}${
-            !Number.isNaN(lastRating) && lastRating !== rating
-              ? ` (${rating > lastRating ? "+" : ""}${
-                (rating - lastRating).toFixed(1)
-              })`
-              : ""
-          }`}
-        </text>
-      )}
+      <Rating />
       {!Number.isNaN(date) && (
         <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
           {new Intl.DateTimeFormat(undefined, {

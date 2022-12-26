@@ -16,6 +16,70 @@ const r1 = 0xff;
 const g1 = 0x00;
 const b1 = 0x00;
 
+const Daily = (
+  { item, selectedIteration, setSelectedIteration }: {
+    item: ListMessage["items"][number];
+    selectedIteration: number;
+    setSelectedIteration: (selectedIteration: number) => void;
+  },
+) => {
+  const connection = useContext(ConnectionContext);
+
+  const percent =
+    typeof item.ownBest === "number" && typeof item.best === "number"
+      ? item.ownBest / item.best
+      : null;
+
+  const dailyPercent =
+    typeof item.ownDailyBest === "number" && typeof item.best === "number"
+      ? item.ownDailyBest / item.best
+      : null;
+
+  return (
+    <span
+      className={selectedIteration === item.iteration ? "selected" : undefined}
+      title={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" })
+        .format(new Date(item.daily[0], item.daily[1] - 1, item.daily[2]))}
+      style={{
+        backgroundColor: percent == null ? "gray" : `#${
+          [
+            r0 * percent + r1 * (1 - percent),
+            g0 * percent + g1 * (1 - percent),
+            b0 * percent + b1 * (1 - percent),
+          ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
+            "",
+          )
+        }`,
+      }}
+      onClick={() => {
+        setSelectedIteration(item.iteration);
+        connection.send({ kind: "play", iteration: item.iteration });
+      }}
+    >
+      <div
+        title={`Daily percent: ${
+          dailyPercent == null
+            ? "N/A"
+            : Math.floor(dailyPercent * 100).toString()
+        }`}
+        className="daily"
+        style={{
+          backgroundColor: dailyPercent == null ? "gray" : `#${
+            [
+              r0 * dailyPercent + r1 * (1 - dailyPercent),
+              g0 * dailyPercent + g1 * (1 - dailyPercent),
+              b0 * dailyPercent + b1 * (1 - dailyPercent),
+            ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
+              "",
+            )
+          }`,
+        }}
+      />
+      {percent == null ? "-" : formatPercentile(percent)}
+    </span>
+  );
+};
+
 export const DailySelector = () => {
   const connection = useContext(ConnectionContext);
   const [list, setList] = useState<ListMessage["items"]>([]);
@@ -45,10 +109,14 @@ export const DailySelector = () => {
       setList((list): ListMessage["items"] => {
         const row = list.find((row) => row.iteration === run.iteration);
         if (!row) return list;
-        if (row.percent === null || row.percent < run.percent) {
+        if (row.ownBest === null || row.ownBest < run.duration) {
           return list.map((row) =>
             row.iteration === run.iteration
-              ? ({ ...row, percent: run.percent })
+              ? ({
+                ...row,
+                ownBest: run.duration,
+                best: Math.max(row.best ?? -Infinity, run.duration),
+              })
               : row
           );
         }
@@ -63,52 +131,17 @@ export const DailySelector = () => {
     };
   }, []);
 
+  if (!list.length) return null;
+
   return (
     <div className="daily-selector">
       {list.map((item) => (
-        <span
-          className={selectedIteration === item.iteration
-            ? "selected"
-            : undefined}
-          title={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" })
-            .format(new Date(item.daily[0], item.daily[1] - 1, item.daily[2]))}
-          style={{
-            backgroundColor: item.percent == null ? "gray" : `#${
-              [
-                r0 * item.percent + r1 * (1 - item.percent),
-                g0 * item.percent + g1 * (1 - item.percent),
-                b0 * item.percent + b1 * (1 - item.percent),
-              ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
-                "",
-              )
-            }`,
-          }}
-          onClick={() => {
-            setSelectedIteration(item.iteration);
-            connection.send({ kind: "play", iteration: item.iteration });
-          }}
-        >
-          <div
-            title={`Daily percent: ${
-              item.dailyPercent == null
-                ? "N/A"
-                : Math.floor(item.dailyPercent * 100).toString()
-            }`}
-            className="daily"
-            style={{
-              backgroundColor: item.dailyPercent == null ? "gray" : `#${
-                [
-                  r0 * item.dailyPercent + r1 * (1 - item.dailyPercent),
-                  g0 * item.dailyPercent + g1 * (1 - item.dailyPercent),
-                  b0 * item.dailyPercent + b1 * (1 - item.dailyPercent),
-                ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
-                  "",
-                )
-              }`,
-            }}
-          />
-          {item.percent == null ? "-" : formatPercentile(item.percent)}
-        </span>
+        <Daily
+          key={item.iteration}
+          item={item}
+          selectedIteration={selectedIteration}
+          setSelectedIteration={setSelectedIteration}
+        />
       ))}
     </div>
   );

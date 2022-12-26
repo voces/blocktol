@@ -23,7 +23,6 @@ export const App = () => {
   const id = getId();
   const connection = useContext(ConnectionContext);
   const connected = useConnectionState();
-  const logInTimeout = useRef<number>();
   const hadCompletedOnboarding = useRef(getHasCompletedOnboarding());
   const [showOnboarding, setShowOnboarding] = useState(
     !hadCompletedOnboarding.current,
@@ -32,7 +31,6 @@ export const App = () => {
   useEffect(() => {
     if (!connected || showOnboarding) return;
 
-    clearTimeout(logInTimeout.current);
     connection.send({
       kind: "login",
       username: undefined,

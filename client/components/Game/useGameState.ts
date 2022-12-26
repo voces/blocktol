@@ -49,14 +49,12 @@ export const useGameState = () => {
   const [thunderHover, setThunderHover] = useState<
     Point & { local?: boolean }
   >();
-  const [lastRating, setLastRating] = useState(NaN);
   const [rating, setRating] = useState(NaN);
   const [date, setDate] = useState(NaN);
   const [attempts, setAttempts] = useState<DailyMessage["attempts"]>();
 
   const clear = () => {
     setRun(undefined);
-    setLastRating(NaN);
     setCheckpoint({ x: -2, y: -2 });
     setThunders([]);
     setBlocks([]);
@@ -75,7 +73,6 @@ export const useGameState = () => {
     disconnected,
     grid,
     invalid,
-    lastRating,
     placingBlockRef,
     power,
     rating,
@@ -86,7 +83,6 @@ export const useGameState = () => {
     setDate,
     setDisconnected,
     setInvalid,
-    setLastRating,
     setPlacingBlock,
     setPower,
     setRating,

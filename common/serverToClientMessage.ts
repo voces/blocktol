@@ -16,6 +16,7 @@ const isStartMessage = is.object({
   bricks: is.number,
   rating: is.number,
   attempts: is.number,
+  ownBest: is.union(is.number, is.null),
 });
 export type StartMessage = GuardedType<typeof isStartMessage>;
 
@@ -49,8 +50,9 @@ const isListMessage = is.object({
     is.object({
       iteration: is.number,
       daily: is.tuple(is.number, is.number, is.number),
-      percent: is.union(is.number, is.null),
-      dailyPercent: is.union(is.number, is.null),
+      ownDailyBest: is.union(is.number, is.null),
+      ownBest: is.union(is.number, is.null),
+      best: is.union(is.number, is.null),
     }),
   ),
 });
