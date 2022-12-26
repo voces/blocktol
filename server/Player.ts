@@ -279,6 +279,7 @@ export class Player {
 
     this.send({
       kind: "start",
+      iteration: iteration,
       date: new Date(this.#iterationCreatedAt!).getTime(),
       time: BUILD_TIME,
       checkpoint: this.checkpoint,
@@ -292,7 +293,7 @@ export class Player {
       power: this.power,
       bricks: this.bricks,
       rating: this.rating,
-      attempts: this.#remainingDailyAttempts,
+      todaysRemainingDailyAttempts: this.#remainingDailyAttempts,
       ownBest,
     });
 
@@ -338,7 +339,7 @@ export class Player {
 
     this.send({
       kind: "run",
-      iteration: this.#iteration!,
+      iteration,
       path: path ?? [],
       duration,
       percentile,
@@ -409,6 +410,7 @@ export class Player {
       if (player.status === "init") player.play();
       else {player.send({
           kind: "start",
+          iteration: player.#iteration!,
           date: new Date(player.#iterationCreatedAt!).getTime(),
           time: BUILD_TIME - (Date.now() - player.#startTime!) / 1_000,
           checkpoint: player.checkpoint,
@@ -423,7 +425,7 @@ export class Player {
           power: player.power,
           bricks: player.bricks,
           rating: player.rating,
-          attempts: player.#remainingDailyAttempts,
+          todaysRemainingDailyAttempts: player.#remainingDailyAttempts,
           ownBest: player.#ownBest,
         });}
 

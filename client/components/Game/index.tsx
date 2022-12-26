@@ -48,13 +48,14 @@ export const Game = (
   useEffect(() => {
     let timeout = -1;
 
-    const startCallback = ({ attempts }: StartMessage) => {
-      if (attempts <= 0) return;
+    const startCallback = ({ todaysRemainingDailyAttempts }: StartMessage) => {
+      if (todaysRemainingDailyAttempts <= 0) return;
 
-      setAttemptsRemaining(attempts);
+      setAttemptsRemaining(todaysRemainingDailyAttempts);
       timeout = setTimeout(
         () => setAttemptsRemaining(-1),
-        (attempts + (extraAttemptBannerTime ? 2 : 0)) * 1_000,
+        (todaysRemainingDailyAttempts + (extraAttemptBannerTime ? 2 : 0)) *
+          1_000,
       );
     };
 

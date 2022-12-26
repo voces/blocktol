@@ -7,6 +7,7 @@ import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { Timer } from "./Timer.tsx";
 import { Rating } from "./Board/Rating.tsx";
+import { TopRight } from "./Board/TopRight.tsx";
 
 export const Board = (
   {
@@ -126,17 +127,7 @@ export const Board = (
           ❄️ {power}
         </text>
       )}
-      {time > 0 && (
-        <text
-          x={18.8}
-          y={0.8}
-          font-size={0.8}
-          fill="var(--maze-text)"
-          text-anchor="end"
-        >
-          {time} seconds to build
-        </text>
-      )}
+      <TopRight time={time} />
       <Rating />
       {!Number.isNaN(date) && (
         <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">

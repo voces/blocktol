@@ -7,10 +7,17 @@ import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
 import { IntroBoard } from "./IntroBoard.tsx";
 
-const Shell = ({ children }: { children: ComponentChildren }) => (
+const Shell = (
+  { children, gameState }: {
+    children: ComponentChildren;
+    gameState: ReturnType<typeof useGameState>;
+  },
+) => (
   <div style={{ textAlign: "center" }}>
     <h1>Blocktol</h1>
-    {children}
+    <GameStateContext.Provider value={gameState}>
+      {children}
+    </GameStateContext.Provider>
   </div>
 );
 
@@ -43,7 +50,7 @@ export const App = () => {
 
   if (showOnboarding) {
     return (
-      <Shell>
+      <Shell gameState={gameState}>
         <IntroBoard
           onDone={() => {
             setShowOnboarding(false);
@@ -55,10 +62,8 @@ export const App = () => {
   }
 
   return (
-    <Shell>
-      <GameStateContext.Provider value={gameState}>
-        <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
-      </GameStateContext.Provider>
+    <Shell gameState={gameState}>
+      <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
     </Shell>
   );
 };

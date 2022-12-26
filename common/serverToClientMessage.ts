@@ -7,6 +7,7 @@ const isPlayerPoint = is.intersection(
 
 const isStartMessage = is.object({
   kind: is.const("start"),
+  iteration: is.number,
   date: is.number,
   time: is.number,
   checkpoint: isPoint,
@@ -15,7 +16,7 @@ const isStartMessage = is.object({
   power: is.number,
   bricks: is.number,
   rating: is.number,
-  attempts: is.number,
+  todaysRemainingDailyAttempts: is.number,
   ownBest: is.union(is.number, is.null),
 });
 export type StartMessage = GuardedType<typeof isStartMessage>;
