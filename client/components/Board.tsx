@@ -28,7 +28,6 @@ export const Board = (
     grid,
     disconnected,
     onSlow,
-    rating,
     date,
   }: {
     placingBlock: Point & { placing: boolean };
@@ -52,7 +51,6 @@ export const Board = (
     grid: boolean[][];
     disconnected: boolean;
     onSlow: (thunder: Point & { local?: boolean }) => void;
-    rating: number;
     date: number;
   },
 ) => (
@@ -127,7 +125,7 @@ export const Board = (
           ❄️ {power}
         </text>
       )}
-      <TopRight time={time} />
+      <TopRight time={time} hasResources={bricks > 0 || power > 0} />
       <Rating />
       {!Number.isNaN(date) && (
         <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">

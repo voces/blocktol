@@ -280,7 +280,6 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         grid={[]}
         disconnected={false}
         onSlow={onSlow}
-        rating={NaN}
         date={NaN}
       />
       <div

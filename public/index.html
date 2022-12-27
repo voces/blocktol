@@ -176,6 +176,42 @@
         display: none;
       }
     }
+
+    @keyframes flashready1 {
+
+      0%,
+      50% {
+        opacity: 1;
+      }
+
+      80%,
+      100% {
+        opacity: 0;
+      }
+
+    }
+
+    .flash-ready {
+      cursor: pointer;
+      animation: 1500ms ease-in-out infinite alternate flashready1;
+    }
+
+    @keyframes flashready2 {
+
+      0%,
+      50% {
+        opacity: 0;
+      }
+
+      80%,
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .flash-ready.ready {
+      animation-name: flashready2;
+    }
   </style>
 </head>
 
