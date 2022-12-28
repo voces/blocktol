@@ -41,7 +41,7 @@ export const BottomRight = () => {
     };
   }, [currentIteration, ownBest]);
 
-  const clickHandler = useCallback((e: MouseEvent) => {
+  const clickHandler = useCallback((e: MouseEvent | TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -55,7 +55,8 @@ export const BottomRight = () => {
       font-size={0.8}
       fill="var(--maze-text)"
       text-anchor="end"
-      onMouseDown={clickHandler}
+      onMouseDown={showRating ? undefined : clickHandler}
+      onTouchStart={showRating ? undefined : clickHandler}
     >
       {showRating
         ? Math.round(rating)

@@ -7,7 +7,7 @@ export const TopRight = (
 ) => {
   const connection = useContext(ConnectionContext);
 
-  const clickHandler = useCallback((e: MouseEvent) => {
+  const clickHandler = useCallback((e: MouseEvent | TouchEvent) => {
     if (hasResources) return;
 
     e.preventDefault();
@@ -27,7 +27,8 @@ export const TopRight = (
         fill="var(--maze-text)"
         text-anchor="end"
         className={hasResources ? undefined : "flash-ready"}
-        onClick={clickHandler}
+        onMouseDown={clickHandler}
+        onTouchStart={clickHandler}
       >
         {time} seconds to build
       </text>
@@ -39,7 +40,8 @@ export const TopRight = (
           fill="var(--maze-text)"
           text-anchor="end"
           className="flash-ready ready"
-          onClick={clickHandler}
+          onMouseDown={clickHandler}
+          onTouchStart={clickHandler}
         >
           Ready?
         </text>
