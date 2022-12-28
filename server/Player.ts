@@ -89,6 +89,10 @@ export class Player {
     return `'${this.id.slice(0, 8)}...${this.id.slice(-8)}'`;
   }
 
+  get doingDaily() {
+    return this.#doingDaily;
+  }
+
   send(message: Message) {
     try {
       this.#websocket.send(JSON.stringify(message));
@@ -114,6 +118,12 @@ export class Player {
         ONE_MINUTE,
       );
     }
+  }
+
+  cancel() {
+    if (this.#doingDaily) return;
+    clearInterval(this.#timeout);
+    this.status = "init";
   }
 
   /** Calculates the path, duration, and slows for the current iteration. */

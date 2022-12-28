@@ -1,14 +1,17 @@
 import {
+  BestMessage,
   BlockMessage,
   LoginMessage,
   PlayMessage,
   TransitionBlockMessage,
 } from "../common/clientToServerMessage.ts";
+import { BestMessage as BestMessageS2C } from "../common/serverToClientMessage.ts";
 import { offsets } from "../common/constants.ts";
 import { findPath } from "../common/pathing.ts";
 import {
   createOrUpdateUser,
   dailyAttempts,
+  getOwnBestMaze,
   getUserPlays,
   listDailies,
 } from "./db/user.ts";
@@ -155,5 +158,40 @@ export const clientHandlers = {
     if (player.status === "afk" || player.status === "playing") {
       player.startRunner();
     }
+  },
+  best: async (socket: WebSocket, { iteration }: BestMessage) => {
+    const player = Player.from(socket);
+
+    if (!player) {
+      console.log(new Date(), "Closing missing player");
+      return socket.close();
+    }
+
+    if (
+      player.status !== "afk" && player.status !== "playing" &&
+      !player.doingDaily
+    ) {
+      return;
+    }
+
+    const ret = await getOwnBestMaze(player.id, iteration);
+    if (!ret) return; // No stored best maze
+
+    player.cancel();
+
+    player.send({
+      kind: "best",
+      maze: ret.split("\n").map((r): BestMessageS2C["maze"][number] => {
+        let isThunder = false;
+        if (r[0] === "t") {
+          isThunder = true;
+          r = r.slice(1);
+        }
+        const x = parseInt(r.slice(0, 2));
+        const y = parseInt(r.slice(2));
+        if (isThunder) return { x, y, thunder: true };
+        else return { x, y };
+      }),
+    });
   },
 };

@@ -6,7 +6,7 @@ import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { Timer } from "./Timer.tsx";
-import { Rating } from "./Board/Rating.tsx";
+import { BottomRight } from "./Board/BottomRight.tsx";
 import { TopRight } from "./Board/TopRight.tsx";
 
 export const Board = (
@@ -126,7 +126,7 @@ export const Board = (
         </text>
       )}
       <TopRight time={time} hasResources={bricks > 0 || power > 0} />
-      <Rating />
+      <BottomRight />
       {!Number.isNaN(date) && (
         <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
           {new Intl.DateTimeFormat(undefined, {

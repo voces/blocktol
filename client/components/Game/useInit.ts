@@ -2,6 +2,7 @@ import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { newGrid } from "../../../common/pathing.ts";
 import {
+  BestMessage,
   DailyMessage,
   RunMessage,
   StartMessage,
@@ -86,11 +87,31 @@ export const useInit = () => {
     };
     connection.addEventListener("daily", dailyCallback);
 
+    const bestCallback = ({ maze }: BestMessage) => {
+      setBlocks((oldBlocks) => [
+        ...oldBlocks.filter((b) => !b.local),
+        ...maze.filter((b) => !b.thunder).map((b) => ({ ...b, local: true })),
+      ]);
+      setThunders((oldThunders) => [
+        ...oldThunders.filter((b) => !b.local),
+        ...maze.filter((b) => b.thunder).map((b) => ({ ...b, local: true })),
+      ]);
+      setBricks(-1);
+      setPower(-1);
+      setRun(undefined);
+      setInvalid(false);
+      setTransitionBlock(undefined);
+      setPlacingBlock((pb) => ({ ...pb, placing: false }));
+      setTime(-1);
+    };
+    connection.addEventListener("best", bestCallback);
+
     return () => {
       connection.removeEventListener("start", startCallback);
       connection.removeEventListener("disconnect", disconnectCallback);
       connection.removeEventListener("connect", connectCallback);
       connection.removeEventListener("daily", dailyCallback);
+      connection.removeEventListener("best", bestCallback);
     };
   }, [connection]);
 

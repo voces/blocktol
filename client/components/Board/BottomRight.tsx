@@ -1,5 +1,5 @@
 import { h } from "preact";
-import { useContext, useEffect, useState } from "preact/compat";
+import { useCallback, useContext, useEffect, useState } from "preact/compat";
 import {
   RunMessage,
   StartMessage,
@@ -7,7 +7,7 @@ import {
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
 
-export const Rating = () => {
+export const BottomRight = () => {
   const connection = useContext(ConnectionContext);
   const { rating } = useContext(GameStateContext);
   const [showRating, setShowRating] = useState(true);
@@ -41,6 +41,13 @@ export const Rating = () => {
     };
   }, [currentIteration, ownBest]);
 
+  const clickHandler = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    connection.send({ kind: "best", iteration: currentIteration });
+  }, [currentIteration]);
+
   return (
     <text
       x={18.8}
@@ -48,6 +55,7 @@ export const Rating = () => {
       font-size={0.8}
       fill="var(--maze-text)"
       text-anchor="end"
+      onMouseDown={clickHandler}
     >
       {showRating
         ? Math.round(rating)

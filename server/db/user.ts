@@ -106,6 +106,20 @@ export const getOwnBest = (user: string, iteration: number) =>
     WHERE user = ${user}
       AND iteration = ${iteration};`.then((r) => r?.[0].ownBest ?? null);
 
+export const getOwnBestMaze = (user: string, iteration: number) =>
+  sql<({ data: string | null } | null)[] | null>`
+    SELECT data
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND time = (
+        SELECT max(time)
+        FROM run
+        WHERE user = ${user}
+        AND iteration = ${iteration}
+      )
+    LIMIT 1;`.then((r) => r?.[0]?.data ?? null);
+
 export const markDaily = (user: string, iteration: number) =>
   sql`
     UPDATE run

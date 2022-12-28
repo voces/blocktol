@@ -86,6 +86,15 @@ type union = {
     typeguardE: (value: unknown) => value is E,
     typeguardF: (value: unknown) => value is F,
   ): (value: unknown) => value is A | B | C | D | E | F;
+  <A, B, C, D, E, F, G>(
+    typeguardA: (value: unknown) => value is A,
+    typeguardB: (value: unknown) => value is B,
+    typeguardC: (value: unknown) => value is C,
+    typeguardD: (value: unknown) => value is D,
+    typeguardE: (value: unknown) => value is E,
+    typeguardF: (value: unknown) => value is F,
+    typeguardG: (value: unknown) => value is G,
+  ): (value: unknown) => value is A | B | C | D | E | F | G;
   <T>(
     ...typeguards: ((value: unknown) => value is T)[]
   ): (value: unknown) => value is T;
@@ -185,6 +194,17 @@ export const isTuple = (<T extends unknown[]>(
   typeguards.length === values.length &&
   typeguards.every((tg, i) => tg(values[i]))) as tuple;
 
+export const isPartial = <T>(
+  props: { [Prop in keyof T]: (value: unknown) => value is T[Prop] },
+) =>
+(value: unknown): value is Partial<T> => {
+  if (!is.record(is.unknown)(value)) return false;
+  for (const prop in props) {
+    if (value[prop] !== undefined && !props[prop](value[prop])) return false;
+  }
+  return true;
+};
+
 export const is = {
   string: isString,
   number: isNumber,
@@ -201,6 +221,7 @@ export const is = {
   in: isIn,
   tuple: isTuple,
   intersection: isIntersection,
+  partial: isPartial,
 };
 
 export const isPoint = is.object({ x: is.number, y: is.number });

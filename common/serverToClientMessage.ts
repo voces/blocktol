@@ -1,4 +1,4 @@
-import { GuardedType, is, isPoint } from "./typeguards.ts";
+import { GuardedType, is, isPartial, isPoint } from "./typeguards.ts";
 
 const isPlayerPoint = is.intersection(
   isPoint,
@@ -59,6 +59,25 @@ const isListMessage = is.object({
 });
 export type ListMessage = GuardedType<typeof isListMessage>;
 
+const isBestMessage = is.object({
+  kind: is.const("best"),
+  maze: is.array(
+    is.intersection(
+      isPoint,
+      is.partial({ thunder: is.boolean }),
+    ),
+  ),
+});
+export type BestMessage = GuardedType<typeof isBestMessage>;
+
+export const isMessage = is.union(
+  isStartMessage,
+  isRunMessage,
+  isDailyMessage,
+  isListMessage,
+  isBestMessage,
+);
+
 export type MessageMap = {
   start: StartMessage;
   run: RunMessage;
@@ -66,10 +85,7 @@ export type MessageMap = {
   disconnect: never;
   connect: never;
   list: ListMessage;
+  best: BestMessage;
 };
 
-export type Message = MessageMap[keyof MessageMap];
-
-export const isMessage = (value: unknown): value is Message =>
-  isStartMessage(value) || isRunMessage(value) || isDailyMessage(value) ||
-  isListMessage(value);
+export type Message = GuardedType<typeof isMessage>;

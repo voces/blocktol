@@ -36,6 +36,12 @@ const isReadyMessage = is.object({
 });
 export type ReadyMessage = GuardedType<typeof isReadyMessage>;
 
+const isBestMessage = is.object({
+  kind: is.const("best"),
+  iteration: is.number,
+});
+export type BestMessage = GuardedType<typeof isBestMessage>;
+
 export const isMessage = is.union(
   isLoginMessage,
   isBlockMessage,
@@ -43,5 +49,6 @@ export const isMessage = is.union(
   isListMessage,
   isPlayMessage,
   isReadyMessage,
+  isBestMessage,
 );
 export type ClientToServerMessage = GuardedType<typeof isMessage>;
