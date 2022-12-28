@@ -143,9 +143,11 @@ export const clientHandlers = {
       return socket.close();
     }
 
-    if (
-      player.status !== "afk" && player.status !== "init" && !player.doingDaily
-    ) return;
+    if (player.doingDaily) return;
+
+    if (player.status === "playing" || player.status === "afk") {
+      player.cancel();
+    }
 
     player.play(iteration);
   },

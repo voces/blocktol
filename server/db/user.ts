@@ -112,6 +112,7 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
+      AND LENGTH(DATA) > 0
       AND time = (
         SELECT max(time)
         FROM run
