@@ -49,13 +49,28 @@ export const dailyAttemptsByIteration = (user: string, iteration: number) =>
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
 
-export const dailyAttempts = async (
+export const dailyAttempts = (
   user: string,
   year: number,
   month: number,
   day: number,
 ) =>
-  dailyAttemptsByIteration(user, await getDailyIterationId(year, month, day));
+  sql<{ time: number }[]>`
+    SELECT time
+    FROM run
+    WHERE user = ${user}
+      AND iteration = (
+        SELECT id
+        FROM iteration
+        WHERE YEAR(created) = ${year}
+          AND MONTH(created) = ${month}
+          AND DAY(created) = ${day}
+        LIMIT 1
+      )
+      AND void = FALSE
+    ORDER BY created ASC
+    LIMIT 3;
+  `.then((r) => r.map((r) => r.time));
 
 export const listDailies = (
   user: string,
