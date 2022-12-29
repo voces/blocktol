@@ -143,7 +143,7 @@ export const clientHandlers = {
       return socket.close();
     }
 
-    if (player.doingDaily) return;
+    if (player.doingDaily && player.status !== "init") return;
 
     if (player.status === "playing" || player.status === "afk") {
       player.cancel();

@@ -8,13 +8,23 @@ import {
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { GameStateContext } from "./useGameState.ts";
 
-const r0 = 0x00;
-const g0 = 0x55;
-const b0 = 0xff;
+const r = [253, 251, 208, 100, 82];
+const g = [161, 74, 0, 65, 119];
+const b = [9, 5, 108, 236, 254];
 
-const r1 = 0xff;
-const g1 = 0x00;
-const b1 = 0x00;
+const getColor = (percent: number) => {
+  const p2 = (percent + percent ** 4 + percent ** 32) / 3;
+  const l = r.length - 1;
+  const i = Math.min(Math.floor(p2 * l), l - 1);
+  const t = (p2 - i / l) * l;
+  return `#${
+    [
+      r[i] + t * (r[i + 1] - r[i]),
+      g[i] + t * (g[i + 1] - g[i]),
+      b[i] + t * (b[i + 1] - b[i]),
+    ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join("")
+  }`;
+};
 
 const Daily = (
   { item, selectedIteration, setSelectedIteration }: {
@@ -40,17 +50,7 @@ const Daily = (
       className={selectedIteration === item.iteration ? "selected" : undefined}
       title={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" })
         .format(new Date(item.daily[0], item.daily[1] - 1, item.daily[2]))}
-      style={{
-        backgroundColor: percent == null ? "gray" : `#${
-          [
-            r0 * percent + r1 * (1 - percent),
-            g0 * percent + g1 * (1 - percent),
-            b0 * percent + b1 * (1 - percent),
-          ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
-            "",
-          )
-        }`,
-      }}
+      style={{ backgroundColor: percent == null ? "gray" : getColor(percent) }}
       onClick={() => {
         setSelectedIteration(item.iteration);
         connection.send({ kind: "play", iteration: item.iteration });
@@ -64,15 +64,9 @@ const Daily = (
         }`}
         className="daily"
         style={{
-          backgroundColor: dailyPercent == null ? "gray" : `#${
-            [
-              r0 * dailyPercent + r1 * (1 - dailyPercent),
-              g0 * dailyPercent + g1 * (1 - dailyPercent),
-              b0 * dailyPercent + b1 * (1 - dailyPercent),
-            ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join(
-              "",
-            )
-          }`,
+          backgroundColor: dailyPercent == null
+            ? "gray"
+            : getColor(dailyPercent),
         }}
       />
       {percent == null ? "-" : formatPercentile(percent)}
