@@ -164,7 +164,7 @@ export class Player {
         iteration
           ? Promise.all([
             getIterationTimeCounts(iteration.iteration),
-            getIterationOtherBest(iteration.iteration, this.id),
+            getIterationOtherBest(iteration.iteration, this.id, true),
           ])
           : null
       ),
