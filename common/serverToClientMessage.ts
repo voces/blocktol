@@ -54,6 +54,7 @@ const isListMessage = is.object({
       ownDailyBest: is.union(is.number, is.null),
       ownBest: is.union(is.number, is.null),
       best: is.union(is.number, is.null),
+      supreme: is.boolean,
     }),
   ),
 });

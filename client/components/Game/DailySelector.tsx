@@ -70,6 +70,7 @@ const Daily = (
         }}
       />
       {percent == null ? "-" : formatPercentile(percent)}
+      {item.supreme ? "*" : null}
     </span>
   );
 };

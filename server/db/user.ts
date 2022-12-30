@@ -1,5 +1,4 @@
 import { ListMessage } from "../../common/serverToClientMessage.ts";
-import { getDailyIterationId } from "./iteration.ts";
 import { sql } from "./query.ts";
 
 type User = {
@@ -81,6 +80,7 @@ export const listDailies = (
       created: number;
       ownBest: number | null;
       ownDailyBest: number | null;
+      otherBest: number | null;
       best: number | null;
       min: number;
     }[]
@@ -90,6 +90,7 @@ export const listDailies = (
     iteration.created created,
     ROUND(MAX(CASE WHEN user = ${user} THEN time ELSE null END), 2) ownBest,
     ROUND(MAX(CASE WHEN user = ${user} AND daily = TRUE THEN time ELSE null END), 2) ownDailyBest,
+    ROUND(MAX(CASE WHEN user != ${user} THEN time ELSE null END), 2) otherBest,
     MAX(time) best,
     min
   FROM iteration
@@ -111,6 +112,9 @@ export const listDailies = (
       ownDailyBest: r.ownDailyBest,
       ownBest: r.ownBest,
       best: r.best,
+      supreme: typeof r.ownBest === "number"
+        ? typeof r.otherBest === "number" ? r.ownBest > r.otherBest : true
+        : false,
     }))
   );
 
