@@ -72,8 +72,10 @@ export const Daily = () => {
               dateStyle: "medium",
             })}
           </div>
-          {attempts.map(({ duration, percentile }) => (
-            <div>{duration}s (p{formatPercentile(percentile)})</div>
+          {attempts.map(({ duration, percentile, supreme }) => (
+            <div>
+              {duration}s (p{formatPercentile(percentile)}){supreme && "*"}
+            </div>
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

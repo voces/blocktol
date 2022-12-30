@@ -8,6 +8,7 @@ import {
   getDailyIterationId,
   getIteration,
   getIterationCount,
+  getIterationOtherBest,
   getIterationTimeCounts,
   getMaxIterationTime,
   logRun,
@@ -158,14 +159,23 @@ export class Player {
       daily.day,
     );
 
-    const [timeCounts, attempts] = await Promise.all([
+    const [timeCountsAndOtherBest, attempts] = await Promise.all([
       iterationPromise.then((iteration) =>
-        iteration ? getIterationTimeCounts(iteration.iteration) : null
+        iteration
+          ? Promise.all([
+            getIterationTimeCounts(iteration.iteration),
+            getIterationOtherBest(iteration.iteration, this.id),
+          ])
+          : null
       ),
       dailyAttempts(this.id, daily.year, daily.month, daily.day),
     ]);
 
-    if (!timeCounts) return this.close("could not get daily time counts");
+    if (!timeCountsAndOtherBest) {
+      return this.close("could not get daily time counts");
+    }
+
+    const [timeCounts, otherBest] = timeCountsAndOtherBest;
 
     this.send({
       kind: "daily",
@@ -173,6 +183,7 @@ export class Player {
       attempts: attempts.map((duration) => ({
         duration,
         percentile: percentileFromTimeCounts(timeCounts, duration) ?? NaN,
+        supreme: otherBest ? duration > otherBest : true,
       })),
     });
   }
@@ -339,9 +350,10 @@ export class Player {
       await markDaily(this.id, iteration);
     }
 
-    const [timeCounts, max] = await Promise.all([
+    const [timeCounts, max, otherBest] = await Promise.all([
       getIterationTimeCounts(iteration),
       getMaxIterationTime(iteration),
+      getIterationOtherBest(iteration, this.id),
     ]);
     // Maps 415 -> 0.25, 1000 -> 0.5, 2000 -> 0.75, 3000 -> 0.875
     const expectedPercentile = 1 - 0.5 ** (this.rating / 1_000);
@@ -356,6 +368,7 @@ export class Player {
       percent: (duration - minTime) / (Math.max(max ?? 0, duration) - minTime),
       slows,
       rating: this.rating,
+      supreme: duration > (otherBest ?? 0),
     });
 
     if (this.#doingDaily && this.#remainingDailyAttempts === 1) {

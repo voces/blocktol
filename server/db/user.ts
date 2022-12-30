@@ -112,6 +112,7 @@ export const listDailies = (
       ownDailyBest: r.ownDailyBest,
       ownBest: r.ownBest,
       best: r.best,
+      min: r.min,
       supreme: typeof r.ownBest === "number"
         ? typeof r.otherBest === "number" ? r.ownBest > r.otherBest : true
         : false,

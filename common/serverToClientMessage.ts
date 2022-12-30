@@ -1,4 +1,4 @@
-import { GuardedType, is, isPartial, isPoint } from "./typeguards.ts";
+import { GuardedType, is, isPoint } from "./typeguards.ts";
 
 const isPlayerPoint = is.intersection(
   isPoint,
@@ -30,6 +30,7 @@ const isRunMessage = is.object({
   percent: is.number,
   slows: is.array(is.object({ time: is.number, thunder: isPoint })),
   rating: is.number,
+  supreme: is.boolean,
 });
 export type RunMessage = Readonly<GuardedType<typeof isRunMessage>>;
 
@@ -40,6 +41,7 @@ const isDailyMessage = is.object({
     is.object({
       duration: is.number,
       percentile: is.union(is.number, is.null),
+      supreme: is.boolean,
     }),
   ),
 });
@@ -55,6 +57,7 @@ const isListMessage = is.object({
       ownBest: is.union(is.number, is.null),
       best: is.union(is.number, is.null),
       supreme: is.boolean,
+      min: is.number,
     }),
   ),
 });

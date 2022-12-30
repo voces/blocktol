@@ -123,10 +123,12 @@ export const Log = () => {
         }],
       );
 
-    const runCallback = ({ duration, percent }: RunMessage) =>
+    const runCallback = ({ duration, percent, supreme }: RunMessage) =>
       setLog((l) => [...l, {
         source: "server",
-        message: `You lasted ${duration}s (${formatPercentile(percent)}%).`,
+        message: `You lasted ${duration}s (${formatPercentile(percent)}%)${
+          supreme ? ", which was longer than everyone else!" : "."
+        }`,
       }]);
 
     const listCallback = () => setShowList(true);

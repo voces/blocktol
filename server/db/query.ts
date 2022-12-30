@@ -1,5 +1,13 @@
 import SqlString from "https://esm.sh/sqlstring@2.3.3?pin=v99";
+import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
+
+const isSqlError = is.object({
+  code: is.number,
+  message: is.string,
+});
+
+class SQLError extends Error {}
 
 const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
   const makeFetch = async () => {
@@ -32,8 +40,11 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
   while (retries-- >= 0) {
     try {
       const ret = await makeFetch();
-      return ret.json();
+      const json = await ret.json();
+      if (isSqlError(json)) throw new SQLError(json.message);
+      return json;
     } catch (err) {
+      if (err instanceof SQLError) throw err;
       lastError = err;
       console.error(err);
       console.error(

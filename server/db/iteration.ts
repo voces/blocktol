@@ -111,3 +111,16 @@ export const getDailyIteration = (year: number, month: number, day: number) =>
   getDailyIterationId(year, month, day).then((id) =>
     id ? getIteration(id) : undefined
   );
+
+export const getIterationOtherBest = (
+  iteration: number,
+  user: string,
+  daily = false,
+) =>
+  sql<{ otherBest: number | null }[]>`
+    SELECT MAX(time) otherBest
+    FROM run
+    WHERE iteration = ${iteration}
+      AND user != ${user}
+      ${daily ? `AND daily = true` : ""};
+  `.then((r) => r[0].otherBest);

@@ -13,10 +13,9 @@ const g = [161, 74, 0, 65, 119];
 const b = [9, 5, 108, 236, 254];
 
 const getColor = (percent: number) => {
-  const p2 = (percent + percent ** 4 + percent ** 32) / 3;
   const l = r.length - 1;
-  const i = Math.min(Math.floor(p2 * l), l - 1);
-  const t = (p2 - i / l) * l;
+  const i = Math.min(Math.floor(percent * l), l - 1);
+  const t = (percent - i / l) * l;
   return `#${
     [
       r[i] + t * (r[i + 1] - r[i]),
@@ -37,12 +36,12 @@ const Daily = (
 
   const percent =
     typeof item.ownBest === "number" && typeof item.best === "number"
-      ? item.ownBest / item.best
+      ? (item.ownBest - item.min) / (item.best - item.min)
       : null;
 
   const dailyPercent =
     typeof item.ownDailyBest === "number" && typeof item.best === "number"
-      ? item.ownDailyBest / item.best
+      ? (item.ownDailyBest - item.min) / (item.best - item.min)
       : null;
 
   return (
@@ -50,7 +49,11 @@ const Daily = (
       className={selectedIteration === item.iteration ? "selected" : undefined}
       title={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" })
         .format(new Date(item.daily[0], item.daily[1] - 1, item.daily[2]))}
-      style={{ backgroundColor: percent == null ? "gray" : getColor(percent) }}
+      style={{
+        backgroundColor: percent == null
+          ? "gray"
+          : getColor((percent + percent ** 4 + percent ** 32) / 3),
+      }}
       onClick={() => {
         setSelectedIteration(item.iteration);
         connection.send({ kind: "play", iteration: item.iteration });
@@ -70,7 +73,7 @@ const Daily = (
         }}
       />
       {percent == null ? "-" : formatPercentile(percent)}
-      {item.supreme ? "*" : null}
+      {item.supreme && "*"}
     </span>
   );
 };
@@ -111,6 +114,7 @@ export const DailySelector = () => {
                 ...row,
                 ownBest: run.duration,
                 best: Math.max(row.best ?? -Infinity, run.duration),
+                supreme: run.supreme || row.supreme,
               })
               : row
           );
