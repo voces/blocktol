@@ -122,5 +122,5 @@ export const getIterationOtherBest = (
     FROM run
     WHERE iteration = ${iteration}
       AND user != ${user}
-      ${daily ? `AND daily = true` : ""};
+      ${daily ? raw`AND daily = true` : ""}
   `.then((r) => r[0].otherBest);

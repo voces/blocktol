@@ -62,7 +62,10 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
 export const sql = <T = unknown>(
   strings: TemplateStringsArray,
   ...values: unknown[]
-) => query<T>(SqlString.format(strings.join("?"), values));
+) => {
+  // console.log(format(strings, ...values));
+  return query<T>(SqlString.format(strings.join("?"), values));
+};
 
 export const format = (
   strings: TemplateStringsArray,
