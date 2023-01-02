@@ -36,11 +36,9 @@ const isSpamming = (connInfo: ConnInfo, tokens = 1) => {
 serve((req, connInfo) => {
   const upgrade = req.headers.get("upgrade") || "";
   if (upgrade.toLowerCase() !== "websocket") {
-    const path = join(
-      Deno.cwd(),
-      "public",
-      normalize(decodeURI(new URL(req.url).pathname)),
-    );
+    let pathname = normalize(decodeURI(new URL(req.url).pathname));
+    if (pathname.match(/^\/[a-z0-9\-]+$/)) pathname = "/";
+    const path = join(Deno.cwd(), "public", pathname);
 
     return Deno.stat(path).then((fileInfo) =>
       fileInfo.isDirectory

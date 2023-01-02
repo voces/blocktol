@@ -14,6 +14,9 @@ const randomId = () =>
     .join("");
 
 export const getId = () => {
+  const urlId = location.pathname.slice(1);
+  if (urlId) localStorage.setItem("id", urlId);
+
   const storedId = localStorage.getItem("id");
   if (storedId) return storedId;
 
