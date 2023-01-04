@@ -28,7 +28,8 @@ type PlayerStatus = "init" | "afk" | "loading" | "playing";
 export const TOKEN_MAX = 10;
 export const CHAT_TOKEN_MAX = 5;
 
-const ONE_MINUTE = 1_000 * 60;
+const ONE_SECOND = 1_000;
+const ONE_MINUTE = ONE_SECOND * 60;
 
 const BUILD_TIME = 60;
 const K = 64;
@@ -111,8 +112,10 @@ export class Player {
       this.#remainingDailyAttempts === 0 ||
       (Date.now() - (this.#startTime ?? Infinity)) < 2_000
     ) {
-      clearInterval(this.#timeout);
-      Player.map.delete(this.#websocket);
+      this.#deleteTimeout = setTimeout(
+        () => Player.map.delete(this.#websocket),
+        ONE_SECOND,
+      );
     } else {
       this.#deleteTimeout = setTimeout(
         () => Player.map.delete(this.#websocket),

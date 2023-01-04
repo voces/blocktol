@@ -52,7 +52,9 @@ class Connection implements Emitter<MessageMap> {
       const now = Date.now();
       const timeout = Math.min(
         10_000,
-        now - (this.#lastDisconnect ?? now + 900) + 1_000,
+        // Reconnect immediately if we just disconnected; otherwise perform an
+        // exponential backoff
+        this.#lastDisconnect ? (now - this.#lastDisconnect + 250) * 1.5 : 0,
       );
       this.#lastDisconnect = now;
       setTimeout(() => this.#setupSocket(), timeout);
