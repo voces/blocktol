@@ -17,6 +17,7 @@ import {
   dailyAttempts,
   dailyAttemptsByIteration,
   getOwnBest,
+  listDailies,
   markDaily,
   updateRating,
 } from "./db/user.ts";
@@ -155,22 +156,21 @@ export class Player {
   async #sendDailyTimes(daily?: Daily) {
     daily = daily ?? this.daily;
 
-    // We don't need to refetch if loaded...
-    const iterationPromise = getDailyIteration(
+    const iterationInfo = getDailyIteration(
       daily.year,
       daily.month,
       daily.day,
+    ).then((iteration) =>
+      iteration
+        ? Promise.all([
+          getIterationTimeCounts(iteration.iteration),
+          getIterationOtherBest(iteration.iteration, this.id, true),
+        ])
+        : null
     );
 
     const [timeCountsAndOtherBest, attempts] = await Promise.all([
-      iterationPromise.then((iteration) =>
-        iteration
-          ? Promise.all([
-            getIterationTimeCounts(iteration.iteration),
-            getIterationOtherBest(iteration.iteration, this.id, true),
-          ])
-          : null
-      ),
+      iterationInfo,
       dailyAttempts(this.id, daily.year, daily.month, daily.day),
     ]);
 
@@ -247,6 +247,7 @@ export class Player {
       );
       this.#remainingDailyAttempts = 3 - attempts.length;
 
+      console.log("b", this.#remainingDailyAttempts === 0);
       if (this.#remainingDailyAttempts === 0) {
         this.#doingDaily = false;
         this.status = "init";
@@ -433,8 +434,15 @@ export class Player {
       Player.map.delete(oldWebsocket);
       Player.map.set(websocket, player);
 
-      if (player.status === "init") player.play();
-      else {player.send({
+      if (!player.#doingDaily) {
+        listDailies(player.id).then((items) =>
+          player.send({ kind: "list", items })
+        );
+      }
+
+      if (player.status === "init") {
+        if (player.#doingDaily) player.play();
+      } else {player.send({
           kind: "start",
           iteration: player.#iteration!,
           date: new Date(player.#iterationCreatedAt!).getTime(),
