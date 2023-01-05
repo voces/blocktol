@@ -4,6 +4,7 @@ import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
   ListMessage,
   RunMessage,
+  StartMessage,
 } from "../../../common/serverToClientMessage.ts";
 import { ConnectionContext } from "../../contexts/Connection.ts";
 import { GameStateContext } from "./useGameState.ts";
@@ -124,9 +125,15 @@ export const DailySelector = () => {
     };
     connection.addEventListener("run", runCallback);
 
+    const startCallback = (start: StartMessage) => {
+      setSelectedIteration(start.iteration);
+    };
+    connection.addEventListener("start", startCallback);
+
     return () => {
       connection.removeEventListener("list", listCallback);
       connection.removeEventListener("run", runCallback);
+      connection.removeEventListener("start", startCallback);
     };
   }, []);
 
