@@ -103,7 +103,7 @@ export const Game = (
             animation: `1s ease-out ${
               attemptsRemaining + (extraAttemptBannerTime ? 2 : 0) - 1
             }s attemptsLoad`,
-            fontSize: "calc(min(400px, 100vw, 100vh - 110px) / 10)",
+            fontSize: "min(calc(var(--maze-size) / 11), 64px)",
             filter: "drop-shadow(1px 1px 4px var(--color))",
             pointerEvents: "none",
           }}

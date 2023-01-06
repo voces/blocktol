@@ -8,20 +8,6 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
-      margin: 0;
-      overscroll-behavior: none;
-      touch-action: none;
-      user-select: none;
-      background-color: var(--background);
-      color: var(--color);
-    }
-
     :root {
       --background: #f7f7f7;
       --card-background: white;
@@ -44,7 +30,8 @@
       --slow-runner: hsl(258, 36%, 53%);
       --brightness: 40%;
 
-      --maze-size: min(800px, 100vw, 100vh - 110px);
+      --full-height: 100%;
+      --maze-size: min(800px, 100vw, var(--full-height) - 110px);
       --header-size: 79.88px;
     }
 
@@ -55,6 +42,20 @@
         --color: #eee;
         --brightness: 70%;
       }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+      margin: 0;
+      overscroll-behavior: none;
+      touch-action: none;
+      user-select: none;
+      background-color: var(--background);
+      color: var(--color);
     }
 
     a {
@@ -69,12 +70,12 @@
 
     @keyframes attemptsLoad {
       0% {
-        font-size: calc(min(400px, 100vw, 100vh - 110px) / 10);
+        font-size: min(calc(var(--maze-size) / 11), 64px);
         opacity: 1;
       }
 
       100% {
-        font-size: calc(min(400px, 100vw, 100vh - 110px) / 12);
+        font-size: min(calc(var(--maze-size) / 12), calc(64px * 11 / 12));
         opacity: 0;
       }
     }
@@ -112,7 +113,7 @@
       padding: 8px;
       margin-top: -8px;
       width: calc((100vw - var(--maze-size)) / 2);
-      max-height: calc(100vh - var(--header-size) + 8px);
+      max-height: calc(var(--full-height) - var(--header-size) + 8px);
       overflow-y: auto;
       overflow-x: visible;
       color: white;
@@ -123,7 +124,7 @@
         top: calc(var(--maze-size) + var(--header-size) + 8px);
         left: 0;
         right: 0;
-        max-height: calc(100vh - var(--maze-size) - var(--header-size));
+        max-height: calc(var(--full-height) - var(--maze-size) - var(--header-size));
         width: unset;
       }
     }
@@ -171,7 +172,7 @@
         top: calc(var(--maze-size) + var(--header-size) + 8px);
         left: 8px;
         right: 0;
-        max-height: calc(100vh - var(--maze-size) - var(--header-size) - 8px);
+        max-height: calc(var(--full-height) - var(--maze-size) - var(--header-size) - 8px);
         width: unset;
       }
 

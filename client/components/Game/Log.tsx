@@ -11,12 +11,6 @@ import { Colors, Markdown } from "./Markdown.tsx";
 import { RunMessage } from "../../../common/serverToClientMessage.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 
-const isTouchEvent = (
-  e:
-    | h.JSX.TargetedTouchEvent<HTMLDivElement>
-    | h.JSX.TargetedMouseEvent<HTMLDivElement>,
-): e is h.JSX.TargetedTouchEvent<HTMLDivElement> => e.type === "touchstart";
-
 type Message = {
   source: string;
   message: string;
@@ -51,13 +45,13 @@ const Message = (
         }),
       ]);
 
-      const rect = e.currentTarget.parentElement!.parentElement!
-        .getBoundingClientRect();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const parentRect = e.currentTarget.parentElement!.getBoundingClientRect();
       setTooltip({
-        left: (isTouchEvent(e) ? e.touches[0].clientX : e.clientX) - rect.left -
-          20,
-        top: (isTouchEvent(e) ? e.touches[0].clientY : e.clientY) - rect.top -
-          20,
+        left: ("clientX" in e ? e.clientX : e.touches[0].clientX) -
+          parentRect.left,
+        top: e.currentTarget.offsetTop +
+          (("clientY" in e ? e.clientY : e.touches[0].clientY) - rect.top),
         tooltip: "Copied!",
       });
       setTimeoutId(setTimeout(() => setTooltip(null), 750));
@@ -75,7 +69,6 @@ const Message = (
           cursor: "pointer",
         }}
         onMouseDown={clipboardHandler}
-        onTouchStart={clipboardHandler}
       >
         {message.source !== "server"
           ? (
@@ -97,6 +90,7 @@ const Message = (
               background: "#444d",
               borderRadius: 2,
               padding: "1px 2px",
+              transform: "translate(-50%, -100%)",
             }}
           >
             {tooltip.tooltip}

@@ -13,3 +13,12 @@ if ("serviceWorker" in navigator) {
 globalThis.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
 });
+
+const onResize = () => {
+  document.documentElement.style.setProperty(
+    "--full-height",
+    `${window.innerHeight}px`,
+  );
+};
+globalThis.addEventListener("resize", onResize);
+onResize();
