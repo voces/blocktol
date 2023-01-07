@@ -7,7 +7,7 @@ import {
 } from "preact/compat";
 import { ComponentChildren, Fragment, h } from "preact";
 import { ConnectionContext } from "../../contexts/Connection.ts";
-import { Colors, Markdown } from "./Markdown.tsx";
+import { Colors } from "./Markdown.tsx";
 import { RunMessage } from "../../../common/serverToClientMessage.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 
@@ -77,7 +77,7 @@ const Message = (
             </span>
           )
           : null}
-        <Markdown message={message.message} colors={colors} />
+        {message.message}
       </div>
       {tooltip
         ? (
