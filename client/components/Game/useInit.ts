@@ -65,11 +65,8 @@ export const useInit = () => {
     "runFinish",
     () => {
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
-      if (attemptsRemaining < 1) {
-        api.startRun({ iteration, timeZone: getTimeZone() });
-      } else {
-        api.getDailySummary({ iteration });
-      }
+      if (attemptsRemaining === 1) api.getDailySummary({ iteration });
+      else api.startRun({ iteration, timeZone: getTimeZone() });
     },
     [iteration, attemptsRemaining],
   );

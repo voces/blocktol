@@ -121,7 +121,8 @@ export const Log = () => {
   useApiListener("updateRun", (e) => setSupreme(e.supreme));
 
   useGameListener("runStart", ({ duration }) => {
-    const percent = best === min ? 1 : (duration - min) / (best - min);
+    const max = Math.max(duration, best);
+    const percent = max === min ? 1 : (duration - min) / (max - min);
     setLog((l) => [...l, {
       source: "server",
       message: `You lasted ${duration}s (${formatPercentile(percent)}%)${
