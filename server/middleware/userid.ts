@@ -1,3 +1,4 @@
+import { setLoggingContext } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { UserError } from "../util/UserError.ts";
 
@@ -7,7 +8,10 @@ const userIdContext = new WeakMap<Request, string>();
 
 export const extractUserId: Handler = (req, _, prev) => {
   const userId = req.headers.get("authorization");
-  if (userId) userIdContext.set(req, userId);
+  if (userId) {
+    userIdContext.set(req, userId);
+    setLoggingContext(req, (c) => ({ ...c, userId }));
+  }
   return prev;
 };
 

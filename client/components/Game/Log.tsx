@@ -136,6 +136,14 @@ export const Log = () => {
     [log, scrollLogRef.current],
   );
 
+  useApiListener("error", () =>
+    setLog(
+      (l) => [...l, {
+        source: "server",
+        message: "An error occured and has been automatically logged.",
+      }],
+    ));
+
   return (
     <div
       className={["log", showList && "show-list"].filter((v) => !!v).join(" ")}

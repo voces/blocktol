@@ -1,6 +1,7 @@
 import SqlString from "sqlstring";
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
+import { log } from "../util/logging.ts";
 
 const isSqlError = is.object({
   code: is.number,
@@ -42,14 +43,13 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
       const ret = await makeFetch();
       const json = await ret.json();
       if (isSqlError(json)) throw new SQLError(json.message);
-      if (lastError) console.log(new Date(), "recovered");
+      if (lastError) log.info("recovered");
       return json;
     } catch (err) {
       if (err instanceof SQLError) throw err;
       lastError = err;
-      console.error(err);
-      console.error(
-        new Date(),
+      log.error(err);
+      log.error(
         "Error fetching,",
         retries + 1,
         "retries remaining",

@@ -48,7 +48,6 @@ export const BottomRight = memo(() => {
   });
 
   const clickHandler = useCallback((e: MouseEvent | TouchEvent) => {
-    console.log("clicky");
     e.preventDefault();
     e.stopPropagation();
 

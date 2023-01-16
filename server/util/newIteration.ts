@@ -2,9 +2,10 @@ import { offsets } from "../../common/constants.ts";
 import { findPath, newGrid, pathDuration } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
 import { createIteration } from "../db/iteration.ts";
+import { log } from "./logging.ts";
 
 export const newIteration = async (date: Date) => {
-  console.log(new Date(), "New iteration for", date.toDateString());
+  log.info("New iteration for", date.toDateString());
 
   const checkpoint = {
     x: 1.5 + Math.floor(Math.random() * 17),

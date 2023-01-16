@@ -1,9 +1,10 @@
 import { ServerMessage } from "./ServerMessage.ts";
 import { trackLeadership } from "./trackLeadership.ts";
+import { log } from "./util/logging.ts";
 
 const channel = new BroadcastChannel("global");
 trackLeadership(channel, () => {
-  console.log(new Date(), "Elected leader");
+  log.info("Elected leader");
 });
 
 export const broadcast = (message: ServerMessage) => {

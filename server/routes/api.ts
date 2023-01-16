@@ -5,6 +5,7 @@ import { getDailySummary } from "./iteration/daily.ts";
 import { listIterations } from "./iteration/list.ts";
 import { startRun } from "./iteration/run/start.ts";
 import { updateRun } from "./iteration/run/update.ts";
+import { reportClientError } from "./reportClientError.ts";
 
 const handlers = {
   list: listIterations,
@@ -12,6 +13,7 @@ const handlers = {
   startRun,
   updateRun,
   best,
+  reportClientError,
 };
 
 export type BlocktolApi = {

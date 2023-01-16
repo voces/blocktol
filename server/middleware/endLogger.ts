@@ -1,3 +1,4 @@
+import { log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { logMap } from "./beginLogger.ts";
 
@@ -20,8 +21,8 @@ export const endLogger: Handler = (req, _, prev) => {
 
   const length = prev?.headers.get("content-length");
 
-  console.log(...[
-    new Date(),
+  log.info(...[
+    req,
     req.method,
     prev?.status,
     req.url,
