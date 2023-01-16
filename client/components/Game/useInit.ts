@@ -43,7 +43,6 @@ export const useInit = () => {
       setIteration(data.iteration);
 
       grid.splice(0, Infinity, ...newGrid());
-
       grid[data.checkpoint.y + 0.5][data.checkpoint.x + 0.5] = true;
       for (const { x, y } of data.blocks) {
         offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);

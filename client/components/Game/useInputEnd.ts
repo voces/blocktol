@@ -1,6 +1,6 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
-import { findPath } from "../../../common/pathing.ts";
+import { findPath, newGrid } from "../../../common/pathing.ts";
 import { api } from "../../api.ts";
 import { useIteration } from "../../hooks/useIteration.ts";
 import { isTouchSource } from "./helpers.ts";
@@ -46,6 +46,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
               iteration: iteration ?? -1,
               blocks: newBlocks.filter((b) => b.local),
             });
+            grid.splice(0, Infinity, ...newGrid());
+            grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+            for (const { x, y } of newBlocks) {
+              offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+            }
             return newBlocks;
           });
           setPower((power) => power - 1);
@@ -59,6 +64,12 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
               iteration: iteration ?? -1,
               blocks: newBlocks.filter((b) => b.local),
             });
+
+            grid.splice(0, Infinity, ...newGrid());
+            grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+            for (const { x, y } of newBlocks) {
+              offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+            }
             return newBlocks;
           });
           offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
@@ -93,6 +104,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
           iteration: iteration ?? -1,
           blocks: newBlocks.filter((b) => b.local),
         });
+        grid.splice(0, Infinity, ...newGrid());
+        grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+        for (const { x, y } of newBlocks) {
+          offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+        }
         return newBlocks;
       });
       setBricks((bricks) => bricks - 1);
@@ -119,5 +135,5 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("mousedown", mousedownCallback);
       globalThis.removeEventListener("touchend", touchendCallback);
     };
-  }, [svg, placingBlockRef.current, transitionBlock, invalid]);
+  }, [svg, placingBlockRef.current, transitionBlock, invalid, checkpoint]);
 };
