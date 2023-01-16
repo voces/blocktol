@@ -46,5 +46,7 @@ const handleFetch = async (event) => {
 };
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.url.match("/api/")) return;
+
   event.respondWith(handleFetch(event));
 });

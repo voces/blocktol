@@ -8,7 +8,6 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
   const {
     time,
     blocks,
-    thunders,
     setPlacingBlock,
     bricks,
     checkpoint,
@@ -41,17 +40,15 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
 
       const overlap = blocks.find((b) =>
         Math.abs(b.x - x) <= 1 && Math.abs(b.y - y) <= 1
-      ) ??
-        thunders.find((t) => Math.abs(t.x - x) <= 1 && Math.abs(t.y - y) <= 1);
+      );
 
       setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
 
       let invalid = (!!overlap && !overlap.local) ||
         (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
       if (
-        !invalid && !overlap && (offsets.every(([xd, yd]) =>
-          !grid[y + yd][x + xd]
-        ))
+        !invalid && !overlap &&
+        (offsets.every(([xd, yd]) => !grid[y + yd][x + xd]))
       ) {
         offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
         try {
@@ -64,9 +61,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
 
       setInvalid(invalid);
 
-      if (
-        overlap && !overlap.local && thunders.includes(overlap)
-      ) {
+      if (overlap && !overlap.local && overlap.thunder) {
         setThunderHover(overlap);
       } else {
         setThunderHover(undefined);

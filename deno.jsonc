@@ -9,6 +9,7 @@
       "exclude": ["public/*.js"]
     }
   },
+  "importMap": "import_map.json",
   "fmt": {
     "files": { "exclude": ["public/*.js"] }
   }

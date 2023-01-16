@@ -9,7 +9,11 @@ import {
 } from "preact/compat";
 import { Point } from "../../common/types.ts";
 
-const initialBlocks = [
+const initialBlocks: (Point & {
+  local?: boolean;
+  thunder?: boolean;
+  active?: boolean;
+})[] = [
   { x: 17, y: 5 },
   { x: 15, y: 12 },
   { x: 5, y: 3 },
@@ -155,7 +159,6 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext }: {
 export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [blocks, setBlocks] = useState(initialBlocks);
-  const [thunders, setThunders] = useState<typeof initialBlocks>([]);
   const [time, setTime] = useState(7);
   const [run, setRun] = useState<
     {
@@ -222,8 +225,14 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       if (step === 5) setBlocks((b) => [...b, { x: 2, y: 2, local: true }]);
       if (step === 6) setBlocks((b) => [...b, { x: 2, y: 4, local: true }]);
       if (step === 7) {
-        setBlocks((b) => b.filter((_, i) => i !== 33));
-        setThunders((t) => [...t, { x: 12, y: 12, local: true }]);
+        setBlocks((
+          b,
+        ) => [...b.filter((_, i) => i !== 33), {
+          x: 12,
+          y: 12,
+          local: true,
+          thunder: true,
+        }]);
       }
       if (step === 8) {
         setTime(-1);
@@ -238,7 +247,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
 
   const onSlow = useCallback((thunder: Point) => {
     // Animate thunder tower
-    setThunders(
+    setBlocks(
       (thunders) =>
         thunders.map((t) =>
           t.x === thunder.x && t.y === thunder.y
@@ -249,7 +258,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
 
     // Remove thunder tower animation after 0.1s
     setTimeout(() => {
-      setThunders(
+      setBlocks(
         (thunders) =>
           thunders.map((t) =>
             t.x === thunder.x && t.y === thunder.y
@@ -268,17 +277,15 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         time={Math.round(time)}
         svgRef={svgRef}
         transitionBlock={undefined}
-        power={run ? -1 : 1 - thunders.length}
-        thunders={thunders}
+        power={run ? -1 : 1 - blocks.filter((b) => b.thunder).length}
         thunderHover={undefined}
-        bricks={run ? -1 : 37 - blocks.length - thunders.length}
+        bricks={run ? -1 : 37 - blocks.length}
         blocks={blocks}
         checkpoint={{ x: 10.5, y: 4.5 }}
         invalid={false}
         run={run}
         onFinish={() => setTimeout(onDone, 1_000)}
         grid={[]}
-        disconnected={false}
         onSlow={onSlow}
         date={NaN}
       />

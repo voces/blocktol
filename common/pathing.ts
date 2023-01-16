@@ -1,5 +1,6 @@
 import type { Point } from "../common/types.ts";
 import { BinaryHeap } from "./BinaryHeap.ts";
+import { offsets } from "./constants.ts";
 import { MMap } from "./MMap.ts";
 
 export const newGrid = () => {
@@ -179,6 +180,22 @@ export const findPath = (
   grid[checkpointCell.y][checkpointCell.x] = true;
 
   return [...pathA, ...pathB.slice(1)];
+};
+
+export const findPathFromData = (blocks: Point[], checkpoint: Point) => {
+  const grid = newGrid();
+  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+  for (const { x, y } of blocks) {
+    if (
+      offsets.some(([xd, yd]) => {
+        if (grid[y + yd][x + xd]) return true;
+        grid[y + yd][x + xd] = true;
+        return false;
+      })
+    ) throw new Error("invalid data");
+  }
+
+  return findPath(grid, checkpoint);
 };
 
 export const SPEED = 5;

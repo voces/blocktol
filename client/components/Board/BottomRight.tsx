@@ -1,52 +1,61 @@
 import { h } from "preact";
-import { useCallback, useContext, useEffect, useState } from "preact/compat";
 import {
-  RunMessage,
-  StartMessage,
-} from "../../../common/serverToClientMessage.ts";
-import { ConnectionContext } from "../../contexts/Connection.ts";
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "preact/compat";
+import { api } from "../../api.ts";
+import { useApiListener } from "../../hooks/useApiListener.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
 
-export const BottomRight = () => {
-  const connection = useContext(ConnectionContext);
-  const { rating } = useContext(GameStateContext);
-  const [showRating, setShowRating] = useState(true);
+export const BottomRight = memo(() => {
   const [ownBest, setOwnBest] = useState<number | null>(null);
   const [last, setLast] = useState<number | null>(null);
   const [currentIteration, setCurrentIteration] = useState(-1);
+  const { run, time } = useContext(GameStateContext);
+  const [duration, setDuration] = useState(0);
 
-  if (Number.isNaN(rating)) return null;
+  const summary = useApiListener("getDailySummary");
+  const rating = summary?.rating;
+  const showRating = (summary?.attempts.length ?? 0) < 3;
 
   useEffect(() => {
-    const startCallback = (e: StartMessage) => {
-      if (e.todaysRemainingDailyAttempts === 0) setShowRating(false);
-      setOwnBest(e.ownBest);
-      if (e.iteration !== currentIteration) {
-        setLast(null);
-        setCurrentIteration(e.iteration);
-      }
-    };
+    if (!run || time > 0) return;
+    setLast(duration);
+    if (!ownBest || duration > ownBest) setOwnBest(duration);
+  }, [run, time]);
 
-    const runCallback = (e: RunMessage) => {
-      setLast(e.duration);
-      if (!ownBest || e.duration > ownBest) setOwnBest(e.duration);
-    };
+  useApiListener("updateRun", (e) => setDuration(e.duration));
 
-    connection.addEventListener("start", startCallback);
-    connection.addEventListener("run", runCallback);
+  useApiListener("startRun", (e) => {
+    setOwnBest(e.ownBest);
+    if (e.iteration !== currentIteration) {
+      setLast(null);
+      setCurrentIteration(e.iteration);
+    }
+  });
 
-    return () => {
-      connection.removeEventListener("start", startCallback);
-      connection.removeEventListener("run", runCallback);
-    };
-  }, [currentIteration, ownBest]);
+  useApiListener("getDailySummary", (e) => {
+    if (!e.currentRun) return;
+
+    setOwnBest(e.currentRun.ownBest);
+    if (e.currentRun.iteration !== currentIteration) {
+      setLast(null);
+      setCurrentIteration(e.currentRun.iteration);
+    }
+  });
 
   const clickHandler = useCallback((e: MouseEvent | TouchEvent) => {
+    console.log("clicky");
     e.preventDefault();
     e.stopPropagation();
 
-    connection.send({ kind: "best", iteration: currentIteration });
+    api.best({ iteration: currentIteration });
   }, [currentIteration]);
+
+  if (typeof rating !== "number") return null;
 
   return (
     <text
@@ -65,4 +74,4 @@ export const BottomRight = () => {
         : null}
     </text>
   );
-};
+});

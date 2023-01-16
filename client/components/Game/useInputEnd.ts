@@ -1,12 +1,12 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
-import { ConnectionContext } from "../../contexts/Connection.ts";
+import { api } from "../../api.ts";
+import { useIteration } from "../../hooks/useIteration.ts";
 import { isTouchSource } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useInputEnd = (svg: SVGSVGElement | null) => {
-  const connection = useContext(ConnectionContext);
   const {
     time,
     setPlacingBlock,
@@ -17,13 +17,14 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     setTouching,
     transitionBlock,
     setBlocks,
-    setThunders,
     power,
     setPower,
     setBricks,
     placingBlockRef,
     bricks,
   } = useContext(GameStateContext);
+
+  const iteration = useIteration();
 
   useEffect(() => {
     const callback = () => {
@@ -32,35 +33,38 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
       if (transitionBlock) {
         const { x, y } = transitionBlock;
-        connection.send({ kind: "transition", x, y });
 
-        // Remove from blocks
-        setBlocks((blocks) =>
-          blocks.filter((block) => block !== transitionBlock)
-        );
-
-        // Remove from thunders
-        let isThunder = false;
-        setThunders((thunders) =>
-          thunders.filter((thunder) => {
-            if (thunder === transitionBlock) {
-              isThunder = true;
-              return false;
-            }
-            return true;
-          })
-        );
-
-        // Upgrade to thunder
-        if (power && !isThunder) {
-          setThunders((thunders) => [...thunders, transitionBlock]);
+        if (!transitionBlock.thunder && power) {
+          // Upgrade to thunder
+          setBlocks((blocks) => {
+            const newBlocks = blocks.map((b) =>
+              b === transitionBlock
+                ? ({ ...transitionBlock, thunder: true })
+                : b
+            );
+            api.updateRun({
+              iteration: iteration ?? -1,
+              blocks: newBlocks.filter((b) => b.local),
+            });
+            return newBlocks;
+          });
           setPower((power) => power - 1);
-
-          // Remove
         } else {
-          setBricks((bricks) => bricks + 1);
-          if (isThunder) setPower((power) => power + 1);
+          // Remove from blocks
+          setBlocks((blocks) => {
+            const newBlocks = blocks.filter((block) =>
+              block !== transitionBlock
+            );
+            api.updateRun({
+              iteration: iteration ?? -1,
+              blocks: newBlocks.filter((b) => b.local),
+            });
+            return newBlocks;
+          });
           offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
+
+          setBricks((bricks) => bricks + 1);
+          if (transitionBlock.thunder) setPower((power) => power + 1);
         }
 
         setTransitionBlock(undefined);
@@ -83,8 +87,14 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         }
       } catch { /* do nothing */ }
 
-      connection.send({ kind: "block", x, y });
-      setBlocks((blocks) => [...blocks, { x, y, local: true }]);
+      setBlocks((blocks) => {
+        const newBlocks = [...blocks, { x, y, local: true }];
+        api.updateRun({
+          iteration: iteration ?? -1,
+          blocks: newBlocks.filter((b) => b.local),
+        });
+        return newBlocks;
+      });
       setBricks((bricks) => bricks - 1);
 
       setPlacingBlock({ ...placingBlockRef.current, placing: false });

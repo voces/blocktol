@@ -2,6 +2,7 @@ import { Fragment, h } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
 import { SPEED } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
+import { useGame } from "../hooks/useGame.ts";
 import { debug } from "../util/debug.ts";
 
 export const Runner = (
@@ -15,6 +16,7 @@ export const Runner = (
   const start = useRef(Date.now()).current;
   const [loc, setLoc] = useState(path[0]);
   const [slowed, setSlowed] = useState(false);
+  const game = useGame();
 
   useEffect(() => {
     let animationFrame: number;
@@ -69,7 +71,11 @@ export const Runner = (
         break;
       }
 
-      if (pathIndex === path.length - 1) return onFinish();
+      if (pathIndex === path.length - 1) {
+        onFinish();
+        game.dispatchEvent("runFinish", { kind: "runFinish" });
+        return;
+      }
     };
 
     cb();

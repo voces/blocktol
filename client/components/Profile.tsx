@@ -22,7 +22,7 @@ export const Profile = () => {
     navigator.clipboard.write([
       new ClipboardItem({
         "text/plain": new Blob([
-          new URL(`/${getId()}`, location.origin).href,
+          new URL(`/login/${getId()}`, location.origin).href,
         ], { type: "text/plain" }),
       }),
     ]);

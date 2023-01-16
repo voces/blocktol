@@ -1,17 +1,14 @@
-import { useContext, useEffect } from "preact/compat";
+import { useCallback, useContext, useEffect, useState } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { newGrid } from "../../../common/pathing.ts";
-import {
-  BestMessage,
-  DailyMessage,
-  RunMessage,
-  StartMessage,
-} from "../../../common/serverToClientMessage.ts";
-import { ConnectionContext } from "../../contexts/Connection.ts";
+import { api, MessageMap } from "../../api.ts";
+import { useApiListener } from "../../hooks/useApiListener.ts";
+import { useGame, useGameListener } from "../../hooks/useGame.ts";
+import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useInit = () => {
-  const connection = useContext(ConnectionContext);
+  const game = useGame();
   const {
     setTime,
     setPlacingBlock,
@@ -21,114 +18,93 @@ export const useInit = () => {
     setTransitionBlock,
     setTouching,
     setBlocks,
-    setThunders,
     setPower,
     setBricks,
     setRun,
     setCheckpoint,
-    setRating,
-    setDisconnected,
-    rating: lastRating,
     setDate,
     setAttempts,
+    time,
+    attemptsRemaining,
+    setAttemptsRemaining,
+    run,
   } = useContext(GameStateContext);
+  const [iteration, setIteration] = useState(0);
 
-  useEffect(() => {
-    const startCallback = (
-      { checkpoint, blocks, thunders, ...event }: StartMessage,
-    ) => {
-      setRun(undefined);
-      setCheckpoint(checkpoint);
-      setThunders(
-        thunders.map(({ x, y, player }) => ({ x, y, local: player })),
-      );
-      setBlocks(blocks.map(({ x, y, player }) => ({ x, y, local: player })));
-      setBricks(event.bricks);
-      setPower(event.power);
-      setTime(Math.floor(event.time));
-      setRating(event.rating);
-      setDate(event.date);
+  const handleRun = useCallback(
+    (data: NonNullable<MessageMap["getDailySummary"]["currentRun"]>) => {
+      setRun({ path: data.path, duration: data.duration, slows: data.slows });
+      setCheckpoint(data.checkpoint);
+      setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
+      setBricks(data.bricks);
+      setPower(data.power);
+      setTime(Math.floor(data.remainingTime));
+      setDate(new Date(data.date).getTime());
+      setIteration(data.iteration);
 
       grid.splice(0, Infinity, ...newGrid());
 
-      grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
-      for (const { x, y } of thunders) {
+      grid[data.checkpoint.y + 0.5][data.checkpoint.x + 0.5] = true;
+      for (const { x, y } of data.blocks) {
         offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
       }
-      for (const { x, y } of blocks) {
-        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    },
+    [],
+  );
+
+  useApiListener("startRun", handleRun);
+  useApiListener(
+    "getDailySummary",
+    ({ attempts, currentRun }) => {
+      if (currentRun) handleRun(currentRun);
+      if (attempts.length === 3) setAttempts(attempts);
+      setAttemptsRemaining(3 - Math.min(attempts.length, 3));
+    },
+  );
+
+  useGameListener(
+    "runFinish",
+    () => {
+      setAttemptsRemaining((a) => Math.max(a - 1, 0));
+      if (attemptsRemaining < 1) {
+        api.startRun({ iteration, timeZone: getTimeZone() });
+      } else {
+        api.getDailySummary({ iteration });
       }
-    };
-    connection.addEventListener("start", startCallback);
+    },
+    [iteration, attemptsRemaining],
+  );
 
-    const disconnectCallback = () => {
-      setDisconnected(true);
-      setTime(-1);
-    };
-    connection.addEventListener("disconnect", disconnectCallback);
-
-    const connectCallback = () => {
-      setDisconnected(false);
-      setCheckpoint({ x: -2, y: -2 });
-      setBlocks([]);
-      setThunders([]);
-      setBricks(-1);
-      setPower(-1);
-      setRun(undefined);
-      setInvalid(false);
-      setTransitionBlock(undefined);
-      setPlacingBlock((pb) => ({ ...pb, placing: false }));
-    };
-    connection.addEventListener("connect", connectCallback);
-
-    const dailyCallback = ({ attempts, rating }: DailyMessage) => {
-      setAttempts(attempts);
-      setRating(rating);
-    };
-    connection.addEventListener("daily", dailyCallback);
-
-    const bestCallback = ({ maze }: BestMessage) => {
-      setBlocks((oldBlocks) => [
-        ...oldBlocks.filter((b) => !b.local),
-        ...maze.filter((b) => !b.thunder).map((b) => ({ ...b, local: true })),
-      ]);
-      setThunders((oldThunders) => [
-        ...oldThunders.filter((b) => !b.local),
-        ...maze.filter((b) => b.thunder).map((b) => ({ ...b, local: true })),
-      ]);
-      setBricks(-1);
-      setPower(-1);
-      setRun(undefined);
-      setInvalid(false);
-      setTransitionBlock(undefined);
-      setPlacingBlock((pb) => ({ ...pb, placing: false }));
-      setTime(-1);
-    };
-    connection.addEventListener("best", bestCallback);
-
-    return () => {
-      connection.removeEventListener("start", startCallback);
-      connection.removeEventListener("disconnect", disconnectCallback);
-      connection.removeEventListener("connect", connectCallback);
-      connection.removeEventListener("daily", dailyCallback);
-      connection.removeEventListener("best", bestCallback);
-    };
-  }, [connection]);
+  useApiListener("best", ({ maze }) => {
+    setBlocks((oldBlocks) => [
+      ...oldBlocks.filter((b) => !b.local),
+      ...maze.filter((b) => !b.thunder).map((b) => ({ ...b, local: true })),
+    ]);
+    setBricks(-1);
+    setPower(-1);
+    setRun(undefined);
+    setInvalid(false);
+    setTransitionBlock(undefined);
+    setPlacingBlock((pb) => ({ ...pb, placing: false }));
+    setTime(-1);
+  });
 
   useEffect(() => {
-    const runCallback = ({ path, duration, slows, rating }: RunMessage) => {
-      setRun({ path, duration, slows });
-      setPlacingBlock((pb) => ({ ...pb, placing: false }));
-      setTransitionBlock(undefined);
-      setTime(-1);
-      setBricks(-1);
-      setPower(-1);
-      setTouching(false);
-      setThunderHover(undefined);
-      setRating(rating);
-    };
-    connection.addEventListener("run", runCallback);
+    if (time !== 0 || !run) return;
 
-    return () => connection.removeEventListener("run", runCallback);
-  }, [connection, lastRating]);
+    game.dispatchEvent("runStart", run);
+
+    setPlacingBlock((pb) => ({ ...pb, placing: false }));
+    setTransitionBlock(undefined);
+    setTime(-1);
+    setBricks(-1);
+    setPower(-1);
+    setTouching(false);
+    setThunderHover(undefined);
+  }, [time, run]);
+
+  useApiListener(
+    "updateRun",
+    (e) => setRun({ path: e.path, duration: e.duration, slows: e.slows }),
+  );
 };

@@ -1,4 +1,4 @@
-import SqlString from "https://esm.sh/sqlstring@2.3.3?pin=v99";
+import SqlString from "sqlstring";
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
 
@@ -42,6 +42,7 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
       const ret = await makeFetch();
       const json = await ret.json();
       if (isSqlError(json)) throw new SQLError(json.message);
+      if (lastError) console.log(new Date(), "recovered");
       return json;
     } catch (err) {
       if (err instanceof SQLError) throw err;
@@ -80,3 +81,7 @@ export type ExecResult = {
   serverStatus: number;
   warningStatus: number;
 };
+
+export const raw = (data: { raw: readonly string[] } | string) => ({
+  toSqlString: () => typeof data === "string" ? data : data.raw.join(""),
+});

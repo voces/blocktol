@@ -1,7 +1,6 @@
 import { Fragment, h, Ref } from "preact";
 
 import { Runner } from "./Runner.tsx";
-import { Disconnected } from "./Disconnected.tsx";
 import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
@@ -17,7 +16,6 @@ export const Board = (
     svgRef,
     transitionBlock,
     power,
-    thunders,
     thunderHover,
     bricks,
     blocks,
@@ -26,7 +24,6 @@ export const Board = (
     run,
     onFinish,
     grid,
-    disconnected,
     onSlow,
     date,
   }: {
@@ -34,12 +31,15 @@ export const Board = (
     touching: boolean;
     time: number;
     svgRef: Ref<SVGSVGElement>;
-    transitionBlock: Point | undefined;
+    transitionBlock:
+      | Point & { local?: boolean; thunder?: boolean; active?: boolean }
+      | undefined;
     power: number;
-    thunders: ReadonlyArray<Point & { local?: boolean; active?: boolean }>;
     thunderHover: (Point & { local?: boolean }) | undefined;
     bricks: number;
-    blocks: ReadonlyArray<Point & { local?: boolean }>;
+    blocks: ReadonlyArray<
+      Point & { local?: boolean; thunder?: boolean; active?: boolean }
+    >;
     checkpoint: Point;
     invalid: boolean;
     run: {
@@ -49,7 +49,6 @@ export const Board = (
     } | undefined;
     onFinish: () => void;
     grid: boolean[][];
-    disconnected: boolean;
     onSlow: (thunder: Point & { local?: boolean }) => void;
     date: number;
   },
@@ -89,7 +88,7 @@ export const Board = (
         height={20}
         fill="var(--maze-background)"
       />
-      {transitionBlock && (power > 0 || thunders.includes(transitionBlock)) &&
+      {transitionBlock && (power > 0 || transitionBlock.thunder) &&
         (
           <circle
             cx={transitionBlock.x + 1}
@@ -139,29 +138,27 @@ export const Board = (
       )}
 
       {blocks.map((block) => (
-        <Block
-          x={block.x}
-          y={block.y}
-          color={transitionBlock === block && power > 0
-            ? "upgrade-to-thunder"
-            : block.local
-            ? "player-block"
-            : "game-block"}
-          opacity={transitionBlock === block && power === 0 ? 0.6 : undefined}
-        />
-      ))}
-      {thunders.map((thunder) => (
         <>
           <Block
-            x={thunder.x}
-            y={thunder.y}
-            color={thunder.local ? "player-thunder" : "game-thunder"}
-            opacity={transitionBlock === thunder ? 0.4 : 1}
+            x={block.x}
+            y={block.y}
+            color={block.thunder
+              ? block.local ? "player-thunder" : "game-thunder"
+              : transitionBlock === block && power > 0
+              ? "upgrade-to-thunder"
+              : block.local
+              ? "player-block"
+              : "game-block"}
+            opacity={block.thunder
+              ? transitionBlock === block ? 0.4 : 1
+              : transitionBlock === block && power === 0
+              ? 0.6
+              : undefined}
           />
-          {thunder.active && (
+          {block.active && (
             <circle
-              cx={thunder.x + 1}
-              cy={thunder.y + 1}
+              cx={block.x + 1}
+              cy={block.y + 1}
               fill="var(--maze-thunder-radius)"
               r={4}
               z-index={1}
@@ -187,7 +184,7 @@ export const Board = (
           style={{ transition: "x 100ms, y 100ms" }}
         />
       )}
-      {run && (
+      {run && time < 0 && (
         <>
           <text
             x={18.8}
@@ -203,7 +200,7 @@ export const Board = (
             onFinish={onFinish}
             onSlow={(thunder) =>
               onSlow(
-                thunders.find((t) => thunder.x === t.x && thunder.y === t.y)!,
+                blocks.find((t) => thunder.x === t.x && thunder.y === t.y)!,
               )}
           />
         </>
@@ -223,6 +220,5 @@ export const Board = (
         )
       )}
     </svg>
-    {disconnected && <Disconnected />}
   </div>
 );

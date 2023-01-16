@@ -1,5 +1,5 @@
-import { ListMessage } from "../../common/serverToClientMessage.ts";
-import { sql } from "./query.ts";
+import { deserializeRun } from "../util/run.ts";
+import { raw, sql } from "./query.ts";
 
 type User = {
   id: string;
@@ -7,7 +7,7 @@ type User = {
   rating: number;
 };
 
-const getUser = (id: string) =>
+export const getUser = (id: string) =>
   sql<(User | undefined)[]>`
     SELECT id, name, rating FROM user WHERE id = ${id};
   `.then((r) => r[0]);
@@ -37,13 +37,17 @@ export const getUserPlays = (id: string) =>
     SELECT COUNT(1) count FROM run WHERE user = ${id} AND daily = TRUE;
   `.then((r) => r[0]?.count ?? 0);
 
-export const dailyAttemptsByIteration = (user: string, iteration: number) =>
+export const dailyAttemptsByIteration = (
+  user: string,
+  iteration: number,
+  includeVoid = false,
+) =>
   sql<{ time: number }[]>`
     SELECT time
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
-      AND void = FALSE
+      ${raw(includeVoid ? "" : "AND void = FALSE")}
     ORDER BY created ASC
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
@@ -66,13 +70,14 @@ export const dailyAttempts = (
           AND DAY(created) = ${day}
         LIMIT 1
       )
-      AND void = FALSE
     ORDER BY created ASC
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
 
 export const listDailies = (
   user: string,
+  limit = 1_000_000,
+  offset = 0,
 ) =>
   sql<
     {
@@ -101,8 +106,19 @@ export const listDailies = (
     WHERE user = ${user}
   )
   GROUP BY 1
-  ORDER BY id DESC;`.then((d) =>
-    d.map((r): ListMessage["items"][number] => ({
+  ORDER BY id DESC
+  LIMIT ${limit} OFFSET ${offset};`.then((d) =>
+    d.map((
+      r,
+    ): {
+      iteration: number;
+      daily: [number, number, number];
+      ownDailyBest: number | null;
+      ownBest: number | null;
+      best: number | null;
+      min: number;
+      supreme: boolean;
+    } => ({
       iteration: r.iteration,
       daily: [
         new Date(r.created).getUTCFullYear(),
@@ -139,7 +155,7 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
         WHERE user = ${user}
         AND iteration = ${iteration}
       )
-    LIMIT 1;`.then((r) => r?.[0]?.data ?? null);
+    LIMIT 1;`.then((r) => r?.[0]?.data ? deserializeRun(r[0].data) : null);
 
 export const markDaily = (user: string, iteration: number) =>
   sql`

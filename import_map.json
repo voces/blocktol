@@ -1,6 +1,9 @@
 {
   "imports": {
     "preact": "https://esm.sh/preact@10.11.3?pin=v99",
-    "preact/compat": "https://esm.sh/preact@10.11.3/compat?pin=v99"
+    "preact/compat": "https://esm.sh/preact@10.11.3/compat?pin=v99",
+    "zod": "https://deno.land/x/zod@v3.20.2/mod.ts",
+    "std/": "https://deno.land/std@0.165.0/",
+    "sqlstring": "https://esm.sh/sqlstring@2.3.3?pin=v99"
   }
 }

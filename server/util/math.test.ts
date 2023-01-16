@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { assertEquals } from "std/testing/asserts.ts";
 import { reverseTween } from "./math.ts";
 
 Deno.test("reverseTween", async (t) => {

@@ -4,10 +4,9 @@ import { GameStateContext } from "./useGameState.ts";
 import { Card } from "../Card.tsx";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import { Button } from "../Button.tsx";
-import { ConnectionContext } from "../../contexts/Connection.ts";
+import { api } from "../../api.ts";
 
 export const Daily = () => {
-  const connection = useContext(ConnectionContext);
   const { attempts, clear } = useContext(GameStateContext);
   const [tooltip, setTooltip] = useState<
     { left: number; top: number; tooltip: ComponentChildren } | null
@@ -88,7 +87,7 @@ export const Daily = () => {
               backgroundColor: "var(--slow-runner)",
             }}
             onClick={() => {
-              connection.send({ kind: "list" });
+              api.list();
               clear();
               // connection.send({ kind: "play" });
               setHideDailyResult(true);

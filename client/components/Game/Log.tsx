@@ -1,15 +1,9 @@
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "preact/compat";
+import { useCallback, useEffect, useRef, useState } from "preact/compat";
 import { ComponentChildren, Fragment, h } from "preact";
-import { ConnectionContext } from "../../contexts/Connection.ts";
 import { Colors } from "./Markdown.tsx";
-import { RunMessage } from "../../../common/serverToClientMessage.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
+import { useApiListener } from "../../hooks/useApiListener.ts";
+import { useGameListener } from "../../hooks/useGame.ts";
 
 type Message = {
   source: string;
@@ -103,40 +97,38 @@ const Message = (
 
 export const Log = () => {
   const scrollLogRef = useRef<HTMLDivElement>(null);
-  const connection = useContext(ConnectionContext);
   const colors = useRef<Colors>({}).current;
   const [log, setLog] = useState<Message[]>([]);
   const [showList, setShowList] = useState(false);
+  const [best, setBest] = useState(-1);
+  const [min, setMin] = useState(-1);
+  const [supreme, setSupreme] = useState(false);
 
-  useEffect(() => {
-    const disconnectCallback = () =>
-      setLog(
-        (l) => [...l, {
-          source: "server",
-          message: "You've been disconnected.",
-        }],
-      );
+  useApiListener("list", () => setShowList(true));
+  useApiListener(
+    "getDailySummary",
+    (e) => {
+      if (!e.currentRun) return;
+      setBest(e.currentRun.best);
+      setMin(e.currentRun.min);
+    },
+  );
+  useApiListener("startRun", (e) => {
+    setBest(e.best);
+    setMin(e.min);
+    setSupreme(false);
+  });
+  useApiListener("updateRun", (e) => setSupreme(e.supreme));
 
-    const runCallback = ({ duration, percent, supreme }: RunMessage) =>
-      setLog((l) => [...l, {
-        source: "server",
-        message: `You lasted ${duration}s (${formatPercentile(percent)}%)${
-          supreme ? ", which was longer than everyone else!" : "."
-        }`,
-      }]);
-
-    const listCallback = () => setShowList(true);
-
-    connection.addEventListener("disconnect", disconnectCallback);
-    connection.addEventListener("run", runCallback);
-    connection.addEventListener("list", listCallback);
-
-    return () => {
-      connection.removeEventListener("disconnect", disconnectCallback);
-      connection.removeEventListener("run", runCallback);
-      connection.removeEventListener("list", listCallback);
-    };
-  }, [colors]);
+  useGameListener("runStart", ({ duration }) => {
+    const percent = best === min ? 1 : (duration - min) / (best - min);
+    setLog((l) => [...l, {
+      source: "server",
+      message: `You lasted ${duration}s (${formatPercentile(percent)}%)${
+        supreme ? ", which was longer than everyone else!" : "."
+      }`,
+    }]);
+  }, [best, supreme]);
 
   useEffect(
     () => scrollLogRef.current?.scrollIntoView({ behavior: "smooth" }),

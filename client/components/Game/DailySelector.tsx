@@ -1,12 +1,9 @@
 import { h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
-import {
-  ListMessage,
-  RunMessage,
-  StartMessage,
-} from "../../../common/serverToClientMessage.ts";
-import { ConnectionContext } from "../../contexts/Connection.ts";
+import { api, MessageMap } from "../../api.ts";
+import { useApiListener } from "../../hooks/useApiListener.ts";
+import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 const r = [253, 251, 208, 100, 82];
@@ -28,21 +25,23 @@ const getColor = (percent: number) => {
 
 const Daily = (
   { item, selectedIteration, setSelectedIteration }: {
-    item: ListMessage["items"][number];
+    item: MessageMap["list"]["items"][number];
     selectedIteration: number;
     setSelectedIteration: (selectedIteration: number) => void;
   },
 ) => {
-  const connection = useContext(ConnectionContext);
-
   const percent =
     typeof item.ownBest === "number" && typeof item.best === "number"
-      ? (item.ownBest - item.min) / (item.best - item.min)
+      ? item.best === item.min
+        ? 1
+        : (item.ownBest - item.min) / (item.best - item.min)
       : null;
 
   const dailyPercent =
     typeof item.ownDailyBest === "number" && typeof item.best === "number"
-      ? (item.ownDailyBest - item.min) / (item.best - item.min)
+      ? item.best === item.min
+        ? 1
+        : (item.ownDailyBest - item.min) / (item.best - item.min)
       : null;
 
   return (
@@ -57,7 +56,7 @@ const Daily = (
       }}
       onClick={() => {
         setSelectedIteration(item.iteration);
-        connection.send({ kind: "play", iteration: item.iteration });
+        api.startRun({ iteration: item.iteration, timeZone: getTimeZone() });
       }}
     >
       <div
@@ -80,62 +79,35 @@ const Daily = (
 };
 
 export const DailySelector = () => {
-  const connection = useContext(ConnectionContext);
-  const [list, setList] = useState<ListMessage["items"]>([]);
+  const [list, setList] = useState<MessageMap["list"]["items"]>([]);
   const [selectedIteration, setSelectedIteration] = useState(NaN);
-  const { run, power } = useContext(GameStateContext);
+  const data = useApiListener("updateRun");
+  const { time } = useContext(GameStateContext);
+
+  useApiListener("startRun", (e) => setSelectedIteration(e.iteration));
+  useApiListener("list", (data) => setList(data.items));
 
   useEffect(() => {
-    const keyDownCallback = (e: KeyboardEvent) => {
-      if (e.code !== "KeyR" || (!run && power === -1) || e.metaKey) return;
-      if (run) {
-        connection.send({ kind: "play", iteration: selectedIteration });
-        return;
+    if (time !== 0 || !data) return;
+
+    setList((list) => {
+      const row = list.find((row) => row.iteration === selectedIteration);
+      if (!row) return list;
+      if (row.ownBest === null || row.ownBest < data.duration) {
+        return list.map((row) =>
+          row.iteration === selectedIteration
+            ? ({
+              ...row,
+              ownBest: data.duration,
+              best: Math.max(row.best ?? -Infinity, data.duration),
+              supreme: data.supreme || row.supreme,
+            })
+            : row
+        );
       }
-      connection.send({ kind: "ready" });
-    };
-    globalThis.addEventListener("keydown", keyDownCallback);
-
-    return () => globalThis.removeEventListener("keydown", keyDownCallback);
-  }, [connection, run, power, selectedIteration]);
-
-  useEffect(() => {
-    const listCallback = (list: ListMessage) => setList(list.items);
-    connection.addEventListener("list", listCallback);
-
-    const runCallback = (run: RunMessage) => {
-      setSelectedIteration(run.iteration);
-      setList((list): ListMessage["items"] => {
-        const row = list.find((row) => row.iteration === run.iteration);
-        if (!row) return list;
-        if (row.ownBest === null || row.ownBest < run.duration) {
-          return list.map((row) =>
-            row.iteration === run.iteration
-              ? ({
-                ...row,
-                ownBest: run.duration,
-                best: Math.max(row.best ?? -Infinity, run.duration),
-                supreme: run.supreme || row.supreme,
-              })
-              : row
-          );
-        }
-        return list;
-      });
-    };
-    connection.addEventListener("run", runCallback);
-
-    const startCallback = (start: StartMessage) => {
-      setSelectedIteration(start.iteration);
-    };
-    connection.addEventListener("start", startCallback);
-
-    return () => {
-      connection.removeEventListener("list", listCallback);
-      connection.removeEventListener("run", runCallback);
-      connection.removeEventListener("start", startCallback);
-    };
-  }, []);
+      return list;
+    });
+  }, [time]);
 
   if (!list.length) return null;
 

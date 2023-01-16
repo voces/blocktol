@@ -1,7 +1,4 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.165.0/testing/asserts.ts";
+import { assert, assertEquals } from "std/testing/asserts.ts";
 
 import { pathDuration, Slow } from "./pathing.ts";
 import { Point } from "./types.ts";

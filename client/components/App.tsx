@@ -1,8 +1,7 @@
 import { ComponentChildren, h } from "preact";
-import { useContext, useEffect, useRef, useState } from "preact/compat";
-import { ConnectionContext } from "../contexts/Connection.ts";
-import { useConnectionState } from "../hooks/useConnectionState.ts";
-import { getId } from "../util/id.ts";
+import { useEffect, useRef, useState } from "preact/compat";
+import { api } from "../api.ts";
+import { getTimeZone } from "../util/timeZone.ts";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
 import { IntroBoard } from "./IntroBoard.tsx";
@@ -29,24 +28,24 @@ const setHasCompletedOnboarding = () =>
   localStorage.setItem("hasCompletedOnboarding", "true");
 
 export const App = () => {
-  const id = getId();
-  const connection = useContext(ConnectionContext);
-  const connected = useConnectionState();
   const hadCompletedOnboarding = useRef(getHasCompletedOnboarding());
   const [showOnboarding, setShowOnboarding] = useState(
     !hadCompletedOnboarding.current,
   );
 
   useEffect(() => {
-    if (!connected || showOnboarding) return;
+    if (showOnboarding) return;
 
-    connection.send({
-      kind: "login",
-      username: undefined,
-      id,
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    api.getDailySummary({ timeZone: getTimeZone() }).then((ret) => {
+      if ("error" in ret) return;
+      if (ret.currentRun) return;
+      if (ret.attempts.length < 3) {
+        api.startRun({ iteration: "daily", timeZone: getTimeZone() });
+      }
+
+      // else api.list();
     });
-  }, [connected, showOnboarding]);
+  }, [showOnboarding]);
 
   const gameState = useGameState();
 

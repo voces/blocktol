@@ -1,12 +1,13 @@
 import { Point } from "../../common/types.ts";
-import { ExecResult, format, sql } from "./query.ts";
+import { memoize } from "../util/memoize.ts";
+import { ExecResult, format, raw, sql } from "./query.ts";
 
 export const getIterationCount = () =>
   sql<{ count: number }[]>`
     SELECT COUNT(*) count FROM iteration;
   `.then((r) => r[0].count);
 
-export const getIteration = (id: number) =>
+export const getIteration = memoize((id: number) =>
   sql<
     [
       {
@@ -32,23 +33,15 @@ export const getIteration = (id: number) =>
       bricks: i.bricks,
       power: i.power,
       checkpoint: { x: i.checkpoint_x, y: i.checkpoint_y },
-      blocks: blocks
-        .filter((b) => b.kind === "block")
-        .map(({ x, y }) => ({ x, y })),
-      thunders: blocks
-        .filter((b) => b.kind === "thunder")
-        .map(({ x, y }) => ({ x, y })),
+      blocks: blocks.map(({ x, y, kind }) => ({
+        x,
+        y,
+        thunder: kind === "thunder",
+      })),
       min: i.min,
     });
-  });
-
-const raw = ({ raw }: { raw: readonly string[] }) => ({
-  toSqlString: () => raw.join(""),
-});
-
-const raw2 = (str: string) => ({
-  toSqlString: () => str,
-});
+  })
+);
 
 export const createIteration = (
   date: Date,
@@ -64,7 +57,7 @@ export const createIteration = (
     VALUES (${date}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y}, ${duration});
     SET @last_id = LAST_INSERT_ID();
     ${
-    raw2(format`
+    raw(format`
       INSERT INTO block (iteration, x, y, kind)
       VALUES ${[
       ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
