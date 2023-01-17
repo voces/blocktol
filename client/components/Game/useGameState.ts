@@ -63,6 +63,11 @@ export const useGameState = () => {
     setPower(-1);
     setTime(-1);
     setDate(NaN);
+    setTouching(false);
+    setInvalid(false);
+    setTransitionBlock(undefined);
+    setPlacingBlock((pb) => ({ ...pb, placing: false }));
+    setThunderHover(undefined);
   };
 
   return {

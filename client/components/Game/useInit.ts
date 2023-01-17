@@ -13,7 +13,6 @@ export const useInit = () => {
     setTime,
     setPlacingBlock,
     grid,
-    setInvalid,
     setThunderHover,
     setTransitionBlock,
     setTouching,
@@ -28,6 +27,8 @@ export const useInit = () => {
     attemptsRemaining,
     setAttemptsRemaining,
     run,
+    clear,
+    blocks,
   } = useContext(GameStateContext);
   const [iteration, setIteration] = useState(0);
 
@@ -72,19 +73,12 @@ export const useInit = () => {
   );
 
   useApiListener("best", ({ maze }) => {
-    setBlocks((oldBlocks) => [
-      ...oldBlocks.filter((b) => !b.local),
-      ...maze.filter((b) => !b.thunder).map((b) => ({ ...b, local: true })),
+    clear();
+    setBlocks([
+      ...blocks.filter((b) => !b.local),
+      ...maze.map((b) => ({ ...b, local: true })),
     ]);
-    setBricks(-1);
-    setPower(-1);
-    setRun(undefined);
-    setInvalid(false);
-    setTransitionBlock(undefined);
-    setPlacingBlock((pb) => ({ ...pb, placing: false }));
-    setTime(-1);
-    setTouching(false);
-  });
+  }, [blocks]);
 
   useEffect(() => {
     if (time !== 0 || !run) return;

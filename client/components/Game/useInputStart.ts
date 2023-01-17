@@ -23,6 +23,14 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       if (!svg || time <= 0) return;
 
       const box = svg.getBoundingClientRect();
+      const xRaw = Math.min(
+        Math.max((clientX - box.x) / box.width * 20 - 1, 1),
+        17,
+      );
+      const yRaw = Math.min(
+        Math.max((clientY - box.y) / box.height * 20 - 1, 1),
+        17,
+      );
       const x = Math.min(
         Math.max(
           Math.round((clientX - box.x) / box.width * 20) - 1,
@@ -38,9 +46,21 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         17,
       );
 
-      const overlap = blocks.find((b) =>
-        Math.abs(b.x - x) <= 1 && Math.abs(b.y - y) <= 1
-      );
+      const nearest = blocks.reduce<[number, typeof blocks[number]]>(
+        (prev, block) => {
+          const dist = Math.abs(block.x - xRaw) + Math.abs(block.y - yRaw);
+          if (dist < prev[0]) return [dist, block];
+          return prev;
+        },
+        [Infinity, blocks[0]],
+      )[1];
+      const overlap =
+        Math.abs(nearest.x - x) <= 1 && Math.abs(nearest.y - y) <= 1
+          ? nearest
+          : undefined;
+      // console.log(nearest);
+      // const overlap = blocks.find((b) => b.x === x && b.y === y) ??
+      //   blocks.find((b) => Math.abs(b.x - x) <= 1 && Math.abs(b.y - y) <= 1);
 
       setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
 
