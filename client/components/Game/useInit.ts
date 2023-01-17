@@ -29,6 +29,7 @@ export const useInit = () => {
     run,
     clear,
     blocks,
+    checkpoint,
   } = useContext(GameStateContext);
   const [iteration, setIteration] = useState(0);
 
@@ -78,7 +79,8 @@ export const useInit = () => {
       ...blocks.filter((b) => !b.local),
       ...maze.map((b) => ({ ...b, local: true })),
     ]);
-  }, [blocks]);
+    setCheckpoint(checkpoint);
+  }, [blocks, checkpoint]);
 
   useEffect(() => {
     if (time !== 0 || !run) return;
