@@ -83,6 +83,7 @@ export const useInit = () => {
     setTransitionBlock(undefined);
     setPlacingBlock((pb) => ({ ...pb, placing: false }));
     setTime(-1);
+    setTouching(false);
   });
 
   useEffect(() => {

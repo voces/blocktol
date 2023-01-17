@@ -124,9 +124,10 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     globalThis.addEventListener("mousedown", mousedownCallback);
 
     const touchendCallback = (e: TouchEvent) => {
+      const target = e.changedTouches[0].target;
       setTouching(false);
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
-      if (!(e.changedTouches[0].target instanceof SVGElement)) return;
+      if (!(target instanceof SVGElement) || target.id === "best") return;
       callback();
     };
     globalThis.addEventListener("touchend", touchendCallback);

@@ -25,7 +25,7 @@ export const endLogger: Handler = (req, _, prev) => {
     req,
     req.method,
     prev?.status,
-    req.url,
+    req.url.slice(new URL(req.url).origin.length),
     data?.start ? Date.now() - data?.start + "ms" : undefined,
     typeof length === "string" ? prettySize(parseInt(length)) : undefined,
   ].filter((v) => v !== undefined && v !== null));

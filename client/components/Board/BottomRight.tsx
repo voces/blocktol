@@ -65,6 +65,7 @@ export const BottomRight = memo(() => {
       text-anchor="end"
       onMouseDown={showRating ? undefined : clickHandler}
       onTouchStart={showRating ? undefined : clickHandler}
+      id={showRating ? undefined : "best"}
     >
       {showRating
         ? Math.round(rating)
