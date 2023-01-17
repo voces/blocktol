@@ -64,7 +64,7 @@ export const sql = <T = unknown>(
   strings: TemplateStringsArray,
   ...values: unknown[]
 ) => {
-  // console.log(format(strings, ...values));
+  // log.info(format(strings, ...values));
   return query<T>(SqlString.format(strings.join("?"), values));
 };
 

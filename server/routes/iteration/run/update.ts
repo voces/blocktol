@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { findPathFromData, pathDuration } from "../../../../common/pathing.ts";
+import { is, isRecord } from "../../../../common/typeguards.ts";
 import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
 } from "../../../db/iteration.ts";
 import { updateCurrentRun } from "../../../db/run.ts";
+import { log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
 import { method } from "../../apiHelpers.ts";
 
@@ -17,8 +19,10 @@ const updateRunBody = z.object({
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);
 
+const isUpdate = is.object({ changedRows: is.number });
+
 export const updateRun = method(updateRunBody, true)(
-  async ({ iteration: iterationId, blocks, userId }) => {
+  async ({ iteration: iterationId, blocks, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
     let otherBest: number | null;
     try {
@@ -64,7 +68,11 @@ export const updateRun = method(updateRunBody, true)(
       userId,
       duration,
       blocks.map((b) => ({ ...b, player: true })),
-    ).catch(console.error);
+    ).then((r) => {
+      if (isUpdate(r) && r.changedRows === 0) {
+        log.error(req, "Unexpected no rows changed");
+      }
+    }).catch((err) => log.error(req, err));
 
     return { path, duration, slows, supreme: duration > (otherBest ?? 0) };
   },
