@@ -2,6 +2,7 @@ import { ComponentChildren, h } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
 import { api } from "../api.ts";
 import { getTimeZone } from "../util/timeZone.ts";
+import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
 import { IntroBoard } from "./IntroBoard.tsx";
@@ -32,20 +33,28 @@ export const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(
     !hadCompletedOnboarding.current,
   );
+  const [retry, setRetry] = useState(0);
+  const [disconnected, setDisconnected] = useState(false);
 
   useEffect(() => {
     if (showOnboarding) return;
 
     api.getDailySummary({ timeZone: getTimeZone() }).then((ret) => {
-      if ("error" in ret) return;
+      setDisconnected(false);
+      if ("error" in ret) {
+        setDisconnected(true);
+        setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
+        return;
+      }
       if (ret.currentRun) return;
       if (ret.attempts.length < 3) {
         api.startRun({ iteration: "daily", timeZone: getTimeZone() });
       }
-
-      // else api.list();
+    }).catch(() => {
+      setDisconnected(true);
+      setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
     });
-  }, [showOnboarding]);
+  }, [showOnboarding, retry]);
 
   const gameState = useGameState();
 
@@ -65,6 +74,7 @@ export const App = () => {
   return (
     <Shell gameState={gameState}>
       <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
+      {disconnected && <Disconnected />}
     </Shell>
   );
 };
