@@ -35,7 +35,7 @@ export const useGameState = () => {
   );
   const [bricks, setBricks] = useState(-1);
   const [power, setPower] = useState(-1);
-  const [time, setTime] = useState(-1);
+  const [time, setTime] = useState(-2);
   const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
   const [run, setRun] = useState<

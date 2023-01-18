@@ -57,9 +57,17 @@ export const useInit = () => {
   useApiListener(
     "getDailySummary",
     ({ attempts, currentRun }) => {
-      if (currentRun) return handleRun(currentRun);
-      if (attempts.length === 3) setAttempts(attempts);
-      setAttemptsRemaining(3 - Math.min(attempts.length, 3));
+      if (currentRun && time === -2) {
+        setAttemptsRemaining(3 - attempts.length + 1);
+        return handleRun(currentRun);
+      }
+
+      if (attempts.length === 3) {
+        setAttemptsRemaining(0);
+        return setAttempts(attempts);
+      }
+
+      setAttemptsRemaining(3 - attempts.length);
     },
   );
 
