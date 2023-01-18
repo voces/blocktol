@@ -127,7 +127,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       const target = e.changedTouches[0].target;
       setTouching(false);
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
-      if (!(target instanceof SVGElement) || target.id === "best") return;
+      if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
+        return;
+      }
       callback();
     };
     globalThis.addEventListener("touchend", touchendCallback);

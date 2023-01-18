@@ -100,7 +100,9 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
 
     const touchmoveCallback = (e: TouchEvent) => {
       const target = e.changedTouches[0].target;
-      if (!(target instanceof SVGElement) || target.id === "best") return;
+      if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
+        return;
+      }
       e.preventDefault();
       callback(e.touches[0].clientX, e.touches[0].clientY);
     };
@@ -110,7 +112,9 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
 
     const touchstartCallback = (e: TouchEvent) => {
       const target = e.changedTouches[0].target;
-      if (!(target instanceof SVGElement) || target.id === "best") return;
+      if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
+        return;
+      }
       setTouching(true);
       callback(e.touches[0].clientX, e.touches[0].clientY);
       e.preventDefault();

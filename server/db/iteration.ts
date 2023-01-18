@@ -80,17 +80,6 @@ export const getIterationTimeCounts = (iteration: number, dailyOnly = true) =>
       GROUP BY 1
       ORDER BY time;`;
 
-export const logRun = (
-  iteration: number,
-  user: string,
-  duration: number,
-  voidRun: boolean,
-  data: string,
-) =>
-  sql`
-    INSERT INTO run (user, iteration, time, void, data)
-    VALUES (${user}, ${iteration}, ${duration}, ${voidRun}, ${data});`;
-
 export const getDailyIterationId = (year: number, month: number, day: number) =>
   sql<{ id: number }[]>`
     SELECT id
