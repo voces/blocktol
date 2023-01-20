@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { findPathFromData, pathDuration } from "../../../../common/pathing.ts";
-import { is, isRecord } from "../../../../common/typeguards.ts";
+import { is } from "../../../../common/typeguards.ts";
 import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
@@ -68,6 +68,7 @@ export const updateRun = method(updateRunBody, true)(
       userId,
       duration,
       blocks.map((b) => ({ ...b, player: true })),
+      iterationId,
     ).then((r) => {
       if (isUpdate(r) && r.changedRows === 0) {
         log.error(req, "Unexpected no rows changed");

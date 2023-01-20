@@ -11,7 +11,7 @@ export const startRun = (
   day: number,
 ) =>
   sql`
-    SELECT @isDaily1 := count(1) < 3
+    SELECT @isDaily1 := count(1) = 0
     FROM run
     WHERE user = ${user}
     AND iteration = ${iteration};
@@ -43,13 +43,49 @@ export const updateCurrentRun = (
   user: string,
   time: number,
   blocks: (Point & { thunder?: boolean; player?: boolean })[],
+  iteration: number,
 ) =>
   sql`
     UPDATE run
     SET time = ${time}, data = ${serializeRun(blocks)}, void = FALSE
     WHERE user = ${user}
       and TIMESTAMPDIFF(SECOND, created, NOW()) < 60
-    ORDER BY created DESC LIMIT 1`;
+    ORDER BY created DESC LIMIT 1;
+    
+    UPDATE run
+    SET daily = FALSE
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND YEAR(created) = (SELECT YEAR(created) FROM iteration WHERE id = ${iteration})
+      AND MONTH(created) = (SELECT MONTH(created) FROM iteration WHERE id = ${iteration})
+      AND DAY(created) = (SELECT DAY(created) FROM iteration WHERE id = ${iteration})
+    ORDER BY created ASC LIMIT 3;
+    
+    UPDATE run
+    SET daily = TRUE
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND time = (
+        SELECT MAX(time)
+        FROM (
+          SELECT time
+          FROM run
+          WHERE user = ${user}
+            AND iteration = ${iteration}
+            AND YEAR(created) = (SELECT YEAR(created) FROM iteration WHERE id = ${iteration})
+            AND MONTH(created) = (SELECT MONTH(created) FROM iteration WHERE id = ${iteration})
+            AND DAY(created) = (SELECT DAY(created) FROM iteration WHERE id = ${iteration})
+          ORDER BY created ASC LIMIT 3
+        ) t1
+      )
+      AND iteration = (
+        SELECT id
+        FROM iteration
+        WHERE YEAR(created) = (SELECT YEAR(created) FROM iteration WHERE id = ${iteration})
+          AND MONTH(created) = (SELECT MONTH(created) FROM iteration WHERE id = ${iteration})
+          AND DAY(created) = (SELECT DAY(created) FROM iteration WHERE id = ${iteration})
+      )
+    ORDER BY created ASC LIMIT 1;`;
 
 export const getLatestRun = (
   user: string,
