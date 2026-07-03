@@ -21,14 +21,14 @@ export const wrapperStore = <Args extends any[], Value>() => {
       if (is.record(is.unknown)(arg)) {
         const curChild = cur[1].get(arg);
         if (!curChild) {
-          const next = [new Map(), new WeakMap()] as const;
+          const next: typeof root = [new Map(), new WeakMap()];
           cur[1].set(arg, next);
           cur = next;
         } else cur = curChild as typeof root;
       } else {
         const curChild = cur[0].get(args[i]);
         if (!curChild) {
-          const next = [new Map(), new WeakMap()] as const;
+          const next: typeof root = [new Map(), new WeakMap()];
           cur[0].set(args[i], next);
           cur = next;
         } else cur = curChild as typeof root;

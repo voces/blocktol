@@ -1,5 +1,5 @@
-import { serveFile } from "std/http/file_server.ts";
-import { join, normalize } from "std/path/posix.ts";
+import { serveFile } from "@std/http/file-server";
+import { join, normalize } from "@std/path/posix";
 import { Handler } from "../util/Router.ts";
 
 export const staticServe =

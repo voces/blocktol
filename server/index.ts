@@ -1,13 +1,13 @@
 import "../common/types.d.ts";
-import { serve } from "std/http/server.ts";
-import "./channel.ts";
 import "./util/gen.ts";
 import { router } from "./router.ts";
 import { log } from "./util/logging.ts";
 
-const port = parseInt(Deno.env.get("PORT") ?? "NaN") || 3000;
+// On Deno Deploy the listening port is managed by the platform; `PORT` is only
+// used for local development.
+const port = Number(Deno.env.get("PORT")) || undefined;
 
-serve((req) => router.route(req), {
+Deno.serve({
   port,
   onListen: ({ port }) => log.info("Listening on", port),
-});
+}, (req) => router.route(req));

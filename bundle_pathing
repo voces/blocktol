@@ -1,4 +1,0 @@
-deno bundle \
-    --config deno.jsonc \
-    "$@" \
-    common/pathing.ts public/js/pathing.js

@@ -22,5 +22,12 @@ const ensureIterations = async (offsetDays: number) => {
   }
 };
 
+// Backfill recent history on cold start (idempotent: each day is only created
+// if it does not already exist).
 ensureIterations(14);
-setInterval(() => ensureIterations(1), ONE_MINUTE);
+
+// The new Deno Deploy runs ephemeral, request-scoped isolates, so long-lived
+// `setInterval` timers are not reliable. `Deno.cron` is scheduled by the
+// platform independently of traffic and is the supported way to run periodic
+// work. Registered at module top level (before `Deno.serve`) as required.
+Deno.cron("ensure-iterations", "* * * * *", () => ensureIterations(1));

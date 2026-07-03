@@ -107,7 +107,11 @@ export class Router implements AbstractRouter {
         const res = pattern.exec(request.url);
         if (!res) continue;
 
-        resp = await handler(request, res.pathname.groups, resp);
+        resp = await handler(
+          request,
+          res.pathname.groups as { [key: string]: string },
+          resp,
+        );
       }
 
       if (resp) return resp;

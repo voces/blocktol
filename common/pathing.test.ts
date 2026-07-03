@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "std/testing/asserts.ts";
+import { assert, assertEquals } from "@std/assert";
 
 import { pathDuration, Slow } from "./pathing.ts";
 import { Point } from "./types.ts";

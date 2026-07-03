@@ -1,65 +1,49 @@
 import { Env, env } from "./env.ts";
+import { log } from "./logging.ts";
+
+// NOTE: this module is not currently imported anywhere (the metric/event call
+// sites were never wired up). It is kept and made platform-correct so it can be
+// dropped in if/when metrics are wanted again.
+//
+// The new Deno Deploy runs ephemeral, request-scoped isolates, so the previous
+// design (buffer in memory, flush on a `setInterval`) would silently drop data
+// whenever an isolate was evicted. Instead we POST each metric/event as it
+// happens (fire-and-forget).
 
 const apiKey = Deno.env.get("NEW_RELIC_API_KEY");
-
-if (!apiKey) throw new Error("NEW_RELIC_API_KEY unset");
 
 type CountMetric = "blocktol.login";
 
 type EventType = "blocktol_run" | "blocktol_login";
 
-const countMetrics = new Map<CountMetric, number>();
-let intervalStart = Date.now();
+const post = (url: string, body: unknown) => {
+  if (!apiKey) return;
+  fetch(url, {
+    method: "POST",
+    headers: { "Api-Key": apiKey },
+    body: JSON.stringify(body),
+  }).catch((err) => log.error("metrics post failed", err));
+};
 
-const events: { eventType: EventType }[] = [];
-
-export const incrementMetric = (name: CountMetric) =>
-  countMetrics.set(name, countMetrics.get(name) ?? 0 + 1);
-
-setInterval(() => {
-  const now = Date.now();
-  const start = intervalStart;
-  intervalStart = now;
-
-  if (countMetrics.size > 0) {
-    fetch("https://metric-api.newrelic.com/metric/v1", {
-      method: "POST",
-      headers: { "Api-Key": apiKey },
-      body: JSON.stringify([{
-        metrics: Array.from(countMetrics.entries()).map(([name, value]) => ({
-          name,
-          type: "count",
-          value,
-          timestamp: start,
-          "interval.ms": now - start,
-          attributes: { env },
-        })),
-      }]),
-    });
-
-    countMetrics.clear();
-  }
-
-  if (events.length) {
-    fetch(
-      "https://insights-collector.newrelic.com/v1/accounts/3717954/events",
-      {
-        method: "POST",
-        headers: { "Api-Key": apiKey },
-        body: JSON.stringify(events),
-      },
-    );
-
-    events.splice(0);
-  }
-}, 15_000);
+export const incrementMetric = (name: CountMetric, value = 1) =>
+  post("https://metric-api.newrelic.com/metric/v1", [{
+    metrics: [{
+      name,
+      type: "count",
+      value,
+      timestamp: Date.now(),
+      "interval.ms": 0,
+      attributes: { env },
+    }],
+  }]);
 
 const postEvents = <T extends { eventType: EventType; env: Env }>(
   event: T | T[],
-) => {
-  if (Array.isArray(event)) events.push(...event);
-  else events.push(event);
-};
+) =>
+  post(
+    "https://insights-collector.newrelic.com/v1/accounts/3717954/events",
+    Array.isArray(event) ? event : [event],
+  );
 
 export const loginEvent = (userId: string) =>
   postEvents({ eventType: "blocktol_login", env, userId });

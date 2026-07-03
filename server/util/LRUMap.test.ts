@@ -1,4 +1,4 @@
-import { assertEquals } from "std/testing/asserts.ts";
+import { assertEquals } from "@std/assert";
 import { LRUMap } from "./LRUMap.ts";
 
 const values = Array.from(Array(15), (_, i) => i);

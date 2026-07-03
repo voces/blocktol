@@ -1,7 +1,4 @@
-import {
-  assertNotStrictEquals,
-  assertStrictEquals,
-} from "std/testing/asserts.ts";
+import { assertNotStrictEquals, assertStrictEquals } from "@std/assert";
 import { memoize } from "./memoize.ts";
 
 Deno.test("memoize", async (t) => {
