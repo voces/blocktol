@@ -1,4 +1,4 @@
-import { z } from "https://deno.land/x/zod@v3.20.2/index.ts";
+import { z } from "zod";
 import { getOwnBestMaze } from "../../db/user.ts";
 import { method } from "../apiHelpers.ts";
 

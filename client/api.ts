@@ -54,7 +54,10 @@ export const api = new Proxy({}, {
       } catch (err) {
         api.reportClientError({
           message: "Failed request",
-          data: { status: resp.status, error: err.message },
+          data: {
+            status: resp.status,
+            error: err instanceof Error ? err.message : String(err),
+          },
         });
         throw err;
       }

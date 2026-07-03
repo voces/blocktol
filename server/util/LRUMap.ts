@@ -7,7 +7,7 @@ export class LRUMap<K, V> extends Map<K, V> {
     this.maxSize = options?.maxSize ?? 1_000_000;
   }
 
-  set(key: K, value: V) {
+  override set(key: K, value: V) {
     super.delete(key);
     super.set(key, value);
 
@@ -23,7 +23,7 @@ export class LRUMap<K, V> extends Map<K, V> {
     return this;
   }
 
-  get(key: K): V | undefined {
+  override get(key: K): V | undefined {
     if (!super.has(key)) return undefined;
     const value = super.get(key);
     super.delete(key);
@@ -41,7 +41,7 @@ export class LRUMap<K, V> extends Map<K, V> {
     return value;
   }
 
-  has(key: K): boolean {
+  override has(key: K): boolean {
     if (!super.has(key)) return false;
     const value = super.get(key);
     super.delete(key);

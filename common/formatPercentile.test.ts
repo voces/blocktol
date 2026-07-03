@@ -1,4 +1,4 @@
-import { assertEquals } from "std/testing/asserts.ts";
+import { assertEquals } from "@std/assert";
 import { formatPercentile } from "./formatPercentile.ts";
 
 Deno.test("0", () => {

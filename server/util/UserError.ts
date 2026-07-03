@@ -1,5 +1,5 @@
 export class UserError extends Error {
-  message!: string;
+  override message!: string;
 
   constructor(message: string) {
     super(message);

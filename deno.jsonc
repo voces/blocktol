@@ -1,16 +1,40 @@
 {
   "compilerOptions": {
     "lib": ["deno.unstable", "dom"],
+    "jsx": "react",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment"
   },
-  "lint": {
-    "files": {
-      "exclude": ["public/*.js"]
+  "unstable": ["cron"],
+  "imports": {
+    "preact": "npm:preact@^10.11.3",
+    "preact/": "npm:/preact@^10.11.3/",
+    "zod": "npm:zod@^3.20.2",
+    "sqlstring": "npm:sqlstring@^2.3.3",
+    "@std/assert": "jsr:@std/assert@^1",
+    "@std/http/file-server": "jsr:@std/http@^1/file-server",
+    "@std/path/posix": "jsr:@std/path@^1/posix"
+  },
+  "tasks": {
+    "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
+    "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
+    "build": "deno task bundle && deno task bundle:pathing",
+    "start": "deno run --no-check=remote --allow-net --allow-env=PORT,DENO_ENV,SQL_PASSWORD,NEW_RELIC_API_KEY --allow-read server/index.ts",
+    "dev": "deno task bundle --watch & deno run --no-check=remote --allow-net --allow-env=PORT,DENO_ENV,SQL_PASSWORD,NEW_RELIC_API_KEY --allow-read --watch server/index.ts",
+    "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
+    "test": "deno test"
+  },
+  "deploy": {
+    "build": "deno task build",
+    "runtime": {
+      "type": "dynamic",
+      "entrypoint": "./server/index.ts"
     }
   },
-  "importMap": "import_map.json",
+  "lint": {
+    "exclude": ["public"]
+  },
   "fmt": {
-    "files": { "exclude": ["public/*.js"] }
+    "exclude": ["public"]
   }
 }

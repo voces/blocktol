@@ -1,4 +1,0 @@
-deno test \
-    --unstable \
-    --config deno.jsonc \
-    "$@"

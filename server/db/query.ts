@@ -36,7 +36,7 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
     return ret;
   };
 
-  let lastError: Error | undefined;
+  let lastError: unknown;
 
   while (retries-- >= 0) {
     try {
