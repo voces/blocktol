@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/compat";
 import { h } from "preact";
 import { Card } from "./Card.tsx";
 import { names } from "../util/random/names.ts";
@@ -29,7 +29,7 @@ export const Login = (
   const [showError, setShowError] = useState(false);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setShowError(true), 1000);
+    const timeout = setTimeout(() => setShowError(true), 1_000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -61,7 +61,6 @@ export const Login = (
         />
         <div>
           <Button
-            color="secondary"
             style={{ width: "100%", marginTop: 8 }}
             disabled={!connected && showError}
           >

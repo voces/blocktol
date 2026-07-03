@@ -1,6 +1,0 @@
-{
-  "imports": {
-    "preact": "https://esm.sh/preact?pin=v58",
-    "preact/hooks": "https://esm.sh/preact/hooks?pin=v58"
-  }
-}

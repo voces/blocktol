@@ -10,7 +10,7 @@ export interface Emitter<Events extends EventMap> {
   addEventListener: <Event extends keyof Events>(
     name: Event,
     callback: (event: Events[Event]) => void,
-  ) => void;
+  ) => (event: Events[Event]) => void;
   removeEventListener: <Event extends keyof Events>(
     name: Event,
     callback: (event: Events[Event]) => void,
@@ -39,6 +39,8 @@ export const emitter = <T, Events extends EventMap>(
       if (!events[name]) events[name] = callbacks;
 
       callbacks.push(callback);
+
+      return callback;
     };
   }
 

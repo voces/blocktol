@@ -1,23 +1,226 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta name="viewport" content="width=device-width, user-scalable=no" />
-    <style>
-      * {
-        box-sizing: border-box;
+
+<head>
+  <meta name="viewport" content="width=device-width, user-scalable=no" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f7f7" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222227" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --background: #f7f7f7;
+      --card-background: white;
+      --color: black;
+      --maze-background: hsl(220, 60%, 80%);
+      --maze-checkpoint: hsl(220, 60%, 50%);
+      --maze-wall: #404040;
+      --maze-text: white;
+      --maze-upgrade-to-thunder: hsl(120, 60%, 65%);
+      --maze-player-block: hsl(120, 60%, 80%);
+      --maze-game-block: hsl(320, 60%, 80%);
+      --maze-placing-block: hsl(120, 60%, 80%);
+      --maze-placing-error: hsl(0, 100%, 60%);
+      --maze-player-thunder: hsl(120, 60%, 50%);
+      --maze-game-thunder: hsl(320, 60%, 50%);
+      --maze-thunder-radius: hsla(220, 60%, 50%, 20%);
+      --maze-debug-block: hsla(0, 100%, 60%, 10%);
+      --maze-stroke: black;
+      --runner: hsl(300, 60%, 60%);
+      --slow-runner: hsl(258, 36%, 53%);
+      --brightness: 40%;
+
+      --full-height: 100%;
+      --maze-size: min(800px, 100vw, var(--full-height) - 110px);
+      --header-size: 79.88px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #222227;
+        --card-background: #2f2f33;
+        --color: #eee;
+        --brightness: 70%;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+      margin: 0;
+      overscroll-behavior: none;
+      touch-action: none;
+      user-select: none;
+      background-color: var(--background);
+      color: var(--color);
+    }
+
+    a {
+      color: var(--maze-checkpoint);
+      font-weight: bold;
+    }
+
+    a:hover {
+      filter: brightness(75%);
+      cursor: pointer;
+    }
+
+    @keyframes attemptsLoad {
+      0% {
+        font-size: min(calc(var(--maze-size) / 11), 64px);
+        opacity: 1;
       }
 
-      body {
-        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
-        margin: 0;
-        overscroll-behavior: none;
-        touch-action: none;
-        user-select: none;
+      100% {
+        font-size: min(calc(var(--maze-size) / 12), calc(64px * 11 / 12));
+        opacity: 0;
       }
-    </style>
-  </head>
+    }
 
-  <body>
-    <script src="./js/index.js" type="module"></script>
-  </body>
+    .tooltip {
+      max-width: max(30%, 200px);
+      background: var(--background);
+      padding: 8px;
+      border-radius: 4px;
+      position: absolute;
+      text-align: left;
+    }
+
+    .tooltip-arrow {
+      position: absolute;
+      border-width: calc(var(--maze-size) / 50);
+      border-style: solid;
+    }
+
+    .tooltip-arrow.bottom {
+      margin-bottom: calc(var(--maze-size) / -25);
+      border-color: var(--background) transparent transparent transparent;
+    }
+
+    .tooltip-arrow.top {
+      margin-top: calc(var(--maze-size) / -25);
+      border-color: transparent transparent var(--background) transparent;
+    }
+
+    .daily-selector {
+      position: absolute;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+      padding: 8px;
+      margin-top: -8px;
+      width: calc((100vw - var(--maze-size)) / 2);
+      max-height: calc(var(--full-height) - var(--header-size) + 8px);
+      overflow-y: auto;
+      overflow-x: visible;
+      color: white;
+    }
+
+    @media (orientation: portrait) {
+      .daily-selector {
+        top: calc(var(--maze-size) + var(--header-size) + 8px);
+        left: 0;
+        right: 0;
+        max-height: calc(var(--full-height) - var(--maze-size) - var(--header-size));
+        width: unset;
+      }
+    }
+
+    .daily-selector>span {
+      height: 0;
+      padding-top: 50%;
+      padding-bottom: 50%;
+      border-radius: 25%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .daily-selector>span.selected {
+      filter: drop-shadow(-0 0 4px var(--color));
+    }
+
+    .daily-selector .daily {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid var(--color);
+    }
+
+    .log {
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      text-align: left;
+      font-size: 14px;
+      right: 8px;
+      width: calc((100vw - var(--maze-size)) / 2 - 16px);
+      height: var(--maze-size);
+      overflow-y: auto;
+    }
+
+    @media (orientation: portrait) {
+      .log {
+        top: calc(var(--maze-size) + var(--header-size) + 8px);
+        left: 8px;
+        right: 0;
+        max-height: calc(var(--full-height) - var(--maze-size) - var(--header-size) - 8px);
+        width: unset;
+      }
+
+      .log.show-list {
+        display: none;
+      }
+    }
+
+    @keyframes flashready1 {
+
+      0%,
+      50% {
+        opacity: 1;
+      }
+
+      80%,
+      100% {
+        opacity: 0;
+      }
+
+    }
+
+    .flash-ready {
+      cursor: pointer;
+      animation: 1500ms ease-in-out infinite alternate flashready1;
+    }
+
+    @keyframes flashready2 {
+
+      0%,
+      50% {
+        opacity: 0;
+      }
+
+      80%,
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .flash-ready.ready {
+      animation-name: flashready2;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="/js/index.js" type="module"></script>
+</body>
+
 </html>

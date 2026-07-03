@@ -1,23 +1,71 @@
-import SqlString from "https://esm.sh/sqlstring@2.3.2?pin=v64";
+import SqlString from "sqlstring";
+import { is } from "../../common/typeguards.ts";
+import { env } from "../util/env.ts";
+import { log } from "../util/logging.ts";
 
-export const query = <T = unknown>(query: string): Promise<T> =>
-  fetch("https://w3x.io/sql", {
-    headers: {
-      "x-dbproxy-user": "blocktol-dev",
-      "x-dbproxy-password": Deno.env.get("SQL_PASSWORD")!,
-      "x-dbproxy-database": "blocktol-dev",
-    },
-    method: "POST",
-    body: query,
-  }).then((r) => r.json());
+const isSqlError = is.object({
+  code: is.number,
+  message: is.string,
+});
+
+class SQLError extends Error {}
+
+const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
+  const makeFetch = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    const ret = await fetch("https://w3x.io/sql", {
+      headers: {
+        "x-dbproxy-user": `blocktol-${env}`,
+        "x-dbproxy-password": Deno.env.get("SQL_PASSWORD")!,
+        "x-dbproxy-database": `blocktol-${env}`,
+      },
+      method: "POST",
+      body: query,
+      signal: controller.signal,
+    }).catch((err) => err);
+    if (ret instanceof Error) {
+      if (ret.message === "The signal has been aborted") {
+        throw new Error("Timeout", { cause: ret });
+      }
+      throw ret;
+    }
+    clearTimeout(timeout);
+
+    return ret;
+  };
+
+  let lastError: unknown;
+
+  while (retries-- >= 0) {
+    try {
+      const ret = await makeFetch();
+      const json = await ret.json();
+      if (isSqlError(json)) throw new SQLError(json.message);
+      if (lastError) log.info("recovered");
+      return json;
+    } catch (err) {
+      if (err instanceof SQLError) throw err;
+      lastError = err;
+      log.error(err);
+      log.error(
+        "Error fetching,",
+        retries + 1,
+        "retries remaining",
+      );
+    }
+  }
+
+  throw new Error("Failed to fetch", { cause: lastError });
+};
 
 export const sql = <T = unknown>(
   strings: TemplateStringsArray,
   ...values: unknown[]
 ) => {
-  const formatted = SqlString.format(strings.join("?"), values);
-  // console.log(formatted);
-  return query<T>(formatted);
+  // log.info(format(strings, ...values));
+  return query<T>(SqlString.format(strings.join("?"), values));
 };
 
 export const format = (
@@ -33,3 +81,7 @@ export type ExecResult = {
   serverStatus: number;
   warningStatus: number;
 };
+
+export const raw = (data: { raw: readonly string[] } | string) => ({
+  toSqlString: () => typeof data === "string" ? data : data.raw.join(""),
+});

@@ -1,0 +1,32 @@
+name: CI
+on:
+  push:
+    branches: [dev]
+  pull_request:
+
+# Deployment is handled by the Deno Deploy GitHub integration (app.deno.com),
+# not by this workflow. This job only checks the code.
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Format check
+        run: deno fmt --check
+
+      - name: Type check
+        run: deno check server/index.ts client/index.ts common/pathing.ts
+
+      - name: Test
+        run: deno task test
+
+      - name: Build client
+        run: deno task build

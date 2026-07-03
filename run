@@ -1,9 +1,0 @@
-deno run \
-    --config deno.jsonc \
-    --no-check=remote \
-    --allow-net \
-    --allow-env=PORT,DENO_ENV,SQL_PASSWORD \
-    --allow-read \
-    --unstable \
-    "$@" \
-    server/index.ts

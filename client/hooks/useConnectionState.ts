@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "preact/hooks";
+import { useContext, useEffect, useState } from "preact/compat";
 import { ConnectionContext } from "../contexts/Connection.ts";
 
 export const useConnectionState = () => {

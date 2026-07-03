@@ -1,5 +1,6 @@
 import type { Point } from "../common/types.ts";
 import { BinaryHeap } from "./BinaryHeap.ts";
+import { offsets } from "./constants.ts";
 import { MMap } from "./MMap.ts";
 
 export const newGrid = () => {
@@ -50,7 +51,7 @@ const lineOfSight = (from: Node, to: Node, grid: boolean[][]) => {
   return true;
 };
 
-const euclideanDistance = (s: Node, e: Node) =>
+const euclideanDistance = (s: Point, e: Point) =>
   ((e.x - s.x) ** 2 + (e.y - s.y) ** 2) ** .5;
 
 const updateNode = (
@@ -181,14 +182,97 @@ export const findPath = (
   return [...pathA, ...pathB.slice(1)];
 };
 
+export const findPathFromData = (blocks: Point[], checkpoint: Point) => {
+  const grid = newGrid();
+  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+  for (const { x, y } of blocks) {
+    if (
+      offsets.some(([xd, yd]) => {
+        if (grid[y + yd][x + xd]) return true;
+        grid[y + yd][x + xd] = true;
+        return false;
+      })
+    ) throw new Error("invalid data");
+  }
+
+  return findPath(grid, checkpoint);
+};
+
 export const SPEED = 5;
 
-export const pathDuration = (path: Point[], _thunders: Point[]) => {
+export type Slow = {
+  time: number;
+  thunder: Point;
+};
+
+export const pathDuration = (
+  path: ReadonlyArray<Readonly<Point>> = [],
+  thunders: ReadonlyArray<Readonly<Point>> = [],
+): [duration: number, slows: Slow[]] => {
+  if (path.length < 2) return [0, []];
+
   let distance = 0;
-  for (let i = 1; i < path.length; i++) {
-    distance +=
-      ((path[i].x - path[i - 1].x) ** 2 + (path[i].y - path[i - 1].y) ** 2) **
-        0.5;
+  let consumedDistance = 0;
+  let index = 0;
+  let distanceToNext = euclideanDistance(path[index], path[index + 1]);
+  const thunderUsage = Array<number>(thunders.length).fill(-Infinity);
+  const runner = { ...path[0] };
+  let slowed = 0;
+  const slows: Slow[] = [];
+  let steps = 0;
+
+  while (index < path.length - 1) {
+    steps++;
+
+    let slowedThisStep = false;
+    for (let i = 0; i < thunders.length; i++) {
+      if (
+        euclideanDistance(runner, {
+            x: thunders[i].x + 0.5,
+            y: thunders[i].y + 0.5,
+          }) > 4 ||
+        // Timed so that runner passing by in
+        // a straight line won't trigger twice
+        thunderUsage[i] + 32 * SPEED >= steps
+      ) {
+        continue;
+      }
+      thunderUsage[i] = steps;
+
+      if (!slowedThisStep) {
+        slowedThisStep = true;
+        slowed = 6 * SPEED;
+        slows.push(
+          { time: steps, thunder: { x: thunders[i].x, y: thunders[i].y } },
+        );
+      }
+    }
+
+    distance += slowed < 1e-8 ? 0.1 : 0.05;
+    slowed -= 0.1;
+    while (
+      (distance - consumedDistance) + 1e-8 >= distanceToNext &&
+      index < path.length
+    ) {
+      index++;
+      consumedDistance += distanceToNext;
+      if (index < path.length - 1) {
+        distanceToNext = euclideanDistance(path[index], path[index + 1]);
+      }
+    }
+
+    if (index < path.length - 1) {
+      const p = (distance - consumedDistance) / distanceToNext;
+      runner.x = path[index].x * (1 - p) + path[index + 1].x * p;
+      runner.y = path[index].y * (1 - p) + path[index + 1].y * p;
+    }
   }
-  return distance / SPEED;
+
+  return [
+    Math.round(steps * 10 / SPEED) / 100,
+    slows.map(({ time, thunder }) => ({
+      time: Math.round(time * 10 / SPEED) / 100,
+      thunder,
+    })),
+  ];
 };

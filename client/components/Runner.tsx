@@ -1,32 +1,56 @@
 import { Fragment, h } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/compat";
 import { SPEED } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
+import { useGame } from "../hooks/useGame.ts";
+import { debug } from "../util/debug.ts";
 
 export const Runner = (
-  { path, duration, onFinish }: {
+  { path, slows, onFinish, onSlow }: {
     path: Point[];
-    duration: number;
+    slows: { time: number; thunder: Point }[];
     onFinish: () => void;
+    onSlow: (thunder: Point) => void;
   },
 ) => {
   const start = useRef(Date.now()).current;
   const [loc, setLoc] = useState(path[0]);
+  const [slowed, setSlowed] = useState(false);
+  const game = useGame();
 
   useEffect(() => {
     let animationFrame: number;
-    const totalDistance = duration * SPEED;
     let coveredDistance = 0;
     let pathIndex = 0;
+    let pathDistance = 0;
+    let last = start;
+    let nextSlow = 0;
 
     const cb = () => {
       animationFrame = requestAnimationFrame(cb);
 
-      const pathPercent = (Date.now() - start) / 1_000 / duration;
-      if (pathPercent >= 1) return onFinish();
+      const now = Date.now();
+      const delta = now - last;
+      last = now;
+      const time = (now - start) / 1_000;
 
-      let distanceRemaining = pathPercent * totalDistance - coveredDistance;
-      while (pathIndex < path.length - 2) {
+      // Off by 1 error
+      for (
+        ;
+        nextSlow < slows.length && slows[nextSlow].time < time;
+        nextSlow++
+      ) {
+        onSlow(slows[nextSlow].thunder);
+      }
+      const isSlowed = nextSlow > 0 && (slows[nextSlow - 1].time) + 6 > time;
+      setSlowed(isSlowed);
+
+      const speed = isSlowed ? SPEED / 2 : SPEED;
+
+      pathDistance += delta / 1_000 * speed;
+
+      let distanceRemaining = pathDistance - coveredDistance;
+      while (pathIndex < path.length - 1) {
         const legDistance = ((path[pathIndex + 1].x - path[pathIndex].x) ** 2 +
           (path[pathIndex + 1].y - path[pathIndex].y) ** 2) ** 0.5;
 
@@ -46,6 +70,12 @@ export const Runner = (
         });
         break;
       }
+
+      if (pathIndex === path.length - 1) {
+        onFinish();
+        game.dispatchEvent("runFinish", { kind: "runFinish" });
+        return;
+      }
     };
 
     cb();
@@ -59,18 +89,32 @@ export const Runner = (
         cx={loc.x + 0.5}
         cy={loc.y + 0.5}
         r={0.45}
-        fill="hsl(300, 60%, 60%)"
-        stroke="black"
+        fill={slowed ? "var(--slow-runner)" : "var(--runner)"}
+        stroke="var(--maze-stroke)"
         stroke-width={0.1}
       />
-      {path.map((loc) => (
+      {debug && path.map((loc) => (
         <circle
           key={`${loc.x}-${loc.y}`}
           cx={loc.x + 0.5}
           cy={loc.y + 0.5}
           r={0.05}
+          fill="var(--maze-stroke)"
         />
       ))}
+      {debug && path.map((loc, i) =>
+        i > 0 && (
+          <line
+            key={`${loc.x},${loc.y}-${path[i - 1].x},${path[i - 1].y}`}
+            x1={loc.x + 0.5}
+            y1={loc.y + 0.5}
+            x2={path[i - 1].x + 0.5}
+            y2={path[i - 1].y + 0.5}
+            stroke="var(--maze-stroke)"
+            stroke-width={0.02}
+          />
+        )
+      )}
     </>
   );
 };
