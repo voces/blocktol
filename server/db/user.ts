@@ -1,5 +1,5 @@
 import { deserializeRun } from "../util/run.ts";
-import { raw, sql } from "./query.ts";
+import { sql } from "./query.ts";
 
 type User = {
   id: string;
@@ -37,17 +37,15 @@ export const getUserPlays = (id: string) =>
     SELECT COUNT(1) count FROM run WHERE user = ${id} AND daily = TRUE;
   `.then((r) => r[0]?.count ?? 0);
 
-export const dailyAttemptsByIteration = (
-  user: string,
-  iteration: number,
-  includeVoid = false,
-) =>
+// Counts a user's first 3 runs for an iteration, including abandoned (void)
+// runs — starting a daily and not finishing it still costs an attempt, matching
+// `dailyAttempts` (the timezone-based view).
+export const dailyAttemptsByIteration = (user: string, iteration: number) =>
   sql<{ time: number }[]>`
     SELECT time
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
-      ${raw(includeVoid ? "" : "AND void = FALSE")}
     ORDER BY created ASC
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
@@ -156,15 +154,6 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
         AND iteration = ${iteration}
       )
     LIMIT 1;`.then((r) => r?.[0]?.data ? deserializeRun(r[0].data) : null);
-
-export const markDaily = (user: string, iteration: number) =>
-  sql`
-    UPDATE run
-    SET daily = TRUE
-    WHERE user = ${user} AND iteration = ${iteration} AND void = FALSE
-    ORDER BY time DESC
-    LIMIT 1;
-  `;
 
 export const updateRating = (user: string, rating: number) =>
   sql`UPDATE user SET rating = ${rating} WHERE id = ${user};`;
