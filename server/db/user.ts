@@ -1,5 +1,5 @@
 import { deserializeRun } from "../util/run.ts";
-import { sql } from "./query.ts";
+import { format, raw, sql } from "./query.ts";
 
 type User = {
   id: string;
@@ -157,3 +157,37 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
 
 export const updateRating = (user: string, rating: number) =>
   sql`UPDATE user SET rating = ${rating} WHERE id = ${user};`;
+
+// Each completer of an iteration's daily, with their best time and current
+// rating/plays. Abandoners (no completed run) are excluded — they already lose
+// an attempt; they aren't rated.
+export const getRatingParticipants = (iteration: number) =>
+  sql<{ user: string; time: number; rating: number; plays: number }[]>`
+    SELECT r.user, MAX(r.time) time,
+           COALESCE(u.rating, 1000) rating, COALESCE(u.plays, 0) plays
+    FROM run r
+    JOIN user u ON u.id = r.user
+    WHERE r.iteration = ${iteration}
+      AND r.daily = TRUE
+      AND r.void = FALSE
+    GROUP BY r.user, u.rating, u.plays;
+  `;
+
+// Apply a batch of rating updates and mark the iteration rated, in one
+// transaction so a partial failure can't double- or under-count.
+export const applyRatings = (
+  iteration: number,
+  updates: { user: string; rating: number; plays: number }[],
+) => {
+  const userUpdates = updates
+    .map((u) =>
+      format`UPDATE user SET rating = ${u.rating}, plays = ${u.plays} WHERE id = ${u.user};`
+    )
+    .join("\n");
+  return sql`
+    START TRANSACTION;
+    ${raw(userUpdates)}
+    UPDATE iteration SET rated = TRUE WHERE id = ${iteration};
+    COMMIT;
+  `;
+};
