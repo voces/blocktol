@@ -1,7 +1,7 @@
 name: CI
 on:
   push:
-    branches: [dev]
+    branches: [prod]
   pull_request:
 
 # Deployment is handled by the Deno Deploy GitHub integration (app.deno.com),
