@@ -16,6 +16,27 @@ export const Daily = () => {
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
+  if (!attempts || hideDailyResult) return null;
+
+  const date = new Date().toLocaleDateString(undefined, {
+    dateStyle: "medium",
+  });
+
+  const attemptLine = (
+    { duration, percentile, supreme }: (typeof attempts)[number],
+  ) =>
+    `${duration}s${
+      typeof percentile === "number"
+        ? ` (p${formatPercentile(percentile)})`
+        : ""
+    }${supreme ? "*" : ""}`;
+
+  // The card shows "Blocktol" but the copied text links to the site.
+  const shareText = [
+    `https://blocktol.com ${date}`,
+    ...attempts.map(attemptLine),
+  ].join("\n");
+
   const clipboardHandler = (
     e: h.JSX.TargetedMouseEvent<HTMLButtonElement>,
   ) => {
@@ -26,13 +47,7 @@ export const Daily = () => {
 
     navigator.clipboard.write([
       new ClipboardItem({
-        "text/plain": new Blob([
-          (e.currentTarget.parentElement!.parentElement!
-            .firstElementChild as HTMLDivElement)
-            .innerText,
-        ], {
-          type: "text/plain",
-        }),
+        "text/plain": new Blob([shareText], { type: "text/plain" }),
       }),
     ]);
 
@@ -46,8 +61,6 @@ export const Daily = () => {
     });
     setTimeoutId(setTimeout(() => setTooltip(null), 750));
   };
-
-  if (!attempts || hideDailyResult) return null;
 
   return (
     <>
@@ -67,16 +80,10 @@ export const Daily = () => {
       >
         <div>
           <div style={{ fontWeight: "bold" }}>
-            https://blocktol.com {new Date().toLocaleDateString(undefined, {
-              dateStyle: "medium",
-            })}
+            Blocktol {date}
           </div>
-          {attempts.map(({ duration, percentile, supreme }) => (
-            <div>
-              {duration}s{typeof percentile === "number" &&
-                ` (p${formatPercentile(percentile)})`}
-              {supreme && "*"}
-            </div>
+          {attempts.map((attempt, i) => (
+            <div key={i}>{attemptLine(attempt)}</div>
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
