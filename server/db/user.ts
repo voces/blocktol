@@ -174,19 +174,21 @@ export const getRatingParticipants = (iteration: number) =>
   `;
 
 // Apply a batch of rating updates and mark the iteration rated, in one
-// transaction so a partial failure can't double- or under-count.
+// transaction so a partial failure can't double- or under-count. The updates
+// are a single bulk upsert (one statement, one parse) rather than one UPDATE
+// per player, so it scales to thousands of participants.
 export const applyRatings = (
   iteration: number,
   updates: { user: string; rating: number; plays: number }[],
 ) => {
-  const userUpdates = updates
-    .map((u) =>
-      format`UPDATE user SET rating = ${u.rating}, plays = ${u.plays} WHERE id = ${u.user};`
-    )
-    .join("\n");
+  const upsert = updates.length === 0 ? "" : format`
+    INSERT INTO user (id, rating, plays)
+    VALUES ${updates.map((u) => [u.user, u.rating, u.plays])}
+    ON DUPLICATE KEY UPDATE rating = VALUES(rating), plays = VALUES(plays);
+  `;
   return sql`
     START TRANSACTION;
-    ${raw(userUpdates)}
+    ${raw(upsert)}
     UPDATE iteration SET rated = TRUE WHERE id = ${iteration};
     COMMIT;
   `;
