@@ -13,47 +13,58 @@ export const migrations: Migration[] = [
   {
     version: 1,
     name: "baseline",
-    // NOTE: reconstructed from the code's queries; to be replaced with the exact
-    // `SHOW CREATE TABLE` output from production so fresh environments match it.
+    // The production schema verbatim (SHOW CREATE TABLE), made idempotent with
+    // IF NOT EXISTS and with the runtime AUTO_INCREMENT counter dropped. Tables
+    // are ordered so foreign keys reference tables that already exist (user and
+    // iteration before block and run). MariaDB dialect (`current_timestamp()`,
+    // tinyint(1) booleans) to match the live database.
     up: `
-      CREATE TABLE IF NOT EXISTS user (
-        id VARCHAR(255) NOT NULL PRIMARY KEY,
-        name VARCHAR(255) NULL,
-        rating DOUBLE NOT NULL DEFAULT 1000,
-        plays INT NOT NULL DEFAULT 0
-      );
+      CREATE TABLE IF NOT EXISTS \`user\` (
+        \`id\` char(36) NOT NULL,
+        \`created\` timestamp NOT NULL DEFAULT current_timestamp(),
+        \`name\` varchar(32) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,
+        \`rating\` float unsigned NOT NULL DEFAULT 1000,
+        \`plays\` int(11) NOT NULL DEFAULT 0,
+        PRIMARY KEY (\`id\`),
+        KEY \`name\` (\`name\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-      CREATE TABLE IF NOT EXISTS iteration (
-        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        created DATETIME NOT NULL,
-        bricks INT NOT NULL,
-        power INT NOT NULL,
-        checkpoint_x DOUBLE NOT NULL,
-        checkpoint_y DOUBLE NOT NULL,
-        min DOUBLE NOT NULL,
-        rated BOOLEAN NOT NULL DEFAULT FALSE
-      );
+      CREATE TABLE IF NOT EXISTS \`iteration\` (
+        \`id\` int(10) unsigned NOT NULL AUTO_INCREMENT,
+        \`created\` timestamp NOT NULL DEFAULT current_timestamp(),
+        \`bricks\` tinyint(3) unsigned NOT NULL,
+        \`power\` tinyint(3) unsigned NOT NULL,
+        \`checkpoint_x\` float unsigned NOT NULL,
+        \`checkpoint_y\` float unsigned NOT NULL,
+        \`min\` float unsigned DEFAULT NULL,
+        \`rated\` tinyint(1) NOT NULL DEFAULT 0,
+        PRIMARY KEY (\`id\`),
+        KEY \`created\` (\`created\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-      CREATE TABLE IF NOT EXISTS block (
-        iteration INT NOT NULL,
-        x INT NOT NULL,
-        y INT NOT NULL,
-        kind ENUM('block', 'thunder') NOT NULL,
-        INDEX block_iteration (iteration)
-      );
+      CREATE TABLE IF NOT EXISTS \`block\` (
+        \`iteration\` int(10) unsigned NOT NULL,
+        \`x\` float unsigned NOT NULL,
+        \`y\` float unsigned NOT NULL,
+        \`kind\` enum('block','thunder') NOT NULL,
+        KEY \`FK_blocks_iteration\` (\`iteration\`),
+        CONSTRAINT \`FK_blocks_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-      CREATE TABLE IF NOT EXISTS run (
-        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-        user VARCHAR(255) NOT NULL,
-        iteration INT NOT NULL,
-        time DOUBLE NOT NULL,
-        data TEXT NOT NULL,
-        void BOOLEAN NOT NULL DEFAULT TRUE,
-        daily BOOLEAN NOT NULL DEFAULT FALSE,
-        created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX run_user (user),
-        INDEX run_iteration (iteration)
-      );`,
+      CREATE TABLE IF NOT EXISTS \`run\` (
+        \`user\` char(36) NOT NULL,
+        \`iteration\` int(10) unsigned NOT NULL,
+        \`created\` timestamp NOT NULL DEFAULT current_timestamp(),
+        \`time\` float unsigned NOT NULL,
+        \`daily\` tinyint(1) NOT NULL DEFAULT 0,
+        \`void\` tinyint(1) NOT NULL DEFAULT 0,
+        \`data\` text NOT NULL,
+        KEY \`iteration_daily_void_time_idx\` (\`iteration\`,\`daily\`,\`void\`,\`time\`) USING BTREE,
+        KEY \`user_daily_idx\` (\`user\`,\`daily\`) USING BTREE,
+        KEY \`user_iteration_void_created_idx\` (\`user\`,\`iteration\`,\`void\`,\`created\`),
+        CONSTRAINT \`FK_run_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT \`FK_run_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
 ];
 
