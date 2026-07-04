@@ -1,4 +1,5 @@
 import { getDailyIteration } from "../db/iteration.ts";
+import { log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
 
 const ONE_MINUTE = 1_000 * 60;
@@ -20,7 +21,19 @@ const ensureIterations = async (offsetDays: number) => {
   // but a player's daily is their *local* date, so timezones ahead of UTC reach
   // a new local day before UTC does — pre-generate tomorrow so they have it.
   while (day < Date.now() + 2 * ONE_DAY) {
-    await ensureIteration(day);
+    // A DB error on one day must not abort the rest of the window, or a blip on
+    // an early day would skip generating every later one — including tomorrow's
+    // puzzle. Log and move on; the next hourly run retries any day still missing
+    // (ensureIteration is idempotent).
+    try {
+      await ensureIteration(day);
+    } catch (err) {
+      log.error(
+        "failed to ensure iteration for",
+        new Date(day).toDateString(),
+        err,
+      );
+    }
     day += ONE_DAY;
   }
 };
