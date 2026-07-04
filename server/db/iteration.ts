@@ -92,6 +92,7 @@ export const getDailyIterationId = (year: number, month: number, day: number) =>
     WHERE YEAR(created) = ${year}
       AND MONTH(created) = ${month}
       AND DAY(created) = ${day}
+    ORDER BY id
     LIMIT 1`.then((r) => r[0]?.id);
 
 export const getDailyIteration = (year: number, month: number, day: number) =>

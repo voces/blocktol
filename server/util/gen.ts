@@ -16,18 +16,20 @@ const ensureIteration = async (unix: number) => {
 
 const ensureIterations = async (offsetDays: number) => {
   let day = Date.now() - offsetDays * ONE_DAY;
-  while (day < Date.now() + ONE_DAY) {
+  // Through tomorrow (UTC): a day's iteration is keyed to the server (UTC) date,
+  // but a player's daily is their *local* date, so timezones ahead of UTC reach
+  // a new local day before UTC does — pre-generate tomorrow so they have it.
+  while (day < Date.now() + 2 * ONE_DAY) {
     await ensureIteration(day);
     day += ONE_DAY;
   }
 };
 
-// Backfill recent history on cold start (idempotent: each day is only created
-// if it does not already exist).
-ensureIterations(14);
-
-// The new Deno Deploy runs ephemeral, request-scoped isolates, so long-lived
-// `setInterval` timers are not reliable. `Deno.cron` is scheduled by the
-// platform independently of traffic and is the supported way to run periodic
-// work. Registered at module top level (before `Deno.serve`) as required.
-Deno.cron("ensure-iterations", "* * * * *", () => ensureIterations(1));
+// Single-writer daily generation. `ensureIteration` is check-then-create (not
+// atomic), so running it on multiple isolates could create duplicate iterations
+// for a day. `Deno.cron` runs once per schedule, never overlapping, so it's the
+// lone writer — replacing the per-isolate cold-start backfill that caused the
+// race. Hourly is enough: the window reaches tomorrow, so each day is generated
+// ~a day before any timezone needs it (this also seeds new envs / heals gaps).
+// Idempotent; must be registered before `Deno.serve`.
+Deno.cron("ensure-iterations", "0 * * * *", () => ensureIterations(14));
