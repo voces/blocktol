@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { reverseTween } from "./math.ts";
+import { percentileFromTimeCounts, reverseTween } from "./math.ts";
 
 Deno.test("reverseTween", async (t) => {
   await t.step("no data, but higher than min", () => {
@@ -53,5 +53,54 @@ Deno.test("reverseTween", async (t) => {
 
   await t.step("value is greater than highest", () => {
     assertEquals(reverseTween([1, 2], 3, 1), 1);
+  });
+});
+
+Deno.test("percentileFromTimeCounts", async (t) => {
+  await t.step("no other runs returns undefined, not p100", () => {
+    assertEquals(percentileFromTimeCounts([], 12.36), undefined);
+  });
+
+  await t.step("better than everyone is p100", () => {
+    assertEquals(
+      percentileFromTimeCounts(
+        [{ time: 10, count: 1 }, { time: 15, count: 1 }],
+        16,
+      ),
+      1,
+    );
+  });
+
+  await t.step("worse than everyone is p0", () => {
+    assertEquals(
+      percentileFromTimeCounts(
+        [{ time: 10, count: 1 }, { time: 15, count: 1 }],
+        5,
+      ),
+      0,
+    );
+  });
+
+  await t.step("in the middle", () => {
+    assertEquals(
+      percentileFromTimeCounts(
+        [{ time: 10, count: 1 }, { time: 20, count: 1 }],
+        15,
+      ),
+      0.5,
+    );
+  });
+
+  await t.step("tie splits the count", () => {
+    assertEquals(
+      percentileFromTimeCounts(
+        [{ time: 10, count: 1 }, { time: 15, count: 2 }, {
+          time: 20,
+          count: 1,
+        }],
+        15,
+      ),
+      0.5,
+    );
   });
 });

@@ -67,13 +67,15 @@ export const Daily = () => {
       >
         <div>
           <div style={{ fontWeight: "bold" }}>
-            Blocktol {new Date().toLocaleDateString(undefined, {
+            https://blocktol.com {new Date().toLocaleDateString(undefined, {
               dateStyle: "medium",
             })}
           </div>
           {attempts.map(({ duration, percentile, supreme }) => (
             <div>
-              {duration}s (p{formatPercentile(percentile)}){supreme && "*"}
+              {duration}s{typeof percentile === "number" &&
+                ` (p${formatPercentile(percentile)})`}
+              {supreme && "*"}
             </div>
           ))}
         </div>
