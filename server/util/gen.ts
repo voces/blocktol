@@ -27,8 +27,9 @@ const ensureIterations = async (offsetDays: number) => {
 
 // Single-writer daily generation. `ensureIteration` is check-then-create (not
 // atomic), so running it on multiple isolates could create duplicate iterations
-// for a day. `Deno.cron` fires once per tick, never overlapping, so it's the
+// for a day. `Deno.cron` runs once per schedule, never overlapping, so it's the
 // lone writer — replacing the per-isolate cold-start backfill that caused the
-// race. The 14-day window also seeds new envs and backfills gaps. Idempotent;
-// must be registered before `Deno.serve`.
-Deno.cron("ensure-iterations", "* * * * *", () => ensureIterations(14));
+// race. Hourly is enough: the window reaches tomorrow, so each day is generated
+// ~a day before any timezone needs it (this also seeds new envs / heals gaps).
+// Idempotent; must be registered before `Deno.serve`.
+Deno.cron("ensure-iterations", "0 * * * *", () => ensureIterations(14));
