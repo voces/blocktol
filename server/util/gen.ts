@@ -32,7 +32,14 @@ const ensureIterations = async (offsetDays: number) => {
 //
 // `Deno.cron` on Deno Deploy is a platform-scheduled job: it fires once per
 // tick (not once per isolate) and never overlaps itself, so it is that single
-// writer. We therefore rely on it exclusively and do NOT also backfill on
-// cold start (which ran on every ephemeral isolate and caused the race).
-// Registered at module top level (before `Deno.serve`) as required.
-Deno.cron("ensure-iterations", "* * * * *", () => ensureIterations(1));
+// writer — and it runs on schedule regardless of traffic, unlike the old
+// per-isolate cold-start backfill (which is what caused the race).
+//
+// It runs every minute over a 14-day window so, besides keeping today/tomorrow
+// generated, it also:
+//   - seeds a brand-new environment with recent history on its first tick, and
+//   - backfills any days missed while the job wasn't running (up to 14 days).
+// These are the jobs the removed cold-start backfill used to do, now handled by
+// the single writer. It's idempotent: existing days are only read, never
+// recreated. Registered at module top level (before `Deno.serve`) as required.
+Deno.cron("ensure-iterations", "* * * * *", () => ensureIterations(14));
