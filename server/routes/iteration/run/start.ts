@@ -38,7 +38,14 @@ export const startRun = method(startRunBody, true)(
       getIterationOtherBest(iteration, userId),
     ]);
 
-    dbStartRun(iteration, userId, data.min, year, month, day);
+    // Must finish within the request: the new Deploy tears down the isolate
+    // after the response, so a still-pending write can be killed mid-flight.
+    try {
+      await dbStartRun(iteration, userId, data.min, year, month, day);
+    } catch (err) {
+      console.error(err);
+      return { error: "failed to start run", status: 500 };
+    }
 
     let path: ReturnType<typeof findPathFromData>;
     try {

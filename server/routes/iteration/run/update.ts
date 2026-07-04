@@ -64,16 +64,22 @@ export const updateRun = method(updateRunBody, true)(
       ],
     );
 
-    updateCurrentRun(
-      userId,
-      duration,
-      blocks.map((b) => ({ ...b, player: true })),
-      iterationId,
-    ).then((r) => {
+    // Must finish within the request: the new Deploy tears down the isolate
+    // after the response, so a still-pending write can be killed mid-flight.
+    try {
+      const r = await updateCurrentRun(
+        userId,
+        duration,
+        blocks.map((b) => ({ ...b, player: true })),
+        iterationId,
+      );
       if (isUpdate(r) && r.changedRows === 0) {
         log.error(req, "Unexpected no rows changed");
       }
-    }).catch((err) => log.error(req, err));
+    } catch (err) {
+      log.error(req, err);
+      return { error: "failed to save run", status: 500 };
+    }
 
     return { path, duration, slows, supreme: duration > (otherBest ?? 0) };
   },
