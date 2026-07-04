@@ -122,7 +122,8 @@ export const getUnratedClosedIterations = (hours = 37) =>
     FROM iteration
     WHERE rated = FALSE
       AND DATE(created) <= DATE(NOW() - INTERVAL ${hours} HOUR)
-    ORDER BY created, id;
+    ORDER BY created, id
+    LIMIT 25;
   `.then((r) => r.map((i) => i.id));
 
 // The completed daily times for an iteration (one per player), used as the
