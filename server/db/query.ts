@@ -41,10 +41,25 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
   while (retries-- >= 0) {
     try {
       const ret = await makeFetch();
-      const json = await ret.json();
+      // Read as text first: when the proxy (or an upstream gateway) returns an
+      // HTML error page instead of JSON, log the status and a body snippet so
+      // the actual failure is visible, rather than a bare "Unexpected token '<'".
+      const text = await ret.text();
+      let json: unknown;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        log.error(
+          "Non-JSON response from SQL proxy:",
+          `status=${ret.status}`,
+          `content-type=${ret.headers.get("content-type")}`,
+          `body=${JSON.stringify(text.slice(0, 500))}`,
+        );
+        throw new Error(`SQL proxy returned non-JSON (status ${ret.status})`);
+      }
       if (isSqlError(json)) throw new SQLError(json.message);
       if (lastError) log.info("recovered");
-      return json;
+      return json as T;
     } catch (err) {
       if (err instanceof SQLError) throw err;
       lastError = err;
