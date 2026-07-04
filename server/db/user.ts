@@ -173,10 +173,18 @@ export const getRatingParticipants = (iteration: number) =>
     GROUP BY r.user, u.rating, u.plays;
   `;
 
-// Apply a batch of rating updates and mark the iteration rated, in one
-// transaction so a partial failure can't double- or under-count. The updates
-// are a single bulk upsert (one statement, one parse) rather than one UPDATE
-// per player, so it scales to thousands of participants.
+// Apply a batch of rating updates and mark the iteration rated. The updates are
+// a single bulk upsert (one statement) rather than one UPDATE per player, so it
+// scales to thousands of participants.
+//
+// Deliberately NOT an explicit transaction: the SQL proxy leaves a
+// `START TRANSACTION` open (holding locks) if any statement errors or the
+// request is aborted, which stalls every other query. Instead, autocommit and
+// mark the iteration rated FIRST: if that statement fails, the upsert never
+// runs — a clean no-op that retries next cron. (The reverse order would apply
+// ratings, fail to mark, and re-apply them every hour — a double-count loop.)
+// If the upsert itself fails after marking, that one daily is skipped, which is
+// the acceptable failure mode.
 export const applyRatings = (
   iteration: number,
   updates: { user: string; rating: number; plays: number }[],
@@ -187,9 +195,7 @@ export const applyRatings = (
     ON DUPLICATE KEY UPDATE rating = VALUES(rating), plays = VALUES(plays);
   `;
   return sql`
-    START TRANSACTION;
-    ${raw(upsert)}
     UPDATE iteration SET rated = TRUE WHERE id = ${iteration};
-    COMMIT;
+    ${raw(upsert)}
   `;
 };
