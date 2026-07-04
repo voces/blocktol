@@ -64,11 +64,12 @@ export const percentileFromTimeCounts = (
     else more += count;
   }
 
-  if (more === 0) return 1;
-
   const denominator = less + equal + more;
 
+  // No other runs to compare against yet (e.g. first player of the daily)
   if (denominator === 0) return;
+
+  if (more === 0) return 1;
 
   return (less + equal / 2) / denominator;
 };

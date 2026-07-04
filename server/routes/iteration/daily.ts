@@ -39,7 +39,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
 
     const [timeCounts, otherBest, iteration, latestRun, attempts, user] =
       await Promise.all([
-        iterationId.then((id) => getIterationTimeCounts(id)),
+        iterationId.then((id) => getIterationTimeCounts(id, userId)),
         iterationId.then((id) => getIterationOtherBest(id, userId)),
         iterationId.then((id) => getIteration(id)),
         iterationId.then((id) => getLatestRun(userId, id, true)),
@@ -102,7 +102,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       rating: user?.rating ?? 1000,
       attempts: attempts.map((duration) => ({
         duration,
-        percentile: percentileFromTimeCounts(timeCounts, duration) ?? 1,
+        percentile: percentileFromTimeCounts(timeCounts, duration),
         supreme: otherBest ? duration > otherBest : true,
       })),
       currentRun,

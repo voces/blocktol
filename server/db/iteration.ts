@@ -70,13 +70,18 @@ export const getMaxIterationTime = (iteration: number) =>
     SELECT MAX(time) max FROM run WHERE iteration = ${iteration};
   `.then((r) => r?.[0]?.max);
 
-export const getIterationTimeCounts = (iteration: number, dailyOnly = true) =>
+export const getIterationTimeCounts = (
+  iteration: number,
+  user: string,
+  dailyOnly = true,
+) =>
   sql<{ time: number; count: number }[]>`
       SELECT time, COUNT(1) count
       FROM run
       WHERE iteration = ${iteration}
         AND daily = ${dailyOnly}
         AND void = FALSE
+        AND user != ${user}
       GROUP BY 1
       ORDER BY time;`;
 
