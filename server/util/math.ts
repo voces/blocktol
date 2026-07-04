@@ -51,6 +51,34 @@ export const reverseTween = (
   return (middle + relativePercent + 1) / data.length;
 };
 
+/**
+ * Given a field of `{ time, count }` ascending by time, returns a map from each
+ * time to the percentile a player *at* that time gets with their own run
+ * excluded. This is the batch equivalent of calling `percentileFromTimeCounts`
+ * once per player (self excluded), computed in one O(field) pass instead of
+ * O(players × field). A time is omitted only when it's the field's sole run
+ * (nothing left to rank against once self is removed).
+ */
+export const selfExcludedPercentiles = (
+  field: { time: number; count: number }[],
+) => {
+  const total = field.reduce((sum, c) => sum + c.count, 0);
+  const percentiles = new Map<number, number>();
+  let less = 0;
+  for (const { time, count } of field) {
+    const denominator = total - 1; // one run (self) removed
+    if (denominator > 0) {
+      const more = total - less - count;
+      percentiles.set(
+        time,
+        more === 0 ? 1 : (less + (count - 1) / 2) / denominator,
+      );
+    }
+    less += count;
+  }
+  return percentiles;
+};
+
 export const percentileFromTimeCounts = (
   timeCounts: { time: number; count: number }[],
   duration: number,

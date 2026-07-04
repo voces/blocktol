@@ -1,5 +1,53 @@
 import { assertEquals } from "@std/assert";
-import { percentileFromTimeCounts, reverseTween } from "./math.ts";
+import {
+  percentileFromTimeCounts,
+  reverseTween,
+  selfExcludedPercentiles,
+} from "./math.ts";
+
+Deno.test("selfExcludedPercentiles", async (t) => {
+  await t.step("sole run in the field is omitted", () => {
+    const p = selfExcludedPercentiles([{ time: 5, count: 1 }]);
+    assertEquals(p.has(5), false);
+  });
+
+  await t.step("two distinct times: worse gets 0, better gets 1", () => {
+    const p = selfExcludedPercentiles([
+      { time: 5, count: 1 },
+      { time: 9, count: 1 },
+    ]);
+    assertEquals(p.get(5), 0);
+    assertEquals(p.get(9), 1);
+  });
+
+  await t.step("a middle player beats the worse half", () => {
+    // times: 1,2,3,4,5 — player at 3, self excluded → 2 worse of 4 → 0.5
+    const p = selfExcludedPercentiles(
+      [1, 2, 3, 4, 5].map((time) => ({ time, count: 1 })),
+    );
+    assertEquals(p.get(3), 0.5);
+    assertEquals(p.get(1), 0);
+    assertEquals(p.get(5), 1);
+  });
+
+  await t.step(
+    "matches per-player percentileFromTimeCounts (self excluded)",
+    () => {
+      const field = [
+        { time: 2, count: 3 },
+        { time: 5, count: 1 },
+        { time: 8, count: 2 },
+      ];
+      const batch = selfExcludedPercentiles(field);
+      for (const { time } of field) {
+        const excluded = field
+          .map((c) => c.time === time ? { time, count: c.count - 1 } : c)
+          .filter((c) => c.count > 0);
+        assertEquals(batch.get(time), percentileFromTimeCounts(excluded, time));
+      }
+    },
+  );
+});
 
 Deno.test("reverseTween", async (t) => {
   await t.step("no data, but higher than min", () => {

@@ -4,7 +4,7 @@ import {
 } from "../db/iteration.ts";
 import { applyRatings, getRatingParticipants } from "../db/user.ts";
 import { log } from "./logging.ts";
-import { percentileFromTimeCounts } from "./math.ts";
+import { selfExcludedPercentiles } from "./math.ts";
 import { computeRatingChange } from "./rating.ts";
 
 const rateIteration = async (iteration: number) => {
@@ -13,13 +13,12 @@ const rateIteration = async (iteration: number) => {
     getRatingParticipants(iteration),
   ]);
 
+  // One pass over the field gives every player's percentile (own run excluded).
+  const percentiles = selfExcludedPercentiles(field);
+
   const updates: { user: string; rating: number; plays: number }[] = [];
   for (const p of participants) {
-    // Rank the player against the field with their own run removed.
-    const counts = field
-      .map((c) => c.time === p.time ? { time: c.time, count: c.count - 1 } : c)
-      .filter((c) => c.count > 0);
-    const actual = percentileFromTimeCounts(counts, p.time);
+    const actual = percentiles.get(p.time);
     if (actual === undefined) continue; // only player that day — nothing to rank
 
     const change = computeRatingChange(p.rating, p.plays, actual);
