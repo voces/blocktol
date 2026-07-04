@@ -112,3 +112,28 @@ export const getIterationOtherBest = (
       AND user != ${user}
       ${daily ? raw`AND daily = true` : ""}
   `.then((r) => r[0].otherBest);
+
+// Dailies whose date is fully past for every timezone (so the field is frozen)
+// and that haven't been rated yet. 37h = the UTC-12 close (D+1 12:00 UTC) plus
+// a 1h pad for in-flight submissions and hourly-cron granularity.
+export const getUnratedClosedIterations = (hours = 37) =>
+  sql<{ id: number }[]>`
+    SELECT id
+    FROM iteration
+    WHERE rated = FALSE
+      AND DATE(created) <= DATE(NOW() - INTERVAL ${hours} HOUR)
+    ORDER BY created, id;
+  `.then((r) => r.map((i) => i.id));
+
+// The completed daily times for an iteration (one per player), used as the
+// field a player's percentile is computed against.
+export const getIterationDailyTimeCounts = (iteration: number) =>
+  sql<{ time: number; count: number }[]>`
+    SELECT time, COUNT(1) count
+    FROM run
+    WHERE iteration = ${iteration}
+      AND daily = TRUE
+      AND void = FALSE
+    GROUP BY time
+    ORDER BY time;
+  `;

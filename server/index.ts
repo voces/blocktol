@@ -1,5 +1,6 @@
 import "../common/types.d.ts";
 import "./util/gen.ts";
+import "./util/rateDailies.ts";
 import { router } from "./router.ts";
 import { log } from "./util/logging.ts";
 
