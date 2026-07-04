@@ -102,7 +102,6 @@ export const Log = () => {
   const [showList, setShowList] = useState(false);
   const [best, setBest] = useState(-1);
   const [min, setMin] = useState(-1);
-  const [supreme, setSupreme] = useState(false);
 
   useApiListener("list", () => setShowList(true));
   useApiListener(
@@ -116,20 +115,23 @@ export const Log = () => {
   useApiListener("startRun", (e) => {
     setBest(e.best);
     setMin(e.min);
-    setSupreme(false);
   });
-  useApiListener("updateRun", (e) => setSupreme(e.supreme));
 
   useGameListener("runStart", ({ duration }) => {
     const max = Math.max(duration, best);
     const percent = max === min ? 1 : (duration - min) / (max - min);
+    // "longer than everyone else" = you set a new longest round. `best` is the
+    // own-inclusive max, so this stays consistent with the percent above (which
+    // hits 100% on the same run) — a run that beats others but not your own best
+    // reads e.g. "99.5%." without the boast.
+    const longest = duration > best;
     setLog((l) => [...l, {
       source: "server",
       message: `You lasted ${duration}s (${formatPercentile(percent)}%)${
-        supreme ? ", which was longer than everyone else!" : "."
+        longest ? ", which was longer than everyone else!" : "."
       }`,
     }]);
-  }, [best, supreme]);
+  }, [best, min]);
 
   useEffect(
     () => scrollLogRef.current?.scrollIntoView({ behavior: "smooth" }),
