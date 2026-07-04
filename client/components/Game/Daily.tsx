@@ -66,9 +66,8 @@ export const Daily = () => {
         }}
       >
         <div>
-          <div>https://blocktol.com</div>
           <div style={{ fontWeight: "bold" }}>
-            Blocktol {new Date().toLocaleDateString(undefined, {
+            https://blocktol.com {new Date().toLocaleDateString(undefined, {
               dateStyle: "medium",
             })}
           </div>
