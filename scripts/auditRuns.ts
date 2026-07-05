@@ -135,14 +135,15 @@ if (!apply) {
 
 let deleted = 0;
 for (const r of illegal) {
-  // Keyed on the run's identifying columns (the table has no id). ABS(time-…)
-  // rather than `=` because `time` is a single-precision float; user+iteration+
-  // created+data already pins the row, so the tolerance only guards precision.
+  // Keyed on user+iteration+data+time — the table has no id, and `created` is
+  // deliberately left out: it comes back as an ISO string that won't compare
+  // back against the TIMESTAMP column, and these four already pin the row (rows
+  // identical on all four are duplicates, so deleting both is correct anyway).
+  // ABS(time-…) rather than `=` because `time` is a single-precision float.
   const res = await sql<ExecResult>`
     DELETE FROM run
     WHERE user = ${r.user}
       AND iteration = ${r.iteration}
-      AND created = ${r.created}
       AND data = ${r.data}
       AND ABS(time - ${r.time}) < ${TIME_EPSILON};`;
   deleted += res.affectedRows;
