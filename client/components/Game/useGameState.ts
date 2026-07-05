@@ -27,6 +27,19 @@ export const useGameState = () => {
   const [transitionBlock, setTransitionBlock] = useState<
     Point & { local?: boolean; thunder?: boolean; active?: boolean }
   >();
+  // The local block currently grabbed for a drag (repositioning), if any.
+  // `offset` keeps the block anchored under the pointer; `dragged` sticks true
+  // once it leaves its origin cell so a return-to-origin release snaps back
+  // rather than deleting.
+  const dragRef = useRef<
+    | {
+      origin: Point & { local?: boolean; thunder?: boolean; active?: boolean };
+      dragged: boolean;
+      offsetX: number;
+      offsetY: number;
+    }
+    | null
+  >(null);
   const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
   const [blocks, setBlocks] = useState<
     ReadonlyArray<NonNullable<typeof transitionBlock>>
@@ -96,6 +109,7 @@ export const useGameState = () => {
     time,
     touching,
     transitionBlock,
+    dragRef,
     attempts,
     setAttempts,
     clear,

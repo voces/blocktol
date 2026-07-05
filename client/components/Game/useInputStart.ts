@@ -1,7 +1,7 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
-import { isBorderPoint, isTouchSource } from "./helpers.ts";
+import { isBorderPoint, isInvalidMove, isTouchSource } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useInputStart = (svg: SVGSVGElement | null) => {
@@ -16,10 +16,13 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     setThunderHover,
     setTransitionBlock,
     setTouching,
+    dragRef,
   } = useContext(GameStateContext);
 
   useEffect(() => {
-    const callback = (clientX: number, clientY: number) => {
+    // `press` is a pointer/touch down: if it lands on a local block we grab it
+    // to drag; otherwise it (and subsequent moves) position a placement preview.
+    const callback = (clientX: number, clientY: number, press = false) => {
       if (!svg || time <= 0) return;
 
       const box = svg.getBoundingClientRect();
@@ -55,12 +58,38 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         [Infinity, blocks[0]],
       )[1];
       const overlap =
-        Math.abs(nearest.x - x) <= 1 && Math.abs(nearest.y - y) <= 1
+        nearest && Math.abs(nearest.x - x) <= 1 && Math.abs(nearest.y - y) <= 1
           ? nearest
           : undefined;
-      // console.log(nearest);
-      // const overlap = blocks.find((b) => b.x === x && b.y === y) ??
-      //   blocks.find((b) => Math.abs(b.x - x) <= 1 && Math.abs(b.y - y) <= 1);
+
+      // Grab a local block on press, keeping the pointer's offset within it so
+      // the block doesn't jump its corner to the pointer.
+      if (press) {
+        dragRef.current = overlap?.local
+          ? {
+            origin: overlap,
+            dragged: false,
+            offsetX: overlap.x - x,
+            offsetY: overlap.y - y,
+          }
+          : null;
+      }
+
+      const drag = dragRef.current;
+      if (drag) {
+        const tx = Math.min(Math.max(x + drag.offsetX, 1), 17);
+        const ty = Math.min(Math.max(y + drag.offsetY, 1), 17);
+        // Sticky: once it leaves the origin it's a move, even if it returns.
+        if (tx !== drag.origin.x || ty !== drag.origin.y) drag.dragged = true;
+        const moved = tx !== drag.origin.x || ty !== drag.origin.y;
+        setTransitionBlock(drag.origin);
+        setThunderHover(undefined);
+        setPlacingBlock(() => ({ placing: true, x: tx, y: ty }));
+        setInvalid(
+          moved && isInvalidMove(grid, checkpoint, drag.origin, tx, ty),
+        );
+        return;
+      }
 
       setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
 
@@ -98,6 +127,13 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     };
     globalThis.addEventListener("mousemove", mousemoveCallback);
 
+    const mousedownCallback = (e: MouseEvent) => {
+      if (isTouchSource(e)) return;
+      if (!(e.target instanceof SVGElement)) return;
+      callback(e.clientX, e.clientY, true);
+    };
+    globalThis.addEventListener("mousedown", mousedownCallback);
+
     const touchmoveCallback = (e: TouchEvent) => {
       const target = e.changedTouches[0].target;
       if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
@@ -122,13 +158,14 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // place blocks — that ring holds the HUD controls (Ready?, best score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
       setTouching(true);
-      callback(touch.clientX, touch.clientY);
+      callback(touch.clientX, touch.clientY, true);
       e.preventDefault();
     };
     globalThis.addEventListener("touchstart", touchstartCallback);
 
     return () => {
       globalThis.removeEventListener("mousemove", mousemoveCallback);
+      globalThis.removeEventListener("mousedown", mousedownCallback);
       globalThis.removeEventListener("touchstart", touchstartCallback);
       globalThis.removeEventListener("touchmove", touchmoveCallback);
     };
