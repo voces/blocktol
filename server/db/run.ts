@@ -49,6 +49,7 @@ export const updateCurrentRun = (
     UPDATE run
     SET time = ${time}, data = ${serializeRun(blocks)}, void = FALSE
     WHERE user = ${user}
+      AND iteration = ${iteration}
       and TIMESTAMPDIFF(SECOND, created, NOW()) < 60
     ORDER BY created DESC LIMIT 1;
     
