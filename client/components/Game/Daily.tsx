@@ -1,16 +1,56 @@
-import { ComponentChildren, Fragment, h } from "preact";
+import { h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { GameStateContext } from "./useGameState.ts";
-import { Card } from "../Card.tsx";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
+import { useApiListener } from "../../hooks/useApiListener.ts";
 import { Button } from "../Button.tsx";
+import { Logo } from "../Logo.tsx";
 import { api } from "../../api.ts";
+import { getTimeZone } from "../../util/timeZone.ts";
+
+const ShareIcon = () => (
+  <svg width={15} height={15} viewBox="0 0 16 16">
+    <g
+      fill="none"
+      stroke="#fff"
+      stroke-width={1.5}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx={12} cy={3.5} r={2} />
+      <circle cx={4} cy={8} r={2} />
+      <circle cx={12} cy={12.5} r={2} />
+      <line x1={5.7} y1={7} x2={10.3} y2={4.5} />
+      <line x1={5.7} y1={9} x2={10.3} y2={11.5} />
+    </g>
+  </svg>
+);
+
+// Result glyph, tinted to the banner's --beat color: a check for the top half of
+// the field, a dash for the middle, an X for the bottom quartile.
+const BEAT_ICON = {
+  win: "M3 8.5l3.4 3.4L13 4.2",
+  mid: "M4 8h8",
+  low: "M4 4l8 8M12 4l-8 8",
+};
+
+const BeatIcon = ({ kind }: { kind: keyof typeof BEAT_ICON }) => (
+  <svg width={15} height={15} viewBox="0 0 16 16">
+    <path
+      d={BEAT_ICON[kind]}
+      fill="none"
+      stroke="var(--beat)"
+      stroke-width={1.8}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+);
 
 export const Daily = () => {
   const { attempts, clear } = useContext(GameStateContext);
-  const [tooltip, setTooltip] = useState<
-    { left: number; top: number; tooltip: ComponentChildren } | null
-  >(null);
+  const stats = useApiListener("getDailySummary")?.stats ?? null;
+  const [copied, setCopied] = useState(false);
   const [timeout, setTimeoutId] = useState(-1);
   const [hideDailyResult, setHideDailyResult] = useState(false);
 
@@ -20,6 +60,11 @@ export const Daily = () => {
 
   const date = new Date().toLocaleDateString(undefined, {
     dateStyle: "medium",
+  });
+  // Shorter month + day for the title; the clipboard keeps the full `date`.
+  const displayDate = new Date().toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
   });
 
   const attemptLine = (
@@ -37,9 +82,42 @@ export const Daily = () => {
     ...attempts.map(attemptLine),
   ].join("\n");
 
-  const clipboardHandler = (
-    e: h.JSX.TargetedMouseEvent<HTMLButtonElement>,
-  ) => {
+  let bestIdx = 0;
+  attempts.forEach((a, i) => {
+    if (a.duration > attempts[bestIdx].duration) bestIdx = i;
+  });
+  const best = attempts[bestIdx];
+  const isSupreme = best.supreme;
+  const accent = isSupreme ? "var(--gold)" : "var(--win)";
+
+  const beatPct = typeof best.percentile === "number"
+    ? Math.round(best.percentile * 100)
+    : null;
+  // The banner tracks the design's percentile ramp (red → amber → green → blue),
+  // the theme-safe equivalents of the DailySelector's --pct heatmap; supreme
+  // sits above it in gold.
+  const beatColor = isSupreme
+    ? "var(--gold)"
+    : beatPct === null
+    ? "var(--text-mute)"
+    : beatPct < 25
+    ? "var(--lose)"
+    : beatPct < 50
+    ? "var(--warn)"
+    : beatPct < 75
+    ? "var(--win)"
+    : beatPct < 100
+    ? "var(--accent)"
+    : "var(--gold)";
+
+  const beatKind: keyof typeof BEAT_ICON =
+    isSupreme || (beatPct !== null && beatPct >= 50)
+      ? "win"
+      : beatPct !== null && beatPct >= 25
+      ? "mid"
+      : "low";
+
+  const share = (e: h.JSX.TargetedMouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -51,78 +129,106 @@ export const Daily = () => {
       }),
     ]);
 
-    const rect = e.currentTarget.parentElement!.parentElement!.parentElement!
-      .parentElement!.parentElement!
-      .getBoundingClientRect();
-    setTooltip({
-      left: e.clientX - rect.left - 20,
-      top: e.clientY - rect.top - 20,
-      tooltip: "Copied!",
-    });
-    setTimeoutId(setTimeout(() => setTooltip(null), 750));
+    setCopied(true);
+    clearTimeout(timeout);
+    setTimeoutId(setTimeout(() => setCopied(false), 1500));
   };
 
   return (
-    <>
-      <Card
-        style={{
-          width: 200,
-          maxWidth: "100%",
-          position: "absolute",
-          top: "calc(80px + 20%)",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          fontSize: "125%",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: "bold" }}>
-            Blocktol {date}
-          </div>
+    <div class="result">
+      <div class="result__card">
+        <div class="result__header">
+          <Logo size={18} />
+          <h2 class="result__title">Blocktol · {displayDate}</h2>
+        </div>
+
+        <div class="result__rows">
           {attempts.map((attempt, i) => (
-            <div key={i}>{attemptLine(attempt)}</div>
+            <div
+              key={i}
+              class={i === bestIdx
+                ? "result__row result__row--best" +
+                  (isSupreme ? " result__row--glow" : "")
+                : "result__row"}
+              style={i === bestIdx ? { "--accent": accent } : undefined}
+            >
+              <span class="result__label">
+                Attempt {i + 1}
+                {i === bestIdx && (
+                  <span class="result__badge" style={{ "--badge": accent }}>
+                    {isSupreme ? "SUPREME" : "BEST"}
+                  </span>
+                )}
+              </span>
+              <span class="result__metric">
+                {typeof attempt.percentile === "number" && (
+                  <span class="result__pct">
+                    p{formatPercentile(attempt.percentile)}
+                  </span>
+                )}
+                <span
+                  class="result__time mono"
+                  style={i === bestIdx ? { color: accent } : undefined}
+                >
+                  {attempt.duration}s
+                </span>
+              </span>
+            </div>
           ))}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <Button style={{ width: "100%" }} onClick={clipboardHandler}>
-            Share
+
+        {beatPct !== null && (
+          <div
+            class={isSupreme
+              ? "result__banner result__banner--glow"
+              : "result__banner"}
+            style={{ "--beat": beatColor }}
+          >
+            <BeatIcon kind={beatKind} />
+            <span>
+              You beat <b>{beatPct}%</b> of players today
+            </span>
+          </div>
+        )}
+
+        {stats && (
+          <div class="result__stats">
+            <div class="result__stat">
+              <div class="result__stat-value mono">{stats.p25}s</div>
+              <div class="result__stat-label">p25</div>
+            </div>
+            <div class="result__stat">
+              <div class="result__stat-value mono">{stats.median}s</div>
+              <div class="result__stat-label">median</div>
+            </div>
+            <div class="result__stat">
+              <div class="result__stat-value mono">{stats.p75}s</div>
+              <div class="result__stat-label">p75</div>
+            </div>
+          </div>
+        )}
+
+        <div class="result__actions">
+          <Button class="result__btn" onClick={share}>
+            <ShareIcon />
+            {copied ? "Copied!" : "Share result"}
           </Button>
           <Button
-            style={{
-              width: "100%",
-              backgroundColor: "var(--slow-runner)",
-            }}
+            class="result__btn result__btn--keep"
             onClick={() => {
-              api.list();
+              // Free play: stage today's board (the run opens on the first
+              // placement, not now) rather than dropping to an empty board. The
+              // getBoard response reselects today in the daily list.
               clear();
-              // connection.send({ kind: "play" });
+              api.getBoard({ timeZone: getTimeZone() });
+              api.list();
               setHideDailyResult(true);
             }}
           >
             Keep playing
           </Button>
         </div>
-      </Card>
-      {tooltip
-        ? (
-          <div
-            style={{
-              position: "absolute",
-              left: tooltip.left,
-              top: tooltip.top,
-              color: "white",
-              background: "#444d",
-              borderRadius: 2,
-              padding: "1px 2px",
-            }}
-          >
-            {tooltip.tooltip}
-          </div>
-        )
-        : null}
-    </>
+      </div>
+    </div>
   );
 };

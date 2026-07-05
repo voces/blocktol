@@ -6,6 +6,7 @@ import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
 import { IntroBoard } from "./IntroBoard.tsx";
+import { Logo } from "./Logo.tsx";
 import { Profile } from "./Profile.tsx";
 
 const Shell = (
@@ -15,8 +16,13 @@ const Shell = (
   },
 ) => (
   <div style={{ textAlign: "center" }}>
-    <h1>Blocktol</h1>
-    <Profile />
+    <header class="app-header">
+      <div class="app-header__brand">
+        <Logo size={24} />
+        <h1>Blocktol</h1>
+      </div>
+      <Profile />
+    </header>
     <GameStateContext.Provider value={gameState}>
       {children}
     </GameStateContext.Provider>

@@ -2,7 +2,7 @@ import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
 import { api } from "../../api.ts";
-import { useIteration } from "../../hooks/useIteration.ts";
+import { getTimeZone } from "../../util/timeZone.ts";
 import {
   isBorderPoint,
   isInvalidMove,
@@ -27,9 +27,10 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     placingBlockRef,
     bricks,
     dragRef,
+    iteration,
+    staged,
+    setStaged,
   } = useContext(GameStateContext);
-
-  const iteration = useIteration();
 
   useEffect(() => {
     // `onBoard` is whether the release landed on the playable board (not a HUD
@@ -124,14 +125,28 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
       setBlocks((blocks) => {
         const newBlocks = [...blocks, { x, y, local: true }];
-        api.updateRun({
-          iteration: iteration ?? -1,
-          blocks: newBlocks.filter((b) => b.local),
-        });
+        // Free play opens the run on this first placement: the block rides along
+        // with startRun rather than a separate updateRun. Every later placement
+        // (staged is now false) is a plain updateRun.
+        if (staged) {
+          if (iteration !== undefined) {
+            api.startRun({
+              iteration,
+              timeZone: getTimeZone(),
+              block: { x, y },
+            });
+          }
+        } else {
+          api.updateRun({
+            iteration: iteration ?? -1,
+            blocks: newBlocks.filter((b) => b.local),
+          });
+        }
         rebuildGrid(grid, checkpoint, newBlocks);
         return newBlocks;
       });
       setBricks((bricks) => bricks - 1);
+      if (staged) setStaged(false);
 
       setPlacingBlock({ ...placingBlockRef.current, placing: false });
     };
@@ -166,5 +181,6 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     power,
     bricks,
     iteration,
+    staged,
   ]);
 };

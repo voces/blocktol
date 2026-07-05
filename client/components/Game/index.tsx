@@ -11,6 +11,7 @@ import { Daily } from "./Daily.tsx";
 import { DailySelector } from "./DailySelector.tsx";
 import { Log } from "./Log.tsx";
 import { AttemptsRemaining } from "./AttemptsRemaining.tsx";
+import { Hud } from "./Hud.tsx";
 
 export const Game = (
   { extraAttemptBannerTime }: { extraAttemptBannerTime?: boolean },
@@ -19,7 +20,6 @@ export const Game = (
   const {
     time,
     blocks,
-    bricks,
     checkpoint,
     grid,
     invalid,
@@ -31,9 +31,7 @@ export const Game = (
     run,
     setRun,
     date,
-    attemptsRemaining,
   } = useContext(GameStateContext);
-  // const [attemptsRemaining, setAttemptsRemaining] = useState(-1);
 
   useInit();
   useClock();
@@ -43,29 +41,33 @@ export const Game = (
 
   return (
     <>
-      <DailySelector />
-      <Log />
-      <Board
-        placingBlock={placingBlockRef.current}
-        touching={touching}
-        time={time}
-        svgRef={svgRef}
-        transitionBlock={transitionBlock}
-        power={power}
-        thunderHover={thunderHover}
-        bricks={bricks}
-        blocks={blocks}
-        checkpoint={checkpoint}
-        invalid={invalid}
-        run={run}
-        onFinish={() => setRun(undefined)}
-        grid={grid}
-        onSlow={onSlow}
-        date={date}
-      />
-      <AttemptsRemaining
-        extraAttemptBannerTime={extraAttemptBannerTime ?? false}
-      />
+      <div class="game">
+        <DailySelector />
+        <div class="game__board">
+          <Hud />
+          <Board
+            placingBlock={placingBlockRef.current}
+            touching={touching}
+            time={time}
+            svgRef={svgRef}
+            transitionBlock={transitionBlock}
+            power={power}
+            thunderHover={thunderHover}
+            blocks={blocks}
+            checkpoint={checkpoint}
+            invalid={invalid}
+            run={run}
+            onFinish={() => setRun(undefined)}
+            grid={grid}
+            onSlow={onSlow}
+            date={date}
+          />
+          <AttemptsRemaining
+            extraAttemptBannerTime={extraAttemptBannerTime ?? false}
+          />
+        </div>
+        <Log />
+      </div>
       <Daily />
     </>
   );

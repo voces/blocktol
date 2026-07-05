@@ -13,7 +13,7 @@ import {
   dailyAttemptsByIteration,
 } from "../../db/user.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
-import { percentileFromTimeCounts } from "../../util/math.ts";
+import { fieldQuantiles, percentileFromTimeCounts } from "../../util/math.ts";
 import { method } from "../apiHelpers.ts";
 
 const getDailySummaryBody = z.union([
@@ -98,13 +98,21 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       throw new Error("Unexpected invalid path on daily recovery");
     }
 
+    // "Supreme" (the daily record) is a single standing, not something every
+    // beating attempt earns — mark only your best run, and only when it actually
+    // tops the field.
+    const bestAttempt = attempts.length ? Math.max(...attempts) : null;
+    const beatsField = bestAttempt !== null &&
+      (!otherBest || bestAttempt > otherBest);
+
     return {
       rating: user?.rating ?? 1000,
       attempts: attempts.map((duration) => ({
         duration,
         percentile: percentileFromTimeCounts(timeCounts, duration),
-        supreme: otherBest ? duration > otherBest : true,
+        supreme: beatsField && duration === bestAttempt,
       })),
+      stats: fieldQuantiles(timeCounts),
       currentRun,
     };
   },

@@ -79,6 +79,30 @@ export const selfExcludedPercentiles = (
   return percentiles;
 };
 
+/**
+ * Field distribution quartiles (the times at the 25th/50th/75th percentile) from
+ * an ascending `{ time, count }` field. Returns null when the field is too small
+ * for the quartiles to mean anything.
+ */
+export const fieldQuantiles = (
+  timeCounts: { time: number; count: number }[],
+) => {
+  const total = timeCounts.reduce((sum, c) => sum + c.count, 0);
+  if (total < 4) return null;
+
+  const at = (fraction: number) => {
+    const target = fraction * total;
+    let cumulative = 0;
+    for (const { time, count } of timeCounts) {
+      cumulative += count;
+      if (cumulative >= target) return time;
+    }
+    return timeCounts[timeCounts.length - 1].time;
+  };
+
+  return { p25: at(0.25), median: at(0.5), p75: at(0.75) };
+};
+
 export const percentileFromTimeCounts = (
   timeCounts: { time: number; count: number }[],
   duration: number,

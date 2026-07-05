@@ -14,17 +14,22 @@ import {
 } from "../../../db/iteration.ts";
 import { dailyParts } from "../../../util/dailyParts.ts";
 import { method } from "../../apiHelpers.ts";
-import { startRun as dbStartRun } from "../../../db/run.ts";
+import { startRun as dbStartRun, updateCurrentRun } from "../../../db/run.ts";
 import { getOwnBest } from "../../../db/user.ts";
 import { findPathFromData, pathDuration } from "../../../../common/pathing.ts";
+import { validateRun } from "../../../util/validateRun.ts";
 
 const startRunBody = z.object({
   iteration: z.union([z.literal("daily"), z.number().min(1)]),
   timeZone: z.string(),
+  // The move that started the run (free play starts on the first placement, so
+  // its opening block rides along with the start to save a round-trip). Only a
+  // plain brick — the first action can't be a thunder/move/delete.
+  block: z.object({ x: z.number(), y: z.number() }).optional(),
 });
 
 export const startRun = method(startRunBody, true)(
-  async ({ userId, iteration: inputIteration, timeZone }) => {
+  async ({ userId, iteration: inputIteration, timeZone, block }) => {
     const { year, month, day } = dailyParts(timeZone);
 
     let iteration: number;
@@ -45,6 +50,41 @@ export const startRun = method(startRunBody, true)(
     } catch (err) {
       console.error(err);
       return { error: "failed to start run", status: 500 };
+    }
+
+    const best = Math.max(otherBest ?? 0, ownBest ?? 0, data.min);
+
+    // The run opened with a placement (free play): persist it now so the first
+    // brick doesn't need a second request, and return the board already holding
+    // it.
+    if (block) {
+      const validation = validateRun(data, [block]);
+      if (validation.ok) {
+        const player = { ...block, player: true };
+        try {
+          await updateCurrentRun(
+            userId,
+            validation.duration,
+            [player],
+            iteration,
+          );
+        } catch (err) {
+          // The run is started regardless; the client re-sends the maze on its
+          // next placement, so a lost opening block self-heals.
+          console.error(err);
+        }
+        return {
+          ...data,
+          blocks: [...data.blocks, player],
+          bricks: data.bricks - 1,
+          path: validation.path,
+          duration: validation.duration,
+          slows: validation.slows,
+          ownBest,
+          best,
+          remainingTime: 60,
+        };
+      }
     }
 
     let path: ReturnType<typeof findPathFromData>;
@@ -68,7 +108,7 @@ export const startRun = method(startRunBody, true)(
       duration,
       slows,
       ownBest,
-      best: Math.max(otherBest ?? 0, ownBest ?? 0, data.min),
+      best,
       remainingTime: 60,
     };
   },
