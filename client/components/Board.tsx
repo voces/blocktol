@@ -69,7 +69,9 @@ export const Board = (
         // is ignored by iOS Safari, and the gameplay handlers preventDefault
         // only for non-text targets — leaving the text unprotected.
         touchAction: "manipulation",
-        transition: "transform 100ms, transform-origin 100ms",
+        // Only animate the scale — animating transform-origin makes the zoom
+        // visibly pan across the board when tapping a new spot.
+        transition: "transform 100ms",
         transformOrigin: `${(placingBlock.x + 1) * 5}% ${placingBlock.y * 5}%`,
         transform: touching && time > 0 ? "scale(2)" : undefined,
       }}

@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { h } from "preact";
 import { useCallback, useContext, useEffect } from "preact/compat";
 import { api } from "../../api.ts";
 import { useIteration } from "../../hooks/useIteration.ts";
@@ -36,7 +36,11 @@ export const TopRight = (
   if (time <= 0) return null;
 
   return (
-    <>
+    <g
+      className="control"
+      onMouseDown={clickHandler}
+      onTouchStart={clickHandler}
+    >
       <text
         x={18.8}
         y={0.8}
@@ -44,8 +48,6 @@ export const TopRight = (
         fill="var(--maze-text)"
         text-anchor="end"
         className={hasResources ? undefined : "flash-ready"}
-        onMouseDown={clickHandler}
-        onTouchStart={clickHandler}
       >
         {time} seconds to build
       </text>
@@ -57,12 +59,27 @@ export const TopRight = (
           fill="var(--maze-text)"
           text-anchor="end"
           className="flash-ready ready"
-          onMouseDown={clickHandler}
-          onTouchStart={clickHandler}
         >
           Ready?
         </text>
       )}
-    </>
+      {
+        /*
+        Transparent hit target covering the top-right wall band. SVG <text>
+        only hit-tests on its painted glyphs, so on touch devices a finger
+        that lands between glyphs would otherwise hit the wall behind the
+        text and be treated as a board interaction. This gives the control a
+        solid, finger-sized tap area.
+      */
+      }
+      <rect
+        x={11}
+        y={0}
+        width={9}
+        height={1}
+        fill="transparent"
+        pointer-events="all"
+      />
+    </g>
   );
 };

@@ -3,7 +3,7 @@ import { offsets } from "../../../common/constants.ts";
 import { findPath, newGrid } from "../../../common/pathing.ts";
 import { api } from "../../api.ts";
 import { useIteration } from "../../hooks/useIteration.ts";
-import { isTouchSource } from "./helpers.ts";
+import { isBorderPoint, isTouchSource } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useInputEnd = (svg: SVGSVGElement | null) => {
@@ -124,10 +124,15 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     globalThis.addEventListener("mousedown", mousedownCallback);
 
     const touchendCallback = (e: TouchEvent) => {
-      const target = e.changedTouches[0].target;
+      const touch = e.changedTouches[0];
+      const target = touch.target;
       setTouching(false);
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
-      if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
+      if (
+        !(target instanceof SVGElement) ||
+        target instanceof SVGTextElement ||
+        isBorderPoint(svg, touch.clientX, touch.clientY)
+      ) {
         return;
       }
       callback();

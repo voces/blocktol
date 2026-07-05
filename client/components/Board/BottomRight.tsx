@@ -57,20 +57,39 @@ export const BottomRight = memo(() => {
   if (typeof rating !== "number") return null;
 
   return (
-    <text
-      x={18.8}
-      y={19.75}
-      font-size={0.8}
-      fill="var(--maze-text)"
-      text-anchor="end"
+    <g
+      className="control"
       onMouseDown={showRating ? undefined : clickHandler}
       onTouchStart={showRating ? undefined : clickHandler}
     >
-      {showRating
-        ? Math.round(rating)
-        : ownBest
-        ? `${last ? `${last}s / ` : ""}${ownBest}s`
-        : null}
-    </text>
+      <text
+        x={18.8}
+        y={19.75}
+        font-size={0.8}
+        fill="var(--maze-text)"
+        text-anchor="end"
+      >
+        {showRating
+          ? Math.round(rating)
+          : ownBest
+          ? `${last ? `${last}s / ` : ""}${ownBest}s`
+          : null}
+      </text>
+      {
+        /*
+        Transparent hit target covering the bottom-right wall band so the
+        best score is reliably tappable on touch devices (SVG text only
+        hit-tests on its painted glyphs).
+      */
+      }
+      <rect
+        x={11}
+        y={19}
+        width={9}
+        height={1}
+        fill="transparent"
+        pointer-events="all"
+      />
+    </g>
   );
 });

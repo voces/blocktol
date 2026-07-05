@@ -1,7 +1,7 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
-import { isTouchSource } from "./helpers.ts";
+import { isBorderPoint, isTouchSource } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useInputStart = (svg: SVGSVGElement | null) => {
@@ -104,7 +104,9 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         return;
       }
       e.preventDefault();
-      callback(e.touches[0].clientX, e.touches[0].clientY);
+      const touch = e.touches[0];
+      if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
+      callback(touch.clientX, touch.clientY);
     };
     globalThis.addEventListener("touchmove", touchmoveCallback, {
       passive: false,
@@ -115,8 +117,12 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
         return;
       }
+      const touch = e.touches[0];
+      // Ignore taps on the board's border/wall band so they don't zoom or
+      // place blocks — that ring holds the HUD controls (Ready?, best score).
+      if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
       setTouching(true);
-      callback(e.touches[0].clientX, e.touches[0].clientY);
+      callback(touch.clientX, touch.clientY);
       e.preventDefault();
     };
     globalThis.addEventListener("touchstart", touchstartCallback);
