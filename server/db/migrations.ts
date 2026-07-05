@@ -66,6 +66,28 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_run_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
+  {
+    version: 2,
+    name: "reslot-backfilled-iterations",
+    // Widening the ensure-iterations window from 14 to 31 days back-generated the
+    // June 4–18 dailies, but they landed at ids 155–169 — *above* the existing
+    // ids (which start at 128), even though their dates are earlier. Anything that
+    // orders by id then sees these past days as "future", so they wouldn't surface
+    // until the id cursor caught up. Reslot them into the free range ending at 127
+    // (155→113 … 169→127, i.e. id-42) so id order matches date order again.
+    //
+    // `block.iteration` (and `run.iteration`) are ON UPDATE CASCADE, so moving the
+    // iteration ids carries their blocks along automatically — no separate update
+    // is needed, and there are no runs on these dailies. Source (155–169) and
+    // target (113–127) ranges are disjoint, so no row collides mid-statement.
+    //
+    // Keyed to the exact production ids; on any other database (fresh/local) those
+    // ids don't exist, so this is a 0-row no-op, consistent with run-once v2+.
+    up: `
+      UPDATE \`iteration\`
+      SET \`id\` = \`id\` - 42
+      WHERE \`id\` BETWEEN 155 AND 169;`,
+  },
 ];
 
 // Fails fast on an ill-formed migration list: versions must be unique and form a
