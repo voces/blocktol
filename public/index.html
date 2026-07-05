@@ -56,9 +56,12 @@
 
     /* Clip the board's scale(2) zoom to the viewport: it should be free to
        overflow its container and spill over the surrounding UI, but must not
-       grow the page (which shifts the header and adds scroll on iOS). */
+       grow the page (which shifts the header and adds scroll on iOS). Full
+       height so the clip region reaches the bottom of the screen — otherwise
+       the body box stops at the board and the zoom is cut off below it. */
     html,
     body {
+      height: 100%;
       overflow: hidden;
     }
 
