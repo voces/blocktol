@@ -76,7 +76,9 @@ export const useInit = () => {
       setFreePlay(true);
       setStaged(true);
       setCheckpoint(data.checkpoint);
-      setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
+      // A staged board is the iteration's fixed pieces only — no player blocks
+      // exist until the first placement opens the run.
+      setBlocks(data.blocks.map((b) => ({ ...b })));
       setBricks(data.bricks);
       setPower(data.power);
       setTime(60);

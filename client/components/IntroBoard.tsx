@@ -279,7 +279,6 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         transitionBlock={undefined}
         power={run ? -1 : 1 - blocks.filter((b) => b.thunder).length}
         thunderHover={undefined}
-        bricks={run ? -1 : 37 - blocks.length}
         blocks={blocks}
         checkpoint={{ x: 10.5, y: 4.5 }}
         invalid={false}
