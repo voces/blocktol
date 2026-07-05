@@ -46,6 +46,12 @@
 
     * {
       box-sizing: border-box;
+      /* iOS Safari needs the -webkit- prefix to stop double-tap from
+         selecting text (e.g. the SVG HUD). Nothing on the page is meant to
+         be user-selectable. */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     body {
