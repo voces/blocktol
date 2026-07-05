@@ -28,15 +28,15 @@ export const useGameState = () => {
     Point & { local?: boolean; thunder?: boolean; active?: boolean }
   >();
   // The local block currently grabbed for a drag (repositioning), if any.
-  // `offset` keeps the block anchored under the pointer; `dragged` sticks true
-  // once it leaves its origin cell so a return-to-origin release snaps back
-  // rather than deleting.
+  // `startX/startY` is the cell the pointer pressed in; `dragged` sticks true
+  // once the pointer leaves it, so a tap doesn't nudge the block and a
+  // return-to-origin release snaps back rather than deleting.
   const dragRef = useRef<
     | {
       origin: Point & { local?: boolean; thunder?: boolean; active?: boolean };
       dragged: boolean;
-      offsetX: number;
-      offsetY: number;
+      startX: number;
+      startY: number;
     }
     | null
   >(null);

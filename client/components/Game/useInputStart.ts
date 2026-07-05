@@ -62,31 +62,28 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
           ? nearest
           : undefined;
 
-      // Grab a local block on press, keeping the pointer's offset within it so
-      // the block doesn't jump its corner to the pointer.
+      // Grab a local block on press, remembering the pressed cell so a tap
+      // (no cell change) doesn't move it.
       if (press) {
         dragRef.current = overlap?.local
-          ? {
-            origin: overlap,
-            dragged: false,
-            offsetX: overlap.x - x,
-            offsetY: overlap.y - y,
-          }
+          ? { origin: overlap, dragged: false, startX: x, startY: y }
           : null;
       }
 
       const drag = dragRef.current;
       if (drag) {
-        const tx = Math.min(Math.max(x + drag.offsetX, 1), 17);
-        const ty = Math.min(Math.max(y + drag.offsetY, 1), 17);
-        // Sticky: once it leaves the origin it's a move, even if it returns.
-        if (tx !== drag.origin.x || ty !== drag.origin.y) drag.dragged = true;
-        const moved = tx !== drag.origin.x || ty !== drag.origin.y;
+        // Sticky: once the pointer leaves the cell it pressed, it's a move.
+        if (x !== drag.startX || y !== drag.startY) drag.dragged = true;
+        // Center the block on the pointer once dragging (same mapping as
+        // placing a new block); keep it put until then so a tap doesn't nudge.
+        const tx = drag.dragged ? x : drag.origin.x;
+        const ty = drag.dragged ? y : drag.origin.y;
+        const atOrigin = tx === drag.origin.x && ty === drag.origin.y;
         setTransitionBlock(drag.origin);
         setThunderHover(undefined);
         setPlacingBlock(() => ({ placing: true, x: tx, y: ty }));
         setInvalid(
-          moved && isInvalidMove(grid, checkpoint, drag.origin, tx, ty),
+          !atOrigin && isInvalidMove(grid, checkpoint, drag.origin, tx, ty),
         );
         return;
       }
