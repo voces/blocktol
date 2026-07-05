@@ -1,13 +1,11 @@
 import { Fragment, h, Ref } from "preact";
-import { useEffect, useRef } from "preact/compat";
+import { useEffect, useMemo, useRef } from "preact/compat";
 
 import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
-import { Timer } from "./Timer.tsx";
 import { BottomRight } from "./Board/BottomRight.tsx";
-import { TopRight } from "./Board/TopRight.tsx";
 
 export const Board = (
   {
@@ -18,7 +16,6 @@ export const Board = (
     transitionBlock,
     power,
     thunderHover,
-    bricks,
     blocks,
     checkpoint,
     invalid,
@@ -37,7 +34,6 @@ export const Board = (
       | undefined;
     power: number;
     thunderHover: (Point & { local?: boolean }) | undefined;
-    bricks: number;
     blocks: ReadonlyArray<
       Point & { local?: boolean; thunder?: boolean; active?: boolean }
     >;
@@ -69,23 +65,28 @@ export const Board = (
   // (not a faded placement ghost) follows the pointer at `placingBlock`.
   const dragging = !!transitionBlock && placingBlock.placing;
 
+  // Static graph-paper grid. Memoized to a stable vnode so Preact doesn't
+  // rebuild these 18 lines on every re-render of the board.
+  const gridLines = useMemo(() => (
+    <g stroke="var(--maze-grid)" stroke-width={0.03}>
+      {Array.from({ length: 9 }, (_, i) => {
+        const n = (i + 1) * 2;
+        return (
+          <Fragment key={n}>
+            <line x1={n} y1={1} x2={n} y2={19} />
+            <line x1={1} y1={n} x2={19} y2={n} />
+          </Fragment>
+        );
+      })}
+    </g>
+  ), []);
+
   return (
-    <div
-      style={{
-        maxWidth: "var(--maze-size)",
-        margin: "0 auto",
-      }}
-    >
+    <div class="board-frame">
       <svg
         style={{
-          width: "100%",
-          display: "block",
-          // Disable iOS double-tap-to-zoom on the board so taps on interactive
-          // text (e.g. "Ready?") activate instead of zooming. body's
-          // `touch-action: none` isn't inherited by the SVG, `user-scalable=no`
-          // is ignored by iOS Safari, and the gameplay handlers preventDefault
-          // only for non-text targets — leaving the text unprotected.
-          touchAction: "manipulation",
+          // Static styling (rounding, font, touch-action) lives in
+          // `.board-frame > svg`; only the zoom transform is dynamic.
           // Animate the scale, and the origin too while dragging so the camera
           // pans in step with the block (avoids the block gliding while the
           // camera snaps). On the initial zoom the origin isn't animated (see
@@ -119,6 +120,7 @@ export const Board = (
           height={20}
           fill="var(--maze-background)"
         />
+        {gridLines}
         {transitionBlock && (power > 0 || transitionBlock.thunder) &&
           (
             <circle
@@ -145,17 +147,6 @@ export const Board = (
         <rect x={11} y={19} width={9} height={1} fill="var(--maze-wall)" />
         <rect x={0} y={0} width={1} height={20} fill="var(--maze-wall)" />
         <rect x={19} y={0} width={1} height={20} fill="var(--maze-wall)" />
-        {bricks >= 0 && (
-          <text x={1} y={0.8} font-size={0.8} fill="var(--maze-text)">
-            🧱 {bricks}
-          </text>
-        )}
-        {power >= 0 && (
-          <text x={3.4} y={0.8} font-size={0.8} fill="var(--maze-text)">
-            ❄️ {power}
-          </text>
-        )}
-        <TopRight time={time} hasResources={bricks > 0 || power > 0} />
         <BottomRight />
         {!Number.isNaN(date) && (
           <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
@@ -212,6 +203,7 @@ export const Board = (
             y={checkpoint.y + 0.55}
             width={0.9}
             height={0.9}
+            rx={0.2}
             fill="var(--maze-checkpoint)"
           />
         )}
@@ -229,25 +221,14 @@ export const Board = (
           />
         )}
         {run && time < 0 && (
-          <>
-            <text
-              x={18.8}
-              y={0.8}
-              font-size={0.8}
-              fill="var(--maze-text)"
-              text-anchor="end"
-            >
-              <Timer to={run.duration} /> seconds
-            </text>
-            <Runner
-              {...run}
-              onFinish={onFinish}
-              onSlow={(thunder) =>
-                onSlow(
-                  blocks.find((t) => thunder.x === t.x && thunder.y === t.y)!,
-                )}
-            />
-          </>
+          <Runner
+            {...run}
+            onFinish={onFinish}
+            onSlow={(thunder) =>
+              onSlow(
+                blocks.find((t) => thunder.x === t.x && thunder.y === t.y)!,
+              )}
+          />
         )}
         {debug && grid.flatMap((row, y) =>
           row.map((value, x) =>

@@ -1,6 +1,7 @@
 import { is } from "../../common/typeguards.ts";
 import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
+import { getBoard } from "./iteration/board.ts";
 import { getDailySummary } from "./iteration/daily.ts";
 import { listIterations } from "./iteration/list.ts";
 import { startRun } from "./iteration/run/start.ts";
@@ -9,6 +10,7 @@ import { reportClientError } from "./reportClientError.ts";
 
 const handlers = {
   list: listIterations,
+  getBoard,
   getDailySummary,
   startRun,
   updateRun,

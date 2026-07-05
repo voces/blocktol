@@ -142,7 +142,6 @@ for (const r of illegal) {
     DELETE FROM run
     WHERE user = ${r.user}
       AND iteration = ${r.iteration}
-      AND created = ${r.created}
       AND data = ${r.data}
       AND ABS(time - ${r.time}) < ${TIME_EPSILON};`;
   deleted += res.affectedRows;

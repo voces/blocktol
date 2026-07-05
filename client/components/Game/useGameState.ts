@@ -49,6 +49,14 @@ export const useGameState = () => {
   const [bricks, setBricks] = useState(-1);
   const [power, setPower] = useState(-1);
   const [time, setTime] = useState(-2);
+  // The iteration currently loaded on the board (ranked or free-play).
+  const [iteration, setIteration] = useState<number>();
+  // Free play stages the board without a run: `staged` freezes the build clock
+  // (a placement, not the timer, opens the run); `freePlay` marks the whole
+  // attempt as unranked so it re-stages rather than starting a ranked run when
+  // it finishes.
+  const [staged, setStaged] = useState(false);
+  const [freePlay, setFreePlay] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
   const [run, setRun] = useState<
@@ -81,6 +89,8 @@ export const useGameState = () => {
     setTransitionBlock(undefined);
     setPlacingBlock((pb) => ({ ...pb, placing: false }));
     setThunderHover(undefined);
+    setStaged(false);
+    setFreePlay(false);
   };
 
   return {
@@ -115,5 +125,11 @@ export const useGameState = () => {
     clear,
     attemptsRemaining,
     setAttemptsRemaining,
+    iteration,
+    setIteration,
+    staged,
+    setStaged,
+    freePlay,
+    setFreePlay,
   };
 };

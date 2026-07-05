@@ -37,6 +37,16 @@ export const BottomRight = memo(() => {
     }
   });
 
+  // Free play stages a board without a run; track its iteration so the best
+  // score (and its tap-to-view) follows the day being played.
+  useApiListener("getBoard", (e) => {
+    setOwnBest(e.ownBest);
+    if (e.iteration !== currentIteration) {
+      setLast(null);
+      setCurrentIteration(e.iteration);
+    }
+  });
+
   useApiListener("getDailySummary", (e) => {
     if (!e.currentRun) return;
 
@@ -68,6 +78,7 @@ export const BottomRight = memo(() => {
         font-size={0.8}
         fill="var(--maze-text)"
         text-anchor="end"
+        class="mono"
       >
         {showRating
           ? Math.round(rating)

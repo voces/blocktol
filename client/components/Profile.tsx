@@ -1,24 +1,14 @@
-import { ComponentChildren, Fragment, h, JSX } from "preact";
-import { useCallback, useEffect, useState } from "preact/compat";
+import { h } from "preact";
+import { useEffect, useState } from "preact/compat";
 import { getId } from "../util/id.ts";
 
-const style = {
-  position: "absolute",
-  right: 16,
-  top: 30,
-  color: "transparent",
-  textShadow: "0 0 0 var(--color)",
-};
-
 export const Profile = () => {
-  const [tooltip, setTooltip] = useState<
-    { left: number; top: number; tooltip: ComponentChildren } | null
-  >(null);
+  const [copied, setCopied] = useState(false);
   const [timeout, setTimeoutId] = useState(-1);
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
-  const onClick = useCallback((e: JSX.TargetedMouseEvent<HTMLSpanElement>) => {
+  const onClick = () => {
     navigator.clipboard.write([
       new ClipboardItem({
         "text/plain": new Blob([
@@ -27,33 +17,15 @@ export const Profile = () => {
       }),
     ]);
 
-    const rect = e.currentTarget.parentElement!.getBoundingClientRect();
-    setTooltip({
-      left: e.clientX - rect.left - 100,
-      top: e.clientY - rect.top + 0,
-      tooltip: "Copied login link!",
-    });
-    setTimeoutId(setTimeout(() => setTooltip(null), 1500));
-  }, []);
+    setCopied(true);
+    clearTimeout(timeout);
+    setTimeoutId(setTimeout(() => setCopied(false), 1500));
+  };
 
   return (
-    <>
-      <span style={style} onClick={onClick}>👤</span>
-      {tooltip && (
-        <div
-          style={{
-            position: "absolute",
-            left: tooltip.left,
-            top: tooltip.top,
-            color: "white",
-            background: "#444d",
-            borderRadius: 2,
-            padding: "1px 2px",
-          }}
-        >
-          {tooltip.tooltip}
-        </div>
-      )}
-    </>
+    <div class="profile" onClick={onClick} title="Copy login link">
+      <span class="profile__avatar">👤</span>
+      {copied && <div class="profile__tooltip">Copied login link!</div>}
+    </div>
   );
 };

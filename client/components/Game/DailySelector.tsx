@@ -1,33 +1,20 @@
 import { h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
+import {
+  percentileColor,
+  readableInk,
+  SUPREME_COLOR,
+} from "../../../common/percentileColor.ts";
 import { api, MessageMap } from "../../api.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 
-const r = [253, 251, 208, 100, 82];
-const g = [161, 74, 0, 65, 119];
-const b = [9, 5, 108, 236, 254];
-
-const getColor = (percent: number) => {
-  const l = r.length - 1;
-  const i = Math.min(Math.floor(percent * l), l - 1);
-  const t = (percent - i / l) * l;
-  return `#${
-    [
-      r[i] + t * (r[i + 1] - r[i]),
-      g[i] + t * (g[i + 1] - g[i]),
-      b[i] + t * (b[i + 1] - b[i]),
-    ].map((v) => Math.floor(v).toString(16).padStart(2, "0")).join("")
-  }`;
-};
-
 const Daily = (
-  { item, selectedIteration, setSelectedIteration }: {
+  { item, selectedIteration }: {
     item: MessageMap["list"]["items"][number];
     selectedIteration: number;
-    setSelectedIteration: (selectedIteration: number) => void;
   },
 ) => {
   const percent =
@@ -44,19 +31,30 @@ const Daily = (
         : (item.ownDailyBest - item.min) / (item.best - item.min)
       : null;
 
+  // Supreme days are gold; otherwise the ramp, skewed toward the top so strong
+  // days stand out in the grid.
+  const background = item.supreme
+    ? SUPREME_COLOR
+    : percent == null
+    ? "gray"
+    : percentileColor((percent + percent ** 4 + percent ** 32) / 3);
+
   return (
     <span
       className={selectedIteration === item.iteration ? "selected" : undefined}
       title={new Intl.DateTimeFormat(undefined, { dateStyle: "medium" })
         .format(new Date(item.daily[0], item.daily[1] - 1, item.daily[2]))}
       style={{
-        backgroundColor: percent == null
-          ? "gray"
-          : getColor((percent + percent ** 4 + percent ** 32) / 3),
+        backgroundColor: background,
+        color: percent == null ? "#fff" : readableInk(background),
       }}
       onClick={() => {
-        setSelectedIteration(item.iteration);
-        api.startRun({ iteration: item.iteration, timeZone: getTimeZone() });
+        // Changing days is free play: stage the board (the run opens on the
+        // first placement) rather than auto-starting. The selection follows the
+        // getBoard response so a locked day (403 until the daily's done) doesn't
+        // move it. No-op when it's already the current board.
+        if (item.iteration === selectedIteration) return;
+        api.getBoard({ iteration: item.iteration, timeZone: getTimeZone() });
       }}
     >
       <div
@@ -69,7 +67,7 @@ const Daily = (
         style={{
           backgroundColor: dailyPercent == null
             ? "gray"
-            : getColor(dailyPercent),
+            : percentileColor(dailyPercent),
         }}
       />
       {percent == null ? "-" : formatPercentile(percent)}
@@ -85,6 +83,7 @@ export const DailySelector = () => {
   const { time } = useContext(GameStateContext);
 
   useApiListener("startRun", (e) => setSelectedIteration(e.iteration));
+  useApiListener("getBoard", (e) => setSelectedIteration(e.iteration));
   useApiListener("list", (data) => setList(data.items));
 
   useEffect(() => {
@@ -118,7 +117,6 @@ export const DailySelector = () => {
           key={item.iteration}
           item={item}
           selectedIteration={selectedIteration}
-          setSelectedIteration={setSelectedIteration}
         />
       ))}
     </div>

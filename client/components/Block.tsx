@@ -22,10 +22,11 @@ export const Block = (
     y={y}
     width={size}
     height={size}
+    rx={size * 0.16}
     fill={`var(--maze-${color})`}
     opacity={opacity}
     stroke="var(--maze-stroke)"
-    stroke-width={0.1}
+    stroke-width={0.06}
     style={style}
   />
 );

@@ -1,7 +1,8 @@
-import { useCallback, useContext, useEffect, useState } from "preact/compat";
+import { useCallback, useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { newGrid } from "../../../common/pathing.ts";
 import { api, MessageMap } from "../../api.ts";
+import { Point } from "../../../common/types.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
@@ -30,20 +31,17 @@ export const useInit = () => {
     clear,
     blocks,
     checkpoint,
+    iteration,
+    setIteration,
+    setStaged,
+    freePlay,
+    setFreePlay,
   } = useContext(GameStateContext);
-  const [iteration, setIteration] = useState(0);
 
-  const handleRun = useCallback(
-    (data: NonNullable<MessageMap["getDailySummary"]["currentRun"]>) => {
-      setRun({ path: data.path, duration: data.duration, slows: data.slows });
-      setCheckpoint(data.checkpoint);
-      setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
-      setBricks(data.bricks);
-      setPower(data.power);
-      setTime(Math.floor(data.remainingTime));
-      setDate(new Date(data.date).getTime());
-      setIteration(data.iteration);
-
+  // Lay the iteration's fixed pieces onto a fresh grid (a started run and a
+  // staged free-play board share this reset).
+  const layout = useCallback(
+    (data: { checkpoint: Point; blocks: Point[] }) => {
       grid.splice(0, Infinity, ...newGrid());
       grid[data.checkpoint.y + 0.5][data.checkpoint.x + 0.5] = true;
       for (const { x, y } of data.blocks) {
@@ -53,7 +51,48 @@ export const useInit = () => {
     [],
   );
 
+  const handleRun = useCallback(
+    (data: NonNullable<MessageMap["getDailySummary"]["currentRun"]>) => {
+      setRun({ path: data.path, duration: data.duration, slows: data.slows });
+      setStaged(false);
+      setCheckpoint(data.checkpoint);
+      setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
+      setBricks(data.bricks);
+      setPower(data.power);
+      setTime(Math.floor(data.remainingTime));
+      setDate(new Date(data.date).getTime());
+      setIteration(data.iteration);
+
+      layout(data);
+    },
+    [],
+  );
+
+  // Free play: show the board without a run. Placement (not the clock) opens the
+  // run, so the clock is staged and the whole attempt is flagged unranked.
+  const handleStaged = useCallback(
+    (data: MessageMap["getBoard"]) => {
+      setRun(undefined);
+      setFreePlay(true);
+      setStaged(true);
+      setCheckpoint(data.checkpoint);
+      setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
+      setBricks(data.bricks);
+      setPower(data.power);
+      setTime(60);
+      setDate(new Date(data.date).getTime());
+      setIteration(data.iteration);
+      setPlacingBlock((pb) => ({ ...pb, placing: false }));
+      setTransitionBlock(undefined);
+      setThunderHover(undefined);
+
+      layout(data);
+    },
+    [],
+  );
+
   useApiListener("startRun", handleRun);
+  useApiListener("getBoard", handleStaged);
   useApiListener(
     "getDailySummary",
     ({ attempts, currentRun }) => {
@@ -74,11 +113,17 @@ export const useInit = () => {
   useGameListener(
     "runFinish",
     () => {
+      if (iteration === undefined) return;
+      // Free play never spends a ranked attempt — it just re-stages the board.
+      if (freePlay) {
+        api.getBoard({ iteration, timeZone: getTimeZone() });
+        return;
+      }
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
       if (attemptsRemaining === 1) api.getDailySummary({ iteration });
       else api.startRun({ iteration, timeZone: getTimeZone() });
     },
-    [iteration, attemptsRemaining],
+    [iteration, attemptsRemaining, freePlay],
   );
 
   useApiListener("best", ({ maze }) => {
