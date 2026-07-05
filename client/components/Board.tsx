@@ -168,8 +168,13 @@ export const Board = (
           </text>
         )}
 
-        {blocks.map((block) =>
-          dragging && block === transitionBlock ? null : (
+        {blocks.map((block) => {
+          // The grabbed block is drawn invisibly (not removed) while dragging:
+          // the real block follows the pointer via `placingBlock`, but keeping
+          // this node in the DOM preserves the touch's target so touchmove /
+          // touchend keep firing on mobile (they're anchored to the start node).
+          const hidden = dragging && block === transitionBlock;
+          return (
             <>
               <Block
                 x={block.x}
@@ -181,13 +186,15 @@ export const Board = (
                   : block.local
                   ? "player-block"
                   : "game-block"}
-                opacity={block.thunder
+                opacity={hidden
+                  ? 0
+                  : block.thunder
                   ? transitionBlock === block ? 0.4 : 1
                   : transitionBlock === block && power === 0
                   ? 0.6
                   : undefined}
               />
-              {block.active && (
+              {block.active && !hidden && (
                 <circle
                   cx={block.x + 1}
                   cy={block.y + 1}
@@ -197,8 +204,8 @@ export const Board = (
                 />
               )}
             </>
-          )
-        )}
+          );
+        })}
         {checkpoint && (
           <rect
             x={checkpoint.x + 0.55}
