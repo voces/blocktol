@@ -1,8 +1,9 @@
 import { h, JSX } from "preact";
 
 export const Button = (
-  { children, style, class: className, ...rest }:
-    JSX.ButtonHTMLAttributes<HTMLButtonElement>,
+  { children, style, class: className, ...rest }: JSX.ButtonHTMLAttributes<
+    HTMLButtonElement
+  >,
 ) => {
   return (
     <button

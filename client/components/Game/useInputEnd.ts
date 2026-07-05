@@ -130,7 +130,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         // (staged is now false) is a plain updateRun.
         if (staged) {
           if (iteration !== undefined) {
-            api.startRun({ iteration, timeZone: getTimeZone(), block: { x, y } });
+            api.startRun({
+              iteration,
+              timeZone: getTimeZone(),
+              block: { x, y },
+            });
           }
         } else {
           api.updateRun({

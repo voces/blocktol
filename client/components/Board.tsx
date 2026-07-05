@@ -67,19 +67,22 @@ export const Board = (
 
   // Static graph-paper grid. Memoized to a stable vnode so Preact doesn't
   // rebuild these 18 lines on every re-render of the board.
-  const gridLines = useMemo(() => (
-    <g stroke="var(--maze-grid)" stroke-width={0.03}>
-      {Array.from({ length: 9 }, (_, i) => {
-        const n = (i + 1) * 2;
-        return (
-          <Fragment key={n}>
-            <line x1={n} y1={1} x2={n} y2={19} />
-            <line x1={1} y1={n} x2={19} y2={n} />
-          </Fragment>
-        );
-      })}
-    </g>
-  ), []);
+  const gridLines = useMemo(
+    () => (
+      <g stroke="var(--maze-grid)" stroke-width={0.03}>
+        {Array.from({ length: 9 }, (_, i) => {
+          const n = (i + 1) * 2;
+          return (
+            <Fragment key={n}>
+              <line x1={n} y1={1} x2={n} y2={19} />
+              <line x1={1} y1={n} x2={19} y2={n} />
+            </Fragment>
+          );
+        })}
+      </g>
+    ),
+    [],
+  );
 
   return (
     <div class="board-frame">

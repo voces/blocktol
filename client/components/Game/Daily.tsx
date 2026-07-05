@@ -58,7 +58,9 @@ export const Daily = () => {
 
   if (!attempts || hideDailyResult) return null;
 
-  const date = new Date().toLocaleDateString(undefined, { dateStyle: "medium" });
+  const date = new Date().toLocaleDateString(undefined, {
+    dateStyle: "medium",
+  });
   // Shorter month + day for the title; the clipboard keeps the full `date`.
   const displayDate = new Date().toLocaleDateString(undefined, {
     month: "short",
@@ -177,11 +179,15 @@ export const Daily = () => {
 
         {beatPct !== null && (
           <div
-            class={isSupreme ? "result__banner result__banner--glow" : "result__banner"}
+            class={isSupreme
+              ? "result__banner result__banner--glow"
+              : "result__banner"}
             style={{ "--beat": beatColor }}
           >
             <BeatIcon kind={beatKind} />
-            <span>You beat <b>{beatPct}%</b> of players today</span>
+            <span>
+              You beat <b>{beatPct}%</b> of players today
+            </span>
           </div>
         )}
 

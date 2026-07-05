@@ -62,7 +62,12 @@ export const startRun = method(startRunBody, true)(
       if (validation.ok) {
         const player = { ...block, player: true };
         try {
-          await updateCurrentRun(userId, validation.duration, [player], iteration);
+          await updateCurrentRun(
+            userId,
+            validation.duration,
+            [player],
+            iteration,
+          );
         } catch (err) {
           // The run is started regardless; the client re-sends the maze on its
           // next placement, so a lost opening block self-heals.
