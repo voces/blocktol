@@ -57,6 +57,10 @@ export const Board = (
     style={{
       maxWidth: "var(--maze-size)",
       margin: "0 auto",
+      // Clip the scale(2) zoom to the board's own footprint. Without this the
+      // painted, scaled SVG overflows the viewport, which grows the page and
+      // shifts the header mid-animation (and briefly over-shrinks on zoom out).
+      overflow: "hidden",
     }}
   >
     <svg
