@@ -65,6 +65,10 @@ export const Board = (
     wasZooming.current = zooming;
   });
 
+  // A grabbed block being dragged: its origin is hidden and the block itself
+  // (not a faded placement ghost) follows the pointer at `placingBlock`.
+  const dragging = !!transitionBlock && placingBlock.placing;
+
   return (
     <div
       style={{
@@ -164,35 +168,44 @@ export const Board = (
           </text>
         )}
 
-        {blocks.map((block) => (
-          <>
-            <Block
-              x={block.x}
-              y={block.y}
-              color={block.thunder
-                ? block.local ? "player-thunder" : "game-thunder"
-                : transitionBlock === block && power > 0
-                ? "upgrade-to-thunder"
-                : block.local
-                ? "player-block"
-                : "game-block"}
-              opacity={block.thunder
-                ? transitionBlock === block ? 0.4 : 1
-                : transitionBlock === block && power === 0
-                ? 0.6
-                : undefined}
-            />
-            {block.active && (
-              <circle
-                cx={block.x + 1}
-                cy={block.y + 1}
-                fill="var(--maze-thunder-radius)"
-                r={4}
-                z-index={1}
+        {blocks.map((block) => {
+          // The grabbed block is drawn invisibly (not removed) while dragging:
+          // the real block follows the pointer via `placingBlock`, but keeping
+          // this node in the DOM preserves the touch's target so touchmove /
+          // touchend keep firing on mobile (they're anchored to the start node).
+          const hidden = dragging && block === transitionBlock;
+          return (
+            <>
+              <Block
+                x={block.x}
+                y={block.y}
+                color={block.thunder
+                  ? block.local ? "player-thunder" : "game-thunder"
+                  : transitionBlock === block && power > 0
+                  ? "upgrade-to-thunder"
+                  : block.local
+                  ? "player-block"
+                  : "game-block"}
+                opacity={hidden
+                  ? 0
+                  : block.thunder
+                  ? transitionBlock === block ? 0.4 : 1
+                  : transitionBlock === block && power === 0
+                  ? 0.6
+                  : undefined}
               />
-            )}
-          </>
-        ))}
+              {block.active && !hidden && (
+                <circle
+                  cx={block.x + 1}
+                  cy={block.y + 1}
+                  fill="var(--maze-thunder-radius)"
+                  r={4}
+                  z-index={1}
+                />
+              )}
+            </>
+          );
+        })}
         {checkpoint && (
           <rect
             x={checkpoint.x + 0.55}
@@ -206,8 +219,12 @@ export const Board = (
           <Block
             x={placingBlock.x}
             y={placingBlock.y}
-            color={invalid ? "placing-error" : "placing-block"}
-            opacity={0.4}
+            color={invalid
+              ? "placing-error"
+              : dragging
+              ? transitionBlock?.thunder ? "player-thunder" : "player-block"
+              : "placing-block"}
+            opacity={dragging ? (invalid ? 0.5 : 1) : 0.4}
             style={{ transition: "x 100ms, y 100ms" }}
           />
         )}
