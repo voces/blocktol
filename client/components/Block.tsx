@@ -20,9 +20,9 @@ export const Block = (
   <rect
     x={x}
     y={y}
+    rx={0.06}
     width={size}
     height={size}
-    rx={size * 0.16}
     fill={`var(--maze-${color})`}
     opacity={opacity}
     stroke="var(--maze-stroke)"

@@ -8,8 +8,9 @@ import { useInputEnd } from "./useInputEnd.ts";
 import { useOnSlow } from "./useOnSlow.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { Daily } from "./Daily.tsx";
-import { DailySelector } from "./DailySelector.tsx";
-import { Log } from "./Log.tsx";
+import { TodayResult } from "./TodayResult.tsx";
+import { Calendar } from "./Calendar.tsx";
+import { Attempts } from "./Attempts.tsx";
 import { AttemptsRemaining } from "./AttemptsRemaining.tsx";
 import { Hud } from "./Hud.tsx";
 
@@ -42,7 +43,6 @@ export const Game = (
   return (
     <>
       <div class="game">
-        <DailySelector />
         <div class="game__board">
           <Hud />
           <Board
@@ -66,7 +66,16 @@ export const Game = (
             extraAttemptBannerTime={extraAttemptBannerTime ?? false}
           />
         </div>
-        <Log />
+        {
+          /* One wrapper so mobile can scroll these as a unit below the board;
+            on desktop it's `display: contents`, letting the three panels drop
+            straight into the grid (today/cal left, attempts right). */
+        }
+        <div class="game__panel">
+          <TodayResult />
+          <Attempts />
+          <Calendar />
+        </div>
       </div>
       <Daily />
     </>

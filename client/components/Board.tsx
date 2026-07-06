@@ -5,7 +5,6 @@ import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
-import { BottomRight } from "./Board/BottomRight.tsx";
 
 export const Board = (
   {
@@ -79,6 +78,13 @@ export const Board = (
             </Fragment>
           );
         })}
+        {
+          /* The entrance/exit notches (x 9–11) break the wall band; carry the
+            centre grid line (x=10) up and down through them so the graph paper
+            continues into the openings rather than stopping at the playfield. */
+        }
+        <line x1={10} y1={0} x2={10} y2={1} />
+        <line x1={10} y1={19} x2={10} y2={20} />
       </g>
     ),
     [],
@@ -150,7 +156,6 @@ export const Board = (
         <rect x={11} y={19} width={9} height={1} fill="var(--maze-wall)" />
         <rect x={0} y={0} width={1} height={20} fill="var(--maze-wall)" />
         <rect x={19} y={0} width={1} height={20} fill="var(--maze-wall)" />
-        <BottomRight />
         {!Number.isNaN(date) && (
           <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
             {new Intl.DateTimeFormat(undefined, {
@@ -204,9 +209,9 @@ export const Board = (
           <rect
             x={checkpoint.x + 0.55}
             y={checkpoint.y + 0.55}
+            rx={0.06}
             width={0.9}
             height={0.9}
-            rx={0.2}
             fill="var(--maze-checkpoint)"
           />
         )}

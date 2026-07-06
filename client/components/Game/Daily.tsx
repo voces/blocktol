@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { GameStateContext } from "./useGameState.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
+import { percentileBand } from "../../../common/percentileColor.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
@@ -93,22 +94,11 @@ export const Daily = () => {
   const beatPct = typeof best.percentile === "number"
     ? Math.round(best.percentile * 100)
     : null;
-  // The banner tracks the design's percentile ramp (red → amber → green → blue),
-  // the theme-safe equivalents of the DailySelector's --pct heatmap; supreme
-  // sits above it in gold.
-  const beatColor = isSupreme
-    ? "var(--gold)"
-    : beatPct === null
-    ? "var(--text-mute)"
-    : beatPct < 25
-    ? "var(--lose)"
-    : beatPct < 50
-    ? "var(--warn)"
-    : beatPct < 75
-    ? "var(--win)"
-    : beatPct < 100
-    ? "var(--accent)"
-    : "var(--gold)";
+  // Banded theme colour (red → amber → green → blue), supreme in gold — the
+  // shared scheme used by the today-result and attempts panels too.
+  const beatColor = isSupreme ? "var(--gold)" : percentileBand(
+    typeof best.percentile === "number" ? best.percentile : null,
+  );
 
   const beatKind: keyof typeof BEAT_ICON =
     isSupreme || (beatPct !== null && beatPct >= 50)
@@ -218,10 +208,10 @@ export const Daily = () => {
             onClick={() => {
               // Free play: stage today's board (the run opens on the first
               // placement, not now) rather than dropping to an empty board. The
-              // getBoard response reselects today in the daily list.
+              // getBoard response reselects today in the daily list — which is
+              // already fresh (load and runFinish keep it current), so no relist.
               clear();
               api.getBoard({ timeZone: getTimeZone() });
-              api.list();
               setHideDailyResult(true);
             }}
           >

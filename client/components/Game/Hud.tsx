@@ -7,7 +7,7 @@ import { GameStateContext } from "./useGameState.ts";
 
 const IDLE_MS = 5_000;
 
-const BrickIcon = () => (
+export const BrickIcon = () => (
   <svg width={16} height={16} viewBox="0 0 16 16">
     <rect x={0} y={0} width={16} height={16} rx={2} fill="#c0553a" />
     <g stroke="#7d331f" stroke-width={1}>
@@ -20,7 +20,7 @@ const BrickIcon = () => (
   </svg>
 );
 
-const PowerIcon = () => (
+export const PowerIcon = () => (
   <svg width={16} height={16} viewBox="0 0 16 16">
     <g stroke="#5aa9e6" stroke-width={1.5} stroke-linecap="round">
       <line x1={8} y1={1.5} x2={8} y2={14.5} />
@@ -44,8 +44,29 @@ const formatBuild = (t: number) =>
  * placement, not a tap, opens the run.
  */
 export const Hud = () => {
-  const { bricks, power, blocks, time, run, setTime, iteration, staged } =
-    useContext(GameStateContext);
+  const {
+    bricks,
+    power,
+    blocks,
+    time,
+    run,
+    setTime,
+    iteration,
+    staged,
+    viewing,
+    attemptsRemaining,
+  } = useContext(GameStateContext);
+
+  // Reviewing a past maze leaves the board inert; a Play button is the way back
+  // to a live board. If the daily's still open it resumes the ranked run;
+  // otherwise it free-plays the day currently in view.
+  const onPlay = () => {
+    if (attemptsRemaining > 0) {
+      api.startRun({ iteration: "daily", timeZone: getTimeZone() });
+    } else if (iteration !== undefined) {
+      api.getBoard({ iteration, timeZone: getTimeZone() });
+    }
+  };
 
   // Keyboard shortcut: R runs the current build now, or starts a fresh run once
   // the previous one has finished (power === -1 marks the idle/finished state).
@@ -141,6 +162,16 @@ export const Hud = () => {
             </span>
             <span class="hud__build-label">seconds</span>
           </div>
+        )
+        : viewing
+        ? (
+          // Reviewing a past maze: the clock slot becomes the way back to play.
+          <button type="button" class="hud__build tapc" onClick={onPlay}>
+            <span class="hud__build-face hud__play">
+              <span class="hud__play-icon" aria-hidden="true">▶</span>
+              Play
+            </span>
+          </button>
         )
         : null}
     </div>

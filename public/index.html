@@ -37,13 +37,16 @@
       --warn: light-dark(hsl(42, 90%, 42%), hsl(42, 85%, 62%));
       --lose: light-dark(hsl(8, 72%, 50%), hsl(8, 72%, 60%));
       --gold: light-dark(hsl(42, 90%, 40%), hsl(45, 85%, 60%));
-      /* percentile ramp: red -> yellow -> green -> blue -> purple
-         (saturated enough to read on either theme) */
+      /* percentile ramp: red -> magenta -> blue -> teal -> green, low to high.
+         Goes the long way round the wheel so it never hits yellow/olive and
+         stays vivid; green reads as best. One scale for the calendar heatmap AND
+         the banded percentile UI (runs, today-result, result modal); supreme
+         sits above it in gold. */
       --pct-0: #dc4a2f;
-      --pct-1: #e0a800;
-      --pct-2: #5cc24a;
-      --pct-3: #3f6be0;
-      --pct-4: #7a55e0;
+      --pct-1: #d13d94;
+      --pct-2: #3f6be0;
+      --pct-3: #29b3a6;
+      --pct-4: #46b95a;
       --font: "Space Grotesk", system-ui, -apple-system, sans-serif;
       --font-mono: "JetBrains Mono", ui-monospace, monospace;
       --radius: 14px;
@@ -69,16 +72,17 @@
       --brightness: light-dark(40%, 70%);
 
       --full-height: 100%;
-      /* Height reserved for the app header (its padding + content, plus any
-         notch inset). The board and the portrait daily-selector/log both size
-         off this, so keep it in step with .app-header above. */
-      --header-size: calc(68px + env(safe-area-inset-top, 0px));
+      /* Height reserved above the board: the body's top inset (which carries the
+         breathing room + notch) plus the header's own height (content + bottom
+         padding). The board and side panels size off this, so keep it in step
+         with `body` padding-top and `.app-header` below. */
+      --header-size: calc(76px + env(safe-area-inset-top, 0px));
       /* Footprint the HUD strip reserves above the board (min-height + bottom
          margin), folded into the board size so board + HUD fit under the
          header. Keep in step with .hud. */
       --hud-size: 48px;
       --maze-size: min(
-        800px,
+        680px,
         100vw,
         var(--full-height) - var(--header-size) - var(--hud-size) - 8px
       );
@@ -113,6 +117,12 @@
     body {
       font-family: var(--font);
       margin: 0;
+      /* Top breathing room (and the notch inset) lives here, not on the header,
+         so the gap above the header is a page-level inset. Folded into
+         --header-size so the board still fits; border-box keeps padding + the
+         100% height inside the viewport. */
+      box-sizing: border-box;
+      padding-top: calc(32px + env(safe-area-inset-top, 0px));
       overscroll-behavior: none;
       touch-action: none;
       user-select: none;
@@ -139,22 +149,24 @@
        (clearing the status bar / notch) and below. */
     .app-header {
       display: grid;
-      /* Empty 1fr balances the avatar's 1fr, keeping the brand centered. */
-      grid-template-columns: 1fr auto 1fr;
+      justify-content: center;
       align-items: center;
-      gap: 10px;
-      padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 20px;
+      gap: 24px;
+      /* Mirror the .game grid (column template + padding are set per breakpoint
+         to match it exactly) so the wordmark centers over the board and the
+         avatar lines up with the right-hand panel's edge — not the raw viewport.
+         Top inset lives on `body`; the header just keeps its bottom gap. */
+      padding: 0 16px 20px;
     }
 
     .app-header__brand {
-      grid-column: 2;
+      justify-self: center;
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
     .profile {
-      grid-column: 3;
       justify-self: end;
       position: relative;
       display: flex;
@@ -163,12 +175,14 @@
     }
 
     .profile__avatar {
-      /* Render the emoji as a solid var(--color) glyph rather than its default
-         multicolor form. */
-      color: transparent;
-      text-shadow: 0 0 0 var(--color);
-      font-size: 20px;
-      line-height: 1;
+      display: block;
+      /* Muted rather than pure white so it sits back next to the wordmark. */
+      color: var(--text-mute);
+      transition: color 0.12s ease;
+    }
+
+    .profile:hover .profile__avatar {
+      color: var(--color);
     }
 
     .profile__tooltip {
@@ -258,29 +272,64 @@
       }
     }
 
+    /* Onboarding gets the same side breathing room the game board has, so the
+       board doesn't run to the screen edges on mobile. */
+    .onboarding {
+      padding-inline: 8px;
+    }
+
     .tooltip {
       max-width: max(30%, 200px);
-      background: var(--background);
+      /* A panel colour (not the page background) so the box and its arrow read
+         against the background above the board. */
+      background: var(--surface);
       padding: 8px;
       border-radius: 4px;
       position: absolute;
       text-align: left;
+      /* The set position (top/left/right/bottom) marks where the ARROW points;
+         shift the box by the arrow's fixed offset so its tip lands exactly there
+         (12px inset + 7px half-base = 19px in; 7px past the edge). */
+      transform: translate(var(--arrow-x, -19px), var(--arrow-y, 0px));
     }
 
-    .tooltip-arrow {
+    /* Arrow as a pseudo-element on the tip so it's always flush to its edge
+       (a separately-positioned arrow drifted out of alignment). */
+    .tooltip::before {
+      content: "";
       position: absolute;
-      border-width: calc(var(--maze-size) / 50);
-      border-style: solid;
+      /* Fixed size: the arrow points at fixed-size chips outside the board, so it
+         shouldn't scale with the board like the % positions do. */
+      left: 12px;
+      border: 7px solid transparent;
     }
 
-    .tooltip-arrow.bottom {
-      margin-bottom: calc(var(--maze-size) / -25);
-      border-color: var(--background) transparent transparent transparent;
+    .tooltip--right::before {
+      left: auto;
+      right: 12px;
     }
 
-    .tooltip-arrow.top {
-      margin-top: calc(var(--maze-size) / -25);
-      border-color: transparent transparent var(--background) transparent;
+    /* Box-shift so the arrow tip (not the box corner) sits at the set position. */
+    .tooltip--right {
+      --arrow-x: 19px;
+    }
+
+    .tooltip--up::before {
+      bottom: 100%;
+      border-bottom-color: var(--surface);
+    }
+
+    .tooltip--up {
+      --arrow-y: 7px;
+    }
+
+    .tooltip--down::before {
+      top: 100%;
+      border-top-color: var(--surface);
+    }
+
+    .tooltip--down {
+      --arrow-y: -7px;
     }
 
     /* Game layout: board in the middle, daily-selector and log as side panels
@@ -289,27 +338,131 @@
        board's scale(2) zoom still spills over the panels (only <body> clips). */
     .game {
       display: grid;
-      gap: 8px;
+      gap: 24px;
       justify-content: center;
       align-items: start;
       box-sizing: border-box;
+      padding-inline: 16px;
       height: calc(var(--full-height) - var(--header-size));
     }
 
-    @media (orientation: landscape) {
+    /* Wide enough for three columns: today-result + calendar down the left,
+       board centred, attempts on the right. The switch is width-based (not
+       orientation) so a tall-but-wide window still gets the desktop layout; the
+       side columns are capped so centring leaves outer margins on wide screens.
+       Narrower: board on top, then result, attempts, calendar stacked — the
+       attempts and calendar rows scroll within their own height so the board
+       never moves. Board stays top-aligned (align-items: start); the scrolling
+       panels opt back into filling their track with align-self: stretch.
+       Nothing here clips the board's scale(2) zoom spill — the side panels only
+       clip their OWN content, not the centred board sibling. */
+    @media (min-width: 1200px) {
       .game {
-        grid-template-columns: 1fr min(var(--maze-size), 100%) 1fr;
-        grid-template-areas: "daily board log";
+        grid-template-columns:
+          minmax(0, 340px) min(var(--maze-size), 100%) minmax(0, 340px);
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+          "today board attempts"
+          "cal   board attempts";
+      }
+
+      /* The wrapper vanishes so its three panels land directly in the grid. */
+      .game__panel {
+        display: contents;
+      }
+
+      /* Same three columns as the board grid: brand over the board, avatar
+         pinned to the right (attempts) column's edge. */
+      .app-header {
+        grid-template-columns:
+          minmax(0, 340px) min(var(--maze-size), 100%) minmax(0, 340px);
+      }
+
+      .app-header__brand {
+        grid-column: 2;
+      }
+
+      .profile {
+        grid-column: 3;
       }
     }
 
-    @media (orientation: portrait) {
+    @media (max-width: 1199.98px) {
+      /* Tighter top inset on phones — less wasted space above the header. Kept in
+         step with --header-size (inset + 44px header) so the board still fits. */
+      :root {
+        --header-size: calc(60px + env(safe-area-inset-top, 0px));
+      }
+
+      body {
+        padding-top: calc(16px + env(safe-area-inset-top, 0px));
+      }
+
+      /* Stacked layout that scrolls as one unit: the board sits full-size on top
+         and you scroll the whole .game down to the panels below. overflow-x is
+         clipped so the board's scale(2) zoom can't add a horizontal scrollbar —
+         here the zoom is clipped to the game viewport (unlike desktop, where the
+         board is free to spill). Rows are auto/auto so content can exceed the
+         fixed .game height and scroll. */
       .game {
         grid-template-columns: min(var(--maze-size), 100%);
-        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-rows: auto auto;
         grid-template-areas:
           "board"
           "panel";
+        padding-inline: 8px;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      /* One board-width column matching .game: the brand centers in it and the
+         avatar pins to its right edge (both share the single cell, positioned
+         by justify-self), so the avatar lines up with the board/panel edge
+         rather than the raw viewport corner. */
+      .app-header {
+        grid-template-columns: min(var(--maze-size), 100%);
+        padding-inline: 8px;
+      }
+
+      .app-header__brand,
+      .profile {
+        grid-area: 1 / 1;
+      }
+
+      .game__panel {
+        grid-area: panel;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        /* Only vertical spacing; horizontal gutter comes from .game's
+           padding-inline, so the panels line up with the board's inset. */
+        padding-block: 4px 8px;
+      }
+
+      /* Natural height, no flex compression. */
+      .game__panel > * {
+        flex-shrink: 0;
+      }
+
+      /* Runs stay internally scrollable and capped, so a long list doesn't bury
+         the calendar under it — scroll the runs a little, and the page for the
+         rest. Descendant selector so these beat the later base rules by
+         specificity (base .attempts/.calendar come after in source). */
+      .game__panel .attempts {
+        overflow-y: auto;
+        max-height: max(25vh, 100px);
+        padding: 0;
+      }
+
+      /* Full width (align-self: start on the base would shrink it to content). */
+      .game__panel .calendar {
+        align-self: stretch;
+      }
+
+      /* Today's result would only ever sit at the top on mobile, where it mostly
+         duplicates the board state — drop it and lead with the runs. */
+      .game__panel .today-result {
+        display: none;
       }
     }
 
@@ -318,84 +471,312 @@
       min-width: 0;
     }
 
-    .daily-selector {
-      display: grid;
-      gap: 8px;
-      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
-      align-content: start;
-      padding: 8px;
-      max-height: 100%;
-      overflow-y: auto;
-      overflow-x: visible;
-      color: white;
+    /* Shared panel heading (Today / Previous days / Attempts). */
+    .section-title {
+      font: 600 12px var(--font);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-mute);
+      text-align: left;
+      margin: 0 4px 10px;
     }
 
-    @media (orientation: landscape) {
-      .daily-selector {
-        grid-area: daily;
-      }
+    /* Today's result — two summary chips (see TodayResult.tsx). */
+    .today-result {
+      grid-area: today;
+      text-align: left;
     }
 
-    @media (orientation: portrait) {
-      .daily-selector {
-        grid-area: panel;
-      }
-    }
-
-    .daily-selector>span {
-      height: 0;
-      padding-top: 50%;
-      padding-bottom: 50%;
-      border-radius: 25%;
+    .today-result__chips {
       display: flex;
-      justify-content: center;
-      align-items: center;
+      gap: 8px;
+    }
+
+    /* Each chip is tinted to its percentile band (--chip, set inline); supreme
+       adds the gold glow — matching the result modal, not a fixed green/blue. */
+    .today-result__chip {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--chip) 30%, var(--border));
+      border-radius: 14px;
+      background: var(--surface);
+    }
+
+    .today-result__chip--glow {
+      box-shadow: 0 0 12px -3px color-mix(in srgb, var(--chip) 60%, transparent);
+    }
+
+    .today-result__head {
+      font: 600 11px var(--font);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-mute);
+    }
+
+    .today-result__value {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 5px;
+      color: var(--chip);
+    }
+
+    .today-result__sub {
+      font: 500 11px var(--font);
+      color: var(--text-mute);
+      margin-top: 2px;
+    }
+
+    /* Clickable chips/rows review that maze on the board. */
+    .today-result__chip--clickable {
       cursor: pointer;
-      position: relative;
+      transition: background 0.12s ease;
     }
 
-    .daily-selector>span.selected {
-      filter: drop-shadow(-0 0 4px var(--color));
+    .today-result__chip--clickable:hover {
+      background: var(--surface-2);
     }
 
-    .daily-selector .daily {
-      position: absolute;
-      top: 10%;
-      right: 10%;
-      width: 25%;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      border: 1px solid var(--color);
-    }
-
-    .log {
+    /* Calendar — a bounded one-month picker, same on desktop and mobile (see
+       Calendar.tsx). No scroll: prev/next month + a jump-a-year row page through
+       the loaded window. */
+    .calendar {
+      grid-area: cal;
+      align-self: start;
       display: flex;
       flex-direction: column;
-      /* Positioned so the per-message "Copied!" tooltip anchors to the log. */
-      position: relative;
       text-align: left;
-      font-size: 14px;
-      padding: 0 8px;
-      max-height: 100%;
+    }
+
+    .attempts::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .attempts::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 99px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+
+    .attempts::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    /* Each month label sits below the grid above it, so a top margin gives the
+       gap between one month and the next. */
+    .calendar__label {
+      font: 700 14px var(--font);
+      color: var(--color);
+      margin: 16px 2px 6px;
+    }
+
+    .calendar__grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .calendar__weekday {
+      text-align: center;
+      font: 600 10px var(--font);
+      color: var(--text-mute);
+      padding-bottom: 2px;
+    }
+
+    /* Rolling weeks view: a heading with a pager on the right, the weekday row,
+       then week rows (oldest on top, current week at the bottom) with a month
+       label wherever the month changes. */
+    .calendar__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .calendar__head .section-title {
+      margin: 0;
+    }
+
+    .calendar__pager {
+      display: flex;
+      gap: 6px;
+    }
+
+    .calendar__arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--color);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .calendar__arrow:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    /* Leading cells that align a month segment's first day to its weekday. */
+    .calendar__blank {
+      aspect-ratio: 1;
+    }
+
+    .calendar__cell {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      color: var(--text-mute);
+    }
+
+    .calendar__cell .mono {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .calendar__cell--playable {
+      cursor: pointer;
+    }
+
+    /* Days with no daily to replay yet — dimmer than a played-or-missed day. */
+    .calendar__cell--future {
+      background: none;
+      opacity: 0.4;
+    }
+
+    .calendar__cell--today {
+      outline: 1.5px solid var(--border-strong);
+      outline-offset: -1.5px;
+    }
+
+    .calendar__cell--selected {
+      /* White ring reads with more contrast against the dark grid than the
+         accent blue, and never clashes with the cell's percentile colour. */
+      box-shadow: 0 0 0 2px var(--color);
+    }
+
+    .calendar__dot {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.25);
+    }
+
+    /* Runs panel — the viewed maze's runs (see Attempts.tsx). No root padding so
+       its heading/rows line up with the other panels; slim scrollbar on desktop
+       (the only place it scrolls). Mobile min-height/full-width lives in the
+       max-width media block above (as descendant selectors, to win by
+       specificity). */
+    .attempts {
+      grid-area: attempts;
+      align-self: stretch;
+      min-height: 0;
       overflow-y: auto;
+      text-align: left;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
     }
 
-    @media (orientation: landscape) {
-      .log {
-        grid-area: log;
-      }
+    .attempts__list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    @media (orientation: portrait) {
-      .log {
-        grid-area: panel;
-      }
+    /* Each row is tinted to its own percentile band (--band, set inline);
+       supreme rows add the gold glow. */
+    .attempts__row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 13px;
+      border: 1px solid color-mix(in srgb, var(--band) 30%, var(--border));
+      border-radius: 13px;
+      background: var(--surface);
+    }
 
-      /* On portrait the daily list and the log share the one panel slot, so
-         hide the log while the list is up. */
-      .log.show-list {
-        display: none;
-      }
+    .attempts__row--glow {
+      box-shadow: 0 0 12px -3px color-mix(in srgb, var(--band) 60%, transparent);
+    }
+
+    .attempts__row--clickable {
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+
+    .attempts__row--clickable:hover {
+      background: var(--surface-2);
+    }
+
+    .attempts__time {
+      font-size: 17px;
+      font-weight: 700;
+      min-width: 52px;
+      flex: none;
+      color: var(--band);
+    }
+
+    .attempts__meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .attempts__kind {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font: 600 13px var(--font);
+      color: var(--color);
+    }
+
+    .attempts__badge {
+      font: 700 9px var(--font);
+      letter-spacing: 0.1em;
+      color: var(--band);
+      background: color-mix(in srgb, var(--band) 16%, transparent);
+      border-radius: 5px;
+      padding: 2px 6px;
+    }
+
+    /* How many runs built this identical maze. */
+    .attempts__count {
+      font: 700 11px var(--font-mono);
+      color: var(--text-mute);
+    }
+
+    /* Marks a run that was one of the day's ranked attempts (vs free play). */
+    .attempts__daily {
+      font: 700 9px var(--font);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-bright);
+      background: var(--accent-soft);
+      border-radius: 5px;
+      padding: 2px 6px;
+    }
+
+    .attempts__sub {
+      font: 500 11px var(--font);
+      color: var(--text-mute);
+      margin-top: 2px;
+    }
+
+    .attempts__empty {
+      font: 500 13px var(--font);
+      color: var(--text-mute);
+      padding: 8px 2px;
     }
 
     /* Build-phase HUD strip above the board (see Hud.tsx). */
@@ -495,6 +876,16 @@
       opacity: 0;
     }
 
+    /* Play button (review → back to a live board): reuses the build pill. */
+    .hud__play {
+      font: 700 15px var(--font);
+      color: #fff;
+    }
+
+    .hud__play-icon {
+      font-size: 10px;
+    }
+
     /* Out of resources or idle: pulse between the remaining time and "Ready?". */
     .hud__build.flashing .hud__build-time {
       animation: buildFadeTime 1.5s ease-in-out infinite alternate;
@@ -544,7 +935,7 @@
       inset: 0;
       z-index: 20;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       padding: 24px;
       background: rgba(6, 6, 10, 0.72);
@@ -559,6 +950,17 @@
       background: var(--surface);
       box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
       text-align: left;
+      /* Center on the board (which sits header + HUD below the top), not the
+         whole viewport — but never let it drift past the viewport midpoint.
+         translateY(-50%) centers the card on that line; the -24px cancels the
+         layer's top padding. */
+      margin-top: calc(
+        min(
+          var(--header-size) + var(--hud-size) + var(--maze-size) / 2,
+          var(--full-height) / 2
+        ) - 24px
+      );
+      transform: translateY(-50%);
     }
 
     .result__header {

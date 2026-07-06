@@ -50,6 +50,45 @@ export const dailyAttemptsByIteration = (user: string, iteration: number) =>
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
 
+// The same first-3 attempts, but with the maze each run built — the ranked
+// attempts (result modal, attempts-remaining).
+export const attemptRunsByIteration = (user: string, iteration: number) =>
+  sql<{ time: number; data: string; created: string }[]>`
+    SELECT time, data, created
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+    ORDER BY created ASC
+    LIMIT 3;
+  `.then((r) =>
+    r.map((run) => ({
+      time: run.time,
+      maze: deserializeRun(run.data),
+      created: new Date(run.created).getTime(),
+    }))
+  );
+
+// Every non-void run on an iteration (the ranked three plus any free play),
+// oldest first, each with its maze and creation time — the full runs list for
+// the panel. Void (abandoned, never-submitted) runs are skipped so the panel
+// isn't padded with empty rows.
+export const allRunsByIteration = (user: string, iteration: number) =>
+  sql<{ time: number; data: string; created: string }[]>`
+    SELECT time, data, created
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND void = FALSE
+    ORDER BY created ASC
+    LIMIT 100;
+  `.then((r) =>
+    r.map((run) => ({
+      time: run.time,
+      maze: deserializeRun(run.data),
+      created: new Date(run.created).getTime(),
+    }))
+  );
+
 export const dailyAttempts = (
   user: string,
   year: number,
@@ -72,12 +111,59 @@ export const dailyAttempts = (
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
 
-export const listDailies = (
+const pad = (n: number) => String(n).padStart(2, "0");
+const dateStr = ([y, m, d]: [number, number, number]) =>
+  `${y}-${pad(m)}-${pad(d)}`;
+
+export const listDailies = async (
   user: string,
-  limit = 1_000_000,
-  offset = 0,
-) =>
-  sql<
+  opts: {
+    start?: [number, number, number];
+    end?: [number, number, number];
+    limit?: number;
+  } = {},
+) => {
+  // Default window: the current (UTC) month — a daily's date is its UTC creation
+  // date, so this is the natural "recent" slice for load/refresh. Callers page
+  // further back by passing explicit start/end day ranges.
+  let { start, end } = opts;
+  if (!start && !end) {
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const m = now.getUTCMonth();
+    start = [y, m + 1, 1];
+    end = m === 11 ? [y + 1, 1, 1] : [y, m + 2, 1];
+  }
+  // Safety cap on a single request (a month is ~31 rows); the range does the
+  // real bounding.
+  const limit = opts.limit ?? 400;
+
+  const bounds = [
+    start ? format`AND iteration.created >= ${dateStr(start)}` : "",
+    end ? format`AND iteration.created < ${dateStr(end)}` : "",
+  ].join(" ");
+
+  // The page of iterations both statements below cover: the user's played days
+  // within the window. Built once and inlined into each so the whole list is a
+  // single round trip. Wrapped in a derived table because MySQL won't accept a
+  // LIMIT directly inside an IN (...) subquery.
+  const page = raw(format`(
+    SELECT id FROM (
+      SELECT id
+      FROM iteration
+      WHERE id <= (SELECT MAX(iteration) FROM run WHERE user = ${user})
+        ${raw(bounds)}
+      ORDER BY id DESC
+      LIMIT ${limit}
+    ) page
+  )`);
+
+  // Two statements, one round trip: the per-day aggregates, then the pieces of
+  // each day's ranked-daily percentile — the user's best daily attempt against
+  // every other player's best daily attempt, each player first reduced to their
+  // single best. The percentile needs the whole field's distribution, so it
+  // can't fold into the GROUP BY above.
+  const [rows, ranks, firstRows] = await sql<[
     {
       iteration: number;
       created: number;
@@ -85,9 +171,18 @@ export const listDailies = (
       ownDailyBest: number | null;
       otherBest: number | null;
       best: number | null;
+      dailyBest: number | null;
       min: number;
-    }[]
-  >`
+    }[],
+    {
+      iteration: number;
+      less: number;
+      equal: number;
+      more: number;
+      others: number;
+    }[],
+    { created: number }[],
+  ]>`
   SELECT
     id iteration,
     iteration.created created,
@@ -95,28 +190,73 @@ export const listDailies = (
     ROUND(MAX(CASE WHEN user = ${user} AND daily = TRUE THEN time ELSE null END), 2) ownDailyBest,
     ROUND(MAX(CASE WHEN user != ${user} THEN time ELSE null END), 2) otherBest,
     MAX(time) best,
+    ROUND(MAX(CASE WHEN daily = TRUE THEN time ELSE null END), 2) dailyBest,
     min
   FROM iteration
   LEFT JOIN run ON iteration.id = run.iteration
-  WHERE id <= (
-    SELECT MAX(iteration) max
-    FROM run
-    WHERE user = ${user}
-  )
+  WHERE id IN ${page}
   GROUP BY 1
-  ORDER BY id DESC
-  LIMIT ${limit} OFFSET ${offset};`.then((d) =>
-    d.map((
-      r,
-    ): {
-      iteration: number;
-      daily: [number, number, number];
-      ownDailyBest: number | null;
-      ownBest: number | null;
-      best: number | null;
-      min: number;
-      supreme: boolean;
-    } => ({
+  ORDER BY id DESC;
+
+  SELECT me.iteration iteration,
+         SUM(CASE WHEN other.t < me.t THEN 1 ELSE 0 END) less,
+         SUM(CASE WHEN other.t = me.t THEN 1 ELSE 0 END) equal,
+         SUM(CASE WHEN other.t > me.t THEN 1 ELSE 0 END) more,
+         COUNT(other.u) others
+  FROM (
+    SELECT iteration, MAX(time) t
+    FROM run
+    WHERE user = ${user} AND daily = TRUE AND void = FALSE AND iteration IN ${page}
+    GROUP BY iteration
+  ) me
+  LEFT JOIN (
+    SELECT iteration, user u, MAX(time) t
+    FROM run
+    WHERE user != ${user} AND daily = TRUE AND void = FALSE AND iteration IN ${page}
+    GROUP BY iteration, user
+  ) other ON other.iteration = me.iteration
+  GROUP BY me.iteration;
+
+  SELECT created FROM iteration ORDER BY id ASC LIMIT 1;`;
+
+  const rankByIter = new Map(ranks.map((r) => [r.iteration, r]));
+
+  // The very first daily's date — the floor the calendar can page back to,
+  // independent of which months the user actually played (so gaps don't stop
+  // paging short of real history).
+  const firstCreated = firstRows[0]?.created;
+  const oldest: [number, number, number] | null = firstCreated == null
+    ? null
+    : [
+      new Date(firstCreated).getUTCFullYear(),
+      new Date(firstCreated).getUTCMonth() + 1,
+      new Date(firstCreated).getUTCDate(),
+    ];
+
+  const items = rows.map((
+    r,
+  ): {
+    iteration: number;
+    daily: [number, number, number];
+    ownDailyBest: number | null;
+    ownBest: number | null;
+    best: number | null;
+    dailyBest: number | null;
+    min: number;
+    supreme: boolean;
+    // 0..1 percentile of the user's best daily attempt vs other players' best
+    // daily attempts; p100 (1) means they equalled or bettered everyone. null
+    // when there's no ranking to make (no daily attempt, or no other players).
+    dailyPercentile: number | null;
+  } => {
+    const rank = rankByIter.get(r.iteration);
+    const others = rank ? Number(rank.others) : 0;
+    const dailyPercentile = !rank || others === 0
+      ? null
+      : Number(rank.more) === 0
+      ? 1
+      : (Number(rank.less) + Number(rank.equal) / 2) / others;
+    return {
       iteration: r.iteration,
       daily: [
         new Date(r.created).getUTCFullYear(),
@@ -126,12 +266,17 @@ export const listDailies = (
       ownDailyBest: r.ownDailyBest,
       ownBest: r.ownBest,
       best: r.best,
+      dailyBest: r.dailyBest,
       min: r.min,
       supreme: typeof r.ownBest === "number"
         ? typeof r.otherBest === "number" ? r.ownBest > r.otherBest : true
         : false,
-    }))
-  );
+      dailyPercentile,
+    };
+  });
+
+  return { items, oldest };
+};
 
 export const getOwnBest = (user: string, iteration: number) =>
   sql<{ ownBest: number }[] | null>`

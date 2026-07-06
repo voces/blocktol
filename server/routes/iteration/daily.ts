@@ -8,12 +8,13 @@ import {
 } from "../../db/iteration.ts";
 import { getLatestRun } from "../../db/run.ts";
 import {
+  allRunsByIteration,
+  attemptRunsByIteration,
   createOrUpdateUser,
-  dailyAttempts,
-  dailyAttemptsByIteration,
 } from "../../db/user.ts";
+import { mapAttempts } from "../../util/attempts.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
-import { fieldQuantiles, percentileFromTimeCounts } from "../../util/math.ts";
+import { fieldQuantiles } from "../../util/math.ts";
 import { method } from "../apiHelpers.ts";
 
 const getDailySummaryBody = z.union([
@@ -30,22 +31,25 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       })()
       : Promise.resolve(rest.iteration);
 
-    const attemptsPromise = "timeZone" in rest
-      ? (() => {
-        const { year, month, day } = dailyParts(rest.timeZone);
-        return dailyAttempts(userId, year, month, day);
-      })()
-      : dailyAttemptsByIteration(userId, rest.iteration);
-
-    const [timeCounts, otherBest, iteration, latestRun, attempts, user] =
-      await Promise.all([
-        iterationId.then((id) => getIterationTimeCounts(id, userId)),
-        iterationId.then((id) => getIterationOtherBest(id, userId)),
-        iterationId.then((id) => getIteration(id)),
-        iterationId.then((id) => getLatestRun(userId, id, true)),
-        attemptsPromise,
-        createOrUpdateUser(userId),
-      ]);
+    const [
+      timeCounts,
+      otherBest,
+      iteration,
+      latestRun,
+      allRuns,
+      rankedRuns,
+      user,
+    ] = await Promise.all([
+      iterationId.then((id) => getIterationTimeCounts(id, userId)),
+      iterationId.then((id) => getIterationOtherBest(id, userId)),
+      iterationId.then((id) => getIteration(id)),
+      iterationId.then((id) => getLatestRun(userId, id, true)),
+      iterationId.then((id) => allRunsByIteration(userId, id)),
+      // The ranked three include void (abandoned) runs — abandoning still
+      // spends an attempt, so they must count even though the panel hides them.
+      iterationId.then((id) => attemptRunsByIteration(userId, id)),
+      createOrUpdateUser(userId),
+    ]);
 
     const remainingTime = Math.floor(
       60 - (Date.now() - new Date(latestRun?.created ?? 0).getTime()) /
@@ -76,7 +80,9 @@ export const getDailySummary = method(getDailySummaryBody, true)(
           ],
         );
 
-        const ownBest = attempts.length ? Math.max(...attempts) : null;
+        const ownBest = allRuns.length
+          ? Math.max(...allRuns.map((r) => r.time))
+          : null;
 
         return {
           ...iteration,
@@ -98,20 +104,12 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       throw new Error("Unexpected invalid path on daily recovery");
     }
 
-    // "Supreme" (the daily record) is a single standing, not something every
-    // beating attempt earns — mark only your best run, and only when it actually
-    // tops the field.
-    const bestAttempt = attempts.length ? Math.max(...attempts) : null;
-    const beatsField = bestAttempt !== null &&
-      (!otherBest || bestAttempt > otherBest);
-
     return {
       rating: user?.rating ?? 1000,
-      attempts: attempts.map((duration) => ({
-        duration,
-        percentile: percentileFromTimeCounts(timeCounts, duration),
-        supreme: beatsField && duration === bestAttempt,
-      })),
+      // `attempts` is the full non-void list (panel); `ranked` is the first three
+      // (result modal + attempts-remaining), void included.
+      attempts: mapAttempts(allRuns, timeCounts, otherBest, iteration.min),
+      ranked: mapAttempts(rankedRuns, timeCounts, otherBest, iteration.min),
       stats: fieldQuantiles(timeCounts),
       currentRun,
     };

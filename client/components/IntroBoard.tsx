@@ -1,5 +1,6 @@
-import { ComponentChildren, Fragment, h } from "preact";
+import { ComponentChildren, h } from "preact";
 import { Board } from "./Board.tsx";
+import { BrickIcon, PowerIcon } from "./Game/Hud.tsx";
 import {
   CSSProperties,
   useCallback,
@@ -49,6 +50,10 @@ const initialBlocks: (Point & {
   { x: 11, y: 12, local: true },
   { x: 3, y: 2, local: true },
 ];
+
+// Local blocks pre-placed in the starting maze — the baseline the brick budget
+// counts up from.
+const INITIAL_LOCAL = initialBlocks.filter((b) => b.local).length;
 
 const storedRun = {
   path: [
@@ -110,23 +115,19 @@ const Tooltip = (
     bottom?: CSSProperties["bottom"];
   },
 ) => (
-  <>
-    <div
-      className={`tooltip-arrow ${top !== undefined ? "top" : "bottom"}`}
-      style={{
-        top,
-        bottom,
-        left: left !== undefined ? `calc(${left} + 3%)` : undefined,
-        right: right !== undefined ? `calc(${right} + 3%)` : undefined,
-      }}
-    />
-    <div className="tooltip" style={{ top, left, right, bottom }}>
-      {children}
-    </div>
-  </>
+  <div
+    className={"tooltip" +
+      // Arrow points up when the tip sits below its target (positioned by top),
+      // down otherwise; anchored to the tip's near edge so it can't detach.
+      (top !== undefined ? " tooltip--up" : " tooltip--down") +
+      (right !== undefined ? " tooltip--right" : "")}
+    style={{ top, left, right, bottom }}
+  >
+    {children}
+  </div>
 );
 
-const Tip = ({ children, left, right, top, bottom, onSkip, onNext }: {
+const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
   children: ComponentChildren;
   left?: CSSProperties["left"];
   right?: CSSProperties["right"];
@@ -134,6 +135,7 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext }: {
   bottom?: CSSProperties["bottom"];
   onSkip: () => void;
   onNext: () => void;
+  last?: boolean;
 }) => (
   <Tooltip
     left={left}
@@ -150,8 +152,8 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext }: {
         gap: 16,
       }}
     >
-      <a onClick={onSkip}>Skip</a>
-      <a onClick={onNext}>Next</a>
+      {!last && <a onClick={onSkip}>Skip</a>}
+      <a onClick={onNext}>{last ? "Play" : "Next"}</a>
     </div>
   </Tooltip>
 );
@@ -269,8 +271,31 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     }, 100);
   }, []);
 
+  // The HUD chips mirror the game's strip so the "Bricks"/"Snowflakes" tips have
+  // real chips to point at; both counts are derived from the blocks so they move
+  // with the walkthrough. Bricks is the budget minus the blocks placed on top of
+  // the pre-built maze (upgrading swaps a local block for a local thunder one, so
+  // the local count — and thus bricks — is unchanged; only snowflakes drop).
+  const snowflakes = Math.max(0, 1 - blocks.filter((b) => b.thunder).length);
+  const bricks = Math.max(
+    0,
+    3 - (blocks.filter((b) => b.local).length - INITIAL_LOCAL),
+  );
+
   return (
-    <>
+    <div class="onboarding">
+      <div class="hud">
+        <div class="hud__chips">
+          <div class="hud__chip">
+            <BrickIcon />
+            <span class="mono">{bricks}</span>
+          </div>
+          <div class="hud__chip">
+            <PowerIcon />
+            <span class="mono">{snowflakes}</span>
+          </div>
+        </div>
+      </div>
       <Board
         placingBlock={{ x: 0, y: 0, placing: false }}
         touching={false}
@@ -290,10 +315,12 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       />
       <div
         style={{
-          width: "var(--maze-size)",
+          // Track the board's actual width (it shrinks to fit the padded
+          // container on mobile) so the tips stay aligned to the board.
+          width: "min(var(--maze-size), 100%)",
           height: 0,
-          paddingBottom: "var(--maze-size)",
-          margin: "calc(-1 * var(--maze-size)) auto 0",
+          paddingBottom: "min(var(--maze-size), 100%)",
+          margin: "calc(-1 * min(var(--maze-size), 100%)) auto 0",
           position: "relative",
           fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
@@ -302,41 +329,41 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         onClick={advance}
       >
         {onboardingStep === 0 && (
-          <Tip top="6.5%" left="2%" onNext={advance} onSkip={onDone}>
+          <Tip top={-12} left={41} onNext={advance} onSkip={onDone}>
             Bricks indicate how many blocks you can place.
           </Tip>
         )}
         {onboardingStep === 1 && (
-          <Tip top="6.5%" left="14%" onNext={advance} onSkip={onDone}>
+          <Tip top={-12} left={107} onNext={advance} onSkip={onDone}>
             Snowflakes indicate how many blocks you can upgrade.
           </Tip>
         )}
         {onboardingStep === 2 && (
-          <Tip bottom="6.5%" left="42.5%" onNext={advance} onSkip={onDone}>
+          <Tip bottom="4.5%" left="47.5%" onNext={advance} onSkip={onDone}>
             The runner is released from the bottom…
           </Tip>
         )}
         {onboardingStep === 3 && (
-          <Tip top="31%" left="52.5%" onNext={advance} onSkip={onDone}>
+          <Tip top="29.5%" left="57.5%" onNext={advance} onSkip={onDone}>
             …heads towards the checkpoint…
           </Tip>
         )}
         {onboardingStep === 4 && (
-          <Tip top="6.5%" left="47.5%" onNext={advance} onSkip={onDone}>
-            …and then towards the top.
+          <Tip top="4.5%" left="52.5%" onNext={advance} onSkip={onDone}>
+            …and then out the top.
           </Tip>
         )}
         {onboardingStep === 5 && (
-          <Tip bottom="30.75%" right="10%" onNext={advance} onSkip={onDone}>
+          <Tip bottom="29%" right="15%" onNext={advance} onSkip={onDone}>
             Place blocks to elongate the runner's path.
           </Tip>
         )}
         {onboardingStep === 6 && (
-          <Tip bottom="40.75%" right="30%" onNext={advance} onSkip={onDone}>
+          <Tip bottom="39%" right="35%" onNext={advance} onSkip={onDone} last>
             Upgrade blocks to slow the runner as they pass.
           </Tip>
         )}
       </div>
-    </>
+    </div>
   );
 };

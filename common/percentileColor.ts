@@ -1,8 +1,9 @@
 // The design's percentile ramp (the --pct-0..4 tokens in index.html):
-// red → yellow → green → blue → purple, low percentile to high.
-const R = [220, 224, 92, 63, 122];
-const G = [74, 168, 194, 107, 85];
-const B = [47, 0, 74, 224, 224];
+// red → magenta → blue → teal → green, low percentile to high (the long way
+// round the wheel so it skips yellow/olive and stays vivid; green = best).
+const R = [220, 209, 63, 41, 70];
+const G = [74, 61, 107, 179, 185];
+const B = [47, 148, 224, 166, 90];
 
 /**
  * Supreme (record) sits above the ramp — gold, not the ramp's top (purple). A
@@ -10,6 +11,20 @@ const B = [47, 0, 74, 224, 224];
  * aware sibling is the --gold token used in the result dialog.
  */
 export const SUPREME_COLOR = "#f0c442";
+
+/**
+ * Banded colour for a percentile in [0, 1] — the nearest stop on the SAME ramp
+ * the calendar uses, so both share one scale; only the calendar tweens between
+ * stops (generalized UI stays banded). Gold is reserved for supreme (the record)
+ * and is passed in by callers, NOT returned here (so a merely-100% run doesn't
+ * masquerade as the record). Used by today-result, attempts, and the result
+ * modal.
+ */
+export const percentileBand = (fraction: number | null): string => {
+  if (fraction == null) return "var(--text-mute)";
+  const stop = Math.round(Math.max(0, Math.min(1, fraction)) * 4);
+  return `var(--pct-${stop})`;
+};
 
 /** Continuous colour for a percentile in [0, 1], interpolated along the ramp. */
 export const percentileColor = (percent: number): string => {

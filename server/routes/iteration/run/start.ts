@@ -18,6 +18,7 @@ import { startRun as dbStartRun, updateCurrentRun } from "../../../db/run.ts";
 import { getOwnBest } from "../../../db/user.ts";
 import { findPathFromData, pathDuration } from "../../../../common/pathing.ts";
 import { validateRun } from "../../../util/validateRun.ts";
+import { iterationAttempts } from "../../../util/attempts.ts";
 
 const startRunBody = z.object({
   iteration: z.union([z.literal("daily"), z.number().min(1)]),
@@ -37,10 +38,13 @@ export const startRun = method(startRunBody, true)(
       iteration = await getDailyIterationId(year, month, day);
     } else iteration = inputIteration;
 
-    const [data, ownBest, otherBest] = await Promise.all([
+    // Fetched before dbStartRun so the run about to be created isn't counted —
+    // these are the attempts already completed, for the client's attempts panel.
+    const [data, ownBest, otherBest, attempts] = await Promise.all([
       getIteration(iteration),
       getOwnBest(userId, iteration),
       getIterationOtherBest(iteration, userId),
+      iterationAttempts(userId, iteration),
     ]);
 
     // Must finish within the request: the new Deploy tears down the isolate
@@ -82,6 +86,7 @@ export const startRun = method(startRunBody, true)(
           slows: validation.slows,
           ownBest,
           best,
+          attempts,
           remainingTime: 60,
         };
       }
@@ -109,6 +114,7 @@ export const startRun = method(startRunBody, true)(
       slows,
       ownBest,
       best,
+      attempts,
       remainingTime: 60,
     };
   },

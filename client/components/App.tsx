@@ -5,14 +5,20 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
+import {
+  DailyItemsContext,
+  DailyItemsStore,
+  useDailyItemsStore,
+} from "../hooks/useDailyItems.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
 import { Profile } from "./Profile.tsx";
 
 const Shell = (
-  { children, gameState }: {
+  { children, gameState, dailyStore }: {
     children: ComponentChildren;
     gameState: ReturnType<typeof useGameState>;
+    dailyStore: DailyItemsStore;
   },
 ) => (
   <div style={{ textAlign: "center" }}>
@@ -23,9 +29,11 @@ const Shell = (
       </div>
       <Profile />
     </header>
-    <GameStateContext.Provider value={gameState}>
-      {children}
-    </GameStateContext.Provider>
+    <DailyItemsContext.Provider value={dailyStore}>
+      <GameStateContext.Provider value={gameState}>
+        {children}
+      </GameStateContext.Provider>
+    </DailyItemsContext.Provider>
   </div>
 );
 
@@ -45,6 +53,8 @@ export const App = () => {
   useEffect(() => {
     if (showOnboarding) return;
 
+    // The calendar loads its own months on mount (and the today-result panel
+    // shares that data), so no list() call is needed here.
     api.getDailySummary({ timeZone: getTimeZone() }).then((ret) => {
       setDisconnected(false);
       if ("error" in ret) {
@@ -53,7 +63,7 @@ export const App = () => {
         return;
       }
       if (ret.currentRun) return;
-      if (ret.attempts.length < 3) {
+      if (ret.ranked.length < 3) {
         api.startRun({ iteration: "daily", timeZone: getTimeZone() });
       }
     }).catch(() => {
@@ -63,10 +73,11 @@ export const App = () => {
   }, [showOnboarding, retry]);
 
   const gameState = useGameState();
+  const dailyStore = useDailyItemsStore();
 
   if (showOnboarding) {
     return (
-      <Shell gameState={gameState}>
+      <Shell gameState={gameState} dailyStore={dailyStore}>
         <IntroBoard
           onDone={() => {
             setShowOnboarding(false);
@@ -78,7 +89,7 @@ export const App = () => {
   }
 
   return (
-    <Shell gameState={gameState}>
+    <Shell gameState={gameState} dailyStore={dailyStore}>
       <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
       {disconnected && <Disconnected />}
     </Shell>
