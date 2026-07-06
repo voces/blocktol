@@ -35,10 +35,11 @@ const MONTHS = [
 // otherwise the current month is tall enough on its own.
 const PREV_MONTH_UNTIL = 21;
 
-// Standing (percentile) of a time against the field's best RANKED (daily) time —
-// free-play runs are unlimited, so they don't set the ceiling. 0..1, clamped.
+// Standing of a time against the field's overall best (anyone, ranked or free
+// play) — the same ceiling the runs panel / today-result divide by, so the
+// calendar's "best %" matches the % shown when you open the day. 0..1, clamped.
 const standing = (time: number | null, item: Item) => {
-  const top = item.dailyBest ?? item.best;
+  const top = item.best;
   if (typeof time !== "number" || typeof top !== "number") return null;
   if (top === item.min) return 1;
   return Math.max(0, Math.min(1, (time - item.min) / (top - item.min)));
