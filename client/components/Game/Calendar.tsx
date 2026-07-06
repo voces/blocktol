@@ -59,7 +59,7 @@ const lastDay = (idx: number) =>
 
 export const Calendar = () => {
   const { items, oldest } = useDailyItems();
-  const { freePlay, staged } = useContext(GameStateContext);
+  const { freePlay, staged, attemptsRemaining } = useContext(GameStateContext);
   const [selected, setSelected] = useState(NaN);
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
@@ -137,6 +137,11 @@ export const Calendar = () => {
   // Page back until the earliest shown month reaches the first daily ever.
   const canPrev = oldestIdx === undefined || shownEarliest > oldestIdx;
   const canNext = page > 0;
+
+  // Hidden while the daily is in progress (even with an attempt or two spent) —
+  // no wandering off to other days mid-run. Shown once it's done or during free
+  // play (both attemptsRemaining === 0).
+  if (attemptsRemaining !== 0) return null;
 
   if (!items.size) return null;
 
