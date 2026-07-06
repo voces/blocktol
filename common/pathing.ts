@@ -26,25 +26,84 @@ type Node = {
   parent: Node | undefined;
 };
 
-const lineOfSight = (from: Node, to: Node, grid: boolean[][]) => {
-  if (from === to) return true;
+// Grazing tolerance: rounding a corner or sliding along a wall touches an
+// obstacle boundary and must read as clear, so obstacle rectangles are tested
+// shrunk by this much. Only a genuine interior crossing then blocks.
+const EPS = 1e-9;
 
-  const tan = (to.x - from.x) / (to.y - from.y);
-  const absTan = Math.abs(tan);
+// Liang–Barsky segment/box clip. Returns whether the segment (ax,ay)->(bx,by)
+// crosses the *interior* of the axis-aligned box with positive length — i.e. it
+// truly passes through, not merely touching an edge or corner.
+const segmentCrossesBox = (
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  xMin: number,
+  yMin: number,
+  xMax: number,
+  yMax: number,
+) => {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const p = [-dx, dx, -dy, dy];
+  const q = [ax - xMin, xMax - ax, ay - yMin, yMax - ay];
+  let t0 = 0;
+  let t1 = 1;
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      // Parallel to this pair of edges: outside the slab means no crossing.
+      if (q[i] < 0) return false;
+    } else {
+      const r = q[i] / p[i];
+      if (p[i] < 0) {
+        if (r > t1) return false;
+        if (r > t0) t0 = r;
+      } else {
+        if (r < t0) return false;
+        if (r < t1) t1 = r;
+      }
+    }
+  }
+  return t1 - t0 > EPS;
+};
 
-  const yStep = from.y <= to.y ? 1 : -1;
-  const yRise = Math.abs(from.y - to.y);
+// Exact swept-square visibility for the 1x1 runner. Its centre travels from
+// `from` to `to` (cell node (x,y) => centre (x+0.5, y+0.5)); the move is clear
+// iff the swept square never enters a blocked cell's interior. In configuration
+// space that is: the centre segment must not cross the interior of any blocked
+// cell grown by half the runner on every side (`x-0.5 .. x+1.5`). Grazing a
+// boundary is allowed, which both lets the path round corners and — since two
+// diagonally-touching blocks leave only a zero-width gap — forbids squeezing the
+// unit runner between them.
+export const lineOfSight = (from: Point, to: Point, grid: boolean[][]) => {
+  const ax = from.x + 0.5;
+  const ay = from.y + 0.5;
+  const bx = to.x + 0.5;
+  const by = to.y + 0.5;
 
-  const lBound = Math.min(to.x, from.x);
-  const rBound = Math.max(to.x, from.x);
+  // A cell's grown rectangle reaches 0.5 past the cell, so a cell can only
+  // matter if it lies within one of the segment's cell-space bounds.
+  const xLo = Math.floor(Math.min(from.x, to.x)) - 1;
+  const xHi = Math.ceil(Math.max(from.x, to.x)) + 1;
+  const yLo = Math.floor(Math.min(from.y, to.y)) - 1;
+  const yHi = Math.ceil(Math.max(from.y, to.y)) + 1;
 
-  for (let yd = 0; yd <= yRise; yd++) {
-    const y = from.y + yd * yStep;
-    const xCenter = from.x + (yd * yStep * tan);
-    const xLeft = Math.floor(Math.max(xCenter - absTan, lBound));
-    const xRight = Math.ceil(Math.min(xCenter + absTan, rBound));
-    for (let x = xLeft; x <= xRight; x++) {
-      if (grid[y]?.[x] !== false) return false;
+  for (let y = yLo; y <= yHi; y++) {
+    for (let x = xLo; x <= xHi; x++) {
+      if (grid[y]?.[x] !== true) continue;
+      if (
+        segmentCrossesBox(
+          ax,
+          ay,
+          bx,
+          by,
+          x - 0.5 + EPS,
+          y - 0.5 + EPS,
+          x + 1.5 - EPS,
+          y + 1.5 - EPS,
+        )
+      ) return false;
     }
   }
 
@@ -54,36 +113,41 @@ const lineOfSight = (from: Node, to: Node, grid: boolean[][]) => {
 const euclideanDistance = (s: Point, e: Point) =>
   ((e.x - s.x) ** 2 + (e.y - s.y) ** 2) ** .5;
 
-const updateNode = (
-  current: Node,
-  neighbor: Node,
-  open: BinaryHeap<Node>,
-  grid: boolean[][],
-) => {
-  // This part of the algorithm is the main difference between A* and Theta*
-  if (lineOfSight(current.parent!, neighbor, grid)) {
-    // If there is line-of-sight between parent(s) and neighbor
-    // then ignore s and use the path from parent(s) to neighbor
-    const newGScore = current.parent!.gScore +
-      euclideanDistance(current.parent!, neighbor);
-    if (newGScore < neighbor.gScore) {
-      neighbor.gScore = newGScore;
-      neighbor.parent = current.parent;
-      open.remove(neighbor);
-      open.push(neighbor);
-    }
-  } else {
-    // If the length of the path from start to s and from s to
-    // neighbor is shorter than the shortest currently known distance
-    // from start to neighbor, then update node with the new distance
-    const newGScore = current.gScore + euclideanDistance(current, neighbor);
-    if (newGScore < neighbor.gScore) {
-      neighbor.gScore = newGScore;
-      neighbor.parent = current;
-      open.remove(neighbor);
-      open.push(neighbor);
+// Blocked (or out of bounds). Deliberately the exact negation of the walkable
+// test inside `lineOfSight` (`grid[y]?.[x] !== false`) so corner detection and
+// segment visibility can never disagree about what a cell is.
+const isBlocked = (grid: boolean[][], x: number, y: number) =>
+  grid[y]?.[x] !== false;
+
+const diagonals = [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const;
+
+// The turn points of a shortest any-angle path. The runner is a 1x1 square (see
+// `lineOfSight`, a swept-square test), so in configuration space every obstacle
+// is inflated by half the runner on each side and the taut path only ever bends
+// around the resulting convex corners. Such a corner shows up as a free cell
+// diagonally touching a blocked cell whose two shared-edge neighbours are both
+// free (the runner's centre can round it). A blocked orthogonal neighbour makes
+// it a concave notch the runner can't round, so those are excluded — and a
+// segment that would clip through a diagonal gap is rejected later by
+// `lineOfSight`, keeping the "no corner cutting" rule the game already enforces.
+const cornerNodes = (grid: boolean[][]): Point[] => {
+  const corners: Point[] = [];
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
+      if (isBlocked(grid, x, y)) continue;
+      for (const [dx, dy] of diagonals) {
+        if (
+          isBlocked(grid, x + dx, y + dy) &&
+          !isBlocked(grid, x + dx, y) &&
+          !isBlocked(grid, x, y + dy)
+        ) {
+          corners.push({ x, y });
+          break;
+        }
+      }
     }
   }
+  return corners;
 };
 
 const reconstructPath = (s: Node) => {
@@ -97,61 +161,53 @@ const reconstructPath = (s: Node) => {
   return path.reverse();
 };
 
+// Exact any-angle shortest path via a visibility graph. The candidate turn
+// points are start, end and every obstacle corner (`cornerNodes`); an edge joins
+// two of them when the runner can travel straight between them (`lineOfSight`),
+// weighted by Euclidean distance. Because a shortest taut path only ever bends
+// at those corners, Dijkstra over this graph returns a provably optimal path —
+// unlike Theta*, which relaxes against a single ancestor and can settle for a
+// slightly longer route that no amount of post-smoothing recovers.
 const _findPath = (start: Point, end: Point, grid: boolean[][]) => {
-  const nodes = new MMap<[x: number, y: number], Node>((
-    x: number,
-    y: number,
-  ) => ({
-    x,
-    y,
-    gScore: Infinity,
-    parent: undefined,
-  }));
-
-  const endNode = nodes.getOrSet(end.x, end.y);
-
-  const distanceToEnd = (node: Node) => euclideanDistance(node, endNode);
-
-  const getNeighbors = (node: Node) => {
-    const neighbors: Node[] = [];
-    if (node.x > 0 && !grid[node.y][node.x - 1]) {
-      neighbors.push(nodes.getOrSet(node.x - 1, node.y));
+  const byCoord = new MMap<[x: number, y: number], Node>();
+  const nodes: Node[] = [];
+  const addNode = (x: number, y: number) => {
+    let node = byCoord.get(x, y);
+    if (!node) {
+      node = { x, y, gScore: Infinity, parent: undefined };
+      byCoord.set(node, x, y);
+      nodes.push(node);
     }
-    if (node.y > 0 && !grid[node.y - 1][node.x]) {
-      neighbors.push(nodes.getOrSet(node.x, node.y - 1));
-    }
-    if (node.x < grid[0].length - 1 && !grid[node.y][node.x + 1]) {
-      neighbors.push(nodes.getOrSet(node.x + 1, node.y));
-    }
-    if (node.y < grid.length - 1 && !grid[node.y + 1][node.x]) {
-      neighbors.push(nodes.getOrSet(node.x, node.y + 1));
-    }
-    return neighbors;
+    return node;
   };
 
-  const startNode = nodes.getOrSet(start.x, start.y);
-
-  lineOfSight(startNode, endNode, grid);
+  const startNode = addNode(start.x, start.y);
+  const endNode = addNode(end.x, end.y);
+  for (const { x, y } of cornerNodes(grid)) addNode(x, y);
 
   startNode.gScore = 0;
-  startNode.parent = startNode;
 
-  // Initializing open and closed sets. The open set is initialized
-  // with the start node and an initial cost
-  const open = new BinaryHeap((node: Node) =>
-    node.gScore + distanceToEnd(node)
-  );
+  const open = new BinaryHeap((node: Node) => node.gScore);
   open.push(startNode);
   const closed = new Set<Node>();
 
-  // This main loop is the same as A*
   while (open.length) {
     const cur = open.pop();
     if (cur === endNode) return reconstructPath(cur);
+    if (closed.has(cur)) continue;
     closed.add(cur);
-    for (const neighbor of getNeighbors(cur)) {
-      if (closed.has(neighbor)) continue;
-      updateNode(cur, neighbor, open, grid);
+
+    for (const next of nodes) {
+      if (next === cur || closed.has(next)) continue;
+      if (!lineOfSight(cur, next, grid)) continue;
+
+      const gScore = cur.gScore + euclideanDistance(cur, next);
+      if (gScore < next.gScore) {
+        next.gScore = gScore;
+        next.parent = cur;
+        open.remove(next);
+        open.push(next);
+      }
     }
   }
 };
