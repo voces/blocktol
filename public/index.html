@@ -2,7 +2,14 @@
 <html>
 
 <head>
-  <meta name="viewport" content="width=device-width, user-scalable=no" />
+  <!-- viewport-fit=cover: draw edge-to-edge into the status-bar/cutout insets so
+       the app's themed background paints that top strip (otherwise it's an
+       unpainted black band). It also makes env(safe-area-inset-*) report real
+       values, which the CSS already relies on for its top padding. -->
+  <meta
+    name="viewport"
+    content="width=device-width, user-scalable=no, viewport-fit=cover"
+  />
   <!-- Match the status/URL bar to the app background per OS theme (the values of
        the --background light-dark() token). The browser picks by media query, so
        the PWA's top bar follows light/dark instead of being fixed dark. -->
