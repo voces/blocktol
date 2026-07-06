@@ -168,6 +168,12 @@ export const useInit = () => {
   useEffect(() => {
     if (time !== 0 || !run) return;
 
+    // The run is now executing (the clock hit 0, or the player tapped start / R).
+    // A free-play run counts only from this point — commit it non-void so it
+    // lands in the panel and best; leaving before now kept it void (abandoned).
+    // A daily attempt is already committed on build, so it's left alone.
+    if (freePlay && iteration !== undefined) api.commitRun({ iteration });
+
     game.dispatchEvent("runStart", run);
 
     setPlacingBlock((pb) => ({ ...pb, placing: false }));
@@ -178,7 +184,7 @@ export const useInit = () => {
     // board (startRun / getBoard) resets them for the following build.
     setTouching(false);
     setThunderHover(undefined);
-  }, [time, run]);
+  }, [time, run, freePlay, iteration]);
 
   useApiListener(
     "updateRun",

@@ -15,6 +15,9 @@ const updateRunBody = z.object({
   blocks: z.array(
     z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
   ),
+  // Free-play builds don't commit (the run stays void until it executes); daily
+  // attempts do. Defaults to a committing (daily) update when absent.
+  freePlay: z.boolean().optional(),
 });
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);
@@ -22,7 +25,7 @@ const getIterationOtherBest = trailer(getIterationOtherBestRaw);
 const isUpdate = is.object({ changedRows: is.number });
 
 export const updateRun = method(updateRunBody, true)(
-  async ({ iteration: iterationId, blocks, userId }, req) => {
+  async ({ iteration: iterationId, blocks, userId, freePlay }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
     let otherBest: number | null;
     try {
@@ -47,6 +50,7 @@ export const updateRun = method(updateRunBody, true)(
         duration,
         blocks.map((b) => ({ ...b, player: true })),
         iterationId,
+        !freePlay,
       );
       if (isUpdate(r) && r.changedRows === 0) {
         log.error(req, "Unexpected no rows changed");

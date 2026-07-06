@@ -2,6 +2,10 @@ import { Point } from "../../common/types.ts";
 import { deserializeRun, serializeRun } from "../util/run.ts";
 import { raw, sql } from "./query.ts";
 
+// Every run starts void. A daily attempt counts once its maze is built
+// (updateCurrentRun with commit = true); a free-play run counts only once it
+// actually executes (commitRun). Navigating away before either leaves the run
+// void — i.e. abandoned — so no explicit abandon call is needed for free play.
 export const startRun = (
   iteration: number,
   user: string,
@@ -9,10 +13,6 @@ export const startRun = (
   year: number,
   month: number,
   day: number,
-  // A run opened by a valid placement (a committed free-play attempt) starts
-  // non-void; an empty start (a daily attempt, or a staged free-play board with
-  // no placement yet) starts void until it's completed.
-  isVoid = true,
 ) =>
   sql`
     SELECT @isDaily1 := count(1) = 0
@@ -27,7 +27,7 @@ export const startRun = (
       AND DAY(created) = ${day};
 
     INSERT INTO run (user, iteration, time, data, void, daily)
-    VALUES (${user}, ${iteration}, ${minTime}, '', ${isVoid}, @isDaily1 AND @isDaily2);`;
+    VALUES (${user}, ${iteration}, ${minTime}, '', TRUE, @isDaily1 AND @isDaily2);`;
 
 // Abandon the user's current run on an iteration by voiding it, so it drops out
 // of the panel and never counts toward best/standing. Constrained to
@@ -38,6 +38,22 @@ export const voidCurrentRun = (user: string, iteration: number) =>
   sql`
     UPDATE run
     SET void = TRUE
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND daily = FALSE
+    ORDER BY created DESC
+    LIMIT 1;
+  `;
+
+// The mirror of voidCurrentRun: mark the caller's current free-play run non-void
+// once it actually executes (timer expiry or an explicit start). Free-play runs
+// are inserted void and only counted here, so leaving before the run runs keeps
+// it void (abandoned). daily = FALSE scopes it to free play — daily attempts are
+// already committed on build.
+export const commitRun = (user: string, iteration: number) =>
+  sql`
+    UPDATE run
+    SET void = FALSE
     WHERE user = ${user}
       AND iteration = ${iteration}
       AND daily = FALSE
@@ -59,20 +75,35 @@ export const getCurrentRun = (user: string) =>
       : undefined
   );
 
+// Save the caller's in-progress build (latest run, within the 60s window).
+// `commit` decides the void flag: a daily attempt commits immediately (its built
+// maze is the spent attempt's result), so void is cleared and the ranked-three
+// reassignment runs; a free-play run leaves void alone (it only counts once it
+// executes — see commitRun) and skips the reassignment, which concerns only the
+// ranked three and is meaningless for free play.
 export const updateCurrentRun = (
   user: string,
   time: number,
   blocks: (Point & { thunder?: boolean; player?: boolean })[],
   iteration: number,
+  commit = true,
 ) =>
-  sql`
+  !commit
+    ? sql`
+    UPDATE run
+    SET time = ${time}, data = ${serializeRun(blocks)}
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND TIMESTAMPDIFF(SECOND, created, NOW()) < 60
+    ORDER BY created DESC LIMIT 1;`
+    : sql`
     UPDATE run
     SET time = ${time}, data = ${serializeRun(blocks)}, void = FALSE
     WHERE user = ${user}
       AND iteration = ${iteration}
       and TIMESTAMPDIFF(SECOND, created, NOW()) < 60
     ORDER BY created DESC LIMIT 1;
-    
+
     UPDATE run
     SET daily = FALSE
     WHERE user = ${user}

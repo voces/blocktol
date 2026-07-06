@@ -5,6 +5,7 @@ import { getBoard } from "./iteration/board.ts";
 import { getDailySummary } from "./iteration/daily.ts";
 import { listIterations } from "./iteration/list.ts";
 import { abandonRun } from "./iteration/run/abandon.ts";
+import { commitRun } from "./iteration/run/commit.ts";
 import { startRun } from "./iteration/run/start.ts";
 import { updateRun } from "./iteration/run/update.ts";
 import { getProfile } from "./profile.ts";
@@ -18,6 +19,7 @@ const handlers = {
   startRun,
   updateRun,
   abandonRun,
+  commitRun,
   best,
   getProfile,
   rename,
