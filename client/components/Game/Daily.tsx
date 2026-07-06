@@ -89,16 +89,28 @@ export const Daily = () => {
   });
   const best = attempts[bestIdx];
   const isSupreme = best.supreme;
-  const accent = isSupreme ? "var(--gold)" : "var(--win)";
+  // A non-supreme run that ties the field's top time gets the peak green-yellow,
+  // a step below supreme gold.
+  const isPeak = !isSupreme && best.percent === 1;
+  const accent = isSupreme
+    ? "var(--gold)"
+    : isPeak
+    ? "var(--peak)"
+    : "var(--win)";
 
   const beatPct = typeof best.percentile === "number"
     ? Math.round(best.percentile * 100)
     : null;
-  // Banded theme colour (red → amber → green → blue), supreme in gold — the
-  // shared scheme used by the today-result and attempts panels too.
-  const beatColor = isSupreme ? "var(--gold)" : percentileBand(
-    typeof best.percentile === "number" ? best.percentile : null,
-  );
+  // Banded theme colour (red → amber → green → blue), supreme in gold, a
+  // non-supreme field-topping tie in peak green-yellow — the shared scheme used
+  // by the today-result and attempts panels too.
+  const beatColor = isSupreme
+    ? "var(--gold)"
+    : isPeak
+    ? "var(--peak)"
+    : percentileBand(
+      typeof best.percentile === "number" ? best.percentile : null,
+    );
 
   const beatKind: keyof typeof BEAT_ICON =
     isSupreme || (beatPct !== null && beatPct >= 50)

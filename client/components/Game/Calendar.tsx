@@ -2,6 +2,7 @@ import { Fragment, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
+  PEAK_COLOR,
   percentileColor,
   readableInk,
   SUPREME_COLOR,
@@ -48,11 +49,17 @@ const standing = (time: number | null, item: Item) => {
 // Overall standing (best of ranked + free play) drives the cell colour.
 const percentOf = (item: Item) => standing(item.ownBest, item);
 
-// Skew toward the top so a strong day stands out among the muted ones.
+// The cell colour maps the day's best standing straight through the ramp — the
+// SAME mapping the runs panel uses for that run's band, so a day's cell always
+// matches the colour of its top run when opened.
 const cellColor = (item: Item) => {
   if (item.supreme) return SUPREME_COLOR;
   const p = percentOf(item);
-  return p == null ? null : percentileColor((p + p ** 4 + p ** 32) / 3);
+  if (p == null) return null;
+  // Tied for the field's top time without taking the record — peak green-yellow,
+  // a step below supreme gold (mirrors the runs/result treatment).
+  if (p === 1) return PEAK_COLOR;
+  return percentileColor(p);
 };
 
 const lastDay = (idx: number) =>

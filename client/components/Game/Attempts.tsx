@@ -94,13 +94,20 @@ export const Attempts = () => {
           <div class="attempts__list">
             {groups.map((group, i) => {
               const { attempt } = group;
-              // Full: continuous ramp colour (supreme gold). Simplified: a
-              // neutral band so the time reads without signalling standing.
+              // Full: continuous ramp colour, with two standings lifted off it —
+              // supreme gold (took the record) and, one step below, peak green-
+              // yellow (tied the field's top but didn't take it outright).
+              // Simplified: a neutral band so the time reads without signalling
+              // standing.
               const supreme = !simplified && group.supreme;
+              const peak = !simplified && !group.supreme &&
+                attempt.percent === 1;
               const band = simplified
                 ? "var(--color)"
                 : group.supreme
                 ? "var(--gold)"
+                : peak
+                ? "var(--peak)"
                 : percentileColor(attempt.percent);
               return (
                 <div
@@ -129,7 +136,12 @@ export const Attempts = () => {
                     </div>
                     {!simplified && (
                       <div class="attempts__sub">
-                        {formatPercentile(attempt.percent)}%
+                        <span>{formatPercentile(attempt.percent)}%</span>
+                        {group.ranked && attempt.percentile != null && (
+                          <span class="attempts__pct">
+                            p{formatPercentile(attempt.percentile)}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

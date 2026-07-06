@@ -59,17 +59,26 @@ export const TodayResult = () => {
   const personalUnranked = today?.ownBest != null &&
     today.ownDailyBest != null && today.ownBest > today.ownDailyBest;
 
-  // Tint each chip to its percentile band (supreme → gold + glow), matching the
-  // result modal rather than a fixed green/blue.
+  // Tint each chip to its percentile band (supreme → gold + glow; a non-supreme
+  // tie for the field's top → peak green-yellow), matching the result modal
+  // rather than a fixed green/blue.
   const rankedBand = rankedBest
-    ? rankedBest.supreme ? "var(--gold)" : percentileBand(
-      typeof rankedBest.percentile === "number" ? rankedBest.percentile : null,
-    )
+    ? rankedBest.supreme
+      ? "var(--gold)"
+      : rankedBest.percent === 1
+      ? "var(--peak)"
+      : percentileBand(
+        typeof rankedBest.percentile === "number"
+          ? rankedBest.percentile
+          : null,
+      )
     : "var(--text-mute)";
   const personalBand = personalBest == null
     ? "var(--text-mute)"
     : today?.supreme
     ? "var(--gold)"
+    : personalPct === 1
+    ? "var(--peak)"
     : percentileBand(personalPct);
 
   return (
