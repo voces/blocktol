@@ -1,12 +1,10 @@
 import { adjectives } from "./adjectives.ts";
-import { names } from "./names.ts";
+import { nouns } from "./nouns.ts";
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const pick = (list: readonly string[]) =>
+  list[Math.floor(Math.random() * list.length)];
 
-// A seeded display name: a capitalised adjective + a first name (the name list
-// is weighted toward the front via the squared random, matching the old login
-// screen). Sliced to the `name` column's 32 chars.
+// A seeded display name: an adjective run straight into a noun, all lower case
+// (e.g. `abruptfalcon`). Sliced to the `name` column's 32 chars.
 export const randomName = () =>
-  `${cap(adjectives[Math.floor(Math.random() * adjectives.length)])} ${
-    names[Math.floor(Math.random() ** 2 * names.length)]
-  }`.slice(0, 32);
+  `${pick(adjectives)}${pick(nouns)}`.slice(0, 32);
