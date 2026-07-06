@@ -5,6 +5,7 @@ import {
   PEAK_COLOR,
   percentileColor,
   readableInk,
+  standingColor,
   SUPREME_COLOR,
 } from "../../../common/percentileColor.ts";
 import { api } from "../../api.ts";
@@ -49,9 +50,9 @@ const standing = (time: number | null, item: Item) => {
 // Overall standing (best of ranked + free play) drives the cell colour.
 const percentOf = (item: Item) => standing(item.ownBest, item);
 
-// The cell colour maps the day's best standing straight through the ramp — the
-// SAME mapping the runs panel uses for that run's band, so a day's cell always
-// matches the colour of its top run when opened.
+// The cell colour maps the day's best standing through the ramp (cubed, so the
+// top end spreads out) — the SAME mapping the runs panel uses for that run's
+// band, so a day's cell always matches the colour of its top run when opened.
 const cellColor = (item: Item) => {
   if (item.supreme) return SUPREME_COLOR;
   const p = percentOf(item);
@@ -59,7 +60,7 @@ const cellColor = (item: Item) => {
   // Tied for the field's top time without taking the record — peak green-yellow,
   // a step below supreme gold (mirrors the runs/result treatment).
   if (p === 1) return PEAK_COLOR;
-  return percentileColor(p);
+  return standingColor(p);
 };
 
 const lastDay = (idx: number) =>

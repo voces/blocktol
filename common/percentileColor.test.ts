@@ -1,5 +1,11 @@
 import { assert, assertEquals, assertMatch } from "@std/assert";
-import { percentileColor, readableInk } from "./percentileColor.ts";
+import {
+  percentileBand,
+  percentileColor,
+  readableInk,
+  standingBand,
+  standingColor,
+} from "./percentileColor.ts";
 
 const rgb = (hex: string) => [
   parseInt(hex.slice(1, 3), 16),
@@ -45,4 +51,17 @@ Deno.test("percentileColor always returns a valid #rrggbb", () => {
 Deno.test("readableInk picks contrasting ink", () => {
   assertEquals(readableInk("#000000"), "#fff");
   assertEquals(readableInk("#ffffff"), "#1a1a1a");
+});
+
+Deno.test("standingColor cubes the input before the ramp", () => {
+  // A full standing still lands on the ramp's top; other values are the cube.
+  assertEquals(standingColor(1), percentileColor(1));
+  assertEquals(standingColor(0.5), percentileColor(0.125));
+  assertEquals(standingColor(0.9), percentileColor(0.9 ** 3));
+});
+
+Deno.test("standingBand cubes before banding, and passes null through", () => {
+  assertEquals(standingBand(0.5), percentileBand(0.125));
+  assertEquals(standingBand(1), percentileBand(1));
+  assertEquals(standingBand(null), percentileBand(null));
 });

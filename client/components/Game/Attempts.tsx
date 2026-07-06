@@ -1,7 +1,7 @@
 import { h } from "preact";
 import { useContext } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
-import { percentileColor } from "../../../common/percentileColor.ts";
+import { standingColor } from "../../../common/percentileColor.ts";
 import { MessageMap } from "../../api.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -108,7 +108,7 @@ export const Attempts = () => {
                 ? "var(--gold)"
                 : peak
                 ? "var(--peak)"
-                : percentileColor(attempt.percent);
+                : standingColor(attempt.percent);
               return (
                 <div
                   class={"attempts__row attempts__row--clickable tapc" +
