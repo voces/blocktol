@@ -474,8 +474,9 @@ a:hover {
     flex-direction: column;
     gap: 16px;
     /* Only vertical spacing; horizontal gutter comes from .game's
-       padding-inline, so the panels line up with the board's inset. */
-    padding-block: 4px 8px;
+       padding-inline, so the panels line up with the board's inset. Bottom gives
+       ~16px breathing room below the last panel (plus the home-indicator inset). */
+    padding-block: 4px calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Natural height, no flex compression. */
