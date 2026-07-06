@@ -189,6 +189,29 @@ body {
 
 .profile__avatar {
   display: block;
+  /* Decorative: the game's global touch handlers treat any touched <svg> as a
+     board interaction (zooming it), so keep taps on the button, not the glyph. */
+  pointer-events: none;
+}
+
+/* Header profile button once loaded: the user's coloured letter avatar (fill
+   set inline from their id), matching the dialog avatar. */
+.profile-avatar-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.profile-avatar-btn__initial {
+  font: 700 15px var(--font);
+  line-height: 1;
 }
 
 /* Right-hand header cluster: the (mobile-only) calendar button and profile. */
@@ -1320,6 +1343,13 @@ a:hover {
   animation: none;
 }
 
+/* Decorative dialog icons (edit pencil, copy/link) must not act as board-input
+   targets — the game's touch handlers zoom the board on any touched <svg>. Let
+   the taps fall through to the buttons beneath. */
+.profile-modal svg {
+  pointer-events: none;
+}
+
 .profile-modal__close {
   position: absolute;
   top: 14px;
@@ -1535,10 +1565,12 @@ a:hover {
   color: var(--text-mute);
 }
 
+/* Neutral, not the accent blue — blue is a mid-percentile band in this app's
+   ramp, and best build carries no percentile, so it shouldn't imply one. */
 .profile-best__value {
   font-size: 22px;
   font-weight: 700;
-  color: var(--accent-bright);
+  color: var(--color);
 }
 
 /* Copy-login-link action row. */

@@ -1,9 +1,11 @@
 import { Fragment, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { formatPercentile } from "../../common/formatPercentile.ts";
+import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { useProfile } from "../hooks/useProfile.ts";
+import { avatarColor, avatarInitial } from "../util/avatar.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
@@ -115,7 +117,8 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
   };
 
   const name = profile?.name || "Anonymous";
-  const initial = (profile?.name ?? "").trim().charAt(0).toUpperCase() || "?";
+  const initial = avatarInitial(profile?.name);
+  const color = avatarColor(getId());
   const joined = joinedLabel(profile?.joined ?? null);
   const median = profile?.medianPercentile;
 
@@ -178,7 +181,14 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
             )
             : (
               <>
-                <div class="profile-head__avatar" aria-hidden="true">
+                <div
+                  class="profile-head__avatar"
+                  aria-hidden="true"
+                  style={{
+                    background: color,
+                    boxShadow: `0 8px 20px -8px ${color}`,
+                  }}
+                >
                   {initial}
                 </div>
                 <div class="profile-head__id">
@@ -219,6 +229,9 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
               ? `p${formatPercentile(median)}`
               : "—"}
             label="Median percentile"
+            color={typeof median === "number"
+              ? percentileBand(median)
+              : undefined}
           />
         </div>
 
@@ -250,32 +263,45 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
 
 export const Profile = () => {
   const { attemptsRemaining } = useContext(GameStateContext);
+  const { profile } = useProfile();
   const [open, setOpen] = useState(false);
 
   // Hidden while a daily is in progress (mirrors the calendar button) — no
   // wandering off to the profile mid-run.
   if (attemptsRemaining !== 0) return null;
 
+  // Once the (prefetched) profile is loaded, the button is the coloured letter
+  // avatar; until then, the neutral person glyph.
   return (
     <>
       <button
         type="button"
-        class="profile icon-button tapc"
+        class={"profile tapc " +
+          (profile ? "profile-avatar-btn" : "icon-button")}
+        style={profile ? { background: avatarColor(getId()) } : undefined}
         onClick={() => setOpen(true)}
         title="Profile"
         aria-label="Open profile"
       >
-        <svg
-          class="profile__avatar"
-          width={20}
-          height={20}
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <circle cx={12} cy={8} r={4} />
-          <path d="M12 14c-4.42 0-7.5 2.5-7.5 5.6 0 .77.63 1.4 1.4 1.4h12.2c.77 0 1.4-.63 1.4-1.4C19.5 16.5 16.42 14 12 14Z" />
-        </svg>
+        {profile
+          ? (
+            <span class="profile-avatar-btn__initial">
+              {avatarInitial(profile.name)}
+            </span>
+          )
+          : (
+            <svg
+              class="profile__avatar"
+              width={20}
+              height={20}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <circle cx={12} cy={8} r={4} />
+              <path d="M12 14c-4.42 0-7.5 2.5-7.5 5.6 0 .77.63 1.4 1.4 1.4h12.2c.77 0 1.4-.63 1.4-1.4C19.5 16.5 16.42 14 12 14Z" />
+            </svg>
+          )}
       </button>
       {open && <ProfileDialog onClose={() => setOpen(false)} />}
     </>
