@@ -209,6 +209,7 @@ export const Board = (
           <rect
             x={checkpoint.x + 0.55}
             y={checkpoint.y + 0.55}
+            rx={0.06}
             width={0.9}
             height={0.9}
             fill="var(--maze-checkpoint)"
