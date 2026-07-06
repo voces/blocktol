@@ -127,6 +127,71 @@ try {
     return { path, seconds: mod.pathDuration(path, thunders)[0] };
   };
 
+  // The stretches of a path the runner covers while slowed, as sub-polylines.
+  // This mirrors pathDuration's simulation step-for-step (`common/pathing.ts`)
+  // and records the runner's position whenever it is moving at half speed, so
+  // the render can mark exactly where a thunder slows it — the same thing that
+  // makes a longer-looking route sometimes finish sooner.
+  const SPEED = current.SPEED;
+  const slowedSpans = (path: Point[], thunders: Point[]): Point[][] => {
+    const spans: Point[][] = [];
+    if (path.length < 2 || !thunders.length) return spans;
+    const dist = (a: Point, b: Point) =>
+      ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5;
+
+    let distance = 0;
+    let consumed = 0;
+    let index = 0;
+    let distanceToNext = dist(path[0], path[1]);
+    const usage = thunders.map(() => -Infinity);
+    const runner: Point = { x: path[0].x, y: path[0].y };
+    let slowed = 0;
+    let steps = 0;
+    let span: Point[] | null = null;
+
+    while (index < path.length - 1) {
+      steps++;
+      const from = { x: runner.x, y: runner.y };
+      let triggered = false;
+      for (let i = 0; i < thunders.length; i++) {
+        if (
+          dist(runner, { x: thunders[i].x + 0.5, y: thunders[i].y + 0.5 }) >
+            4 ||
+          usage[i] + 32 * SPEED >= steps
+        ) continue;
+        usage[i] = steps;
+        if (!triggered) triggered = true, slowed = 6 * SPEED;
+      }
+      const isSlow = slowed >= 1e-8;
+      distance += isSlow ? 0.05 : 0.1;
+      slowed -= 0.1;
+      while (
+        (distance - consumed) + 1e-8 >= distanceToNext && index < path.length
+      ) {
+        index++;
+        consumed += distanceToNext;
+        if (index < path.length - 1) {
+          distanceToNext = dist(path[index], path[index + 1]);
+        }
+      }
+      if (index < path.length - 1) {
+        const p = (distance - consumed) / distanceToNext;
+        runner.x = path[index].x * (1 - p) + path[index + 1].x * p;
+        runner.y = path[index].y * (1 - p) + path[index + 1].y * p;
+      }
+      if (isSlow) {
+        if (!span) span = [from], spans.push(span);
+        // Decimate colinear samples so the SVG stays small.
+        if (dist(span[span.length - 1], runner) > 0.2) {
+          span.push({ x: runner.x, y: runner.y });
+        }
+      } else if (span) {
+        span.push(from), span = null;
+      }
+    }
+    return spans;
+  };
+
   let board: Board;
 
   if (arg("iteration") !== undefined) {
@@ -246,15 +311,15 @@ try {
     // A no-DB board exercising all four piece kinds so the legend/colours can be
     // eyeballed: preplaced vs player, block vs thunder.
     board = {
-      label: "demo · all piece types",
-      checkpoint: { x: 9.5, y: 6.5 },
+      label: "demo · all piece types + slow",
+      checkpoint: { x: 9.5, y: 3.5 },
       blocks: [
-        { x: 4, y: 4 },
-        { x: 14, y: 5 },
-        { x: 7, y: 9, player: true },
-        { x: 12, y: 10, player: true },
-        { x: 5, y: 13, thunder: true },
-        { x: 13, y: 14, thunder: true, player: true },
+        { x: 4, y: 6 }, // preplaced block
+        { x: 15, y: 7 }, // preplaced block
+        { x: 7, y: 13, player: true }, // player block
+        { x: 13, y: 12, player: true }, // player block
+        { x: 6, y: 9, thunder: true }, // preplaced thunder (near the corridor)
+        { x: 12, y: 6, thunder: true, player: true }, // player thunder
       ],
     };
   } else {
@@ -330,6 +395,20 @@ try {
   const hasThunder = board.blocks.some((b) => b.thunder);
   const hasPlayer = board.blocks.some((b) => b.player);
 
+  // Where each route runs slowed. Drawn as a translucent halo beneath the path
+  // lines so a thunder's effect on either route is visible.
+  const thunders = board.blocks.filter((b) => b.thunder);
+  const slowSpans = [
+    ...slowedSpans(neu.path, thunders),
+    ...slowedSpans(old.path, thunders),
+  ];
+  const hasSlow = slowSpans.length > 0;
+  const slowUnderlay = slowSpans
+    .map((s) =>
+      polyline(s, `stroke="${THUNDER}" stroke-width="0.55" opacity="0.5"`)
+    )
+    .join("\n  ");
+
   const legend: string[] = [
     `<text x="0" y="21.05" fill="#e6e6e6" font-size="0.6" font-weight="600">${board.label}</text>`,
     `<rect x="0" y="21.55" width="0.8" height="0.18" fill="#ff5a5a"/>`,
@@ -364,6 +443,12 @@ try {
         `<text x="3.45" y="24.43" fill="#e6e6e6" font-size="0.5">thunder (slows)</text>`,
       );
     }
+    if (hasSlow) {
+      legend.push(
+        `<line x1="7.9" y1="24.3" x2="8.5" y2="24.3" stroke="${THUNDER}" stroke-width="0.4" opacity="0.5" stroke-linecap="round"/>`,
+        `<text x="8.65" y="24.43" fill="#e6e6e6" font-size="0.5">slowed (½ speed)</text>`,
+      );
+    }
     if (hasPlayer) {
       legend.push(
         `<rect x="0" y="24.85" width="0.5" height="0.5" fill="${EMPTY}" stroke="${PLAYER}" stroke-width="0.1" rx="0.1"/>`,
@@ -384,6 +469,7 @@ try {
   <line x1="${cx - 0.28}" y1="${cy + 0.28}" x2="${cx + 0.28}" y2="${
       cy - 0.28
     }" stroke="#f5c518" stroke-width="0.12"/>
+  ${slowUnderlay}
   ${polyline(neu.path, `stroke="#4c8dff" stroke-width="0.2" opacity="0.95"`)}
   ${
       polyline(
