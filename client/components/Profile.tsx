@@ -205,7 +205,7 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
           <Stat value={profile ? String(profile.played) : "—"} label="Played" />
           <Stat
             value={profile ? String(profile.hundreds) : "—"}
-            label="100%s"
+            label="Wins"
             color={profile && profile.hundreds > 0 ? "var(--peak)" : undefined}
           />
           <Stat
