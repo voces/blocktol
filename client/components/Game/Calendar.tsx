@@ -134,6 +134,16 @@ export const Calendar = () => {
     // ensureKey captures exactly the months this render needs; retry re-fires it.
   }, [ensureKey, retry]);
 
+  // A brand-new user's current-month fetch can land before their first run is
+  // recorded — the server bounds the list to iterations they've played, so it
+  // comes back empty and gets cached. Once the daily is done (their runs now
+  // exist), drop the cache for this month and refetch so the calendar fills in.
+  useEffect(() => {
+    if (attemptsRemaining !== 0) return;
+    requested.current.delete(currentIdx);
+    setRetry((r) => r + 1);
+  }, [attemptsRemaining]);
+
   // Page back until the earliest shown month reaches the first daily ever.
   const canPrev = oldestIdx === undefined || shownEarliest > oldestIdx;
   const canNext = page > 0;

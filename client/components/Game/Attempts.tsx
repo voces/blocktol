@@ -33,14 +33,18 @@ const formatWhen = (created: number) => {
 // first, labelled by when they last ran. The best run carries the BEST — or
 // SUPREME, when it tops the field — badge. Clicking a row re-renders that maze.
 export const Attempts = () => {
-  const { viewedAttempts, viewMaze, freePlay } = useContext(GameStateContext);
+  const { viewedAttempts, viewMaze, attemptsRemaining } = useContext(
+    GameStateContext,
+  );
   const attempts = viewedAttempts ?? [];
 
-  // Show runs when there's something to show, or when reviewing a board (any
-  // past daily or free play sets freePlay — so an unplayed past day still reads
-  // "No runs yet"). A fresh, live ranked daily we're just starting — freePlay is
-  // false and no attempts yet — renders nothing rather than an empty panel.
-  if (attempts.length === 0 && !freePlay) return null;
+  // Mid-daily the list shows in a simplified form — time, when, and which is
+  // your best — but WITHOUT the field-relative info (percentile colour, %,
+  // SUPREME) that would anchor how players approach their remaining attempts. It
+  // fills in fully once the daily is done (attemptsRemaining === 0). Nothing to
+  // show on a fresh daily with no runs yet.
+  const simplified = attemptsRemaining !== 0;
+  if (simplified && attempts.length === 0) return null;
 
   // Merge runs with identical maze data (anywhere in the list, not just
   // consecutive), keeping the count and the most recent run.
@@ -90,14 +94,18 @@ export const Attempts = () => {
           <div class="attempts__list">
             {groups.map((group, i) => {
               const { attempt } = group;
-              // Continuous ramp colour (like the calendar); supreme stays gold.
-              const band = group.supreme
+              // Full: continuous ramp colour (supreme gold). Simplified: a
+              // neutral band so the time reads without signalling standing.
+              const supreme = !simplified && group.supreme;
+              const band = simplified
+                ? "var(--color)"
+                : group.supreme
                 ? "var(--gold)"
                 : percentileColor(attempt.percent);
               return (
                 <div
                   class={"attempts__row attempts__row--clickable tapc" +
-                    (group.supreme ? " attempts__row--glow" : "")}
+                    (supreme ? " attempts__row--glow" : "")}
                   key={i}
                   style={{ "--band": band }}
                   title="View this maze"
@@ -115,13 +123,15 @@ export const Attempts = () => {
                       )}
                       {i === bestIdx && (
                         <span class="attempts__badge">
-                          {group.supreme ? "SUPREME" : "BEST"}
+                          {supreme ? "SUPREME" : "BEST"}
                         </span>
                       )}
                     </div>
-                    <div class="attempts__sub">
-                      {formatPercentile(attempt.percent)}%
-                    </div>
+                    {!simplified && (
+                      <div class="attempts__sub">
+                        {formatPercentile(attempt.percent)}%
+                      </div>
+                    )}
                   </div>
                 </div>
               );
