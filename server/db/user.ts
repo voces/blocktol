@@ -51,7 +51,9 @@ export const updateUserName = (id: string, name: string) =>
 //   1. the user's own row (display name, rating, join date);
 //   2. dailies played (distinct iterations with a ranked daily run, abandoned
 //      or not — mirrors the runs panel counting spent attempts) and the best-
-//      ever build (any run, daily or free);
+//      ever build (any run, daily or free). NB: this "Played" is deliberately
+//      NOT the `user.plays` column — that's the narrower rating counter (rated +
+//      completed + rankable); see getRatingParticipants for the contrast;
 //   3. the iteration of that best build (so the card can open it);
 //   4. per-day ranked standings — the user's best daily time vs every OTHER
 //      player's best daily time that day — from which the median percentile and
@@ -429,6 +431,18 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
 export const updateRating = (user: string, rating: number) =>
   sql`UPDATE user SET rating = ${rating} WHERE id = ${user};`;
 
+// The `user.plays` column is the rating system's experience counter — NOT the
+// profile's "Played" statistic (getUserStats), which is a deliberately different
+// and broader number. `plays` counts only the dailies a player has been *rated*
+// on: incremented once per rated iteration for each ranked participant (see
+// rateDailies / applyRatings), i.e. days where they completed a ranked run
+// (void = FALSE) AND were ranked against at least one other player, on a daily
+// that has since closed and been rated. Today's daily and solo-player days don't
+// count. It exists solely to decay the ELO K-factor, `K / log2(plays + 2)`
+// (rating.ts) — nothing reads it for display. The profile "Played" figure, by
+// contrast, is COUNT(DISTINCT daily iteration) with no void/rated/opponent
+// gating, so it reflects every daily the player attempted, current day included.
+//
 // Each completer of an iteration's daily, with their best time and current
 // rating/plays. Abandoners (no completed run) are excluded — they already lose
 // an attempt; they aren't rated.
