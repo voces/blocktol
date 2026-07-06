@@ -180,32 +180,46 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
     }))
   );
 
-// The user's own runs on an iteration (their ranked three plus any free play),
-// oldest first, each with its maze and creation time — the full runs list for
-// the panel. Non-void runs, PLUS any voided run among the first three (a ranked
-// daily attempt that was started but never built): those still count as spent
-// attempts, so the panel should show them. Later voided runs (abandoned free
-// play) stay hidden so the panel isn't padded with empty rows. The first three
-// by creation are always the ranked attempts, since free play only unlocks once
-// they're spent — so "created <= the third-oldest run's" selects exactly them
-// (and when there are fewer than three runs, every void one can only be a ranked
-// attempt, so COALESCE falls back to keeping them all).
+// The user's own runs on an iteration (their ranked attempts plus any free
+// play), oldest first, with each run's maze, creation time, and whether it was a
+// ranked daily attempt.
+//
+// A run is a ranked attempt iff it's among the first three AND was created on the
+// iteration's own day — matching how the daily flag is assigned (a daily attempt
+// can only happen on the user's local day the daily was live). Free play — same
+// day after the three attempts, or a replay of a past day — never qualifies, so
+// it isn't badged "Daily". `created <= the third-oldest run` bounds the first
+// three (COALESCE keeps them all when there are fewer than three).
+//
+// Non-void runs are always returned, plus voided runs that are ranked attempts
+// (a daily attempt started but never built still counts as spent). Voided free
+// play — abandoned, incl. a never-run build — stays hidden so the panel isn't
+// padded with empty rows.
 export const allRunsByIteration = (user: string, iteration: number) =>
-  sql<{ time: number; data: string; created: string }[]>`
-    SELECT time, data, created
+  sql<{ time: number; data: string; created: string; ranked: number }[]>`
+    SELECT
+      time, data, created,
+      (
+        created <= COALESCE((
+          SELECT created FROM run
+          WHERE user = ${user} AND iteration = ${iteration}
+          ORDER BY created ASC LIMIT 1 OFFSET 2
+        ), created)
+        AND DATE(created) = DATE((SELECT created FROM iteration WHERE id = ${iteration}))
+      ) ranked
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
       AND (
         void = FALSE
-        OR created <= COALESCE((
-          SELECT created
-          FROM run
-          WHERE user = ${user}
-            AND iteration = ${iteration}
-          ORDER BY created ASC
-          LIMIT 1 OFFSET 2
-        ), created)
+        OR (
+          created <= COALESCE((
+            SELECT created FROM run
+            WHERE user = ${user} AND iteration = ${iteration}
+            ORDER BY created ASC LIMIT 1 OFFSET 2
+          ), created)
+          AND DATE(created) = DATE((SELECT created FROM iteration WHERE id = ${iteration}))
+        )
       )
     ORDER BY created ASC
     LIMIT 100;
@@ -214,6 +228,7 @@ export const allRunsByIteration = (user: string, iteration: number) =>
       time: run.time,
       maze: deserializeRun(run.data),
       created: new Date(run.created).getTime(),
+      ranked: !!run.ranked,
     }))
   );
 

@@ -11,6 +11,10 @@ type AttemptRun = {
   time: number;
   maze: (Point & { thunder?: boolean })[];
   created: number;
+  // Whether this run was a ranked daily attempt (set by allRunsByIteration).
+  // Absent for the ranked-three list (attemptRunsByIteration), which is ranked
+  // by construction — falls back to position there.
+  ranked?: boolean;
 };
 
 // Shape each attempt run into the client's attempt row: field percentile, the
@@ -44,8 +48,10 @@ export const mapAttempts = (
       ? 1
       : Math.max(0, Math.min(1, (run.time - min) / (fieldBest - min))),
     supreme: beatsField && i === bestIdx,
-    // The first three runs are the day's ranked attempts; the rest are free play.
-    ranked: i < 3,
+    // A ranked daily attempt (created on the daily's day, among the first three)
+    // vs free play. Positional fallback for the ranked-three list, which carries
+    // no flag but is ranked by construction.
+    ranked: run.ranked ?? i < 3,
     maze: run.maze,
     created: run.created,
   }));
