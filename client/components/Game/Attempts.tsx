@@ -110,7 +110,9 @@ export const Attempts = () => {
                       {group.count > 1 && (
                         <span class="attempts__count">×{group.count}</span>
                       )}
-                      {group.ranked && <span class="attempts__daily">Daily</span>}
+                      {group.ranked && (
+                        <span class="attempts__daily">Daily</span>
+                      )}
                       {i === bestIdx && (
                         <span class="attempts__badge">
                           {group.supreme ? "SUPREME" : "BEST"}

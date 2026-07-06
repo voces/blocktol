@@ -17,8 +17,18 @@ type Item = DailyItem;
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 // Show the previous month in full only when we're early in the current one —
@@ -236,9 +246,10 @@ export const Calendar = () => {
           <Fragment key={seg.idx}>
             <div class="calendar__label">{MONTHS[month0]} {year}</div>
             <div class="calendar__grid">
-              {Array.from({ length: firstDow }, (_, i) => (
-                <div class="calendar__blank" key={`b${i}`} />
-              ))}
+              {Array.from(
+                { length: firstDow },
+                (_, i) => <div class="calendar__blank" key={`b${i}`} />,
+              )}
               {Array.from(
                 { length: seg.toDay },
                 (_, i) => cell(year, month0, i + 1),

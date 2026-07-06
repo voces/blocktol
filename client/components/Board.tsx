@@ -78,9 +78,11 @@ export const Board = (
             </Fragment>
           );
         })}
-        {/* The entrance/exit notches (x 9–11) break the wall band; carry the
+        {
+          /* The entrance/exit notches (x 9–11) break the wall band; carry the
             centre grid line (x=10) up and down through them so the graph paper
-            continues into the openings rather than stopping at the playfield. */}
+            continues into the openings rather than stopping at the playfield. */
+        }
         <line x1={10} y1={0} x2={10} y2={1} />
         <line x1={10} y1={19} x2={10} y2={20} />
       </g>

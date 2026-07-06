@@ -64,7 +64,10 @@ const useStore = (): Store => {
         ownDailyBest: bestRanked ? bestRanked.duration : existing.ownDailyBest,
         best: Math.max(existing.best ?? ownBest, ownBest),
         dailyBest: bestRanked
-          ? Math.max(existing.dailyBest ?? bestRanked.duration, bestRanked.duration)
+          ? Math.max(
+            existing.dailyBest ?? bestRanked.duration,
+            bestRanked.duration,
+          )
           : existing.dailyBest,
         supreme: best.supreme,
         dailyPercentile: typeof bestRanked?.percentile === "number"

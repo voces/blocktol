@@ -31,18 +31,25 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       })()
       : Promise.resolve(rest.iteration);
 
-    const [timeCounts, otherBest, iteration, latestRun, allRuns, rankedRuns, user] =
-      await Promise.all([
-        iterationId.then((id) => getIterationTimeCounts(id, userId)),
-        iterationId.then((id) => getIterationOtherBest(id, userId)),
-        iterationId.then((id) => getIteration(id)),
-        iterationId.then((id) => getLatestRun(userId, id, true)),
-        iterationId.then((id) => allRunsByIteration(userId, id)),
-        // The ranked three include void (abandoned) runs — abandoning still
-        // spends an attempt, so they must count even though the panel hides them.
-        iterationId.then((id) => attemptRunsByIteration(userId, id)),
-        createOrUpdateUser(userId),
-      ]);
+    const [
+      timeCounts,
+      otherBest,
+      iteration,
+      latestRun,
+      allRuns,
+      rankedRuns,
+      user,
+    ] = await Promise.all([
+      iterationId.then((id) => getIterationTimeCounts(id, userId)),
+      iterationId.then((id) => getIterationOtherBest(id, userId)),
+      iterationId.then((id) => getIteration(id)),
+      iterationId.then((id) => getLatestRun(userId, id, true)),
+      iterationId.then((id) => allRunsByIteration(userId, id)),
+      // The ranked three include void (abandoned) runs — abandoning still
+      // spends an attempt, so they must count even though the panel hides them.
+      iterationId.then((id) => attemptRunsByIteration(userId, id)),
+      createOrUpdateUser(userId),
+    ]);
 
     const remainingTime = Math.floor(
       60 - (Date.now() - new Date(latestRun?.created ?? 0).getTime()) /

@@ -12,7 +12,9 @@ type Item = DailyItem;
 
 const percentOf = (item: Item) =>
   typeof item.ownBest === "number" && typeof item.best === "number"
-    ? item.best === item.min ? 1 : (item.ownBest - item.min) / (item.best - item.min)
+    ? item.best === item.min
+      ? 1
+      : (item.ownBest - item.min) / (item.best - item.min)
     : null;
 
 // Today's standing at a glance: the ranked result (best of the three attempts,
@@ -31,10 +33,10 @@ export const TodayResult = () => {
   if (attemptsRemaining !== 0) return null;
 
   const now = new Date();
-  const todayKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-  const today = [...items.values()].find((i) =>
-    i.daily.join("-") === todayKey
-  );
+  const todayKey = `${now.getFullYear()}-${
+    now.getMonth() + 1
+  }-${now.getDate()}`;
+  const today = [...items.values()].find((i) => i.daily.join("-") === todayKey);
 
   // These results are today's, but the board might be showing another day. Load
   // today's board first (so the maze renders on the right fixed pieces and the
@@ -60,13 +62,9 @@ export const TodayResult = () => {
   // Tint each chip to its percentile band (supreme → gold + glow), matching the
   // result modal rather than a fixed green/blue.
   const rankedBand = rankedBest
-    ? rankedBest.supreme
-      ? "var(--gold)"
-      : percentileBand(
-        typeof rankedBest.percentile === "number"
-          ? rankedBest.percentile
-          : null,
-      )
+    ? rankedBest.supreme ? "var(--gold)" : percentileBand(
+      typeof rankedBest.percentile === "number" ? rankedBest.percentile : null,
+    )
     : "var(--text-mute)";
   const personalBand = personalBest == null
     ? "var(--text-mute)"

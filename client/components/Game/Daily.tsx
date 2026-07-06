@@ -96,9 +96,9 @@ export const Daily = () => {
     : null;
   // Banded theme colour (red → amber → green → blue), supreme in gold — the
   // shared scheme used by the today-result and attempts panels too.
-  const beatColor = isSupreme
-    ? "var(--gold)"
-    : percentileBand(typeof best.percentile === "number" ? best.percentile : null);
+  const beatColor = isSupreme ? "var(--gold)" : percentileBand(
+    typeof best.percentile === "number" ? best.percentile : null,
+  );
 
   const beatKind: keyof typeof BEAT_ICON =
     isSupreme || (beatPct !== null && beatPct >= 50)

@@ -66,9 +66,11 @@ export const Game = (
             extraAttemptBannerTime={extraAttemptBannerTime ?? false}
           />
         </div>
-        {/* One wrapper so mobile can scroll these as a unit below the board;
+        {
+          /* One wrapper so mobile can scroll these as a unit below the board;
             on desktop it's `display: contents`, letting the three panels drop
-            straight into the grid (today/cal left, attempts right). */}
+            straight into the grid (today/cal left, attempts right). */
+        }
         <div class="game__panel">
           <TodayResult />
           <Attempts />
