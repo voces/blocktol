@@ -7,6 +7,8 @@ import { listIterations } from "./iteration/list.ts";
 import { abandonRun } from "./iteration/run/abandon.ts";
 import { startRun } from "./iteration/run/start.ts";
 import { updateRun } from "./iteration/run/update.ts";
+import { getProfile } from "./profile.ts";
+import { rename } from "./rename.ts";
 import { reportClientError } from "./reportClientError.ts";
 
 const handlers = {
@@ -17,6 +19,8 @@ const handlers = {
   updateRun,
   abandonRun,
   best,
+  getProfile,
+  rename,
   reportClientError,
 };
 

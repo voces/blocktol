@@ -189,6 +189,29 @@ body {
 
 .profile__avatar {
   display: block;
+  /* Decorative: the game's global touch handlers treat any touched <svg> as a
+     board interaction (zooming it), so keep taps on the button, not the glyph. */
+  pointer-events: none;
+}
+
+/* Header profile button once loaded: the user's coloured letter avatar (fill
+   set inline from their id), matching the dialog avatar. */
+.profile-avatar-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.profile-avatar-btn__initial {
+  font: 700 15px var(--font);
+  line-height: 1;
 }
 
 /* Right-hand header cluster: the (mobile-only) calendar button and profile. */
@@ -1254,4 +1277,322 @@ a:hover {
 
 .result__btn--keep {
   background: var(--slow-runner);
+}
+
+/* Profile dialog (see Profile.tsx) — a card over a dimmed board. Mobile: a
+   bottom sheet that hugs its content (so a sparse profile doesn't strand a
+   full-screen void). Desktop: a centred dialog card, like the daily result.
+   Both are dismissed by the backdrop or the close button. */
+.profile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  box-sizing: border-box;
+  background: rgba(6, 6, 10, 0.72);
+  /* Mobile default: anchored to the bottom as a sheet. */
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Desktop: card centred (never past the viewport midpoint on short windows). */
+.profile-modal--desktop {
+  align-items: center;
+  padding: 24px;
+}
+
+.profile-modal__sheet {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  /* Let the flex item shrink to the viewport rather than to its grid's
+     min-content (which would push the sheet wider than a phone screen). */
+  min-width: 0;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  text-align: left;
+  background: var(--surface);
+  /* Bottom sheet: rounded top only, flush to the screen's bottom edge. */
+  border-radius: 22px 22px 0 0;
+  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
+  animation: profileSheetIn 0.22s ease;
+}
+
+@keyframes profileSheetIn {
+  from {
+    transform: translateY(12%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* On desktop the sheet is a free-floating rounded card. */
+.profile-modal--desktop .profile-modal__sheet {
+  max-width: 440px;
+  max-height: none;
+  overflow-y: visible;
+  padding: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+  animation: none;
+}
+
+/* Decorative dialog icons (edit pencil, copy/link) must not act as board-input
+   targets — the game's touch handlers zoom the board on any touched <svg>. Let
+   the taps fall through to the buttons beneath. */
+.profile-modal svg {
+  pointer-events: none;
+}
+
+.profile-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--color);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Header: avatar, name + join date, rating pinned to the right. Held to the
+   avatar's height so swapping in the (shorter) rename bar doesn't shrink the
+   dialog — the bar just centres in the same space. */
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  margin: 8px 0 18px;
+  padding-right: 38px;
+}
+
+.profile-head__avatar {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 24px var(--font);
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 8px 20px -8px var(--accent);
+}
+
+.profile-head__id {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-head__name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-head__name {
+  font: 700 20px var(--font);
+  color: var(--color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-head__edit {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-mute);
+  cursor: pointer;
+}
+
+.profile-head__edit:hover {
+  color: var(--color);
+}
+
+.profile-head__joined {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-top: 3px;
+}
+
+.profile-head__rating {
+  flex: none;
+  text-align: right;
+}
+
+.profile-head__rating-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.profile-head__rating-label {
+  font: 600 10px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+
+/* Inline rename: a full-width bar that replaces the whole header row while
+   editing, so the input isn't crushed between the avatar and rating. */
+.profile-rename {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.profile-rename__input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--color);
+  font: 600 16px var(--font);
+}
+
+.profile-rename__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.profile-rename__save,
+.profile-rename__cancel {
+  flex: none;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  font: 600 12px var(--font);
+  cursor: pointer;
+}
+
+.profile-rename__save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.profile-rename__save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-rename__cancel {
+  background: var(--surface-2);
+  color: var(--text-mute);
+}
+
+/* Three equal stat tiles. */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.profile-stat {
+  padding: 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.profile-modal--desktop .profile-stat {
+  background: var(--surface-2);
+}
+
+.profile-stat__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color);
+}
+
+.profile-stat__label {
+  font: 500 11px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+/* Best build — a wide tile, clickable to review the maze on the board. */
+.profile-best {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-align: left;
+}
+
+.profile-best--clickable {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.profile-best--clickable:hover {
+  background: var(--surface-3);
+}
+
+.profile-best__label {
+  font: 500 11px var(--font);
+  color: var(--text-mute);
+}
+
+/* Neutral, not the accent blue — blue is a mid-percentile band in this app's
+   ramp, and best build carries no percentile, so it shouldn't imply one. */
+.profile-best__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color);
+}
+
+/* Copy-login-link action row. */
+.profile-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: 600 14px var(--font);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.profile-action:hover {
+  background: var(--surface-3);
 }
