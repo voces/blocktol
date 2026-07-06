@@ -78,7 +78,10 @@ export const emitter = <T, Events extends EventMap>(
         events[name] ?? undefined;
       if (!callbacks) return;
 
-      callbacks.forEach((callback) => callback.call(host, event));
+      // Iterate a snapshot: a listener may synchronously re-render and add/remove
+      // listeners (mutating this array) mid-dispatch — without the copy, splice
+      // shifts indices and forEach silently skips a listener.
+      [...callbacks].forEach((callback) => callback.call(host, event));
     };
   }
 

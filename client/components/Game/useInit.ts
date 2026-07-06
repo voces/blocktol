@@ -22,6 +22,8 @@ export const useInit = () => {
     setBlocks,
     setPower,
     setBricks,
+    setBricksTotal,
+    setPowerTotal,
     setRun,
     setCheckpoint,
     setDate,
@@ -70,6 +72,12 @@ export const useInit = () => {
       setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
       setBricks(data.bricks);
       setPower(data.power);
+      // Full budget = what's left plus what's already been placed this run, so a
+      // resumed run still recovers the true total (for the review leftover chips).
+      setBricksTotal(data.bricks + data.blocks.filter((b) => b.player).length);
+      setPowerTotal(
+        data.power + data.blocks.filter((b) => b.player && b.thunder).length,
+      );
       setTime(Math.floor(data.remainingTime));
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
@@ -93,6 +101,9 @@ export const useInit = () => {
       setBlocks(data.blocks.map((b) => ({ ...b })));
       setBricks(data.bricks);
       setPower(data.power);
+      // A staged board has no player blocks yet, so its budget is the full total.
+      setBricksTotal(data.bricks);
+      setPowerTotal(data.power);
       setTime(60);
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);

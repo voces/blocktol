@@ -48,6 +48,11 @@ export const useGameState = () => {
   );
   const [bricks, setBricks] = useState(-1);
   const [power, setPower] = useState(-1);
+  // The iteration's full brick/power budget (remaining + already placed at load),
+  // captured when the board loads so reviewing a past maze can show how much was
+  // left over. -1 until a board has loaded.
+  const [bricksTotal, setBricksTotal] = useState(-1);
+  const [powerTotal, setPowerTotal] = useState(-1);
   const [time, setTime] = useState(-2);
   // The iteration currently loaded on the board (ranked or free-play).
   const [iteration, setIteration] = useState<number>();
@@ -114,8 +119,13 @@ export const useGameState = () => {
     setRun(undefined);
     setStaged(false);
     setTime(-1);
-    setBricks(-1);
-    setPower(-1);
+    // Show what this run left unspent: every placed block cost a brick, every
+    // thunder an extra snowflake. 0/0 when the whole budget was used. Hidden (-1)
+    // only if we somehow never loaded the board's budget.
+    const usedBricks = maze.length;
+    const usedPower = maze.filter((b) => b.thunder).length;
+    setBricks(bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - usedBricks));
+    setPower(powerTotal < 0 ? -1 : Math.max(0, powerTotal - usedPower));
     setTouching(false);
     setInvalid(false);
     setTransitionBlock(undefined);
@@ -140,6 +150,8 @@ export const useGameState = () => {
     run,
     setBlocks,
     setBricks,
+    setBricksTotal,
+    setPowerTotal,
     setCheckpoint,
     setDate,
     setInvalid,

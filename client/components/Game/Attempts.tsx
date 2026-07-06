@@ -116,7 +116,12 @@ export const Attempts = () => {
                   key={i}
                   style={{ "--band": band }}
                   title="View this maze"
-                  onClick={() => viewMaze(attempt.maze)}
+                  onClick={() => {
+                    viewMaze(attempt.maze);
+                    // Mobile scrolls the board out of view under the runs list;
+                    // snap back up to it (instant) so the reviewed maze is seen.
+                    document.querySelector(".game")?.scrollTo({ top: 0 });
+                  }}
                 >
                   <span class="attempts__time mono">{attempt.duration}s</span>
                   <div class="attempts__meta">
@@ -125,10 +130,10 @@ export const Attempts = () => {
                       {group.count > 1 && (
                         <span class="attempts__count">×{group.count}</span>
                       )}
-                      {group.ranked && (
+                      {!simplified && group.ranked && (
                         <span class="attempts__daily">Daily</span>
                       )}
-                      {i === bestIdx && (
+                      {i === bestIdx && (!simplified || groups.length > 1) && (
                         <span class="attempts__badge">
                           {supreme ? "SUPREME" : "BEST"}
                         </span>
