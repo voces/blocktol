@@ -47,10 +47,25 @@ export const startRun = method(startRunBody, true)(
       iterationAttempts(userId, iteration),
     ]);
 
+    // A run that opens with a valid placement is a committed free-play attempt,
+    // so it's inserted already non-void (rather than starting void and being
+    // flipped by the updateCurrentRun below). An invalid/absent opening block
+    // starts void, as before. Validated up front so the insert knows.
+    const validation = block ? validateRun(data, [block]) : null;
+    const openingBlockValid = !!validation?.ok;
+
     // Must finish within the request: the new Deploy tears down the isolate
     // after the response, so a still-pending write can be killed mid-flight.
     try {
-      await dbStartRun(iteration, userId, data.min, year, month, day);
+      await dbStartRun(
+        iteration,
+        userId,
+        data.min,
+        year,
+        month,
+        day,
+        !openingBlockValid,
+      );
     } catch (err) {
       console.error(err);
       return { error: "failed to start run", status: 500 };
@@ -61,35 +76,32 @@ export const startRun = method(startRunBody, true)(
     // The run opened with a placement (free play): persist it now so the first
     // brick doesn't need a second request, and return the board already holding
     // it.
-    if (block) {
-      const validation = validateRun(data, [block]);
-      if (validation.ok) {
-        const player = { ...block, player: true };
-        try {
-          await updateCurrentRun(
-            userId,
-            validation.duration,
-            [player],
-            iteration,
-          );
-        } catch (err) {
-          // The run is started regardless; the client re-sends the maze on its
-          // next placement, so a lost opening block self-heals.
-          console.error(err);
-        }
-        return {
-          ...data,
-          blocks: [...data.blocks, player],
-          bricks: data.bricks - 1,
-          path: validation.path,
-          duration: validation.duration,
-          slows: validation.slows,
-          ownBest,
-          best,
-          attempts,
-          remainingTime: 60,
-        };
+    if (block && validation?.ok) {
+      const player = { ...block, player: true };
+      try {
+        await updateCurrentRun(
+          userId,
+          validation.duration,
+          [player],
+          iteration,
+        );
+      } catch (err) {
+        // The run is started regardless; the client re-sends the maze on its
+        // next placement, so a lost opening block self-heals.
+        console.error(err);
       }
+      return {
+        ...data,
+        blocks: [...data.blocks, player],
+        bricks: data.bricks - 1,
+        path: validation.path,
+        duration: validation.duration,
+        slows: validation.slows,
+        ownBest,
+        best,
+        attempts,
+        remainingTime: 60,
+      };
     }
 
     let path: ReturnType<typeof findPathFromData>;

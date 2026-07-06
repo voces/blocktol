@@ -60,7 +60,8 @@ const lastDay = (idx: number) =>
 
 export const Calendar = () => {
   const { items, oldest } = useDailyItems();
-  const { freePlay, staged, attemptsRemaining } = useContext(GameStateContext);
+  const { freePlay, staged, attemptsRemaining, calendarOpen, setCalendarOpen } =
+    useContext(GameStateContext);
   const [selected, setSelected] = useState(NaN);
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
@@ -89,9 +90,10 @@ export const Calendar = () => {
   const todayNum = ty * 10000 + tm * 100 + td;
 
   const currentIdx = ty * 12 + tmonth0;
-  // Default view: current month, plus the previous month above it when early —
-  // desktop only.
-  const showPrev = !mobile && td < PREV_MONTH_UNTIL;
+  // Default view: current month, plus the previous month above it when early in
+  // the month (so a short current month isn't marooned). Desktop shows it inline;
+  // the mobile full-screen picker does too, to fill the sheet and give context.
+  const showPrev = (!mobile || calendarOpen) && td < PREV_MONTH_UNTIL;
   const earliestDefault = currentIdx - (showPrev ? 1 : 0);
 
   // Segments to render (oldest first): { idx, toDay }.
@@ -140,7 +142,12 @@ export const Calendar = () => {
   // comes back empty and gets cached. Once the daily is done (their runs now
   // exist), drop the cache for this month and refetch so the calendar fills in.
   useEffect(() => {
-    if (attemptsRemaining !== 0) return;
+    if (attemptsRemaining !== 0) {
+      // The daily just (re)started — make sure a stale-open picker doesn't linger
+      // to reappear when it ends.
+      setCalendarOpen(false);
+      return;
+    }
     requested.current.delete(currentIdx);
     setRetry((r) => r + 1);
   }, [attemptsRemaining]);
@@ -153,13 +160,18 @@ export const Calendar = () => {
   // no wandering off to other days mid-run. Shown once it's done or during free
   // play (both attemptsRemaining === 0).
   if (attemptsRemaining !== 0) return null;
-
+  // On mobile the calendar is only the full-screen picker (opened from the header
+  // button) — nothing inline. Desktop ignores calendarOpen and always shows it.
+  if (mobile && !calendarOpen) return null;
   if (!items.size) return null;
 
   const byDate = new Map<string, Item>();
   for (const item of items.values()) byDate.set(item.daily.join("-"), item);
 
   const pick = (item: Item) => {
+    // Picking a day dismisses the (mobile) picker back to the board; a no-op on
+    // desktop where it's never open.
+    setCalendarOpen(false);
     if (item.iteration === selected) {
       // Re-clicking the current board's date cancels an in-progress free-play
       // build — re-stage a fresh board. Ranked attempts (and an untouched staged
@@ -222,32 +234,31 @@ export const Calendar = () => {
     );
   };
 
-  return (
-    <div class="calendar">
-      <div class="calendar__head">
-        <span class="section-title">Previous days</span>
-        <div class="calendar__pager">
-          <button
-            type="button"
-            class="calendar__arrow tapc"
-            aria-label="Earlier months"
-            disabled={!canPrev}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            class="calendar__arrow tapc"
-            aria-label="Later months"
-            disabled={!canNext}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            ›
-          </button>
-        </div>
-      </div>
+  const pager = (
+    <div class="calendar__pager">
+      <button
+        type="button"
+        class="calendar__arrow tapc"
+        aria-label="Earlier months"
+        disabled={!canPrev}
+        onClick={() => setPage((p) => p + 1)}
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        class="calendar__arrow tapc"
+        aria-label="Later months"
+        disabled={!canNext}
+        onClick={() => setPage((p) => Math.max(0, p - 1))}
+      >
+        ›
+      </button>
+    </div>
+  );
 
+  const grids = (
+    <>
       <div class="calendar__grid calendar__grid--weekdays">
         {WEEKDAYS.map((wd, i) => (
           <div class="calendar__weekday" key={`wd${i}`}>{wd}</div>
@@ -274,6 +285,46 @@ export const Calendar = () => {
           </Fragment>
         );
       })}
+    </>
+  );
+
+  // Mobile: a full-screen picker over the board — one header row (title, pager,
+  // close), grids anchored to the top. Tap the backdrop or a day to dismiss.
+  if (mobile) {
+    return (
+      <div class="calendar-modal" onClick={() => setCalendarOpen(false)}>
+        <div
+          class="calendar-modal__sheet"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div class="calendar-modal__header">
+            <span class="section-title">Previous days</span>
+            <div class="calendar-modal__tools">
+              {pager}
+              <button
+                type="button"
+                class="calendar-modal__close tapc"
+                aria-label="Close calendar"
+                onClick={() => setCalendarOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          {grids}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: inline in the left column.
+  return (
+    <div class="calendar">
+      <div class="calendar__head">
+        <span class="section-title">Previous days</span>
+        {pager}
+      </div>
+      {grids}
     </div>
   );
 };

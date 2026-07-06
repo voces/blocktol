@@ -30,6 +30,23 @@ export const PowerIcon = () => (
   </svg>
 );
 
+const ResetIcon = () => (
+  <svg
+    width={18}
+    height={18}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width={2}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5" />
+  </svg>
+);
+
 const formatBuild = (t: number) =>
   `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 
@@ -53,6 +70,7 @@ export const Hud = () => {
     setTime,
     iteration,
     staged,
+    freePlay,
     viewing,
     attemptsRemaining,
   } = useContext(GameStateContext);
@@ -67,6 +85,20 @@ export const Hud = () => {
       api.getBoard({ iteration, timeZone: getTimeZone() });
     }
   };
+
+  // Free-play only: abandon the in-progress attempt (server voids the current
+  // run — a privilege withheld from daily attempts) and re-stage a fresh board.
+  // getBoard re-fetches the attempts, which now exclude the voided run.
+  const onReset = () => {
+    if (iteration === undefined) return;
+    api.abandonRun({ iteration }).then(() =>
+      api.getBoard({ iteration, timeZone: getTimeZone() })
+    );
+  };
+  // Shown mid-round for free play only: after the first placement opens the run
+  // (staged is false) and while not reviewing a past maze. Daily runs (freePlay
+  // false) never get it.
+  const showReset = freePlay && !staged && !viewing;
 
   // Keyboard shortcut: R runs the current build now, or starts a fresh run once
   // the previous one has finished (power === -1 marks the idle/finished state).
@@ -123,57 +155,70 @@ export const Hud = () => {
           </div>
         )}
       </div>
-      {time > 0
-        ? staged
+      <div class="hud__controls">
+        {showReset && (
+          <button
+            type="button"
+            class="hud__reset tapc"
+            aria-label="Reset board"
+            title="Reset — abandon this attempt"
+            onClick={onReset}
+          >
+            <ResetIcon />
+          </button>
+        )}
+        {time > 0
+          ? staged
+            ? (
+              // Free play before the first placement: the clock is frozen and
+              // inert — placing a tile, not tapping, starts the run.
+              <div class="hud__build hud__build--staged">
+                <span class="hud__build-face hud__build-time">
+                  <span class="mono">{formatBuild(time)}</span>
+                  <span class="hud__build-label">to build</span>
+                </span>
+              </div>
+            )
+            : (
+              <button
+                type="button"
+                class={"hud__build tapc" + (flashing ? " flashing" : "") +
+                  (pressing ? " pressing" : "")}
+                onClick={() => setTime(0)}
+                onPointerDown={onPointerDown}
+                onPointerUp={endPress}
+                onPointerLeave={endPress}
+                onPointerCancel={endPress}
+              >
+                <span class="hud__build-face hud__build-time">
+                  <span class="mono">{formatBuild(time)}</span>
+                  <span class="hud__build-label">to build</span>
+                </span>
+                <span class="hud__build-face hud__build-ready">Ready?</span>
+              </button>
+            )
+          : run && time < 0
           ? (
-            // Free play before the first placement: the clock is frozen and
-            // inert — placing a tile, not tapping, starts the run.
-            <div class="hud__build hud__build--staged">
-              <span class="hud__build-face hud__build-time">
-                <span class="mono">{formatBuild(time)}</span>
-                <span class="hud__build-label">to build</span>
+            // Same clock slot, now counting up the live run.
+            <div class="hud__run">
+              <span class="mono">
+                <Timer to={run.duration} />
               </span>
+              <span class="hud__build-label">seconds</span>
             </div>
           )
-          : (
-            <button
-              type="button"
-              class={"hud__build tapc" + (flashing ? " flashing" : "") +
-                (pressing ? " pressing" : "")}
-              onClick={() => setTime(0)}
-              onPointerDown={onPointerDown}
-              onPointerUp={endPress}
-              onPointerLeave={endPress}
-              onPointerCancel={endPress}
-            >
-              <span class="hud__build-face hud__build-time">
-                <span class="mono">{formatBuild(time)}</span>
-                <span class="hud__build-label">to build</span>
+          : viewing
+          ? (
+            // Reviewing a past maze: the clock slot becomes the way back to play.
+            <button type="button" class="hud__build tapc" onClick={onPlay}>
+              <span class="hud__build-face hud__play">
+                <span class="hud__play-icon" aria-hidden="true">▶</span>
+                Play
               </span>
-              <span class="hud__build-face hud__build-ready">Ready?</span>
             </button>
           )
-        : run && time < 0
-        ? (
-          // Same clock slot, now counting up the live run.
-          <div class="hud__run">
-            <span class="mono">
-              <Timer to={run.duration} />
-            </span>
-            <span class="hud__build-label">seconds</span>
-          </div>
-        )
-        : viewing
-        ? (
-          // Reviewing a past maze: the clock slot becomes the way back to play.
-          <button type="button" class="hud__build tapc" onClick={onPlay}>
-            <span class="hud__build-face hud__play">
-              <span class="hud__play-icon" aria-hidden="true">▶</span>
-              Play
-            </span>
-          </button>
-        )
-        : null}
+          : null}
+      </div>
     </div>
   );
 };

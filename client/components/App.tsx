@@ -10,6 +10,7 @@ import {
   DailyItemsStore,
   useDailyItemsStore,
 } from "../hooks/useDailyItems.tsx";
+import { CalendarButton } from "./CalendarButton.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
 import { Profile } from "./Profile.tsx";
@@ -21,20 +22,25 @@ const Shell = (
     dailyStore: DailyItemsStore;
   },
 ) => (
-  <div style={{ textAlign: "center" }}>
-    <header class="app-header">
-      <div class="app-header__brand">
-        <Logo size={24} />
-        <h1>Blocktol</h1>
-      </div>
-      <Profile />
-    </header>
-    <DailyItemsContext.Provider value={dailyStore}>
-      <GameStateContext.Provider value={gameState}>
+  // The providers wrap the header too, so its calendar button can share game
+  // state with the (mobile) calendar modal rendered down in the game tree.
+  <DailyItemsContext.Provider value={dailyStore}>
+    <GameStateContext.Provider value={gameState}>
+      <div style={{ textAlign: "center" }}>
+        <header class="app-header">
+          <div class="app-header__brand">
+            <Logo size={24} />
+            <h1>Blocktol</h1>
+          </div>
+          <div class="app-header__actions">
+            <CalendarButton />
+            <Profile />
+          </div>
+        </header>
         {children}
-      </GameStateContext.Provider>
-    </DailyItemsContext.Provider>
-  </div>
+      </div>
+    </GameStateContext.Provider>
+  </DailyItemsContext.Provider>
 );
 
 const getHasCompletedOnboarding = () =>

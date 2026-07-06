@@ -9,6 +9,10 @@ export const startRun = (
   year: number,
   month: number,
   day: number,
+  // A run opened by a valid placement (a committed free-play attempt) starts
+  // non-void; an empty start (a daily attempt, or a staged free-play board with
+  // no placement yet) starts void until it's completed.
+  isVoid = true,
 ) =>
   sql`
     SELECT @isDaily1 := count(1) = 0
@@ -21,9 +25,25 @@ export const startRun = (
     WHERE YEAR(created) = ${year}
       AND MONTH(created) = ${month}
       AND DAY(created) = ${day};
-    
+
     INSERT INTO run (user, iteration, time, data, void, daily)
-    VALUES (${user}, ${iteration}, ${minTime}, '', TRUE, @isDaily1 AND @isDaily2);`;
+    VALUES (${user}, ${iteration}, ${minTime}, '', ${isVoid}, @isDaily1 AND @isDaily2);`;
+
+// Abandon the user's current run on an iteration by voiding it, so it drops out
+// of the panel and never counts toward best/standing. Constrained to
+// daily = FALSE: this privilege is for free-play runs only — a spent daily
+// attempt can't be erased. Targets the latest run (the one in progress); in free
+// play that is always the non-daily one, since daily runs are the first three.
+export const voidCurrentRun = (user: string, iteration: number) =>
+  sql`
+    UPDATE run
+    SET void = TRUE
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND daily = FALSE
+    ORDER BY created DESC
+    LIMIT 1;
+  `;
 
 export const getCurrentRun = (user: string) =>
   sql<{ iteration: number; created: string; time: number }[] | undefined>`
