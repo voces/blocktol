@@ -30,6 +30,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     iteration,
     staged,
     setStaged,
+    freePlay,
   } = useContext(GameStateContext);
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
               api.updateRun({
                 iteration: iteration ?? -1,
                 blocks: newBlocks.filter((b) => b.local),
+                freePlay,
               });
               rebuildGrid(grid, checkpoint, newBlocks);
               return newBlocks;
@@ -72,6 +74,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
               api.updateRun({
                 iteration: iteration ?? -1,
                 blocks: newBlocks.filter((b) => b.local),
+                freePlay,
               });
               rebuildGrid(grid, checkpoint, newBlocks);
               return newBlocks;
@@ -140,6 +143,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
           api.updateRun({
             iteration: iteration ?? -1,
             blocks: newBlocks.filter((b) => b.local),
+            freePlay,
           });
         }
         rebuildGrid(grid, checkpoint, newBlocks);
@@ -182,5 +186,6 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     bricks,
     iteration,
     staged,
+    freePlay,
   ]);
 };

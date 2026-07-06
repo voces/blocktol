@@ -1,7 +1,10 @@
 import { h } from "preact";
 import { useContext } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
-import { percentileBand } from "../../../common/percentileColor.ts";
+import {
+  percentileBand,
+  standingBand,
+} from "../../../common/percentileColor.ts";
 import { api } from "../../api.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { DailyItem, useDailyItems } from "../../hooks/useDailyItems.tsx";
@@ -79,7 +82,7 @@ export const TodayResult = () => {
     ? "var(--gold)"
     : personalPct === 1
     ? "var(--peak)"
-    : percentileBand(personalPct);
+    : standingBand(personalPct);
 
   return (
     <div class="today-result">

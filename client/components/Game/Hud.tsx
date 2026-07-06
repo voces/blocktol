@@ -86,14 +86,12 @@ export const Hud = () => {
     }
   };
 
-  // Free-play only: abandon the in-progress attempt (server voids the current
-  // run — a privilege withheld from daily attempts) and re-stage a fresh board.
-  // getBoard re-fetches the attempts, which now exclude the voided run.
+  // Free-play only: re-stage a fresh board, discarding the in-progress build.
+  // A free-play run is void until it executes (see commitRun), so simply
+  // re-staging abandons it — no explicit void call needed.
   const onReset = () => {
     if (iteration === undefined) return;
-    api.abandonRun({ iteration }).then(() =>
-      api.getBoard({ iteration, timeZone: getTimeZone() })
-    );
+    api.getBoard({ iteration, timeZone: getTimeZone() });
   };
   // Shown mid-round for free play only: after the first placement opens the run
   // (staged is false) and while not reviewing a past maze. Daily runs (freePlay

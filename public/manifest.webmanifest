@@ -1,7 +1,7 @@
 {
   "background_color": "#0c0c11",
   "theme_color": "#0c0c11",
-  "display": "fullscreen",
+  "display": "standalone",
   "name": "Blocktol",
   "short_name": "Blocktol",
   "description": "A puzzle game where you place blocks to create the longest path.",

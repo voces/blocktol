@@ -49,7 +49,11 @@ export const updateUserName = (id: string, name: string) =>
 
 // The profile's headline figures, in one round trip:
 //   1. the user's own row (display name, rating, join date);
-//   2. dailies completed and their best-ever build (any run, daily or free);
+//   2. dailies played (distinct iterations with a ranked daily run, abandoned
+//      or not — mirrors the runs panel counting spent attempts) and the best-
+//      ever build (any run, daily or free). NB: this "Played" is deliberately
+//      NOT the `user.plays` column — that's the narrower rating counter (rated +
+//      completed + rankable); see getRatingParticipants for the contrast;
 //   3. the iteration of that best build (so the card can open it);
 //   4. per-day ranked standings — the user's best daily time vs every OTHER
 //      player's best daily time that day — from which the median percentile and
@@ -73,7 +77,7 @@ export const getUserStats = async (user: string) => {
     FROM user WHERE id = ${user};
 
     SELECT
-      COUNT(DISTINCT CASE WHEN daily = TRUE AND void = FALSE THEN iteration END) played,
+      COUNT(DISTINCT CASE WHEN daily = TRUE THEN iteration END) played,
       ROUND(MAX(CASE WHEN void = FALSE THEN time END), 2) bestBuild
     FROM run WHERE user = ${user};
 
@@ -176,17 +180,47 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
     }))
   );
 
-// Every non-void run on an iteration (the ranked three plus any free play),
-// oldest first, each with its maze and creation time — the full runs list for
-// the panel. Void (abandoned, never-submitted) runs are skipped so the panel
-// isn't padded with empty rows.
+// The user's own runs on an iteration (their ranked attempts plus any free
+// play), oldest first, with each run's maze, creation time, and whether it was a
+// ranked daily attempt.
+//
+// A run is a ranked attempt iff it's among the first three AND was created on the
+// iteration's own day — matching how the daily flag is assigned (a daily attempt
+// can only happen on the user's local day the daily was live). Free play — same
+// day after the three attempts, or a replay of a past day — never qualifies, so
+// it isn't badged "Daily". `created <= the third-oldest run` bounds the first
+// three (COALESCE keeps them all when there are fewer than three).
+//
+// Non-void runs are always returned, plus voided runs that are ranked attempts
+// (a daily attempt started but never built still counts as spent). Voided free
+// play — abandoned, incl. a never-run build — stays hidden so the panel isn't
+// padded with empty rows.
 export const allRunsByIteration = (user: string, iteration: number) =>
-  sql<{ time: number; data: string; created: string }[]>`
-    SELECT time, data, created
+  sql<{ time: number; data: string; created: string; ranked: number }[]>`
+    SELECT
+      time, data, created,
+      (
+        created <= COALESCE((
+          SELECT created FROM run
+          WHERE user = ${user} AND iteration = ${iteration}
+          ORDER BY created ASC LIMIT 1 OFFSET 2
+        ), created)
+        AND DATE(created) = DATE((SELECT created FROM iteration WHERE id = ${iteration}))
+      ) ranked
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
-      AND void = FALSE
+      AND (
+        void = FALSE
+        OR (
+          created <= COALESCE((
+            SELECT created FROM run
+            WHERE user = ${user} AND iteration = ${iteration}
+            ORDER BY created ASC LIMIT 1 OFFSET 2
+          ), created)
+          AND DATE(created) = DATE((SELECT created FROM iteration WHERE id = ${iteration}))
+        )
+      )
     ORDER BY created ASC
     LIMIT 100;
   `.then((r) =>
@@ -194,6 +228,7 @@ export const allRunsByIteration = (user: string, iteration: number) =>
       time: run.time,
       maze: deserializeRun(run.data),
       created: new Date(run.created).getTime(),
+      ranked: !!run.ranked,
     }))
   );
 
@@ -411,6 +446,18 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
 export const updateRating = (user: string, rating: number) =>
   sql`UPDATE user SET rating = ${rating} WHERE id = ${user};`;
 
+// The `user.plays` column is the rating system's experience counter — NOT the
+// profile's "Played" statistic (getUserStats), which is a deliberately different
+// and broader number. `plays` counts only the dailies a player has been *rated*
+// on: incremented once per rated iteration for each ranked participant (see
+// rateDailies / applyRatings), i.e. days where they completed a ranked run
+// (void = FALSE) AND were ranked against at least one other player, on a daily
+// that has since closed and been rated. Today's daily and solo-player days don't
+// count. It exists solely to decay the ELO K-factor, `K / log2(plays + 2)`
+// (rating.ts) — nothing reads it for display. The profile "Played" figure, by
+// contrast, is COUNT(DISTINCT daily iteration) with no void/rated/opponent
+// gating, so it reflects every daily the player attempted, current day included.
+//
 // Each completer of an iteration's daily, with their best time and current
 // rating/plays. Abandoners (no completed run) are excluded — they already lose
 // an attempt; they aren't rated.

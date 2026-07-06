@@ -3,7 +3,11 @@
 //     (dropped from the panel / never counted).
 //   - Free-play only: voidCurrentRun is scoped to daily = FALSE, so a spent
 //     daily attempt can't be erased this way.
-//   - The client follows this with getBoard to re-stage a fresh board.
+//
+// DEPRECATED (2026-07-06): free-play runs are now void until they execute (see
+// commitRun), so re-staging already abandons an in-progress build and the client
+// no longer calls this. Kept temporarily so an older cached client doesn't 404;
+// safe to remove after ~2026-07-13 once those clients have refreshed.
 
 import { z } from "zod";
 import { voidCurrentRun } from "../../../db/run.ts";
