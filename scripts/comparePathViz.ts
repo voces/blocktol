@@ -1,7 +1,14 @@
 // Render an SVG that overlays the OLD path (Theta*, loaded from a git ref) and
 // the NEW path (current working tree) for the same board, so the difference the
-// pathing change makes is visible at a glance. Old is drawn dashed red, new
-// solid blue; where they coincide the blue simply sits on the red.
+// pathing change makes is visible at a glance. New is drawn as a thick solid
+// blue line; the old path is drawn dashed red *on top* so it stays visible even
+// where the two coincide (the blue shows through the gaps).
+//
+// Obstacles are coloured by who placed them and whether they slow: preplaced
+// blocks green, thunders pink, player-placed pieces outlined amber. Every one of
+// them still obstructs the runner and shapes both paths — the colour is only a
+// legend. The two times are full simulated run times (thunder slows included),
+// so the old one can be cross-checked against the run's stored DB time.
 //
 // The baseline's sibling modules (BinaryHeap/constants/MMap/types) are unchanged
 // by the pathing work, so the old pathing.ts body is dropped next to them and
@@ -77,10 +84,12 @@ try {
 
   // ---- Obtain a board -----------------------------------------------------
 
+  type Cell = Point & { thunder?: boolean; player?: boolean };
   type Board = {
     label: string;
     checkpoint: Point;
-    blocks: (Point & { thunder?: boolean })[];
+    blocks: Cell[];
+    storedTime?: number; // the run's persisted (old-algorithm) time, if any
   };
 
   const generateBoard = (seed: number): Board => {
@@ -134,26 +143,45 @@ try {
       console.error(`Iteration ${id} not found.`);
       Deno.exit(1);
     }
-    const blocks: (Point & { thunder?: boolean })[] = iterBlocks.map((b) => ({
+    // Preplaced (iteration-fixed) pieces: green blocks + pink thunders.
+    const blocks: Cell[] = iterBlocks.map((b) => ({
       x: b.x,
       y: b.y,
       thunder: b.kind === "thunder",
+      player: false,
     }));
 
+    let storedTime: number | undefined;
     const runUser = arg("run");
     if (runUser) {
       const { deserializeRun } = await import("../server/util/run.ts");
-      const [run] = await sql<{ data: string }[]>`
-        SELECT data FROM run
+      // A user can have many runs; pick their best (this game maximises the
+      // runner's time), deterministically, and keep its persisted time so the
+      // render can show what the DB currently holds alongside the recompute.
+      const [run] = await sql<{ data: string; time: number }[]>`
+        SELECT data, time FROM run
         WHERE iteration = ${id} AND user = ${runUser} AND void = FALSE
+        ORDER BY time DESC
         LIMIT 1;
       `;
-      if (run) blocks.push(...deserializeRun(run.data));
+      if (!run) {
+        console.error(
+          `No scored run for user '${runUser}' on iteration ${id}.`,
+        );
+        Deno.exit(1);
+      }
+      storedTime = run.time;
+      // deserializeRun yields the player's placed pieces (thunder flag included);
+      // tag them so the render can distinguish them from the preplaced maze.
+      for (const b of deserializeRun(run.data)) {
+        blocks.push({ ...b, player: true });
+      }
     }
     board = {
       label: `iteration ${id}${runUser ? ` · ${runUser}` : ""}`,
       checkpoint: { x: iter.checkpoint_x, y: iter.checkpoint_y },
       blocks,
+      storedTime,
     };
   } else if (arg("search") !== undefined) {
     const count = Number(arg("search")) || 400;
@@ -193,8 +221,18 @@ try {
 
   const grid = current.newGrid();
   grid[board.checkpoint.y + 0.5][board.checkpoint.x + 0.5] = true;
-  for (const { x, y } of board.blocks) {
-    offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+  // Per-cell owner/kind so obstacles can be coloured: preplaced vs player, and
+  // block vs thunder. All of them still obstruct the runner (they shape both
+  // paths); the colour only says who placed it and whether it also slows.
+  const meta: (Cell | undefined)[][] = Array.from(
+    { length: 20 },
+    () => Array<Cell | undefined>(20).fill(undefined),
+  );
+  for (const b of board.blocks) {
+    offsets.forEach(([xd, yd]) => {
+      grid[b.y + yd][b.x + xd] = true;
+      meta[b.y + yd][b.x + xd] = b;
+    });
   }
 
   const cx = board.checkpoint.x + 1; // checkpoint cell centre
@@ -205,21 +243,75 @@ try {
       path.map((p) => `${p.x + 0.5},${p.y + 0.5}`).join(" ")
     }" fill="none" ${attrs} stroke-linejoin="round" stroke-linecap="round"/>`;
 
+  const WALL = "#3a3d44";
+  const EMPTY = "#c7d2e8";
+  const BLOCK = "#8fce9b"; // preplaced block
+  const THUNDER = "#e07fc4"; // thunder (also slows)
+  const PLAYER = "#f5a623"; // outline on player-placed pieces
+
   const cells: string[] = [];
   for (let y = 0; y < 20; y++) {
     for (let x = 0; x < 20; x++) {
       const wall = y === 0 || x === 0 || y === 19 || x === 19;
-      const fill = grid[y][x] ? (wall ? "#3a3d44" : "#8fce9b") : "#c7d2e8";
+      let fill = EMPTY;
+      let stroke = "#ffffff22";
+      let sw = 0.03;
+      if (wall) {
+        fill = WALL;
+      } else if (grid[y][x]) {
+        const m = meta[y][x];
+        if (m) { // a placed piece (the checkpoint cell has no meta → stays empty)
+          fill = m.thunder ? THUNDER : BLOCK;
+          if (m.player) stroke = PLAYER, sw = 0.1;
+        }
+      }
       cells.push(
         `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}" ` +
-          `stroke="#ffffff22" stroke-width="0.03" rx="0.12"/>`,
+          `stroke="${stroke}" stroke-width="${sw}" rx="0.12"/>`,
       );
     }
   }
 
+  const identical = old.path.length === neu.path.length &&
+    old.path.every((p, i) => p.x === neu.path[i].x && p.y === neu.path[i].y);
+  const hasThunder = board.blocks.some((b) => b.thunder);
+  const hasPlayer = board.blocks.some((b) => b.player);
+
+  const legend: string[] = [
+    `<text x="0" y="21.05" fill="#e6e6e6" font-size="0.6" font-weight="600">${board.label}</text>`,
+    `<rect x="0" y="21.55" width="0.8" height="0.18" fill="#ff5a5a"/>`,
+    `<text x="1" y="21.73" fill="#e6e6e6" font-size="0.56">Theta* (old): ${
+      old.seconds.toFixed(2)
+    }s${
+      board.storedTime !== undefined
+        ? `  ·  stored ${board.storedTime.toFixed(2)}s ${
+          Math.abs(board.storedTime - old.seconds) < 0.02 ? "✓" : "✗ differs"
+        }`
+        : ""
+    }</text>`,
+    `<rect x="0" y="22.35" width="0.8" height="0.18" fill="#4c8dff"/>`,
+    `<text x="1" y="22.53" fill="#e6e6e6" font-size="0.56">Visibility graph (new): ${
+      neu.seconds.toFixed(2)
+    }s</text>`,
+    `<text x="0" y="23.35" fill="#8fce9b" font-size="0.56">Runner reaches exit ${
+      (old.seconds - neu.seconds).toFixed(2)
+    }s sooner${identical ? "  ·  paths identical on this board" : ""}</text>`,
+  ];
+  if (hasPlayer || hasThunder) {
+    legend.push(
+      `<rect x="0" y="24.1" width="0.5" height="0.5" fill="${BLOCK}" rx="0.1"/>`,
+      `<text x="0.65" y="24.48" fill="#e6e6e6" font-size="0.52">preplaced</text>`,
+      `<rect x="4.3" y="24.1" width="0.5" height="0.5" fill="${BLOCK}" stroke="${PLAYER}" stroke-width="0.1" rx="0.1"/>`,
+      `<text x="4.95" y="24.48" fill="#e6e6e6" font-size="0.52">player</text>`,
+      `<rect x="7.9" y="24.1" width="0.5" height="0.5" fill="${THUNDER}" rx="0.1"/>`,
+      `<text x="8.55" y="24.48" fill="#e6e6e6" font-size="0.52">thunder (slows)</text>`,
+    );
+  }
+  const height = hasPlayer || hasThunder ? 25.2 : 24;
+
   svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.5 -0.5 21 24" font-family="ui-sans-serif, system-ui, sans-serif">
-  <rect x="-0.5" y="-0.5" width="21" height="24" fill="#0f1115"/>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.5 -0.5 21 ${height}" font-family="ui-sans-serif, system-ui, sans-serif">
+  <rect x="-0.5" y="-0.5" width="21" height="${height}" fill="#0f1115"/>
   ${cells.join("\n  ")}
   <circle cx="${cx}" cy="${cy}" r="0.42" fill="none" stroke="#f5c518" stroke-width="0.14"/>
   <line x1="${cx - 0.28}" y1="${cy - 0.28}" x2="${cx + 0.28}" y2="${
@@ -228,32 +320,16 @@ try {
   <line x1="${cx - 0.28}" y1="${cy + 0.28}" x2="${cx + 0.28}" y2="${
       cy - 0.28
     }" stroke="#f5c518" stroke-width="0.12"/>
+  ${polyline(neu.path, `stroke="#4c8dff" stroke-width="0.2" opacity="0.95"`)}
   ${
       polyline(
         old.path,
-        `stroke="#ff5a5a" stroke-width="0.17" stroke-dasharray="0.45 0.32" opacity="0.95"`,
+        `stroke="#ff5a5a" stroke-width="0.16" stroke-dasharray="0.4 0.34"`,
       )
     }
-  ${polyline(neu.path, `stroke="#4c8dff" stroke-width="0.17" opacity="0.95"`)}
   <circle cx="9.5" cy="19.5" r="0.3" fill="#ffffff"/>
   <circle cx="10.5" cy="0.5" r="0.3" fill="#ffffff"/>
-  <text x="0" y="21.1" fill="#e6e6e6" font-size="0.62" font-weight="600">${board.label}</text>
-  <rect x="0" y="21.6" width="0.8" height="0.18" fill="#ff5a5a"/>
-  <text x="1" y="21.78" fill="#e6e6e6" font-size="0.58">Theta* (old): ${
-      old.seconds.toFixed(2)
-    }s</text>
-  <rect x="0" y="22.4" width="0.8" height="0.18" fill="#4c8dff"/>
-  <text x="1" y="22.58" fill="#e6e6e6" font-size="0.58">Visibility graph (new): ${
-      neu.seconds.toFixed(2)
-    }s</text>
-  <text x="0" y="23.4" fill="#8fce9b" font-size="0.58">Δ ${
-      (old.seconds - neu.seconds).toFixed(2)
-    }s faster${
-      old.path.length === neu.path.length &&
-        old.path.every((p, i) => p.x === neu.path[i].x && p.y === neu.path[i].y)
-        ? "  ·  paths identical on this board"
-        : ""
-    }</text>
+  ${legend.join("\n  ")}
 </svg>
 `;
 } finally {
