@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/compat";
 import { h } from "preact";
 import { Card } from "./Card.tsx";
-import { names } from "../util/random/names.ts";
+import { names } from "../../common/random/names.ts";
 import { Button } from "./Button.tsx";
 import { Input } from "./Input.tsx";
 

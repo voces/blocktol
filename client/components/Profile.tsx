@@ -1,13 +1,12 @@
 import { Fragment, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { formatPercentile } from "../../common/formatPercentile.ts";
-import { api, MessageMap } from "../api.ts";
+import { api } from "../api.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
+import { useProfile } from "../hooks/useProfile.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
-
-type ProfileData = MessageMap["getProfile"];
 
 const loginLink = () => new URL(`/login/${getId()}`, location.origin).href;
 
@@ -44,7 +43,7 @@ const LinkIcon = () => (
 
 const Stat = (
   { value, label, color }: {
-    value: h.JSX.Element | string;
+    value: string;
     label: string;
     color?: string;
   },
@@ -60,22 +59,18 @@ const Stat = (
 const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
   const mobile = useMediaQuery("(max-width: 1199.98px)");
   const { attemptsRemaining } = useContext(GameStateContext);
-  const [profile, setProfile] = useState<ProfileData>();
+  const { profile, refetch, patch } = useProfile();
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const copiedTimeout = useRef(-1);
 
+  // Refresh on open so the (cached) figures are current; the dialog stays
+  // populated from the cache in the meantime.
   useEffect(() => {
-    let alive = true;
-    api.getProfile({}).then((p) => {
-      if (alive && p && !("error" in p)) setProfile(p);
-    }).catch(() => {});
-    return () => {
-      alive = false;
-      clearTimeout(copiedTimeout.current);
-    };
+    refetch();
+    return () => clearTimeout(copiedTimeout.current);
   }, []);
 
   const startEdit = () => {
@@ -90,7 +85,7 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
     api.rename({ name }).then((r) => {
       setSaving(false);
       if (r && !("error" in r)) {
-        setProfile((p) => (p ? { ...p, name: r.name } : p));
+        if (profile) patch({ ...profile, name: r.name });
         setEditing(false);
       }
     }).catch(() => setSaving(false));
@@ -221,10 +216,7 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
           onClick={canView ? viewBest : undefined}
           disabled={!canView}
         >
-          <div class="profile-best__meta">
-            <div class="profile-best__label">Best build</div>
-            {canView && <div class="profile-best__hint">tap to view</div>}
-          </div>
+          <div class="profile-best__label">Best build</div>
           <div class="profile-best__value mono">
             {profile?.bestBuild != null ? `${profile.bestBuild}s` : "—"}
           </div>
@@ -244,7 +236,12 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
 };
 
 export const Profile = () => {
+  const { attemptsRemaining } = useContext(GameStateContext);
   const [open, setOpen] = useState(false);
+
+  // Hidden while a daily is in progress (mirrors the calendar button) — no
+  // wandering off to the profile mid-run.
+  if (attemptsRemaining !== 0) return null;
 
   return (
     <>

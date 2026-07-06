@@ -1518,13 +1518,6 @@ a:hover {
   color: var(--text-mute);
 }
 
-.profile-best__hint {
-  font: 600 10px var(--font);
-  letter-spacing: 0.04em;
-  color: var(--accent-bright);
-  margin-top: 2px;
-}
-
 .profile-best__value {
   font-size: 22px;
   font-weight: 700;

@@ -1,3 +1,4 @@
+import { randomName } from "../../common/random/name.ts";
 import { deserializeRun } from "../util/run.ts";
 import { format, raw, sql } from "./query.ts";
 
@@ -26,8 +27,11 @@ const createOrUpdateUserWithName = (id: string, name: string) =>
 
 export const createOrUpdateUser = (id: string, name?: string) =>
   name === undefined
+    // Seed a random display name on first insert, and backfill it onto any
+    // existing user still lacking one (COALESCE keeps a chosen name untouched).
     ? sql<[unknown, User[]]>`
-    INSERT INTO user (id) VALUES (${id}) ON DUPLICATE KEY UPDATE id = id;
+    INSERT INTO user (id, name) VALUES (${id}, ${randomName()})
+      ON DUPLICATE KEY UPDATE name = COALESCE(name, VALUES(name));
     SELECT id, name, rating FROM user WHERE id = ${id};
   `.then((r) => r[1][0])
     : createOrUpdateUserWithName(id, name);

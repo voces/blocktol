@@ -10,6 +10,7 @@ import {
   DailyItemsStore,
   useDailyItemsStore,
 } from "../hooks/useDailyItems.tsx";
+import { fetchProfile } from "../hooks/useProfile.ts";
 import { CalendarButton } from "./CalendarButton.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
@@ -68,6 +69,9 @@ export const App = () => {
         setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
         return;
       }
+      // Warm the profile cache once the summary lands — by then any first-load
+      // name seeding has committed — so opening the profile is instant.
+      fetchProfile();
       if (ret.currentRun) return;
       if (ret.ranked.length < 3) {
         api.startRun({ iteration: "daily", timeZone: getTimeZone() });
