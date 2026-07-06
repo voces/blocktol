@@ -10,11 +10,15 @@ globalThis.addEventListener("contextmenu", (e) => e.preventDefault());
 // user-select/touch-callout: none doesn't fully stop it on SVG, and the
 // gameplay touchstart listener is registered passive so its preventDefault is
 // ignored. Cancel the browser's default gesture for touches that land on the
-// board SVG. Scoped to SVG targets so page scrolling, buttons and single taps
-// are unaffected; our own touch listeners still run (this only cancels the
+// board SVG. Scoped to SVGs *inside the board frame* — not just any SVGElement:
+// icon SVGs live inside buttons (calendar, profile, logo), and cancelling the
+// touch default there also cancels the synthesized click, so onClick would
+// never fire on touch. Our own touch listeners still run (this only cancels the
 // browser default, not our handlers).
 const suppressBoardGesture = (e: TouchEvent) => {
-  if (e.target instanceof SVGElement) e.preventDefault();
+  if (e.target instanceof SVGElement && e.target.closest(".board-frame")) {
+    e.preventDefault();
+  }
 };
 for (const type of ["touchstart", "touchend", "touchcancel"] as const) {
   globalThis.addEventListener(type, suppressBoardGesture, { passive: false });

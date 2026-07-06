@@ -75,6 +75,10 @@ export const useGameState = () => {
     Point & { local?: boolean }
   >();
   const [date, setDate] = useState(NaN);
+  // Mobile-only: the full-screen calendar picker's open state. Opened by the
+  // header calendar button, closed by picking a day or dismissing. Desktop shows
+  // the calendar inline and ignores this.
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [attempts, setAttempts] = useState<
     MessageMap["getDailySummary"]["attempts"]
   >();
@@ -167,5 +171,7 @@ export const useGameState = () => {
     setFreePlay,
     viewing,
     setViewing,
+    calendarOpen,
+    setCalendarOpen,
   };
 };

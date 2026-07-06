@@ -143,6 +143,10 @@
     /* Press feedback shared across tappable controls. */
     .tapc {
       transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
+      /* Suppress the mobile tap flash: it's drawn as a rectangle ignoring
+         border-radius (so it squares off rounded controls), and .tapc already
+         provides its own press feedback (the scale below). */
+      -webkit-tap-highlight-color: transparent;
     }
 
     .tapc:active {
@@ -170,23 +174,51 @@
       gap: 10px;
     }
 
-    .profile {
-      justify-self: end;
-      position: relative;
-      display: flex;
+    /* Header icon buttons (calendar, profile) — 36px rounded squares with a
+       subtle surface fill, mirroring the design's notif button so the icons read
+       as proper tap targets rather than bare glyphs. */
+    .icon-button {
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text-mute);
       cursor: pointer;
+      transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+    }
+
+    .icon-button:hover {
+      background: var(--surface-2);
+      color: var(--color);
+    }
+
+    .profile {
+      /* Anchor for the copied-link tooltip; the rest comes from .icon-button. */
+      position: relative;
     }
 
     .profile__avatar {
       display: block;
-      /* Muted rather than pure white so it sits back next to the wordmark. */
-      color: var(--text-mute);
-      transition: color 0.12s ease;
     }
 
-    .profile:hover .profile__avatar {
-      color: var(--color);
+    /* Right-hand header cluster: the (mobile-only) calendar button and profile. */
+    .app-header__actions {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Hidden on desktop, where the calendar sits inline in the left column
+       (revealed in the max-width block below). Placed after .icon-button so this
+       display wins over its inline-flex. */
+    .cal-button {
+      display: none;
     }
 
     .profile__tooltip {
@@ -386,7 +418,7 @@
         grid-column: 2;
       }
 
-      .profile {
+      .app-header__actions {
         grid-column: 3;
       }
     }
@@ -414,23 +446,41 @@
         grid-template-areas:
           "board"
           "panel";
+        /* Pack the board + panel at the top; leftover height falls to the bottom.
+           Without this the auto rows stretch to fill the fixed height (default
+           align-content), pushing the runs down into the middle now that the
+           calendar no longer fills the panel. */
+        align-content: start;
+        /* Tighter than the desktop 24px so the runs sit closer under the board
+           (~20px total with the panel's top padding, matching header→hud). */
+        row-gap: 12px;
         padding-inline: 8px;
         overflow-x: hidden;
         overflow-y: auto;
       }
 
-      /* One board-width column matching .game: the brand centers in it and the
-         avatar pins to its right edge (both share the single cell, positioned
-         by justify-self), so the avatar lines up with the board/panel edge
-         rather than the raw viewport corner. */
+      /* One board-width column matching .game: the wordmark left-aligns to the
+         board's left edge and the actions pin to its right edge (both share the
+         single cell, positioned by justify-self), so both line up with the
+         board/panel inset rather than the raw viewport corners. With only two
+         icons here, a left wordmark + right actions reads better than centering. */
       .app-header {
         grid-template-columns: min(var(--maze-size), 100%);
         padding-inline: 8px;
       }
 
       .app-header__brand,
-      .profile {
+      .app-header__actions {
         grid-area: 1 / 1;
+      }
+
+      .app-header__brand {
+        justify-self: start;
+      }
+
+      /* The calendar lives in a full-screen picker here, reached from the header. */
+      .cal-button {
+        display: inline-flex;
       }
 
       .game__panel {
@@ -448,19 +498,12 @@
         flex-shrink: 0;
       }
 
-      /* Runs stay internally scrollable and capped, so a long list doesn't bury
-         the calendar under it — scroll the runs a little, and the page for the
-         rest. Descendant selector so these beat the later base rules by
-         specificity (base .attempts/.calendar come after in source). */
+      /* The calendar no longer sits below the runs on mobile (it's a picker now),
+         so the runs are free to expand to their full height and the whole page
+         scrolls. Descendant selector so it beats the later base rule by
+         specificity (base .attempts comes after in source). */
       .game__panel .attempts {
-        overflow-y: auto;
-        max-height: max(25vh, 100px);
         padding: 0;
-      }
-
-      /* Full width (align-self: start on the base would shrink it to content). */
-      .game__panel .calendar {
-        align-self: stretch;
       }
 
       /* Today's result would only ever sit at the top on mobile, where it mostly
@@ -550,6 +593,81 @@
       display: flex;
       flex-direction: column;
       text-align: left;
+    }
+
+    /* Mobile full-screen calendar picker (opened from the header button). Covers
+       the board; tap the backdrop or a day to dismiss. */
+    .calendar-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: var(--background);
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      box-sizing: border-box;
+      padding: calc(8px + env(safe-area-inset-top, 0px)) 16px
+        calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .calendar-modal__sheet {
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    /* One header row: title on the left, pager + close grouped on the right. It
+       sticks to the top so it stays put while scrolling multiple months. */
+    .calendar-modal__header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      padding: 6px 0 10px;
+      background: var(--background);
+    }
+
+    .calendar-modal__header .section-title {
+      margin: 0;
+    }
+
+    .calendar-modal__tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Larger, comfortably tappable cells in the picker than the desktop inline
+       grid. */
+    .calendar-modal__sheet .calendar__grid {
+      gap: 7px;
+    }
+
+    .calendar-modal__sheet .calendar__cell .mono {
+      font-size: 14px;
+    }
+
+    .calendar-modal__close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--color);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
     }
 
     .attempts::-webkit-scrollbar {
@@ -808,6 +926,35 @@
     .hud__chips {
       display: flex;
       gap: 8px;
+    }
+
+    /* Right-hand HUD group: the (free-play) reset button beside the build clock. */
+    .hud__controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Free-play reset — a neutral chip-styled square left of the build clock, so
+       the accent build button stays the primary action. */
+    .hud__reset {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--surface);
+      color: var(--text-mute);
+      cursor: pointer;
+      transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+    }
+
+    .hud__reset:hover {
+      background: var(--surface-2);
+      color: var(--color);
     }
 
     .hud__chip {
