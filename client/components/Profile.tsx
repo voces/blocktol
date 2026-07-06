@@ -151,6 +151,13 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
                     value={nameInput}
                     maxLength={32}
                     autoFocus
+                    // Read as a username field, not a name — no first-letter
+                    // capitalization (nudging folks toward handles), no
+                    // autocorrect/spellcheck underlining their handle.
+                    autocapitalize="none"
+                    autocorrect="off"
+                    autocomplete="off"
+                    spellcheck={false}
                     onInput={(e) => setNameInput(e.currentTarget.value)}
                   />
                   <button
