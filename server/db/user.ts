@@ -176,17 +176,33 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
     }))
   );
 
-// Every non-void run on an iteration (the ranked three plus any free play),
+// The user's own runs on an iteration (their ranked three plus any free play),
 // oldest first, each with its maze and creation time — the full runs list for
-// the panel. Void (abandoned, never-submitted) runs are skipped so the panel
-// isn't padded with empty rows.
+// the panel. Non-void runs, PLUS any voided run among the first three (a ranked
+// daily attempt that was started but never built): those still count as spent
+// attempts, so the panel should show them. Later voided runs (abandoned free
+// play) stay hidden so the panel isn't padded with empty rows. The first three
+// by creation are always the ranked attempts, since free play only unlocks once
+// they're spent — so "created <= the third-oldest run's" selects exactly them
+// (and when there are fewer than three runs, every void one can only be a ranked
+// attempt, so COALESCE falls back to keeping them all).
 export const allRunsByIteration = (user: string, iteration: number) =>
   sql<{ time: number; data: string; created: string }[]>`
     SELECT time, data, created
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
-      AND void = FALSE
+      AND (
+        void = FALSE
+        OR created <= COALESCE((
+          SELECT created
+          FROM run
+          WHERE user = ${user}
+            AND iteration = ${iteration}
+          ORDER BY created ASC
+          LIMIT 1 OFFSET 2
+        ), created)
+      )
     ORDER BY created ASC
     LIMIT 100;
   `.then((r) =>
