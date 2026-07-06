@@ -135,70 +135,76 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
         </button>
 
         <div class="profile-head">
-          <div class="profile-head__avatar" aria-hidden="true">{initial}</div>
-          <div class="profile-head__id">
-            {editing
-              ? (
-                <form
-                  class="profile-rename"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    save();
-                  }}
+          {editing
+            ? (
+              // A full-width bar replaces the header while editing, so the input
+              // has room instead of being crushed between the avatar and rating.
+              <form
+                class="profile-rename"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  save();
+                }}
+              >
+                <input
+                  class="profile-rename__input"
+                  value={nameInput}
+                  maxLength={32}
+                  autoFocus
+                  // Read as a username field, not a name — no first-letter
+                  // capitalization (nudging folks toward handles), no
+                  // autocorrect/spellcheck underlining their handle.
+                  autocapitalize="none"
+                  autocorrect="off"
+                  autocomplete="off"
+                  spellcheck={false}
+                  onInput={(e) => setNameInput(e.currentTarget.value)}
+                />
+                <button
+                  type="submit"
+                  class="profile-rename__save tapc"
+                  disabled={saving || !nameInput.trim()}
                 >
-                  <input
-                    class="profile-rename__input"
-                    value={nameInput}
-                    maxLength={32}
-                    autoFocus
-                    // Read as a username field, not a name — no first-letter
-                    // capitalization (nudging folks toward handles), no
-                    // autocorrect/spellcheck underlining their handle.
-                    autocapitalize="none"
-                    autocorrect="off"
-                    autocomplete="off"
-                    spellcheck={false}
-                    onInput={(e) => setNameInput(e.currentTarget.value)}
-                  />
-                  <button
-                    type="submit"
-                    class="profile-rename__save tapc"
-                    disabled={saving || !nameInput.trim()}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    class="profile-rename__cancel tapc"
-                    onClick={() => setEditing(false)}
-                  >
-                    Cancel
-                  </button>
-                </form>
-              )
-              : (
-                <div class="profile-head__name-row">
-                  <span class="profile-head__name">{name}</span>
-                  <button
-                    type="button"
-                    class="profile-head__edit tapc"
-                    aria-label="Edit name"
-                    onClick={startEdit}
-                  >
-                    <EditIcon />
-                  </button>
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="profile-rename__cancel tapc"
+                  onClick={() => setEditing(false)}
+                >
+                  Cancel
+                </button>
+              </form>
+            )
+            : (
+              <>
+                <div class="profile-head__avatar" aria-hidden="true">
+                  {initial}
                 </div>
-              )}
-            {joined && (
-              <div class="profile-head__joined mono">joined {joined}</div>
+                <div class="profile-head__id">
+                  <div class="profile-head__name-row">
+                    <span class="profile-head__name">{name}</span>
+                    <button
+                      type="button"
+                      class="profile-head__edit tapc"
+                      aria-label="Edit name"
+                      onClick={startEdit}
+                    >
+                      <EditIcon />
+                    </button>
+                  </div>
+                  {joined && (
+                    <div class="profile-head__joined mono">joined {joined}</div>
+                  )}
+                </div>
+                <div class="profile-head__rating">
+                  <div class="profile-head__rating-value mono">
+                    {profile ? Math.round(profile.rating) : "—"}
+                  </div>
+                  <div class="profile-head__rating-label">Rating</div>
+                </div>
+              </>
             )}
-          </div>
-          <div class="profile-head__rating">
-            <div class="profile-head__rating-value mono">
-              {profile ? Math.round(profile.rating) : "—"}
-            </div>
-            <div class="profile-head__rating-label">Rating</div>
-          </div>
         </div>
 
         <div class="profile-stats">

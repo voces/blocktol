@@ -1256,54 +1256,74 @@ a:hover {
   background: var(--slow-runner);
 }
 
-/* Profile dialog (see Profile.tsx). Mobile: a full-screen sheet over the board,
-   like the calendar picker. Desktop: a centred dialog card, like the daily
-   result. Both are dismissed by the backdrop or the close button. */
+/* Profile dialog (see Profile.tsx) — a card over a dimmed board. Mobile: a
+   bottom sheet that hugs its content (so a sparse profile doesn't strand a
+   full-screen void). Desktop: a centred dialog card, like the daily result.
+   Both are dismissed by the backdrop or the close button. */
 .profile-modal {
   position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
   box-sizing: border-box;
-  /* Mobile default: full-screen, anchored to the top. */
-  background: var(--background);
-  overflow-y: auto;
+  background: rgba(6, 6, 10, 0.72);
+  /* Mobile default: anchored to the bottom as a sheet. */
+  align-items: flex-end;
   justify-content: center;
-  align-items: flex-start;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px
-    calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Desktop: a dim overlay with the card centred (never past the viewport
-   midpoint on short windows). */
+/* Desktop: card centred (never past the viewport midpoint on short windows). */
 .profile-modal--desktop {
-  background: rgba(6, 6, 10, 0.72);
   align-items: center;
   padding: 24px;
 }
 
 .profile-modal__sheet {
   position: relative;
+  box-sizing: border-box;
   width: 100%;
-  max-width: 460px;
-  margin: 0 auto;
+  /* Let the flex item shrink to the viewport rather than to its grid's
+     min-content (which would push the sheet wider than a phone screen). */
+  min-width: 0;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
   text-align: left;
+  background: var(--surface);
+  /* Bottom sheet: rounded top only, flush to the screen's bottom edge. */
+  border-radius: 22px 22px 0 0;
+  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
+  animation: profileSheetIn 0.22s ease;
 }
 
-/* On desktop the sheet becomes a proper card. */
+@keyframes profileSheetIn {
+  from {
+    transform: translateY(12%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* On desktop the sheet is a free-floating rounded card. */
 .profile-modal--desktop .profile-modal__sheet {
-  max-width: 360px;
+  max-width: 440px;
+  max-height: none;
+  overflow-y: visible;
   padding: 22px;
   border: 1px solid var(--border-strong);
   border-radius: 20px;
-  background: var(--surface);
   box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+  animation: none;
 }
 
 .profile-modal__close {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 14px;
+  right: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1316,11 +1336,6 @@ a:hover {
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
-}
-
-.profile-modal--desktop .profile-modal__close {
-  top: 14px;
-  right: 14px;
 }
 
 /* Header: avatar, name + join date, rating pinned to the right. */
@@ -1409,22 +1424,24 @@ a:hover {
   margin-top: 1px;
 }
 
-/* Inline rename: input + save/cancel, replacing the name row. */
+/* Inline rename: a full-width bar that replaces the whole header row while
+   editing, so the input isn't crushed between the avatar and rating. */
 .profile-rename {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
 }
 
 .profile-rename__input {
   flex: 1;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 9px 12px;
   border: 1px solid var(--border-strong);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--surface-2);
   color: var(--color);
-  font: 600 15px var(--font);
+  font: 600 16px var(--font);
 }
 
 .profile-rename__input:focus {
@@ -1460,7 +1477,7 @@ a:hover {
 /* Three equal stat tiles. */
 .profile-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
