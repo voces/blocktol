@@ -13,6 +13,15 @@ const B = [47, 148, 224, 166, 90];
 export const SUPREME_COLOR = "#f0c442";
 
 /**
+ * Peak — a non-supreme best: a run that ties the field's top time without taking
+ * the record outright (someone else holds/ties it). Sits one step above the
+ * ramp's green but below the reserved supreme gold — a green-yellow. Fixed hex so
+ * it pairs with readableInk (calendar cell); the --peak token mirrors it for the
+ * panels, exactly as SUPREME_COLOR pairs with --gold.
+ */
+export const PEAK_COLOR = "#9ed54a";
+
+/**
  * Banded colour for a percentile in [0, 1] — the nearest stop on the SAME ramp
  * the calendar uses, so both share one scale; only the calendar tweens between
  * stops (generalized UI stays banded). Gold is reserved for supreme (the record)

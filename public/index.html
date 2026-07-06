@@ -37,6 +37,10 @@
       --warn: light-dark(hsl(42, 90%, 42%), hsl(42, 85%, 62%));
       --lose: light-dark(hsl(8, 72%, 50%), hsl(8, 72%, 60%));
       --gold: light-dark(hsl(42, 90%, 40%), hsl(45, 85%, 60%));
+      /* peak: a non-supreme best (tied for the field's top) — a green-yellow one
+         step above the ramp's green, below the reserved supreme gold. Mirrors the
+         PEAK_COLOR hex used where a fill needs readableInk (calendar cell). */
+      --peak: light-dark(hsl(84, 62%, 36%), hsl(84, 66%, 56%));
       /* percentile ramp: red -> magenta -> blue -> teal -> green, low to high.
          Goes the long way round the wheel so it never hits yellow/olive and
          stays vivid; green reads as best. One scale for the calendar heatmap AND
@@ -768,9 +772,18 @@
     }
 
     .attempts__sub {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font: 500 11px var(--font);
       color: var(--text-mute);
       margin-top: 2px;
+    }
+
+    /* Ranked (daily) field percentile — pXX, tinted by the row's band. */
+    .attempts__pct {
+      font: 700 11px var(--font-mono);
+      color: var(--band);
     }
 
     .attempts__empty {
