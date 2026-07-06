@@ -1368,11 +1368,14 @@ a:hover {
   cursor: pointer;
 }
 
-/* Header: avatar, name + join date, rating pinned to the right. */
+/* Header: avatar, name + join date, rating pinned to the right. Held to the
+   avatar's height so swapping in the (shorter) rename bar doesn't shrink the
+   dialog — the bar just centres in the same space. */
 .profile-head {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-height: 52px;
   margin: 8px 0 18px;
   padding-right: 38px;
 }
