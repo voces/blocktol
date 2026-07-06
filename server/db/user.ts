@@ -37,6 +37,110 @@ export const getUserPlays = (id: string) =>
     SELECT COUNT(1) count FROM run WHERE user = ${id} AND daily = TRUE;
   `.then((r) => r[0]?.count ?? 0);
 
+export const updateUserName = (id: string, name: string) =>
+  sql<[unknown, User[]]>`
+    INSERT INTO user (id, name) VALUES (${id}, ${name}) ON DUPLICATE KEY UPDATE name = ${name};
+    SELECT id, name, rating FROM user WHERE id = ${id};
+  `.then((r) => r[1][0]);
+
+// The profile's headline figures, in one round trip:
+//   1. the user's own row (display name, rating, join date);
+//   2. dailies completed and their best-ever build (any run, daily or free);
+//   3. the iteration of that best build (so the card can open it);
+//   4. per-day ranked standings — the user's best daily time vs every OTHER
+//      player's best daily time that day — from which the median percentile and
+//      the count of days finished on top (100%) are derived.
+// Only iterations the user actually played bound the ranking join, so it stays
+// proportional to their history rather than the whole field.
+export const getUserStats = async (user: string) => {
+  const [userRows, totals, bestRows, ranks] = await sql<[
+    { name: string | null; rating: number; joined: number }[],
+    { played: number | null; bestBuild: number | null }[],
+    { iteration: number }[],
+    {
+      iteration: number;
+      less: number;
+      equal: number;
+      more: number;
+      others: number;
+    }[],
+  ]>`
+    SELECT name, rating, UNIX_TIMESTAMP(created) * 1000 joined
+    FROM user WHERE id = ${user};
+
+    SELECT
+      COUNT(DISTINCT CASE WHEN daily = TRUE AND void = FALSE THEN iteration END) played,
+      ROUND(MAX(CASE WHEN void = FALSE THEN time END), 2) bestBuild
+    FROM run WHERE user = ${user};
+
+    SELECT iteration
+    FROM run
+    WHERE user = ${user} AND void = FALSE
+    ORDER BY time DESC, created ASC
+    LIMIT 1;
+
+    SELECT me.iteration iteration,
+           SUM(CASE WHEN other.t < me.t THEN 1 ELSE 0 END) less,
+           SUM(CASE WHEN other.t = me.t THEN 1 ELSE 0 END) equal,
+           SUM(CASE WHEN other.t > me.t THEN 1 ELSE 0 END) more,
+           COUNT(other.u) others
+    FROM (
+      SELECT iteration, MAX(time) t
+      FROM run
+      WHERE user = ${user} AND daily = TRUE AND void = FALSE
+      GROUP BY iteration
+    ) me
+    LEFT JOIN (
+      SELECT iteration, user u, MAX(time) t
+      FROM run
+      WHERE user != ${user} AND daily = TRUE AND void = FALSE
+        AND iteration IN (
+          SELECT iteration FROM run
+          WHERE user = ${user} AND daily = TRUE AND void = FALSE
+          GROUP BY iteration
+        )
+      GROUP BY iteration, user
+    ) other ON other.iteration = me.iteration
+    GROUP BY me.iteration;
+  `;
+
+  const u = userRows[0];
+
+  // Ranked daily percentile per played day (self-excluded), mirroring the
+  // calendar's per-day ranking: skip days nobody else played (no field to rank
+  // against); a day nobody beat is a full 100% (a "1").
+  const percentiles: number[] = [];
+  let hundreds = 0;
+  for (const r of ranks) {
+    const others = Number(r.others);
+    if (others === 0) continue;
+    const pct = Number(r.more) === 0
+      ? 1
+      : (Number(r.less) + Number(r.equal) / 2) / others;
+    percentiles.push(pct);
+    if (pct === 1) hundreds++;
+  }
+
+  percentiles.sort((a, b) => a - b);
+  const n = percentiles.length;
+  const medianPercentile = n === 0
+    ? null
+    : n % 2 === 1
+    ? percentiles[(n - 1) / 2]
+    : (percentiles[n / 2 - 1] + percentiles[n / 2]) / 2;
+
+  return {
+    name: u?.name ?? null,
+    rating: u?.rating ?? 1000,
+    joined: u ? Number(u.joined) : null,
+    played: Number(totals[0]?.played ?? 0),
+    bestBuild: totals[0]?.bestBuild ?? null,
+    bestBuildIteration: bestRows[0]?.iteration ?? null,
+    hundreds,
+    medianPercentile,
+  };
+};
+
 // Counts a user's first 3 runs for an iteration, including abandoned (void)
 // runs — starting a daily and not finishing it still costs an attempt, matching
 // `dailyAttempts` (the timezone-based view).

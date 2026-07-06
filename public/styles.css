@@ -1255,3 +1255,299 @@ a:hover {
 .result__btn--keep {
   background: var(--slow-runner);
 }
+
+/* Profile dialog (see Profile.tsx). Mobile: a full-screen sheet over the board,
+   like the calendar picker. Desktop: a centred dialog card, like the daily
+   result. Both are dismissed by the backdrop or the close button. */
+.profile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  box-sizing: border-box;
+  /* Mobile default: full-screen, anchored to the top. */
+  background: var(--background);
+  overflow-y: auto;
+  justify-content: center;
+  align-items: flex-start;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px
+    calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Desktop: a dim overlay with the card centred (never past the viewport
+   midpoint on short windows). */
+.profile-modal--desktop {
+  background: rgba(6, 6, 10, 0.72);
+  align-items: center;
+  padding: 24px;
+}
+
+.profile-modal__sheet {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* On desktop the sheet becomes a proper card. */
+.profile-modal--desktop .profile-modal__sheet {
+  max-width: 360px;
+  padding: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+}
+
+.profile-modal__close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--color);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.profile-modal--desktop .profile-modal__close {
+  top: 14px;
+  right: 14px;
+}
+
+/* Header: avatar, name + join date, rating pinned to the right. */
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 18px;
+  padding-right: 38px;
+}
+
+.profile-head__avatar {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 24px var(--font);
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 8px 20px -8px var(--accent);
+}
+
+.profile-head__id {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-head__name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-head__name {
+  font: 700 20px var(--font);
+  color: var(--color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-head__edit {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-mute);
+  cursor: pointer;
+}
+
+.profile-head__edit:hover {
+  color: var(--color);
+}
+
+.profile-head__joined {
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-top: 3px;
+}
+
+.profile-head__rating {
+  flex: none;
+  text-align: right;
+}
+
+.profile-head__rating-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.profile-head__rating-label {
+  font: 600 10px var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+
+/* Inline rename: input + save/cancel, replacing the name row. */
+.profile-rename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-rename__input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--color);
+  font: 600 15px var(--font);
+}
+
+.profile-rename__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.profile-rename__save,
+.profile-rename__cancel {
+  flex: none;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  font: 600 12px var(--font);
+  cursor: pointer;
+}
+
+.profile-rename__save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.profile-rename__save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-rename__cancel {
+  background: var(--surface-2);
+  color: var(--text-mute);
+}
+
+/* Three equal stat tiles. */
+.profile-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.profile-stat {
+  padding: 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.profile-modal--desktop .profile-stat {
+  background: var(--surface-2);
+}
+
+.profile-stat__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color);
+}
+
+.profile-stat__label {
+  font: 500 11px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+/* Best build — a wide tile, clickable to review the maze on the board. */
+.profile-best {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-align: left;
+}
+
+.profile-best--clickable {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.profile-best--clickable:hover {
+  background: var(--surface-3);
+}
+
+.profile-best__label {
+  font: 500 11px var(--font);
+  color: var(--text-mute);
+}
+
+.profile-best__hint {
+  font: 600 10px var(--font);
+  letter-spacing: 0.04em;
+  color: var(--accent-bright);
+  margin-top: 2px;
+}
+
+.profile-best__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-bright);
+}
+
+/* Copy-login-link action row. */
+.profile-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: 600 14px var(--font);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.profile-action:hover {
+  background: var(--surface-3);
+}
