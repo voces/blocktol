@@ -7,7 +7,7 @@ import { GameStateContext } from "./useGameState.ts";
 
 const IDLE_MS = 5_000;
 
-const BrickIcon = () => (
+export const BrickIcon = () => (
   <svg width={16} height={16} viewBox="0 0 16 16">
     <rect x={0} y={0} width={16} height={16} rx={2} fill="#c0553a" />
     <g stroke="#7d331f" stroke-width={1}>
@@ -20,7 +20,7 @@ const BrickIcon = () => (
   </svg>
 );
 
-const PowerIcon = () => (
+export const PowerIcon = () => (
   <svg width={16} height={16} viewBox="0 0 16 16">
     <g stroke="#5aa9e6" stroke-width={1.5} stroke-linecap="round">
       <line x1={8} y1={1.5} x2={8} y2={14.5} />

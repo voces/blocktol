@@ -1,4 +1,4 @@
-import { ComponentChildren, createContext, h } from "preact";
+import { createContext } from "preact";
 import { useContext, useState } from "preact/compat";
 import { MessageMap } from "../api.ts";
 import { useApiListener } from "./useApiListener.ts";
@@ -6,7 +6,7 @@ import { useApiListener } from "./useApiListener.ts";
 export type DailyItem = MessageMap["list"]["items"][number];
 type Attempt = MessageMap["getDailySummary"]["attempts"][number];
 
-type Store = {
+export type DailyItemsStore = {
   // The daily list, keyed by iteration and accumulated across paged `list`
   // fetches so paging back never drops already-loaded months.
   items: Map<number, DailyItem>;
@@ -17,16 +17,18 @@ type Store = {
   applyRun: (iteration: number, attempts: readonly Attempt[]) => void;
 };
 
-const DailyItemsContext = createContext<Store>(
+export const DailyItemsContext = createContext<DailyItemsStore>(
   new Proxy({}, {
     get: () => {
-      throw new Error("Expected DailyItemsProvider");
+      throw new Error("Expected DailyItemsContext provider");
     },
     // deno-lint-ignore no-explicit-any
   }) as any,
 );
 
-const useStore = (): Store => {
+// The store hook — call once high in the tree (App) and feed it into
+// DailyItemsContext.Provider, mirroring how gameState is provided.
+export const useDailyItemsStore = (): DailyItemsStore => {
   const [items, setItems] = useState<Map<number, DailyItem>>(new Map());
   const [oldest, setOldest] = useState<[number, number, number]>();
 
@@ -80,13 +82,5 @@ const useStore = (): Store => {
 
   return { items, oldest, applyRun };
 };
-
-export const DailyItemsProvider = ({ children }: {
-  children: ComponentChildren;
-}) => (
-  <DailyItemsContext.Provider value={useStore()}>
-    {children}
-  </DailyItemsContext.Provider>
-);
 
 export const useDailyItems = () => useContext(DailyItemsContext);

@@ -272,29 +272,64 @@
       }
     }
 
+    /* Onboarding gets the same side breathing room the game board has, so the
+       board doesn't run to the screen edges on mobile. */
+    .onboarding {
+      padding-inline: 8px;
+    }
+
     .tooltip {
       max-width: max(30%, 200px);
-      background: var(--background);
+      /* A panel colour (not the page background) so the box and its arrow read
+         against the background above the board. */
+      background: var(--surface);
       padding: 8px;
       border-radius: 4px;
       position: absolute;
       text-align: left;
+      /* The set position (top/left/right/bottom) marks where the ARROW points;
+         shift the box by the arrow's fixed offset so its tip lands exactly there
+         (12px inset + 7px half-base = 19px in; 7px past the edge). */
+      transform: translate(var(--arrow-x, -19px), var(--arrow-y, 0px));
     }
 
-    .tooltip-arrow {
+    /* Arrow as a pseudo-element on the tip so it's always flush to its edge
+       (a separately-positioned arrow drifted out of alignment). */
+    .tooltip::before {
+      content: "";
       position: absolute;
-      border-width: calc(var(--maze-size) / 50);
-      border-style: solid;
+      /* Fixed size: the arrow points at fixed-size chips outside the board, so it
+         shouldn't scale with the board like the % positions do. */
+      left: 12px;
+      border: 7px solid transparent;
     }
 
-    .tooltip-arrow.bottom {
-      margin-bottom: calc(var(--maze-size) / -25);
-      border-color: var(--background) transparent transparent transparent;
+    .tooltip--right::before {
+      left: auto;
+      right: 12px;
     }
 
-    .tooltip-arrow.top {
-      margin-top: calc(var(--maze-size) / -25);
-      border-color: transparent transparent var(--background) transparent;
+    /* Box-shift so the arrow tip (not the box corner) sits at the set position. */
+    .tooltip--right {
+      --arrow-x: 19px;
+    }
+
+    .tooltip--up::before {
+      bottom: 100%;
+      border-bottom-color: var(--surface);
+    }
+
+    .tooltip--up {
+      --arrow-y: 7px;
+    }
+
+    .tooltip--down::before {
+      top: 100%;
+      border-top-color: var(--surface);
+    }
+
+    .tooltip--down {
+      --arrow-y: -7px;
     }
 
     /* Game layout: board in the middle, daily-selector and log as side panels

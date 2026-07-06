@@ -5,15 +5,20 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
-import { DailyItemsProvider } from "../hooks/useDailyItems.tsx";
+import {
+  DailyItemsContext,
+  DailyItemsStore,
+  useDailyItemsStore,
+} from "../hooks/useDailyItems.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
 import { Profile } from "./Profile.tsx";
 
 const Shell = (
-  { children, gameState }: {
+  { children, gameState, dailyStore }: {
     children: ComponentChildren;
     gameState: ReturnType<typeof useGameState>;
+    dailyStore: DailyItemsStore;
   },
 ) => (
   <div style={{ textAlign: "center" }}>
@@ -24,11 +29,11 @@ const Shell = (
       </div>
       <Profile />
     </header>
-    <DailyItemsProvider>
+    <DailyItemsContext.Provider value={dailyStore}>
       <GameStateContext.Provider value={gameState}>
         {children}
       </GameStateContext.Provider>
-    </DailyItemsProvider>
+    </DailyItemsContext.Provider>
   </div>
 );
 
@@ -68,10 +73,11 @@ export const App = () => {
   }, [showOnboarding, retry]);
 
   const gameState = useGameState();
+  const dailyStore = useDailyItemsStore();
 
   if (showOnboarding) {
     return (
-      <Shell gameState={gameState}>
+      <Shell gameState={gameState} dailyStore={dailyStore}>
         <IntroBoard
           onDone={() => {
             setShowOnboarding(false);
@@ -83,7 +89,7 @@ export const App = () => {
   }
 
   return (
-    <Shell gameState={gameState}>
+    <Shell gameState={gameState} dailyStore={dailyStore}>
       <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
       {disconnected && <Disconnected />}
     </Shell>
