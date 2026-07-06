@@ -12,6 +12,7 @@ import {
   getIterationOtherBest,
 } from "../../db/iteration.ts";
 import { dailyAttempts, getOwnBest } from "../../db/user.ts";
+import { iterationAttempts } from "../../util/attempts.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
 import { method } from "../apiHelpers.ts";
 
@@ -26,18 +27,19 @@ export const getBoard = method(getBoardBody, true)(
 
     // Free play unlocks once today's three attempts are spent; with today being
     // the latest day, that also unlocks every past day for replay.
-    const attempts = await dailyAttempts(userId, year, month, day);
-    if (attempts.length < 3) {
+    const todayAttempts = await dailyAttempts(userId, year, month, day);
+    if (todayAttempts.length < 3) {
       return { error: "daily not complete", status: 403 };
     }
 
     const iteration = inputIteration ??
       await getDailyIterationId(year, month, day);
 
-    const [data, ownBest, otherBest] = await Promise.all([
+    const [data, ownBest, otherBest, attempts] = await Promise.all([
       getIteration(iteration),
       getOwnBest(userId, iteration),
       getIterationOtherBest(iteration, userId),
+      iterationAttempts(userId, iteration),
     ]);
 
     let path: ReturnType<typeof findPathFromData>;
@@ -62,6 +64,7 @@ export const getBoard = method(getBoardBody, true)(
       slows,
       ownBest,
       best: Math.max(otherBest ?? 0, ownBest ?? 0, data.min),
+      attempts,
       remainingTime: 60,
     };
   },

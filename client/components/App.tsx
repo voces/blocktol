@@ -5,6 +5,7 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
+import { DailyItemsProvider } from "../hooks/useDailyItems.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
 import { Profile } from "./Profile.tsx";
@@ -23,9 +24,11 @@ const Shell = (
       </div>
       <Profile />
     </header>
-    <GameStateContext.Provider value={gameState}>
-      {children}
-    </GameStateContext.Provider>
+    <DailyItemsProvider>
+      <GameStateContext.Provider value={gameState}>
+        {children}
+      </GameStateContext.Provider>
+    </DailyItemsProvider>
   </div>
 );
 
@@ -45,6 +48,8 @@ export const App = () => {
   useEffect(() => {
     if (showOnboarding) return;
 
+    // The calendar loads its own months on mount (and the today-result panel
+    // shares that data), so no list() call is needed here.
     api.getDailySummary({ timeZone: getTimeZone() }).then((ret) => {
       setDisconnected(false);
       if ("error" in ret) {
@@ -53,7 +58,7 @@ export const App = () => {
         return;
       }
       if (ret.currentRun) return;
-      if (ret.attempts.length < 3) {
+      if (ret.ranked.length < 3) {
         api.startRun({ iteration: "daily", timeZone: getTimeZone() });
       }
     }).catch(() => {

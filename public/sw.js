@@ -25,15 +25,33 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Static assets (icons, fonts) never change within a deploy, so serve them from
+// cache and skip the network entirely. Without this the network-first path below
+// re-fetches favicon.svg for every consumer (logo img, tab <link>, manifest) —
+// and again on each render — flooding the network panel.
+const CACHE_FIRST = /\.(?:svg|woff2?|ttf|png|ico|jpe?g|webp)$/;
+
 const handleFetch = async (event) => {
+  const cache = await caches.open("v1");
+
+  if (CACHE_FIRST.test(new URL(event.request.url).pathname)) {
+    const cached = await cache.match(event.request);
+    if (cached) return cached;
+    try {
+      const response = await fetch(event.request);
+      cache.put(event.request, response.clone());
+      return response;
+    } catch {
+      /* fall through to the shared cache lookup below */
+    }
+  }
+
   try {
     const preloadResponse = await event.preloadResponse;
     if (preloadResponse) return preloadResponse;
   } catch {
     /* continue */
   }
-
-  const cache = await caches.open("v1");
 
   try {
     const response = await fetch(event.request);

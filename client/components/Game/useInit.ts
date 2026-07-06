@@ -4,12 +4,14 @@ import { newGrid } from "../../../common/pathing.ts";
 import { api, MessageMap } from "../../api.ts";
 import { Point } from "../../../common/types.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
+import { useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 export const useInit = () => {
   const game = useGame();
+  const { applyRun } = useDailyItems();
   const {
     setTime,
     setPlacingBlock,
@@ -28,15 +30,23 @@ export const useInit = () => {
     attemptsRemaining,
     setAttemptsRemaining,
     run,
-    clear,
-    blocks,
-    checkpoint,
     iteration,
     setIteration,
     setStaged,
     freePlay,
     setFreePlay,
+    setViewedAttempts,
+    viewedAttempts,
+    viewMaze,
+    setViewing,
   } = useContext(GameStateContext);
+
+  // Keep the calendar / today panels in step with the board's attempts by
+  // patching just the viewed day's item locally — no list refetch when a run
+  // finishes (which, for a past day, would refetch the wrong month anyway).
+  useEffect(() => {
+    if (iteration !== undefined) applyRun(iteration, viewedAttempts);
+  }, [iteration, viewedAttempts]);
 
   // Lay the iteration's fixed pieces onto a fresh grid (a started run and a
   // staged free-play board share this reset).
@@ -55,6 +65,7 @@ export const useInit = () => {
     (data: NonNullable<MessageMap["getDailySummary"]["currentRun"]>) => {
       setRun({ path: data.path, duration: data.duration, slows: data.slows });
       setStaged(false);
+      setViewing(false);
       setCheckpoint(data.checkpoint);
       setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
       setBricks(data.bricks);
@@ -75,6 +86,7 @@ export const useInit = () => {
       setRun(undefined);
       setFreePlay(true);
       setStaged(true);
+      setViewing(false);
       setCheckpoint(data.checkpoint);
       // A staged board is the iteration's fixed pieces only — no player blocks
       // exist until the first placement opens the run.
@@ -93,22 +105,32 @@ export const useInit = () => {
     [],
   );
 
-  useApiListener("startRun", handleRun);
-  useApiListener("getBoard", handleStaged);
+  useApiListener("startRun", (e) => {
+    handleRun(e);
+    setViewedAttempts(e.attempts);
+  });
+  useApiListener("getBoard", (e) => {
+    handleStaged(e);
+    setViewedAttempts(e.attempts);
+  });
   useApiListener(
     "getDailySummary",
-    ({ attempts, currentRun }) => {
+    ({ attempts, ranked, currentRun }) => {
+      // `attempts` is the full list (panel); `ranked` (first three) drives the
+      // result modal and the attempts-remaining count.
+      setViewedAttempts(attempts);
+
       if (currentRun && time === -2) {
-        setAttemptsRemaining(3 - attempts.length + 1);
+        setAttemptsRemaining(3 - ranked.length + 1);
         return handleRun(currentRun);
       }
 
-      if (attempts.length === 3) {
+      if (ranked.length === 3) {
         setAttemptsRemaining(0);
-        return setAttempts(attempts);
+        return setAttempts(ranked);
       }
 
-      setAttemptsRemaining(3 - attempts.length);
+      setAttemptsRemaining(3 - ranked.length);
     },
   );
 
@@ -116,6 +138,8 @@ export const useInit = () => {
     "runFinish",
     () => {
       if (iteration === undefined) return;
+      // The calendar / today panels update locally from the fresh attempts (see
+      // the applyRun effect above) — no list refetch here.
       // Free play never spends a ranked attempt — it just re-stages the board.
       if (freePlay) {
         api.getBoard({ iteration, timeZone: getTimeZone() });
@@ -128,14 +152,7 @@ export const useInit = () => {
     [iteration, attemptsRemaining, freePlay],
   );
 
-  useApiListener("best", ({ maze }) => {
-    clear();
-    setBlocks([
-      ...blocks.filter((b) => !b.local),
-      ...maze.map((b) => ({ ...b, local: true })),
-    ]);
-    setCheckpoint(checkpoint);
-  }, [blocks, checkpoint]);
+  useApiListener("best", ({ maze }) => viewMaze(maze));
 
   useEffect(() => {
     if (time !== 0 || !run) return;
@@ -145,8 +162,9 @@ export const useInit = () => {
     setPlacingBlock((pb) => ({ ...pb, placing: false }));
     setTransitionBlock(undefined);
     setTime(-1);
-    setBricks(-1);
-    setPower(-1);
+    // Leave bricks/power as they were — the HUD keeps showing the leftover
+    // counts through the run animation rather than blanking them out. The next
+    // board (startRun / getBoard) resets them for the following build.
     setTouching(false);
     setThunderHover(undefined);
   }, [time, run]);
