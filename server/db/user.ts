@@ -49,7 +49,9 @@ export const updateUserName = (id: string, name: string) =>
 
 // The profile's headline figures, in one round trip:
 //   1. the user's own row (display name, rating, join date);
-//   2. dailies completed and their best-ever build (any run, daily or free);
+//   2. dailies played (distinct iterations with a ranked daily run, abandoned
+//      or not — mirrors the runs panel counting spent attempts) and the best-
+//      ever build (any run, daily or free);
 //   3. the iteration of that best build (so the card can open it);
 //   4. per-day ranked standings — the user's best daily time vs every OTHER
 //      player's best daily time that day — from which the median percentile and
@@ -73,7 +75,7 @@ export const getUserStats = async (user: string) => {
     FROM user WHERE id = ${user};
 
     SELECT
-      COUNT(DISTINCT CASE WHEN daily = TRUE AND void = FALSE THEN iteration END) played,
+      COUNT(DISTINCT CASE WHEN daily = TRUE THEN iteration END) played,
       ROUND(MAX(CASE WHEN void = FALSE THEN time END), 2) bestBuild
     FROM run WHERE user = ${user};
 
