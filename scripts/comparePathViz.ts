@@ -19,7 +19,10 @@
 //   --demo          a fixed board showing all piece kinds (no DB needed)
 //   --search[=N]    scan N seeds (default 400) for the biggest old-vs-new gap
 //   --iteration=N   pull a real board from the DB (needs APP_ENV + SQL_PASSWORD)
-//   --run=USER      with --iteration, overlay that user's placed blocks too
+//   --run=USER      with --iteration, overlay that user's placement. If the user
+//                   has several runs it lists them all and shows the one the
+//                   pathing change moves most; pin one with --created=<ts prefix>
+//   --created=TS    with --run, pick the run whose created timestamp starts TS
 //
 // Options:
 //   --ref=<git ref> baseline to compare against (default: merge-base with prod)
@@ -145,45 +148,79 @@ try {
       Deno.exit(1);
     }
     // Preplaced (iteration-fixed) pieces: green blocks + pink thunders.
-    const blocks: Cell[] = iterBlocks.map((b) => ({
+    const preplaced: Cell[] = iterBlocks.map((b) => ({
       x: b.x,
       y: b.y,
       thunder: b.kind === "thunder",
       player: false,
     }));
+    const checkpoint = { x: iter.checkpoint_x, y: iter.checkpoint_y };
 
-    let storedTime: number | undefined;
     const runUser = arg("run");
-    if (runUser) {
+    if (!runUser) {
+      board = { label: `iteration ${id}`, checkpoint, blocks: preplaced };
+    } else {
       const { deserializeRun } = await import("../server/util/run.ts");
-      // A user can have many runs; pick their best (this game maximises the
-      // runner's time), deterministically, and keep its persisted time so the
-      // render can show what the DB currently holds alongside the recompute.
-      const [run] = await sql<{ data: string; time: number }[]>`
-        SELECT data, time FROM run
+      // A user can have several non-void runs on one iteration, and they differ:
+      // scripts/comparePathing.ts scores every one, so picking a single "best by
+      // time" here would silently show a different run than the diff you were
+      // looking at. Evaluate them all, print the roster, and default to the one
+      // the pathing change moves most (largest old→new gap) — pin another with
+      // --created=<timestamp prefix>.
+      const runs = await sql<{ data: string; time: number; created: string }[]>`
+        SELECT data, time, created FROM run
         WHERE iteration = ${id} AND user = ${runUser} AND void = FALSE
-        ORDER BY time DESC
-        LIMIT 1;
+        ORDER BY created;
       `;
-      if (!run) {
+      const createdFilter = arg("created");
+      const candidates = runs
+        .filter((r) => !createdFilter || r.created.startsWith(createdFilter))
+        .map((r) => {
+          const board: Board = {
+            label: "",
+            checkpoint,
+            blocks: [
+              ...preplaced,
+              ...deserializeRun(r.data).map((p) => ({ ...p, player: true })),
+            ],
+            storedTime: r.time,
+          };
+          const o = duration(baseline, board);
+          const n = duration(current, board);
+          return {
+            created: r.created,
+            stored: r.time,
+            board,
+            delta: o && n ? o.seconds - n.seconds : 0,
+          };
+        });
+      if (!candidates.length) {
         console.error(
-          `No scored run for user '${runUser}' on iteration ${id}.`,
+          createdFilter
+            ? `No run for '${runUser}' on iteration ${id} matching --created=${createdFilter}.`
+            : `No scored run for '${runUser}' on iteration ${id}.`,
         );
         Deno.exit(1);
       }
-      storedTime = run.time;
-      // deserializeRun yields the player's placed pieces (thunder flag included);
-      // tag them so the render can distinguish them from the preplaced maze.
-      for (const b of deserializeRun(run.data)) {
-        blocks.push({ ...b, player: true });
+      const chosen = candidates.reduce((a, c) =>
+        Math.abs(c.delta) > Math.abs(a.delta) ? c : a
+      );
+      if (candidates.length > 1) {
+        console.log(`User has ${candidates.length} runs on iteration ${id}:`);
+        for (const c of candidates) {
+          console.log(
+            `  ${c.created}  stored ${c.stored.toFixed(2)}s  Δ ${
+              c.delta.toFixed(2)
+            }s${c === chosen ? "   ← showing (largest Δ)" : ""}`,
+          );
+        }
+        console.log("  (pass --created=<timestamp prefix> to pick another)\n");
       }
+      board = {
+        ...chosen.board,
+        label: `iteration ${id} · ${runUser} @ ${chosen.created}`,
+      };
     }
-    board = {
-      label: `iteration ${id}${runUser ? ` · ${runUser}` : ""}`,
-      checkpoint: { x: iter.checkpoint_x, y: iter.checkpoint_y },
-      blocks,
-      storedTime,
-    };
   } else if (arg("search") !== undefined) {
     const count = Number(arg("search")) || 400;
     let best: { board: Board; gap: number } | undefined;
