@@ -16,6 +16,7 @@
 //
 // Board source (pick one):
 //   --seed=N        generate a deterministic random board (no DB needed)
+//   --demo          a fixed board showing all piece kinds (no DB needed)
 //   --search[=N]    scan N seeds (default 400) for the biggest old-vs-new gap
 //   --iteration=N   pull a real board from the DB (needs APP_ENV + SQL_PASSWORD)
 //   --run=USER      with --iteration, overlay that user's placed blocks too
@@ -204,6 +205,21 @@ try {
         best.gap.toFixed(2)
       }s)`,
     );
+  } else if (arg("demo") !== undefined) {
+    // A no-DB board exercising all four piece kinds so the legend/colours can be
+    // eyeballed: preplaced vs player, block vs thunder.
+    board = {
+      label: "demo · all piece types",
+      checkpoint: { x: 9.5, y: 6.5 },
+      blocks: [
+        { x: 4, y: 4 },
+        { x: 14, y: 5 },
+        { x: 7, y: 9, player: true },
+        { x: 12, y: 10, player: true },
+        { x: 5, y: 13, thunder: true },
+        { x: 13, y: 14, thunder: true, player: true },
+      ],
+    };
   } else {
     board = generateBoard(Number(arg("seed")) || 42);
   }
@@ -297,17 +313,28 @@ try {
       (old.seconds - neu.seconds).toFixed(2)
     }s sooner${identical ? "  ·  paths identical on this board" : ""}</text>`,
   ];
+  // Fill and outline are independent: fill = piece type (block/thunder), amber
+  // outline = who placed it (player vs preplaced). Spell out both dimensions so
+  // the four combinations (e.g. a player-placed thunder) can't be misread.
   if (hasPlayer || hasThunder) {
     legend.push(
-      `<rect x="0" y="24.1" width="0.5" height="0.5" fill="${BLOCK}" rx="0.1"/>`,
-      `<text x="0.65" y="24.48" fill="#e6e6e6" font-size="0.52">preplaced</text>`,
-      `<rect x="4.3" y="24.1" width="0.5" height="0.5" fill="${BLOCK}" stroke="${PLAYER}" stroke-width="0.1" rx="0.1"/>`,
-      `<text x="4.95" y="24.48" fill="#e6e6e6" font-size="0.52">player</text>`,
-      `<rect x="7.9" y="24.1" width="0.5" height="0.5" fill="${THUNDER}" rx="0.1"/>`,
-      `<text x="8.55" y="24.48" fill="#e6e6e6" font-size="0.52">thunder (slows)</text>`,
+      `<rect x="0" y="24.05" width="0.5" height="0.5" fill="${BLOCK}" rx="0.1"/>`,
+      `<text x="0.65" y="24.43" fill="#e6e6e6" font-size="0.5">block</text>`,
     );
+    if (hasThunder) {
+      legend.push(
+        `<rect x="2.8" y="24.05" width="0.5" height="0.5" fill="${THUNDER}" rx="0.1"/>`,
+        `<text x="3.45" y="24.43" fill="#e6e6e6" font-size="0.5">thunder (slows)</text>`,
+      );
+    }
+    if (hasPlayer) {
+      legend.push(
+        `<rect x="0" y="24.85" width="0.5" height="0.5" fill="${EMPTY}" stroke="${PLAYER}" stroke-width="0.1" rx="0.1"/>`,
+        `<text x="0.65" y="25.23" fill="#e6e6e6" font-size="0.5">amber outline = player-placed  ·  no outline = preplaced</text>`,
+      );
+    }
   }
-  const height = hasPlayer || hasThunder ? 25.2 : 24;
+  const height = hasPlayer ? 25.9 : (hasThunder ? 24.9 : 24);
 
   svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.5 -0.5 21 ${height}" font-family="ui-sans-serif, system-ui, sans-serif">
