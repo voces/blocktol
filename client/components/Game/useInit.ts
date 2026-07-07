@@ -220,15 +220,26 @@ export const useInit = () => {
         // row once it lands.
         const fieldBest = Math.max(best, run.duration);
         const denom = fieldBest - min;
+        const scored = (d: number) =>
+          denom > 0 ? Math.max(0, Math.min(1, (d - min) / denom)) : 1;
+        const supreme = run.duration > best;
         setViewedAttempts((attempts) => [
-          ...attempts,
+          // A supreme raises the field best, so every existing run re-scores
+          // against the new ceiling (its % drops) and loses its SUPREME
+          // standing — mirroring mapAttempts, which the finish re-stage
+          // confirms. A non-supreme run leaves the ceiling (and the rest) as-is.
+          ...(supreme
+            ? attempts.map((a) => ({
+              ...a,
+              percent: scored(a.duration),
+              supreme: false,
+            }))
+            : attempts),
           {
             duration: run.duration,
             percentile: undefined,
-            percent: denom > 0
-              ? Math.max(0, Math.min(1, (run.duration - min) / denom))
-              : 1,
-            supreme: run.duration > best,
+            percent: scored(run.duration),
+            supreme,
             ranked: false,
             maze,
             created: Date.now(),
