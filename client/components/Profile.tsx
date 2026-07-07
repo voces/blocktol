@@ -280,12 +280,11 @@ export const Profile = () => {
           (profile ? "profile-avatar-btn" : "icon-button")}
         style={profile ? { background: avatarColor(getId()) } : undefined}
         onClick={() => setOpen(true)}
-        // Warm the profile the moment intent shows (hover / focus / press)
-        // so the dialog opens on fresh data instead of waiting on its own
-        // open-time fetch.
+        // Warm the profile the moment intent shows — pointerenter covers mouse
+        // hover and the first touch, onFocus covers keyboard. fetchProfile
+        // coalesces/rate-limits, so repeated events don't spam requests.
         onPointerEnter={() => fetchProfile()}
         onFocus={() => fetchProfile()}
-        onPointerDown={() => fetchProfile()}
         title="Profile"
         aria-label="Open profile"
       >
