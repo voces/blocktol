@@ -590,7 +590,7 @@ a:hover {
 }
 
 .today-result__chip--clickable:hover {
-  background: color-mix(in srgb, var(--chip) 11%, var(--surface-2));
+  --band-card-fill: 9%;
 }
 
 /* Calendar — a bounded one-month picker, same on desktop and mobile (see
@@ -947,20 +947,21 @@ a:hover {
 }
 
 .attempts__row--clickable:hover {
-  background: color-mix(in srgb, var(--band) 11%, var(--surface-2));
+  --band-card-fill: 9%;
 }
 
 /* The run currently on the board (a review): keep the row's own band colour but
-   lift it — a stronger border and a deeper band fill — plus a matching label, so
-   it's easy to spot which row you're looking at without a second (blue) accent.
-   Doubled selector so it wins over .band-card's border/fill. */
-.attempts__row.attempts__row--viewing {
-  border-color: color-mix(in srgb, var(--band) 60%, var(--border));
-  background: color-mix(in srgb, var(--band) 13%, var(--surface));
+   lift it — a heavier border and the deeper "highlighted" fill (shared with the
+   daily-result best row) — plus a matching label, so it's easy to spot which row
+   you're looking at without a second (blue) accent. Just tunes the band-card
+   knobs, so no specificity fight. */
+.attempts__row--viewing {
+  --band-card-edge: 60%;
+  --band-card-fill: 13%;
 }
 
-.attempts__row.attempts__row--viewing:hover {
-  background: color-mix(in srgb, var(--band) 18%, var(--surface));
+.attempts__row--viewing:hover {
+  --band-card-fill: 18%;
 }
 
 .attempts__viewing {
@@ -1445,10 +1446,11 @@ a:hover {
 }
 
 /* Best attempt: the shared band-card look, tinted to --accent with a heavier
-   border (via --band-card-edge). */
+   border and the same deeper "highlighted" fill as the viewed runs row. */
 .result__row--best {
   --band-card-tint: var(--accent);
   --band-card-edge: 55%;
+  --band-card-fill: 13%;
 }
 
 /* The glow is reserved for supreme (record) results — on the row and the
@@ -1471,7 +1473,11 @@ a:hover {
       var(--band-card-tint) var(--band-card-edge, 30%),
       var(--border)
     );
-  background: color-mix(in srgb, var(--band-card-tint) 8%, var(--surface));
+  background: color-mix(
+    in srgb,
+    var(--band-card-tint) var(--band-card-fill, 4%),
+    var(--surface)
+  );
 }
 
 .result__banner--glow {
