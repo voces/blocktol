@@ -2512,7 +2512,8 @@ a:hover {
 .mg-combine-icon {
   flex: none;
   display: flex;
-  color: var(--text-mute);
+  /* Warn amber: the earliest-attempt rule is a soft caveat worth noticing. */
+  color: var(--warn);
   margin-top: 1px;
 }
 .mg-combine-icon--ok {
