@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useRef, useState } from "preact/compat";
 import { getId } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
+import { Modal } from "./Modal.tsx";
 import { QrCode } from "./QrCode.tsx";
 
 const CopyIcon = () => (
@@ -67,57 +68,54 @@ export const MoveDevice = (
   };
 
   return (
-    <div class="move" onClick={onClose}>
-      <div class="move__sheet" onClick={(e) => e.stopPropagation()}>
-        <div class="move__grab" aria-hidden="true" />
-        <div class="move__head">
-          <button
-            type="button"
-            class="move__icon tapc"
-            aria-label="Back"
-            onClick={onBack}
-          >
-            ‹
-          </button>
-          <span class="move__title">Move to another device</span>
-          <button
-            type="button"
-            class="move__icon tapc"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            ×
+    <Modal class="move-sheet" onClose={onClose}>
+      <div class="move__head">
+        <button
+          type="button"
+          class="modal__icon tapc"
+          aria-label="Back"
+          onClick={onBack}
+        >
+          ‹
+        </button>
+        <span class="move__title">Move to another device</span>
+        <button
+          type="button"
+          class="modal__icon tapc"
+          aria-label="Close"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+      <div class="move__body">
+        <p class="move__lead">
+          Open <span class="mono">{location.host}</span>{" "}
+          on your other device and point its camera here, or copy the link
+          below.
+        </p>
+        <div class="move__qr">
+          <QrCode value={url} />
+          <div class="move__qr-logo">
+            <Logo size={26} />
+          </div>
+        </div>
+        <div class="move__link">
+          <div class="move__url mono">{display}</div>
+          <button type="button" class="move__copy tapc" onClick={copy}>
+            <CopyIcon />
+            {copied ? "Copied!" : "Copy"}
           </button>
         </div>
-        <div class="move__body">
-          <p class="move__lead">
-            Open <span class="mono">{location.host}</span>{" "}
-            on your other device and point its camera here — or copy the link
-            below.
-          </p>
-          <div class="move__qr">
-            <QrCode value={url} />
-            <div class="move__qr-logo">
-              <Logo size={26} />
-            </div>
-          </div>
-          <div class="move__link">
-            <div class="move__url mono">{display}</div>
-            <button type="button" class="move__copy tapc" onClick={copy}>
-              <CopyIcon />
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-          <div class="move__safety">
-            <ShieldIcon />
-            <div>
-              Anyone with this link can sign in as{" "}
-              <b class="move__name">{name}</b>{" "}
-              — it doesn't expire, so keep it private.
-            </div>
+        <div class="move__safety">
+          <ShieldIcon />
+          <div>
+            Anyone with this link can sign in as{" "}
+            <b class="move__name">{name}</b>. It doesn't expire, so keep it
+            private.
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

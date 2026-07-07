@@ -16,6 +16,7 @@ import { avatarColor, avatarInitial } from "../util/avatar.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
+import { Modal } from "./Modal.tsx";
 import { MoveDevice } from "./MoveDevice.tsx";
 
 const joinedLabel = (joined: number | null) =>
@@ -67,7 +68,6 @@ const Stat = (
 const ProfileDialog = (
   { onClose, onMove }: { onClose: () => void; onMove: () => void },
 ) => {
-  const mobile = useMediaQuery("(max-width: 1199.98px)");
   const { attemptsRemaining } = useContext(GameStateContext);
   const { profile, refetch, patch } = useProfile();
   const { settings, setSettings } = useSettings();
@@ -121,199 +121,194 @@ const ProfileDialog = (
   const median = profile?.medianPercentile;
 
   return (
-    <div
-      class={"profile-modal" + (mobile ? "" : " profile-modal--desktop")}
-      onClick={onClose}
-    >
-      <div class="profile-modal__sheet" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          class="profile-modal__close tapc"
-          aria-label="Close profile"
-          onClick={onClose}
-        >
-          ×
-        </button>
+    <Modal class="profile-sheet" onClose={onClose}>
+      <button
+        type="button"
+        class="modal__icon profile-modal__close tapc"
+        aria-label="Close profile"
+        onClick={onClose}
+      >
+        ×
+      </button>
 
-        <div class="profile-head">
-          {editing
-            ? (
-              // A full-width bar replaces the header while editing, so the input
-              // has room instead of being crushed between the avatar and rating.
-              <form
-                class="profile-rename"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  save();
+      <div class="profile-head">
+        {editing
+          ? (
+            // A full-width bar replaces the header while editing, so the input
+            // has room instead of being crushed between the avatar and rating.
+            <form
+              class="profile-rename"
+              onSubmit={(e) => {
+                e.preventDefault();
+                save();
+              }}
+            >
+              <input
+                class="profile-rename__input"
+                value={nameInput}
+                maxLength={32}
+                autoFocus
+                // Read as a username field, not a name — no first-letter
+                // capitalization (nudging folks toward handles), no
+                // autocorrect/spellcheck underlining their handle.
+                autocapitalize="none"
+                autocorrect="off"
+                autocomplete="off"
+                spellcheck={false}
+                onInput={(e) => setNameInput(e.currentTarget.value)}
+              />
+              <button
+                type="submit"
+                class="profile-rename__save tapc"
+                disabled={saving || !nameInput.trim()}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="profile-rename__cancel tapc"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </button>
+            </form>
+          )
+          : (
+            <>
+              <div
+                class="profile-head__avatar"
+                aria-hidden="true"
+                style={{
+                  background: color,
+                  boxShadow: `0 8px 20px -8px ${color}`,
                 }}
               >
-                <input
-                  class="profile-rename__input"
-                  value={nameInput}
-                  maxLength={32}
-                  autoFocus
-                  // Read as a username field, not a name — no first-letter
-                  // capitalization (nudging folks toward handles), no
-                  // autocorrect/spellcheck underlining their handle.
-                  autocapitalize="none"
-                  autocorrect="off"
-                  autocomplete="off"
-                  spellcheck={false}
-                  onInput={(e) => setNameInput(e.currentTarget.value)}
-                />
-                <button
-                  type="submit"
-                  class="profile-rename__save tapc"
-                  disabled={saving || !nameInput.trim()}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  class="profile-rename__cancel tapc"
-                  onClick={() => setEditing(false)}
-                >
-                  Cancel
-                </button>
-              </form>
-            )
-            : (
-              <>
-                <div
-                  class="profile-head__avatar"
-                  aria-hidden="true"
-                  style={{
-                    background: color,
-                    boxShadow: `0 8px 20px -8px ${color}`,
-                  }}
-                >
-                  {initial}
+                {initial}
+              </div>
+              <div class="profile-head__id">
+                <div class="profile-head__name-row">
+                  <span class="profile-head__name">{name}</span>
+                  <button
+                    type="button"
+                    class="profile-head__edit tapc"
+                    aria-label="Edit name"
+                    onClick={startEdit}
+                  >
+                    <EditIcon />
+                  </button>
                 </div>
-                <div class="profile-head__id">
-                  <div class="profile-head__name-row">
-                    <span class="profile-head__name">{name}</span>
-                    <button
-                      type="button"
-                      class="profile-head__edit tapc"
-                      aria-label="Edit name"
-                      onClick={startEdit}
-                    >
-                      <EditIcon />
-                    </button>
-                  </div>
-                  {joined && (
-                    <div class="profile-head__joined mono">joined {joined}</div>
-                  )}
+                {joined && (
+                  <div class="profile-head__joined mono">joined {joined}</div>
+                )}
+              </div>
+              <div class="profile-head__rating">
+                <div class="profile-head__rating-value mono">
+                  {profile ? Math.round(profile.rating) : "—"}
                 </div>
-                <div class="profile-head__rating">
-                  <div class="profile-head__rating-value mono">
-                    {profile ? Math.round(profile.rating) : "—"}
-                  </div>
-                  <div class="profile-head__rating-label">Rating</div>
-                </div>
-              </>
-            )}
+                <div class="profile-head__rating-label">Rating</div>
+              </div>
+            </>
+          )}
+      </div>
+
+      <div class="profile-stats">
+        <Stat value={profile ? String(profile.played) : "—"} label="Played" />
+        <Stat
+          value={profile ? String(profile.hundreds) : "—"}
+          label="Records"
+          color={profile && profile.hundreds > 0 ? "var(--peak)" : undefined}
+        />
+        <Stat
+          value={typeof median === "number"
+            ? `p${formatPercentile(median)}`
+            : "—"}
+          label="Median percentile"
+          color={typeof median === "number"
+            ? percentileBand(median)
+            : undefined}
+        />
+      </div>
+
+      <button
+        type="button"
+        class={"profile-best" +
+          (canView ? " profile-best--clickable tapc" : "")}
+        onClick={canView ? viewBest : undefined}
+        disabled={!canView}
+      >
+        <div class="profile-best__label">Best build</div>
+        <div class="profile-best__value mono">
+          {profile?.bestBuild != null ? `${profile.bestBuild}s` : "—"}
+        </div>
+      </button>
+
+      <div class="pref">
+        <div class="section-title">Preferences</div>
+
+        <div class="pref__row">
+          <div class="pref__label">Appearance</div>
+          <div class="pref__seg" role="group" aria-label="Appearance">
+            {themes.map((t) => (
+              <button
+                key={t}
+                type="button"
+                class={"pref__seg-btn tapc" +
+                  (settings.theme === t ? " pref__seg-btn--active" : "")}
+                aria-pressed={settings.theme === t}
+                onClick={() => setSettings({ theme: t })}
+              >
+                {t[0].toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div class="profile-stats">
-          <Stat value={profile ? String(profile.played) : "—"} label="Played" />
-          <Stat
-            value={profile ? String(profile.hundreds) : "—"}
-            label="Records"
-            color={profile && profile.hundreds > 0 ? "var(--peak)" : undefined}
-          />
-          <Stat
-            value={typeof median === "number"
-              ? `p${formatPercentile(median)}`
-              : "—"}
-            label="Median percentile"
-            color={typeof median === "number"
-              ? percentileBand(median)
-              : undefined}
-          />
-        </div>
+        {(touch || settings.zoom !== ZOOM_DEFAULT) && (
+          <div class="pref__row pref__row--stack">
+            <div class="pref__head">
+              <div>
+                <div class="pref__label">Zoom when placing</div>
+                <div class="pref__sub">Magnifies the board on touch.</div>
+              </div>
+              <div class="pref__value mono">
+                {settings.zoom <= ZOOM_MIN
+                  ? "Off"
+                  : `${settings.zoom.toFixed(1)}×`}
+              </div>
+            </div>
+            <input
+              class="pref__slider"
+              type="range"
+              min={ZOOM_MIN}
+              max={ZOOM_MAX}
+              step={0.1}
+              value={settings.zoom}
+              aria-label="Zoom when placing"
+              onInput={(e) =>
+                setSettings({ zoom: Number(e.currentTarget.value) })}
+            />
+          </div>
+        )}
+      </div>
 
+      <div class="pref">
+        <div class="section-title">Account</div>
         <button
           type="button"
-          class={"profile-best" +
-            (canView ? " profile-best--clickable tapc" : "")}
-          onClick={canView ? viewBest : undefined}
-          disabled={!canView}
+          class="profile-action profile-action--row tapc"
+          onClick={onMove}
         >
-          <div class="profile-best__label">Best build</div>
-          <div class="profile-best__value mono">
-            {profile?.bestBuild != null ? `${profile.bestBuild}s` : "—"}
+          <LinkIcon />
+          <div class="profile-action__text">
+            <div class="profile-action__title">Move to another device</div>
+            <div class="profile-action__sub">
+              Scan a code or copy your login link
+            </div>
           </div>
+          <span class="profile-action__chev" aria-hidden="true">›</span>
         </button>
-
-        <div class="pref">
-          <div class="section-title">Preferences</div>
-
-          <div class="pref__row">
-            <div class="pref__label">Appearance</div>
-            <div class="pref__seg" role="group" aria-label="Appearance">
-              {themes.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  class={"pref__seg-btn tapc" +
-                    (settings.theme === t ? " pref__seg-btn--active" : "")}
-                  aria-pressed={settings.theme === t}
-                  onClick={() => setSettings({ theme: t })}
-                >
-                  {t[0].toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {(touch || settings.zoom !== ZOOM_DEFAULT) && (
-            <div class="pref__row pref__row--stack">
-              <div class="pref__head">
-                <div>
-                  <div class="pref__label">Zoom when placing</div>
-                  <div class="pref__sub">Magnifies the board on touch.</div>
-                </div>
-                <div class="pref__value mono">
-                  {settings.zoom <= ZOOM_MIN
-                    ? "Off"
-                    : `${settings.zoom.toFixed(1)}×`}
-                </div>
-              </div>
-              <input
-                class="pref__slider"
-                type="range"
-                min={ZOOM_MIN}
-                max={ZOOM_MAX}
-                step={0.1}
-                value={settings.zoom}
-                aria-label="Zoom when placing"
-                onInput={(e) =>
-                  setSettings({ zoom: Number(e.currentTarget.value) })}
-              />
-            </div>
-          )}
-        </div>
-
-        <div class="pref">
-          <div class="section-title">Account</div>
-          <button
-            type="button"
-            class="profile-action profile-action--row tapc"
-            onClick={onMove}
-          >
-            <LinkIcon />
-            <div class="profile-action__text">
-              <div class="profile-action__title">Move to another device</div>
-              <div class="profile-action__sub">
-                Scan a code or copy your login link
-              </div>
-            </div>
-            <span class="profile-action__chev" aria-hidden="true">›</span>
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

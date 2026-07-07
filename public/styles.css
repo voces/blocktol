@@ -1587,25 +1587,22 @@ a:hover {
    bottom sheet that hugs its content (so a sparse profile doesn't strand a
    full-screen void). Desktop: a centred dialog card, like the daily result.
    Both are dismissed by the backdrop or the close button. */
-.profile-modal {
+/* Shared dismissible overlay (see Modal.tsx): a bottom sheet on mobile, a
+   centered card on desktop. Used by the profile dialog and the move sheet.
+   Children own their padding; a per-use class (e.g. .profile-sheet) adds it. */
+.modal {
   position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
   box-sizing: border-box;
-  background: rgba(6, 6, 10, 0.72);
+  background: rgba(6, 6, 10, 0.68);
   /* Mobile default: anchored to the bottom as a sheet. */
   align-items: flex-end;
   justify-content: center;
 }
 
-/* Desktop: card centred (never past the viewport midpoint on short windows). */
-.profile-modal--desktop {
-  align-items: center;
-  padding: 24px;
-}
-
-.profile-modal__sheet {
+.modal__sheet {
   position: relative;
   box-sizing: border-box;
   width: 100%;
@@ -1613,15 +1610,32 @@ a:hover {
      min-content (which would push the sheet wider than a phone screen). */
   min-width: 0;
   max-width: 480px;
-  max-height: 92vh;
+  max-height: 94vh;
   overflow-y: auto;
   text-align: left;
   background: var(--surface);
   /* Bottom sheet: rounded top only, flush to the screen's bottom edge. */
   border-radius: 22px 22px 0 0;
-  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
   animation: profileSheetIn 0.22s ease;
+}
+
+/* Desktop: card centred, free-floating and rounded on all sides. */
+@media (min-width: 1200px) {
+  .modal {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .modal__sheet {
+    max-width: 420px;
+    max-height: none;
+    overflow-y: visible;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+    animation: none;
+  }
 }
 
 @keyframes profileSheetIn {
@@ -1635,41 +1649,54 @@ a:hover {
   }
 }
 
-/* On desktop the sheet is a free-floating rounded card. */
-.profile-modal--desktop .profile-modal__sheet {
-  max-width: 440px;
-  max-height: none;
-  overflow-y: visible;
-  padding: 22px;
-  border: 1px solid var(--border-strong);
-  border-radius: 20px;
-  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
-  animation: none;
+/* Profile dialog content padding (the move sheet manages its own). */
+.profile-sheet {
+  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1200px) {
+  .profile-sheet {
+    padding: 22px;
+  }
 }
 
 /* Decorative dialog icons (edit pencil, copy/link) must not act as board-input
    targets — the game's touch handlers zoom the board on any touched <svg>. Let
    the taps fall through to the buttons beneath. */
-.profile-modal svg {
+.modal svg {
   pointer-events: none;
 }
 
+/* Shared header/close icon button used across both modals so the affordances
+   (profile ×, move ‹ / ×) look identical. */
+.modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.modal__icon:hover {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
+/* The profile's close is the same button, pinned to the sheet corner. */
 .profile-modal__close {
   position: absolute;
   top: 14px;
   right: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--color);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
+  z-index: 1;
 }
 
 /* Header: avatar, name + join date, rating pinned to the right. Held to the
@@ -1825,10 +1852,6 @@ a:hover {
   border-radius: 14px;
   background: var(--surface-2);
   text-align: center;
-}
-
-.profile-modal--desktop .profile-stat {
-  background: var(--surface-2);
 }
 
 .profile-stat__value {
@@ -2016,88 +2039,12 @@ a:hover {
   cursor: pointer;
 }
 
-/* ============================ Move-to-device sheet ======================== */
-.move {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  box-sizing: border-box;
-  background: rgba(6, 6, 10, 0.6);
-}
-
-@media (min-width: 1200px) {
-  .move {
-    align-items: center;
-    padding: 24px;
-  }
-}
-
-.move__sheet {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 480px;
-  max-height: 94vh;
-  overflow-y: auto;
-  /* The app root is centred; the sheet's body copy reads left. */
-  text-align: left;
-  background: var(--surface);
-  border-radius: 22px 22px 0 0;
-  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
-  animation: profileSheetIn 0.22s ease;
-}
-
-@media (min-width: 1200px) {
-  .move__sheet {
-    max-width: 400px;
-    border: 1px solid var(--border-strong);
-    border-radius: 20px;
-    box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
-    animation: none;
-  }
-}
-
-.move svg {
-  pointer-events: none;
-}
-
-.move__grab {
-  width: 38px;
-  height: 4px;
-  margin: 9px auto 2px;
-  border-radius: 99px;
-  background: var(--surface-3);
-}
-
+/* ===== Move-to-device sheet (shell is the shared .modal, see Modal.tsx) ==== */
 .move__head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 12px 4px;
-}
-
-.move__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex: none;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--text-mute);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.move__icon:hover {
-  background: var(--surface-2);
-  color: var(--color);
+  padding: 12px 12px 4px;
 }
 
 .move__title {
