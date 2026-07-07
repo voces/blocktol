@@ -8,6 +8,7 @@ import { useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
+import { computeVerdict } from "./verdict.ts";
 
 export const useInit = () => {
   const game = useGame();
@@ -41,6 +42,14 @@ export const useInit = () => {
     viewedAttempts,
     viewMaze,
     setViewing,
+    blocks,
+    min,
+    setMin,
+    best,
+    setBest,
+    ownBest,
+    setOwnBest,
+    setVerdict,
   } = useContext(GameStateContext);
 
   // Keep the calendar / today panels in step with the board's attempts by
@@ -68,6 +77,10 @@ export const useInit = () => {
       setRun({ path: data.path, duration: data.duration, slows: data.slows });
       setStaged(false);
       setViewing(false);
+      // Drop any lingering free-play verdict — a new board is loading, so the
+      // previous run's celebration (which otherwise overrides the whole HUD)
+      // must not carry over.
+      setVerdict(undefined);
       setCheckpoint(data.checkpoint);
       setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
       setBricks(data.bricks);
@@ -81,6 +94,12 @@ export const useInit = () => {
       setTime(Math.floor(data.remainingTime));
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
+      // Field / personal bests for the free-play verdict (see verdict.ts). These
+      // are the bars from *before* this run — startRun fetches them first — so a
+      // run beating them reads as a fresh milestone.
+      setMin(data.min);
+      setBest(data.best);
+      setOwnBest(data.ownBest);
 
       layout(data);
     },
@@ -95,6 +114,10 @@ export const useInit = () => {
       setFreePlay(true);
       setStaged(true);
       setViewing(false);
+      // Clear any lingering verdict so a re-stage (reset, day change, or the
+      // post-run restage) returns to the normal "to build" clock instead of the
+      // old celebration pill, which otherwise overrides the HUD.
+      setVerdict(undefined);
       setCheckpoint(data.checkpoint);
       // A staged board is the iteration's fixed pieces only — no player blocks
       // exist until the first placement opens the run.
@@ -110,6 +133,11 @@ export const useInit = () => {
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
       setTransitionBlock(undefined);
       setThunderHover(undefined);
+      // Bests now include any run just committed, so the next free-play run is
+      // judged against the updated bar.
+      setMin(data.min);
+      setBest(data.best);
+      setOwnBest(data.ownBest);
 
       layout(data);
     },
@@ -152,7 +180,10 @@ export const useInit = () => {
       // The calendar / today panels update locally from the fresh attempts (see
       // the applyRun effect above) — no list refetch here.
       // Free play never spends a ranked attempt — it just re-stages the board.
+      // The milestone celebration (if any) fired at commit, not here; clear it
+      // as the board re-stages.
       if (freePlay) {
+        setVerdict(undefined);
         api.getBoard({ iteration, timeZone: getTimeZone() });
         return;
       }
@@ -172,7 +203,38 @@ export const useInit = () => {
     // A free-play run counts only from this point — commit it non-void so it
     // lands in the panel and best; leaving before now kept it void (abandoned).
     // A daily attempt is already committed on build, so it's left alone.
-    if (freePlay && iteration !== undefined) api.commitRun({ iteration });
+    if (freePlay && iteration !== undefined) {
+      api.commitRun({ iteration });
+      // Show the run in the Runs panel the instant it starts executing, rather
+      // than waiting for the runner to finish and the board to re-stage. Mirrors
+      // the server's mapAttempts shaping (your best run re-normalises to 100%);
+      // the re-stage's authoritative list replaces this optimistic row once it
+      // lands.
+      const maze = blocks.filter((b) => b.local).map((b) =>
+        b.thunder ? { x: b.x, y: b.y, thunder: true } : { x: b.x, y: b.y }
+      );
+      const fieldBest = Math.max(best, run.duration);
+      const denom = fieldBest - min;
+      setViewedAttempts((attempts) => [
+        ...attempts,
+        {
+          duration: run.duration,
+          percentile: undefined,
+          percent: denom > 0
+            ? Math.max(0, Math.min(1, (run.duration - min) / denom))
+            : 1,
+          supreme: run.duration > best,
+          ranked: false,
+          maze,
+          created: Date.now(),
+        },
+      ]);
+      // A free-play result is known the instant it commits, so fire the
+      // milestone celebration (decorated pill + floating badge) now rather than
+      // at finish — it plays over the run and clears when the board re-stages.
+      const verdict = computeVerdict(run.duration, min, best, ownBest);
+      if (verdict) setVerdict(verdict);
+    }
 
     game.dispatchEvent("runStart", run);
 
@@ -184,7 +246,7 @@ export const useInit = () => {
     // board (startRun / getBoard) resets them for the following build.
     setTouching(false);
     setThunderHover(undefined);
-  }, [time, run, freePlay, iteration]);
+  }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
 
   useApiListener(
     "updateRun",

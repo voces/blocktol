@@ -987,8 +987,11 @@ a:hover {
   gap: 8px;
 }
 
-/* Right-hand HUD group: the (free-play) reset button beside the build clock. */
+/* Right-hand HUD group: the (free-play) reset button beside the build clock.
+   Positioned so the free-play win badge can float beneath the timer (see
+   .celebrate) without joining the layout. */
 .hud__controls {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1147,6 +1150,163 @@ a:hover {
 
 .hud__build--staged:hover .hud__build-time {
   opacity: 1;
+}
+
+/* Free-play run clock: the live stopwatch doubled as a verdict. Its fill (set
+   inline) tracks the run's live score % on the standing ramp; the % rides
+   alongside the time. The daily clock stays the plain accent pill above. */
+.hud__run--score {
+  position: relative;
+  /* Centre the row in the fixed-height pill; the % is nudged to the time's
+     baseline below so time + % still sit on one line. */
+  align-items: center;
+  gap: 8px;
+  padding: 0 15px;
+  /* Inline background/color (the live % colour + its readable ink) override the
+     shared .hud__run accent fill. */
+}
+
+.hud__run-time {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+}
+
+.hud__run-s {
+  font-size: 11px;
+  margin-left: 1px;
+}
+
+.hud__run-pct {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.78;
+}
+
+@keyframes pbPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 131, 230, 0); }
+  50% { box-shadow: 0 0 16px 2px rgba(79, 131, 230, 0.55); }
+}
+
+@keyframes wrRing {
+  0% { transform: scale(0.62); opacity: 0.75; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+@keyframes supremeGlow {
+  0%, 100% { box-shadow: 0 0 12px 1px rgba(230, 180, 40, 0.4); }
+  50% { box-shadow: 0 0 26px 5px rgba(230, 180, 40, 0.66); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* The free-play win overlay: the milestone's glow / ripple over the pill, a
+   badge under it, and (for a personal best / supreme) confetti bursting out on
+   every side. It's fixed to the viewport and positioned over the pill's measured
+   box (see CelebrationOverlay), NOT nested in the HUD — the HUD sits at the
+   clipped top-right corner of `.game`, so drawing here lets the effects spill
+   above and right of the button without being cut. It fires when the run commits
+   and is unmounted when the board re-stages at finish; it fades opacity only, so
+   the glow stays aligned to the pill. */
+.celebrate {
+  position: fixed;
+  pointer-events: none;
+  z-index: 12;
+  animation: celebrateFade 0.4s ease forwards;
+}
+
+@keyframes celebrateFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Glow / ripple sit over the pill's footprint; transparent-centred, so the time
+   reads through, and they cast their shadow outward unclipped up here. */
+.celebrate__glow,
+.celebrate__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  pointer-events: none;
+}
+
+.celebrate__glow--pb {
+  animation: pbPulse 1.6s ease-in-out infinite;
+}
+
+.celebrate__glow--supreme {
+  animation: supremeGlow 1.8s ease-in-out infinite;
+}
+
+.celebrate__ring {
+  border: 2px solid var(--peak);
+  animation: wrRing 1.4s ease-out infinite;
+}
+
+.celebrate__badge {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  white-space: nowrap;
+  backdrop-filter: blur(5px);
+}
+
+.celebrate__badge svg {
+  display: block;
+  flex: none;
+}
+
+.celebrate__label {
+  font: 700 11px var(--font);
+  letter-spacing: 0.03em;
+}
+
+.celebrate__badge--pb {
+  background: rgba(20, 20, 27, 0.92);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.7);
+  color: #eceef3;
+}
+
+.celebrate__badge--record {
+  background: rgba(18, 26, 14, 0.92);
+  border-color: rgba(150, 210, 70, 0.5);
+  box-shadow: 0 8px 20px -6px rgba(80, 140, 20, 0.5);
+  color: hsl(88, 60%, 66%);
+}
+
+.celebrate__badge--record svg {
+  color: hsl(88, 60%, 60%);
+}
+
+.celebrate__badge--supreme {
+  background: rgba(30, 22, 0, 0.92);
+  border-color: rgba(230, 180, 40, 0.5);
+  box-shadow: 0 8px 22px -6px rgba(180, 140, 20, 0.5);
+  color: hsl(45, 88%, 66%);
+}
+
+.celebrate__badge--supreme svg {
+  color: hsl(45, 90%, 62%);
+}
+
+.celebrate__spark {
+  position: absolute;
+  animation: sparkle 1.3s ease-in-out infinite;
 }
 
 /* Daily result modal (see Daily.tsx). */

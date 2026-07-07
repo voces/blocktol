@@ -4,6 +4,7 @@ import { api } from "../../api.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { Timer } from "../Timer.tsx";
 import { GameStateContext } from "./useGameState.ts";
+import { RunClock, VerdictPill } from "./RunClock.tsx";
 
 const IDLE_MS = 5_000;
 
@@ -73,6 +74,9 @@ export const Hud = () => {
     freePlay,
     viewing,
     attemptsRemaining,
+    min,
+    best,
+    verdict,
   } = useContext(GameStateContext);
 
   // Reviewing a past maze leaves the board inert; a Play button is the way back
@@ -165,7 +169,12 @@ export const Hud = () => {
             <ResetIcon />
           </button>
         )}
-        {time > 0
+        {verdict
+          // A milestone free-play run is executing: show its decorated verdict
+          // pill (fired at commit, cleared when the board re-stages at finish —
+          // see useInit). The celebration badge floats separately below.
+          ? <VerdictPill verdict={verdict} />
+          : time > 0
           ? staged
             ? (
               // Free play before the first placement: the clock is frozen and
@@ -197,13 +206,19 @@ export const Hud = () => {
             )
           : run && time < 0
           ? (
-            // Same clock slot, now counting up the live run.
-            <div class="hud__run">
-              <span class="mono">
-                <Timer to={run.duration} />
-              </span>
-              <span class="hud__build-label">seconds</span>
-            </div>
+            // Same clock slot, now counting up the live run. Free play turns it
+            // into the verdict — tinted to the run's live score % with the %
+            // shown — while a daily attempt stays a blind stopwatch.
+            freePlay
+              ? <RunClock to={run.duration} min={min} best={best} />
+              : (
+                <div class="hud__run">
+                  <span class="mono">
+                    <Timer to={run.duration} />
+                  </span>
+                  <span class="hud__build-label">seconds</span>
+                </div>
+              )
           )
           : viewing
           ? (
