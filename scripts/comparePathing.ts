@@ -315,11 +315,18 @@ for (
 ) {
   // The run table has no id, so pin the row on its identifying columns. ABS(time
   // - stored) guards the single-precision float rather than matching it exactly.
+  //
+  // Deliberately NOT keyed on `created`: the column is a TIMESTAMP and `created`
+  // comes back from the proxy as an ISO-8601 string ("...T....000Z"). MariaDB coerces
+  // that string to a datetime for a SELECT (so a self-match test passes) but NOT
+  // for an UPDATE's WHERE — there it matches zero rows, so the whole apply
+  // silently no-ops (affectedRows 0). (user, iteration, data) already identifies
+  // the run; duplicate (user, iteration, data) rows must share a time anyway, so
+  // retiming them all to the same recomputed value is correct.
   const res = await sql<ExecResult>`
     UPDATE run SET time = ${recomputed}
     WHERE user = ${run.user}
       AND iteration = ${run.iteration}
-      AND created = ${run.created}
       AND data = ${run.data}
       AND ABS(time - ${run.time}) < ${TIME_EPSILON};
   `;
