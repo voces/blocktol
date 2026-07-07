@@ -199,7 +199,7 @@ export const Attempts = () => {
                       )}
                       {isBest && (!simplified || groups.length > 1) && (
                         <span class="attempts__badge">
-                          {supreme ? "SUPREME" : "BEST"}
+                          {supreme ? "SUPREME" : peak ? "RECORD" : "BEST"}
                         </span>
                       )}
                     </div>

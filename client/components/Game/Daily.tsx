@@ -158,7 +158,7 @@ export const Daily = () => {
                 Attempt {i + 1}
                 {i === bestIdx && (
                   <span class="result__badge" style={{ "--badge": accent }}>
-                    {isSupreme ? "SUPREME" : "BEST"}
+                    {isSupreme ? "SUPREME" : isPeak ? "RECORD" : "BEST"}
                   </span>
                 )}
               </span>
