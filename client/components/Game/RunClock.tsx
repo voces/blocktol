@@ -1,5 +1,6 @@
 import { Fragment, h, JSX } from "preact";
 import { createPortal, useLayoutEffect, useRef, useState } from "preact/compat";
+import { formatPercentile } from "../../../common/formatPercentile.ts";
 import { readableInk } from "../../../common/percentileColor.ts";
 import { climbColor, scorePercent, Verdict } from "./verdict.ts";
 
@@ -16,6 +17,9 @@ export const RunClock = (
 ) => {
   const percent = Math.max(0, Math.min(1, scorePercent(to, min, best)));
   const color = climbColor(percent);
+  // formatPercentile keeps sub-100 precision (99.7, not a rounded-up 100) and
+  // only ever prints 100 for a genuine field-topping tie/supreme — so a plain PB
+  // never masquerades as a record. Matches the runs panel's own formatting.
   return (
     <div
       class="hud__run hud__run--score"
@@ -25,7 +29,7 @@ export const RunClock = (
         {to.toFixed(2)}
         <span class="hud__run-s">s</span>
       </span>
-      <span class="mono hud__run-pct">{Math.round(percent * 100)}%</span>
+      <span class="mono hud__run-pct">{formatPercentile(percent)}%</span>
     </div>
   );
 };
@@ -68,7 +72,7 @@ export const VerdictPill = ({ verdict }: { verdict: Verdict }) => {
           <span class="hud__run-s">s</span>
         </span>
         <span class="mono hud__run-pct">
-          {Math.round(verdict.percent * 100)}%
+          {formatPercentile(verdict.percent)}%
         </span>
       </div>
       {rect &&
