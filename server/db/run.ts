@@ -3,9 +3,10 @@ import { deserializeRun, serializeRun } from "../util/run.ts";
 import { raw, sql } from "./query.ts";
 
 // Every run starts void. A daily attempt counts once its maze is built
-// (updateCurrentRun with commit = true); a free-play run counts only once it
-// actually executes (commitRun). Navigating away before either leaves the run
-// void — i.e. abandoned — so no explicit abandon call is needed for free play.
+// (updateCurrentRun derives this and clears void); a free-play run counts only
+// once it actually executes (commitRun). Navigating away before either leaves
+// the run void — i.e. abandoned — so no explicit abandon call is needed for
+// free play.
 export const startRun = (
   iteration: number,
   user: string,
@@ -76,46 +77,65 @@ export const getCurrentRun = (user: string) =>
   );
 
 // Save the caller's in-progress build (latest run, within the 60s window).
-// `commit` decides the void flag: a daily attempt commits immediately (its built
-// maze is the spent attempt's result), so void is cleared and the ranked-three
-// reassignment runs; a free-play run leaves void alone (it only counts once it
-// executes — see commitRun) and skips the reassignment, which concerns only the
-// ranked three and is meaningless for free play.
+// Whether the save also commits is derived here rather than trusted from the
+// client: the run is a ranked daily attempt iff it's among the user's first
+// three runs on the iteration AND was created on the iteration's own day — the
+// same predicate allRunsByIteration badges with, so the write and read paths
+// can't disagree. A ranked attempt commits on build (its built maze is the
+// spent attempt's result), clearing void and running the ranked-three daily
+// reassignment; free play leaves void alone (it only counts once it executes —
+// see commitRun) and skips the reassignment, which concerns only the ranked
+// three. A single multi-statement query runs on one connection, so @ranked is
+// visible to every statement in the batch.
 export const updateCurrentRun = (
   user: string,
   time: number,
   blocks: (Point & { thunder?: boolean; player?: boolean })[],
   iteration: number,
-  commit = true,
 ) =>
-  !commit
-    ? sql`
+  sql`
+    SET @ranked := FALSE;
+
+    SELECT @ranked := (
+      created <= COALESCE((
+        SELECT created FROM (
+          SELECT created
+          FROM run
+          WHERE user = ${user}
+            AND iteration = ${iteration}
+          ORDER BY created ASC LIMIT 1 OFFSET 2
+        ) first3
+      ), created)
+      AND DATE(created) = (SELECT DATE(created) FROM iteration WHERE id = ${iteration})
+    )
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+    ORDER BY created DESC LIMIT 1;
+
     UPDATE run
-    SET time = ${time}, data = ${serializeRun(blocks)}
+    SET time = ${time}, data = ${
+    serializeRun(blocks)
+  }, void = void AND NOT @ranked
     WHERE user = ${user}
       AND iteration = ${iteration}
       AND TIMESTAMPDIFF(SECOND, created, NOW()) < 60
-    ORDER BY created DESC LIMIT 1;`
-    : sql`
-    UPDATE run
-    SET time = ${time}, data = ${serializeRun(blocks)}, void = FALSE
-    WHERE user = ${user}
-      AND iteration = ${iteration}
-      and TIMESTAMPDIFF(SECOND, created, NOW()) < 60
     ORDER BY created DESC LIMIT 1;
 
     UPDATE run
     SET daily = FALSE
-    WHERE user = ${user}
+    WHERE @ranked
+      AND user = ${user}
       AND iteration = ${iteration}
       AND YEAR(created) = (SELECT YEAR(created) FROM iteration WHERE id = ${iteration})
       AND MONTH(created) = (SELECT MONTH(created) FROM iteration WHERE id = ${iteration})
       AND DAY(created) = (SELECT DAY(created) FROM iteration WHERE id = ${iteration})
     ORDER BY created ASC LIMIT 3;
-    
+
     UPDATE run
     SET daily = TRUE
-    WHERE user = ${user}
+    WHERE @ranked
+      AND user = ${user}
       AND iteration = ${iteration}
       AND time = (
         SELECT MAX(time)

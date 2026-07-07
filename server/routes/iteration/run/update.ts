@@ -10,14 +10,15 @@ import { trailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
 
+// Whether the save commits (daily attempt) or stays void until execution (free
+// play) is derived server-side in updateCurrentRun from the run itself — the
+// client no longer sends a freePlay flag (old cached clients still may; zod
+// strips unknown keys).
 const updateRunBody = z.object({
   iteration: z.number(),
   blocks: z.array(
     z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
   ),
-  // Free-play builds don't commit (the run stays void until it executes); daily
-  // attempts do. Defaults to a committing (daily) update when absent.
-  freePlay: z.boolean().optional(),
 });
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);
@@ -25,7 +26,7 @@ const getIterationOtherBest = trailer(getIterationOtherBestRaw);
 const isUpdate = is.object({ changedRows: is.number });
 
 export const updateRun = method(updateRunBody, true)(
-  async ({ iteration: iterationId, blocks, userId, freePlay }, req) => {
+  async ({ iteration: iterationId, blocks, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
     let otherBest: number | null;
     try {
@@ -50,9 +51,11 @@ export const updateRun = method(updateRunBody, true)(
         duration,
         blocks.map((b) => ({ ...b, player: true })),
         iterationId,
-        !freePlay,
       );
-      if (isUpdate(r) && r.changedRows === 0) {
+      // The batch is [SET, SELECT @ranked, save UPDATE, demote, promote] — the
+      // save's result is the third entry.
+      const saved = Array.isArray(r) ? r[2] : r;
+      if (isUpdate(saved) && saved.changedRows === 0) {
         log.error(req, "Unexpected no rows changed");
       }
     } catch (err) {

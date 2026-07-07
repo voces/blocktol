@@ -65,7 +65,8 @@ export const startRun = method(startRunBody, true)(
 
     // The run opened with a placement (free play): persist it now so the first
     // brick doesn't need a second request, and return the board already holding
-    // it. commit = false — free play stays void until it executes.
+    // it. updateCurrentRun derives that this run isn't a ranked attempt, so it
+    // stays void until it executes.
     if (block && validation?.ok) {
       const player = { ...block, player: true };
       try {
@@ -74,7 +75,6 @@ export const startRun = method(startRunBody, true)(
           validation.duration,
           [player],
           iteration,
-          false,
         );
       } catch (err) {
         // The run is started regardless; the client re-sends the maze on its
