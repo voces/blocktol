@@ -89,7 +89,7 @@ export const TodayResult = () => {
       <div class="section-title">Today</div>
       <div class="today-result__chips">
         <div
-          class={"today-result__chip" +
+          class={"today-result__chip band-card" +
             (rankedBest?.supreme ? " today-result__chip--glow" : "") +
             (rankedBest ? " today-result__chip--clickable tapc" : "")}
           style={{ "--chip": rankedBand }}
@@ -113,7 +113,7 @@ export const TodayResult = () => {
           </div>
         </div>
         <div
-          class={"today-result__chip" +
+          class={"today-result__chip band-card" +
             (today?.supreme ? " today-result__chip--glow" : "") +
             (today && personalBest != null
               ? " today-result__chip--clickable tapc"

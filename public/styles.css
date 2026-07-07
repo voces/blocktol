@@ -549,14 +549,14 @@ a:hover {
 }
 
 /* Each chip is tinted to its percentile band (--chip, set inline); supreme
-   adds the gold glow — matching the result modal, not a fixed green/blue. */
+   adds the gold glow — matching the result modal, not a fixed green/blue. Border
+   + faint fill come from .band-card. */
 .today-result__chip {
   flex: 1;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--chip) 30%, var(--border));
   border-radius: 14px;
-  background: var(--surface);
+  --band-card-tint: var(--chip);
 }
 
 .today-result__chip--glow {
@@ -590,7 +590,7 @@ a:hover {
 }
 
 .today-result__chip--clickable:hover {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--chip) 11%, var(--surface-2));
 }
 
 /* Calendar — a bounded one-month picker, same on desktop and mobile (see
@@ -932,9 +932,9 @@ a:hover {
   align-items: center;
   gap: 12px;
   padding: 10px 13px;
-  border: 1px solid color-mix(in srgb, var(--band) 30%, var(--border));
   border-radius: 13px;
-  background: var(--surface);
+  /* Border + faint fill come from .band-card, tinted to this row's band. */
+  --band-card-tint: var(--band);
 }
 
 .attempts__row--glow {
@@ -947,19 +947,19 @@ a:hover {
 }
 
 .attempts__row--clickable:hover {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--band) 11%, var(--surface-2));
 }
 
 /* The run currently on the board (a review): keep the row's own band colour but
-   lift it — a stronger border and a saturated band-tinted fill — plus a matching
-   label, so it's easy to spot which row you're looking at without introducing a
-   second (blue) accent. */
-.attempts__row--viewing {
+   lift it — a stronger border and a deeper band fill — plus a matching label, so
+   it's easy to spot which row you're looking at without a second (blue) accent.
+   Doubled selector so it wins over .band-card's border/fill. */
+.attempts__row.attempts__row--viewing {
   border-color: color-mix(in srgb, var(--band) 60%, var(--border));
   background: color-mix(in srgb, var(--band) 13%, var(--surface));
 }
 
-.attempts__row--viewing:hover {
+.attempts__row.attempts__row--viewing:hover {
   background: color-mix(in srgb, var(--band) 18%, var(--surface));
 }
 
@@ -1444,16 +1444,34 @@ a:hover {
   background: var(--surface-2);
 }
 
-/* Best attempt: a border and fill tinted to --accent (green for best). */
+/* Best attempt: the shared band-card look, tinted to --accent with a heavier
+   border (via --band-card-edge). */
 .result__row--best {
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  --band-card-tint: var(--accent);
+  --band-card-edge: 55%;
 }
 
 /* The glow is reserved for supreme (record) results — on the row and the
    matching "you beat 100%" banner. */
 .result__row--glow {
   box-shadow: 0 0 16px -2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Shared "card tinted to a percentile band" look: a band-derived border and a
+   faint band fill over the surface. A caller sets --band-card-tint (its band /
+   chip / accent colour); --band-card-edge tunes the border strength for a
+   heavier variant. Used by the runs rows, today cards, and the daily-result best
+   row so the treatment stays identical. Defined here (after .result__row) so it
+   wins over that neutral base; component modifiers that need to override it
+   (e.g. the viewed runs row) raise their own specificity. */
+.band-card {
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--band-card-tint) var(--band-card-edge, 30%),
+      var(--border)
+    );
+  background: color-mix(in srgb, var(--band-card-tint) 8%, var(--surface));
 }
 
 .result__banner--glow {

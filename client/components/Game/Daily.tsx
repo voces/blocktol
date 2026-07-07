@@ -149,7 +149,7 @@ export const Daily = () => {
             <div
               key={i}
               class={i === bestIdx
-                ? "result__row result__row--best" +
+                ? "result__row result__row--best band-card" +
                   (isSupreme ? " result__row--glow" : "")
                 : "result__row"}
               style={i === bestIdx ? { "--accent": accent } : undefined}

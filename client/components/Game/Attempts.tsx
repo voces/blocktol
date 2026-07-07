@@ -174,7 +174,7 @@ export const Attempts = () => {
                 mazeKey(attempt.maze) === viewingKey;
               return (
                 <div
-                  class={"attempts__row attempts__row--clickable tapc" +
+                  class={"attempts__row band-card attempts__row--clickable tapc" +
                     (supreme ? " attempts__row--glow" : "") +
                     (isViewing ? " attempts__row--viewing" : "")}
                   key={i}
