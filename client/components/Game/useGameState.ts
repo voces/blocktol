@@ -29,18 +29,29 @@ export const useGameState = () => {
     Point & { local?: boolean; thunder?: boolean; active?: boolean }
   >();
   // The local block currently grabbed for a drag (repositioning), if any.
-  // `startX/startY` is the cell the pointer pressed in; `dragged` sticks true
-  // once the pointer leaves it, so a tap doesn't nudge the block and a
-  // return-to-origin release snaps back rather than deleting.
+  // `startX/startY` is the cell the pointer pressed in and `startClientX/Y` the
+  // raw press point in screen pixels; `dragged` sticks true only once the pointer
+  // both leaves the pressed cell AND travels past a small pixel slop — so a tap
+  // (or a jitter, or the shift the placing zoom slides under a held finger)
+  // doesn't nudge the block, and a return-to-origin release snaps back rather
+  // than deleting.
   const dragRef = useRef<
     | {
       origin: Point & { local?: boolean; thunder?: boolean; active?: boolean };
       dragged: boolean;
       startX: number;
       startY: number;
+      startClientX: number;
+      startClientY: number;
     }
     | null
   >(null);
+  // True while a fresh-block placement press is in progress (pressed an empty
+  // cell with bricks in hand, not grabbing an existing block). Lets the hover
+  // logic treat the moving preview over any block as an invalid spot (a red
+  // preview) rather than the tap-to-upgrade preview, which is meant for a bare
+  // hover over your own block. Cleared on release.
+  const placingRef = useRef(false);
   // Whether the current grab has actually moved off its origin cell. Sticks true
   // for the rest of the drag (mirrors dragRef.current.dragged) so the board can
   // keep the upgrade radius hidden even if the block is dragged back to origin,
@@ -189,6 +200,7 @@ export const useGameState = () => {
     touching,
     transitionBlock,
     dragRef,
+    placingRef,
     dragMoved,
     setDragMoved,
     attempts,

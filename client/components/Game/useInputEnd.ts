@@ -1,6 +1,7 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
+import { Point } from "../../../common/types.ts";
 import { api } from "../../api.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
@@ -18,6 +19,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     checkpoint,
     grid,
     setTransitionBlock,
+    setThunderHover,
     invalid,
     setTouching,
     setBlocks,
@@ -27,6 +29,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     placingBlockRef,
     bricks,
     dragRef,
+    placingRef,
     iteration,
     staged,
     setStaged,
@@ -34,6 +37,24 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
   } = useContext(GameStateContext);
 
   useEffect(() => {
+    // Remove a local block, refunding its brick (and power, if it was a
+    // thunder). Shared by a tap-delete and by dragging a block somewhere it
+    // can't be placed.
+    const removeBlock = (block: Point & { thunder?: boolean }) => {
+      setBlocks((blocks) => {
+        const newBlocks = blocks.filter((b) => b !== block);
+        api.updateRun({
+          iteration: iteration ?? -1,
+          blocks: newBlocks.filter((b) => b.local),
+          freePlay,
+        });
+        rebuildGrid(grid, checkpoint, newBlocks);
+        return newBlocks;
+      });
+      setBricks((bricks) => bricks + 1);
+      if (block.thunder) setPower((power) => power + 1);
+    };
+
     // `onBoard` is whether the release landed on the playable board (not a HUD
     // control, text, or the border ring / outside the SVG).
     const commit = (onBoard: boolean) => {
@@ -43,6 +64,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       }
       if (svg) svg.style.transform = "";
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
+      // The gesture is over: drop any lingering placement / thunder previews so
+      // they don't stick around after release (touch has no follow-up move to
+      // clear them).
+      placingRef.current = false;
+      setThunderHover(undefined);
 
       const drag = dragRef.current;
       if (drag) {
@@ -69,41 +95,33 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
             });
             setPower((power) => power - 1);
           } else {
-            setBlocks((blocks) => {
-              const newBlocks = blocks.filter((b) => b !== origin);
-              api.updateRun({
-                iteration: iteration ?? -1,
-                blocks: newBlocks.filter((b) => b.local),
-                freePlay,
-              });
-              rebuildGrid(grid, checkpoint, newBlocks);
-              return newBlocks;
-            });
-            setBricks((bricks) => bricks + 1);
-            if (origin.thunder) setPower((power) => power + 1);
+            removeBlock(origin);
           }
           return;
         }
 
-        // Dragged → move to the release cell if it's different and valid;
-        // otherwise (back on origin, invalid, or off-board) snap back.
+        // Dragged to a different cell on the board: drop it there if valid,
+        // otherwise remove it (refunding its brick / power) — dragging a block
+        // somewhere it can't go deletes it, same as a tap-delete. Back on its
+        // origin, or released off-board, it snaps back untouched.
         const target = placingBlockRef.current;
-        if (
-          onBoard &&
-          (target.x !== origin.x || target.y !== origin.y) &&
-          !isInvalidMove(grid, checkpoint, origin, target.x, target.y)
-        ) {
-          setBlocks((blocks) => {
-            const newBlocks = blocks.map((b) =>
-              b === origin ? { ...b, x: target.x, y: target.y } : b
-            );
-            api.updateRun({
-              iteration: iteration ?? -1,
-              blocks: newBlocks.filter((b) => b.local),
+        if (target.x !== origin.x || target.y !== origin.y) {
+          if (!onBoard) return;
+          if (isInvalidMove(grid, checkpoint, origin, target.x, target.y)) {
+            removeBlock(origin);
+          } else {
+            setBlocks((blocks) => {
+              const newBlocks = blocks.map((b) =>
+                b === origin ? { ...b, x: target.x, y: target.y } : b
+              );
+              api.updateRun({
+                iteration: iteration ?? -1,
+                blocks: newBlocks.filter((b) => b.local),
+              });
+              rebuildGrid(grid, checkpoint, newBlocks);
+              return newBlocks;
             });
-            rebuildGrid(grid, checkpoint, newBlocks);
-            return newBlocks;
-          });
+          }
         }
         return;
       }
