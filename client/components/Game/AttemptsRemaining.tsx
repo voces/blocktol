@@ -1,18 +1,22 @@
 import { useContext, useEffect, useState } from "preact/compat";
-import { Fragment, h } from "preact";
+import { h } from "preact";
 import { GameStateContext } from "./useGameState.ts";
 
 export const AttemptsRemaining = (
   { extraAttemptBannerTime }: { extraAttemptBannerTime: boolean },
 ) => {
   const { attemptsRemaining } = useContext(GameStateContext);
-  const [lastAttemptsRemaining, setLastAttemptsRemaining] = useState(
-    attemptsRemaining,
-  );
   const [showMessage, setShowMessage] = useState(false);
 
+  // Flash "N attempts remaining" for a beat whenever the count changes (the
+  // effect only re-runs when it does). No banner once the attempts are spent —
+  // "0 remaining" is the result modal's cue, not a countdown line (and its 0s
+  // hide-timeout would otherwise leave the previous banner stuck reading "0").
   useEffect(() => {
-    if (attemptsRemaining === lastAttemptsRemaining) return;
+    if (attemptsRemaining <= 0) {
+      setShowMessage(false);
+      return;
+    }
     setShowMessage(true);
     const timeout = setTimeout(
       () => setShowMessage(false),
@@ -21,7 +25,7 @@ export const AttemptsRemaining = (
     return () => clearTimeout(timeout);
   }, [attemptsRemaining]);
 
-  if (!showMessage) return null;
+  if (!showMessage || attemptsRemaining <= 0) return null;
 
   return (
     <div

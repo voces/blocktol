@@ -4,7 +4,7 @@ import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
-import { useProfile } from "../hooks/useProfile.ts";
+import { fetchProfile, useProfile } from "../hooks/useProfile.ts";
 import { avatarColor, avatarInitial } from "../util/avatar.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
@@ -221,7 +221,7 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
           <Stat value={profile ? String(profile.played) : "—"} label="Played" />
           <Stat
             value={profile ? String(profile.hundreds) : "—"}
-            label="Wins"
+            label="Records"
             color={profile && profile.hundreds > 0 ? "var(--peak)" : undefined}
           />
           <Stat
@@ -280,6 +280,11 @@ export const Profile = () => {
           (profile ? "profile-avatar-btn" : "icon-button")}
         style={profile ? { background: avatarColor(getId()) } : undefined}
         onClick={() => setOpen(true)}
+        // Warm the profile the moment intent shows — pointerenter covers mouse
+        // hover and the first touch, onFocus covers keyboard. fetchProfile
+        // coalesces/rate-limits, so repeated events don't spam requests.
+        onPointerEnter={() => fetchProfile()}
+        onFocus={() => fetchProfile()}
         title="Profile"
         aria-label="Open profile"
       >

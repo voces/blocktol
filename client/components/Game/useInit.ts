@@ -204,36 +204,42 @@ export const useInit = () => {
     // lands in the panel and best; leaving before now kept it void (abandoned).
     // A daily attempt is already committed on build, so it's left alone.
     if (freePlay && iteration !== undefined) {
-      api.commitRun({ iteration });
-      // Show the run in the Runs panel the instant it starts executing, rather
-      // than waiting for the runner to finish and the board to re-stage. Mirrors
-      // the server's mapAttempts shaping (your best run re-normalises to 100%);
-      // the re-stage's authoritative list replaces this optimistic row once it
-      // lands.
       const maze = blocks.filter((b) => b.local).map((b) =>
         b.thunder ? { x: b.x, y: b.y, thunder: true } : { x: b.x, y: b.y }
       );
-      const fieldBest = Math.max(best, run.duration);
-      const denom = fieldBest - min;
-      setViewedAttempts((attempts) => [
-        ...attempts,
-        {
-          duration: run.duration,
-          percentile: undefined,
-          percent: denom > 0
-            ? Math.max(0, Math.min(1, (run.duration - min) / denom))
-            : 1,
-          supreme: run.duration > best,
-          ranked: false,
-          maze,
-          created: Date.now(),
-        },
-      ]);
-      // A free-play result is known the instant it commits, so fire the
-      // milestone celebration (decorated pill + floating badge) now rather than
-      // at finish — it plays over the run and clears when the board re-stages.
-      const verdict = computeVerdict(run.duration, min, best, ownBest);
-      if (verdict) setVerdict(verdict);
+      // An empty maze (every block deleted before running) isn't a real
+      // attempt: leave the run void — don't commit it — so it stays hidden
+      // (free play only shows committed runs), and skip the panel row and any
+      // celebration. It just runs out and re-stages.
+      if (maze.length > 0) {
+        api.commitRun({ iteration });
+        // Show the run in the Runs panel the instant it starts executing, rather
+        // than waiting for the runner to finish and the board to re-stage.
+        // Mirrors the server's mapAttempts shaping (your best run re-normalises
+        // to 100%); the re-stage's authoritative list replaces this optimistic
+        // row once it lands.
+        const fieldBest = Math.max(best, run.duration);
+        const denom = fieldBest - min;
+        setViewedAttempts((attempts) => [
+          ...attempts,
+          {
+            duration: run.duration,
+            percentile: undefined,
+            percent: denom > 0
+              ? Math.max(0, Math.min(1, (run.duration - min) / denom))
+              : 1,
+            supreme: run.duration > best,
+            ranked: false,
+            maze,
+            created: Date.now(),
+          },
+        ]);
+        // A free-play result is known the instant it commits, so fire the
+        // milestone celebration (decorated pill + floating badge) now rather
+        // than at finish — it plays over the run and clears at re-stage.
+        const verdict = computeVerdict(run.duration, min, best, ownBest);
+        if (verdict) setVerdict(verdict);
+      }
     }
 
     game.dispatchEvent("runStart", run);

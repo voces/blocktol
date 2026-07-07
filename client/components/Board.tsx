@@ -63,6 +63,13 @@ export const Board = (
   // A grabbed block being dragged: its origin is hidden and the block itself
   // (not a faded placement ghost) follows the pointer at `placingBlock`.
   const dragging = !!transitionBlock && placingBlock.placing;
+  // Once the grabbed block is actually being moved off its origin, drop the
+  // upgrade/thunder radius preview — that ring is a hover / press-hold
+  // affordance (tap to upgrade), not something to trail the block around. Also
+  // covers mobile, where a long-press first shows it before the drag begins.
+  const movingBlock = dragging &&
+    (placingBlock.x !== transitionBlock?.x ||
+      placingBlock.y !== transitionBlock?.y);
 
   // Static graph-paper grid. Memoized to a stable vnode so Preact doesn't
   // rebuild these 18 lines on every re-render of the board.
@@ -130,7 +137,8 @@ export const Board = (
           fill="var(--maze-background)"
         />
         {gridLines}
-        {transitionBlock && (power > 0 || transitionBlock.thunder) &&
+        {transitionBlock && !movingBlock &&
+          (power > 0 || transitionBlock.thunder) &&
           (
             <circle
               cx={transitionBlock.x + 1}
