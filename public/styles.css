@@ -805,6 +805,56 @@ a:hover {
   border: 1px solid rgba(0, 0, 0, 0.25);
 }
 
+/* Playable cell layout: the standing % is the hero, centred; the day shrinks
+   into the top-left corner. Both inherit the cell's readable ink (see
+   Calendar.tsx); the day is faded via opacity so it works on light or dark
+   fills. Long near-100 percentages step down a size to keep fitting the cell. */
+.calendar__day,
+.calendar__pct {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.calendar__day {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  font-size: 9px;
+  opacity: 0.72;
+}
+
+.calendar__pct {
+  font-size: 13px;
+}
+
+.calendar__pct--long {
+  font-size: 10px;
+}
+
+.calendar__pct--xlong {
+  font-size: 8px;
+  letter-spacing: -0.02em;
+}
+
+/* The larger picker cells fit a bigger hero. */
+.calendar-modal__sheet .calendar__day {
+  font-size: 10px;
+}
+
+.calendar-modal__sheet .calendar__pct {
+  font-size: 16px;
+}
+
+.calendar-modal__sheet .calendar__pct--long {
+  font-size: 12px;
+}
+
+.calendar-modal__sheet .calendar__pct--xlong {
+  font-size: 9px;
+}
+
 /* Runs panel — the viewed maze's runs (see Attempts.tsx). No root padding so
    its heading/rows line up with the other panels; slim scrollbar on desktop
    (the only place it scrolls). Mobile min-height/full-width lives in the
