@@ -218,6 +218,16 @@ export const Calendar = () => {
     // Real ranked percentile from the server (best daily vs others' best daily).
     const dot = item.dailyPercentile;
     const percent = percentOf(item);
+    // The standing is the hero figure; the day shrinks into the top-left corner.
+    // formatPercentile keeps growing precision as it nears 100 (98% but 99.15%),
+    // so long near-100 strings step down a size to still fit the cell.
+    const pct = percent != null ? `${formatPercentile(percent)}%` : null;
+    const pctClass = "calendar__pct" +
+      (pct && pct.length >= 7
+        ? " calendar__pct--xlong"
+        : pct && pct.length >= 5
+        ? " calendar__pct--long"
+        : "");
     return (
       <div
         class={classes.join(" ")}
@@ -232,7 +242,14 @@ export const Calendar = () => {
           dot != null && `ranked p${formatPercentile(dot)}`,
         ].filter(Boolean).join(" · ")}
       >
-        <span class="mono">{day}</span>
+        {pct != null
+          ? (
+            <Fragment>
+              <span class="calendar__day">{day}</span>
+              <span class={pctClass}>{pct}</span>
+            </Fragment>
+          )
+          : <span class="mono">{day}</span>}
         {dot != null && (
           <span
             class="calendar__dot"
