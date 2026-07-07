@@ -1475,7 +1475,7 @@ a:hover {
     );
   background: color-mix(
     in srgb,
-    var(--band-card-tint) var(--band-card-fill, 4%),
+    var(--band-card-tint) var(--band-card-fill, 3%),
     var(--surface)
   );
 }
