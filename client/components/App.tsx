@@ -15,7 +15,9 @@ import { adoptServerSettings } from "../hooks/useSettings.ts";
 import { CalendarButton } from "./CalendarButton.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
+import { MoveGate } from "./MoveGate.tsx";
 import { Profile } from "./Profile.tsx";
+import { getCleanLink, getPendingLink } from "../util/id.ts";
 
 const Shell = (
   { children, gameState, dailyStore }: {
@@ -51,6 +53,13 @@ const setHasCompletedOnboarding = () =>
   localStorage.setItem("hasCompletedOnboarding", "true");
 
 export const App = () => {
+  // A sign-in link that opened on this device is resolved before anything else —
+  // ahead of onboarding and the game. On a clean device or with no pending link
+  // this is already settled, so the gate never shows.
+  const [linkPending, setLinkPending] = useState(
+    () => !!(getPendingLink() || getCleanLink()),
+  );
+
   const hadCompletedOnboarding = useRef(getHasCompletedOnboarding());
   const [showOnboarding, setShowOnboarding] = useState(
     !hadCompletedOnboarding.current,
@@ -59,7 +68,7 @@ export const App = () => {
   const [disconnected, setDisconnected] = useState(false);
 
   useEffect(() => {
-    if (showOnboarding) return;
+    if (showOnboarding || linkPending) return;
 
     // The calendar loads its own months on mount (and the today-result panel
     // shares that data), so no list() call is needed here.
@@ -85,10 +94,14 @@ export const App = () => {
       setDisconnected(true);
       setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
     });
-  }, [showOnboarding, retry]);
+  }, [showOnboarding, linkPending, retry]);
 
   const gameState = useGameState();
   const dailyStore = useDailyItemsStore();
+
+  if (linkPending) {
+    return <MoveGate onResolved={() => setLinkPending(false)} />;
+  }
 
   if (showOnboarding) {
     return (

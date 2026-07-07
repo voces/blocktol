@@ -3,25 +3,24 @@ import { getUser } from "../db/user.ts";
 import { nonVoidRunCount } from "../db/merge.ts";
 import { method } from "./apiHelpers.ts";
 
-// The two profiles a device is deciding between when a sign-in link opens on a
-// device that already has a profile: the authed one (this device's local id) and
-// `other` (the id from the link). Returns each side's display name and its data
-// size — non-void run count, the "games" figure the fork screen shows and the
-// number the silent-merge threshold compares. `other` is null when the link id
-// has no user row yet (a clean adopt, not a fork).
-const moveInfoBody = z.object({
-  other: z.string().trim().min(1).max(36),
+// Summarize one or two profiles by id — display name and data size (non-void run
+// count, the "games" figure). Drives the move/merge gate when a sign-in link
+// opens on a device that already has a profile: the client looks up its own id
+// and the link's id to decide between a silent merge, the fork, or a clean adopt.
+//
+// Unauthed by design: a clean device opening a link has no id to auth as yet, and
+// the lookup exposes nothing new — you must already hold an id to query it, and
+// holding it already grants full sign-in as that user (ids are not secrets; see
+// client/util/id.ts). Results are returned in input order, null for unknown ids.
+const summaryBody = z.object({
+  ids: z.array(z.string().trim().min(1).max(36)).min(1).max(2),
 });
 
-const side = async (id: string) => {
-  const user = await getUser(id);
-  if (!user) return null;
-  return { id, name: user.name, games: await nonVoidRunCount(id) };
-};
-
-export const moveInfo = method(moveInfoBody, true)(
-  async ({ userId, other }) => ({
-    self: await side(userId),
-    other: other === userId ? null : await side(other),
-  }),
+export const moveInfo = method(summaryBody)(
+  ({ ids }) =>
+    Promise.all(ids.map(async (id) => {
+      const user = await getUser(id);
+      if (!user) return null;
+      return { id, name: user.name, games: await nonVoidRunCount(id) };
+    })),
 );

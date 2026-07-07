@@ -2159,3 +2159,280 @@ a:hover {
   font-weight: 700;
   color: var(--color);
 }
+
+/* ── Move / merge gate ─────────────────────────────────────────────────────
+   The pre-app takeover that resolves a sign-in link opening on a device that
+   already has a profile (see MoveGate.tsx): clean-adopt confirm, the fork, the
+   primary picker, and the switch/save-link screen. A centered card on a plain
+   backdrop — it stands in for the whole app, ahead of onboarding. */
+.mg {
+  min-height: var(--full-height, 100vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 18px;
+  background: var(--background);
+}
+.mg-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.mg-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 19px var(--font);
+  color: var(--color);
+}
+.mg-inner {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+.mg-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font);
+  font-weight: 700;
+  color: #fff;
+  flex: none;
+}
+.mg-name {
+  font: 700 17px var(--font);
+  color: var(--color);
+}
+.mg-name--lg {
+  font-size: 22px;
+}
+.mg-sub {
+  font-size: 11.5px;
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+.mg-sub--block {
+  margin: -4px 2px 4px;
+  line-height: 1.5;
+  text-align: center;
+}
+.mg-heading {
+  font: 700 18px var(--font);
+  color: var(--color);
+  text-align: center;
+}
+
+/* Solo profile (clean adopt) */
+.mg-profile--solo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+/* The two-profile pair (fork) */
+.mg-pair {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.6);
+}
+.mg-lbl {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-mute);
+  margin: 0 2px 8px;
+}
+.mg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mg-rowtext {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.mg-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 2px;
+}
+.mg-divider::before,
+.mg-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.mg-divider span {
+  font: 600 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.mg-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+}
+
+/* Buttons */
+.mg-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 15px;
+  padding: 15px 16px;
+  font: 700 15px var(--font);
+  cursor: pointer;
+}
+.mg-btn--primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 22px -12px var(--accent);
+}
+.mg-btn--ghost {
+  background: transparent;
+  color: var(--text-mute);
+  font-weight: 600;
+  padding: 12px;
+}
+.mg-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 15px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.mg-opt--merge {
+  border-color: transparent;
+  background: var(--accent);
+}
+.mg-opt--merge .mg-opt-title {
+  color: #fff;
+}
+.mg-opt--merge .mg-opt-sub {
+  color: rgba(255, 255, 255, 0.82);
+}
+.mg-opt-title {
+  font: 700 15px var(--font);
+  color: var(--color);
+}
+.mg-opt-sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+}
+
+/* Primary picker */
+.mg-picklist {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.mg-pickrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 15px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.mg-pickrow--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mg-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  flex: none;
+}
+.mg-pickrow--on .mg-radio {
+  border-color: var(--accent);
+  background:
+    radial-gradient(circle, var(--accent) 0 4px, transparent 5px);
+}
+
+/* Switch — save-link */
+.mg-qr {
+  align-self: center;
+  background: #fff;
+  padding: 12px;
+  border-radius: 16px;
+}
+.mg-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 8px 8px 8px 12px;
+}
+.mg-url {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-copy {
+  flex: none;
+  border: 0;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: 600 12px var(--font);
+  cursor: pointer;
+}
+
+.mg-back {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.mg-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: mg-spin 0.8s linear infinite;
+  margin: 24px auto;
+}
+@keyframes mg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
