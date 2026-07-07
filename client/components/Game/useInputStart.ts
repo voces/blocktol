@@ -4,6 +4,13 @@ import { findPath } from "../../../common/pathing.ts";
 import { isBorderPoint, isInvalidMove, isTouchSource } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
+// How far (in screen pixels) a grabbed block's pointer must travel before the
+// grab becomes a move rather than a tap. A tap upgrades to thunder or deletes
+// (see useInputEnd), so a little slop here keeps a straight tap from nudging the
+// block — especially on touch, where the placing zoom slides the board under the
+// finger and would otherwise register as a move.
+const DRAG_SLOP = 12;
+
 export const useInputStart = (svg: SVGSVGElement | null) => {
   const {
     time,
@@ -63,18 +70,38 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
           ? nearest
           : undefined;
 
-      // Grab a local block on press, remembering the pressed cell so a tap
-      // (no cell change) doesn't move it.
+      // Grab a local block on press, remembering the pressed cell and pixel
+      // point so a tap (no real movement) doesn't move it.
       if (press) {
         dragRef.current = overlap?.local
-          ? { origin: overlap, dragged: false, startX: x, startY: y }
+          ? {
+            origin: overlap,
+            dragged: false,
+            startX: x,
+            startY: y,
+            startClientX: clientX,
+            startClientY: clientY,
+          }
           : null;
       }
 
       const drag = dragRef.current;
       if (drag) {
-        // Sticky: once the pointer leaves the cell it pressed, it's a move.
-        if (x !== drag.startX || y !== drag.startY) drag.dragged = true;
+        // Sticky start: it's only a move once the pointer both leaves the cell
+        // it pressed AND travels past DRAG_SLOP screen pixels. The pixel gate
+        // absorbs a slightly off-centre tap and, crucially, the shift the
+        // placing zoom slides under a held finger (which changes the mapped cell
+        // without the finger really moving) — so straight upgrades/deletes land.
+        if (!drag.dragged) {
+          const dx = clientX - drag.startClientX;
+          const dy = clientY - drag.startClientY;
+          if (
+            (x !== drag.startX || y !== drag.startY) &&
+            dx * dx + dy * dy > DRAG_SLOP * DRAG_SLOP
+          ) {
+            drag.dragged = true;
+          }
+        }
         // Mirror the sticky flag so the board drops the upgrade radius for the
         // rest of the drag — including a drag back onto the origin cell.
         setDragMoved(drag.dragged);

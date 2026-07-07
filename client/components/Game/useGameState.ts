@@ -29,15 +29,20 @@ export const useGameState = () => {
     Point & { local?: boolean; thunder?: boolean; active?: boolean }
   >();
   // The local block currently grabbed for a drag (repositioning), if any.
-  // `startX/startY` is the cell the pointer pressed in; `dragged` sticks true
-  // once the pointer leaves it, so a tap doesn't nudge the block and a
-  // return-to-origin release snaps back rather than deleting.
+  // `startX/startY` is the cell the pointer pressed in and `startClientX/Y` the
+  // raw press point in screen pixels; `dragged` sticks true only once the pointer
+  // both leaves the pressed cell AND travels past a small pixel slop — so a tap
+  // (or a jitter, or the shift the placing zoom slides under a held finger)
+  // doesn't nudge the block, and a return-to-origin release snaps back rather
+  // than deleting.
   const dragRef = useRef<
     | {
       origin: Point & { local?: boolean; thunder?: boolean; active?: boolean };
       dragged: boolean;
       startX: number;
       startY: number;
+      startClientX: number;
+      startClientY: number;
     }
     | null
   >(null);
