@@ -312,6 +312,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         grid={[]}
         onSlow={onSlow}
         date={NaN}
+        dragMoved={false}
       />
       <div
         style={{

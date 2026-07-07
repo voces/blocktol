@@ -32,6 +32,7 @@ export const Game = (
     run,
     setRun,
     date,
+    dragMoved,
   } = useContext(GameStateContext);
 
   useInit();
@@ -61,6 +62,7 @@ export const Game = (
             grid={grid}
             onSlow={onSlow}
             date={date}
+            dragMoved={dragMoved}
           />
           <AttemptsRemaining
             extraAttemptBannerTime={extraAttemptBannerTime ?? false}

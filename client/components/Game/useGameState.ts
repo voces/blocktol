@@ -41,6 +41,11 @@ export const useGameState = () => {
     }
     | null
   >(null);
+  // Whether the current grab has actually moved off its origin cell. Sticks true
+  // for the rest of the drag (mirrors dragRef.current.dragged) so the board can
+  // keep the upgrade radius hidden even if the block is dragged back to origin,
+  // where a position comparison alone would wrongly re-show it.
+  const [dragMoved, setDragMoved] = useState(false);
   const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
   const [blocks, setBlocks] = useState<
     ReadonlyArray<NonNullable<typeof transitionBlock>>
@@ -123,6 +128,7 @@ export const useGameState = () => {
     setFreePlay(false);
     setViewing(false);
     setVerdict(undefined);
+    setDragMoved(false);
   };
 
   // Review a previously-built maze (a past attempt or your best) on the board:
@@ -183,6 +189,8 @@ export const useGameState = () => {
     touching,
     transitionBlock,
     dragRef,
+    dragMoved,
+    setDragMoved,
     attempts,
     setAttempts,
     clear,
