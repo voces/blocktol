@@ -12,7 +12,10 @@ general engineering review.
 
 ## 1. Concrete bugs
 
-- [ ] **1a. Moving a block in free play commits the run (drops `freePlay`).**
+- [x] **1a. Moving a block in free play commits the run (drops `freePlay`).**
+      _Fixed in #93 — the client flag is removed entirely; the server derives
+      commit-vs-void from the run itself, using the same first-three/same-day
+      predicate the read path (`allRunsByIteration`) badges with._
       `client/components/Game/useInputEnd.ts:117` — the drag-to-move branch
       calls `api.updateRun({ iteration, blocks })` **without** `freePlay`,
       unlike the place (line 161), upgrade (line 88), and delete (line 46)
@@ -24,8 +27,9 @@ general engineering review.
       run toward history and field best, breaking the "void until it executes"
       invariant.
 
-- [ ] **1b. `reportClientError` can recurse infinitely.** `client/api.ts:47` and
-      `:55` — every failed request fires `api.reportClientError(...)`, which
+- [x] **1b. `reportClientError` can recurse infinitely.** _Fixed in #93 — a
+      failed `reportClientError` is never itself reported._ `client/api.ts:47`
+      and `:55` — every failed request fires `api.reportClientError(...)`, which
       itself goes through the same proxy. If the server is returning errors or
       non-JSON (outage, proxy HTML error page), each failed report triggers
       another report, unboundedly — a self-inflicted request storm exactly when
