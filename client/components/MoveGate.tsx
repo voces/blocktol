@@ -11,7 +11,6 @@ import {
   startFreshId,
 } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
-import { QrCode } from "./QrCode.tsx";
 
 // A sign-in link opened on a device that already has a profile is a fork, not a
 // sign-in (see getPendingLink). This gate resolves it before the app boots —
@@ -19,9 +18,17 @@ import { QrCode } from "./QrCode.tsx";
 //   • clean device (no local profile) → confirm the adopt (1d)
 //   • one side has <5% of the other's runs → merge silently, no fork (2d / 2e)
 //   • both sides substantial → offer merge / switch / keep (2a → 2b / 2c)
-// The "games" figure and the threshold both use non-void run count (moveInfo).
+// The runs figure and the threshold both use non-void run count (moveInfo).
 
-type Side = { id: string; name: string | null; games: number } | null;
+type Side =
+  | {
+    id: string;
+    name: string | null;
+    joined: number;
+    rating: number;
+    runs: number;
+  }
+  | null;
 
 // Below this share of the larger side's runs, a profile is "almost nothing" and
 // we merge it away silently instead of showing the fork.
@@ -50,7 +57,109 @@ const Avatar = (
   </div>
 );
 
-const games = (n: number) => `${n} game${n === 1 ? "" : "s"}`;
+const runs = (n: number) => `${n} run${n === 1 ? "" : "s"}`;
+const joinedLabel = (ms: number) =>
+  new Date(ms).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+// ── icons (small, inline; stroke follows currentColor) ──────────────────────
+const svg = (children: h.JSX.Element, size = 20) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 20 20"
+    fill="none"
+    aria-hidden="true"
+  >
+    {children}
+  </svg>
+);
+const MergeIcon = () =>
+  svg(
+    <g stroke="currentColor" stroke-width={1.5}>
+      <circle cx={8} cy={10} r={4.5} />
+      <circle cx={12} cy={10} r={4.5} opacity={0.7} />
+    </g>,
+    22,
+  );
+const SwitchIcon = () =>
+  svg(
+    <g
+      stroke="currentColor"
+      stroke-width={1.5}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M4 7h10l-2.5-2.5M16 13H6l2.5 2.5" />
+    </g>,
+    22,
+  );
+const Chevron = () =>
+  svg(
+    <path
+      d="M8 5l4 5-4 5"
+      stroke="currentColor"
+      stroke-width={1.5}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />,
+    18,
+  );
+const Check = () =>
+  svg(
+    <path
+      d="M5 10.5l3 3 7-7.5"
+      stroke="currentColor"
+      stroke-width={2}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />,
+    14,
+  );
+const ClockIcon = () =>
+  svg(
+    <g
+      stroke="currentColor"
+      stroke-width={1.5}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx={10} cy={10} r={7} />
+      <path d="M10 6v4l2.5 2" />
+    </g>,
+  );
+const StackIcon = () =>
+  svg(
+    <path
+      d="M10 3l7 3.5-7 3.5-7-3.5L10 3zM3 10.5l7 3.5 7-3.5"
+      stroke="currentColor"
+      stroke-width={1.5}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />,
+  );
+const InfoIcon = () =>
+  svg(
+    <g stroke="currentColor" stroke-width={1.4} stroke-linecap="round">
+      <circle cx={10} cy={10} r={7.2} />
+      <path d="M10 9.2v4" />
+      <circle cx={10} cy={6.6} r={0.6} fill="currentColor" />
+    </g>,
+    16,
+  );
+const WarnIcon = () =>
+  svg(
+    <g
+      stroke="currentColor"
+      stroke-width={1.4}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M10 2.5l8 14H2z" />
+      <path d="M10 8v4" />
+      <circle cx={10} cy={14.4} r={0.6} fill="currentColor" />
+    </g>,
+    18,
+  );
 
 type Mode = "loading" | "working" | "confirm" | "fork" | "pick" | "switch";
 
@@ -66,6 +175,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   const [other, setOther] = useState<Side>(null);
   const [primaryIsSelf, setPrimaryIsSelf] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [linkSaved, setLinkSaved] = useState(false);
 
   // Leave the app as the current id (merge-into-self, keep, or new game): strip
   // the link so a refresh won't re-open the gate, then hand back to the app.
@@ -102,18 +212,18 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       // The link id has no profile — nothing to become; adopt it fresh.
       if (!o) return reloadAs(linkId);
 
-      const selfGames = s?.games ?? 0;
-      const otherGames = o.games;
+      const selfRuns = s?.runs ?? 0;
+      const otherRuns = o.runs;
 
       // Clean device / no local data: confirm the adopt (1d).
-      if (!localId || selfGames === 0) return setMode("confirm");
+      if (!localId || selfRuns === 0) return setMode("confirm");
 
       // Escape hatches: one side almost empty → silent merge, no fork.
-      if (otherGames < SILENT_RATIO * selfGames) return doMerge("self"); // 2d
-      if (selfGames < SILENT_RATIO * otherGames) return doMerge("other"); // 2e
+      if (otherRuns < SILENT_RATIO * selfRuns) return doMerge("self"); // 2d
+      if (selfRuns < SILENT_RATIO * otherRuns) return doMerge("other"); // 2e
 
       // Both substantial → the fork. Default the primary to the larger side.
-      setPrimaryIsSelf(selfGames >= otherGames);
+      setPrimaryIsSelf(selfRuns >= otherRuns);
       setMode("fork");
     }).catch(() => proceed());
     return () => {
@@ -123,13 +233,16 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   }, []);
 
   const copyLink = () => {
-    const url = new URL("/l/" + localId, location.origin).href;
-    navigator.clipboard?.writeText(url);
+    navigator.clipboard?.writeText(
+      new URL("/l/" + localId, location.origin).href,
+    );
     setCopied(true);
+    setLinkSaved(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const frame = (children: h.JSX.Element) => (
+  // Centered-logo screens (clean adopt, fork).
+  const brandFrame = (children: h.JSX.Element) => (
     <div class="mg">
       <div class="mg-card">
         <div class="mg-brand">
@@ -140,38 +253,61 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       </div>
     </div>
   );
+  // Sub-page screens (pick, switch): a left-justified header bar with a back
+  // button and title, no logo — the fork is where you came from.
+  const sheetFrame = (title: string, children: h.JSX.Element) => (
+    <div class="mg mg--flush">
+      <div class="mg-card">
+        <div class="mg-header">
+          <button
+            type="button"
+            class="mg-headback tapc"
+            aria-label="Back"
+            onClick={() => setMode("fork")}
+          >
+            ‹
+          </button>
+          <span class="mg-headtitle">{title}</span>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 
   if (mode === "loading" || mode === "working") {
-    return frame(<div class="mg-spinner" aria-label="Loading" />);
+    return brandFrame(<div class="mg-spinner" aria-label="Loading" />);
   }
 
   // 1d — clean adopt confirm.
   if (mode === "confirm" && other) {
-    return frame(
+    return brandFrame(
       <div class="mg-inner">
-        <div class="mg-profile mg-profile--solo">
-          <Avatar id={other.id} name={other.name} size={64} glow />
-          <div class="mg-name mg-name--lg">{other.name ?? "Player"}</div>
-          <div class="mg-sub mono">{games(other.games)}</div>
-        </div>
-        <div class="mg-actions">
-          <button
-            type="button"
-            class="mg-btn mg-btn--primary tapc"
-            onClick={() => reloadAs(linkId)}
-          >
-            Continue as {other.name ?? "this player"}
-          </button>
-          <button
-            type="button"
-            class="mg-btn mg-btn--ghost tapc"
-            onClick={() => {
-              startFreshId();
-              proceed();
-            }}
-          >
-            Not you? Start a new game
-          </button>
+        <div class="mg-confirm">
+          <div class="mg-confirm-label">Continue on this device as…</div>
+          <div class="mg-profile--solo">
+            <Avatar id={other.id} name={other.name} size={72} glow />
+            <div class="mg-name mg-name--lg">{other.name ?? "Player"}</div>
+            <div class="mg-sub mono">joined {joinedLabel(other.joined)}</div>
+          </div>
+          <div class="mg-actions mg-actions--inset">
+            <button
+              type="button"
+              class="mg-btn mg-btn--primary tapc"
+              onClick={() => reloadAs(linkId)}
+            >
+              Continue as {other.name ?? "this player"}
+            </button>
+            <button
+              type="button"
+              class="mg-btn mg-btn--ghost tapc"
+              onClick={() => {
+                startFreshId();
+                proceed();
+              }}
+            >
+              Not you? Start a new game
+            </button>
+          </div>
         </div>
       </div>,
     );
@@ -179,7 +315,9 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
 
   // 2a — the fork.
   if (mode === "fork" && self && other) {
-    return frame(
+    const sub = (s: NonNullable<Side>) =>
+      `joined ${joinedLabel(s.joined)} · ${runs(s.runs)}`;
+    return brandFrame(
       <div class="mg-inner">
         <div class="mg-pair">
           <div class="mg-lbl">On this device</div>
@@ -187,7 +325,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             <Avatar id={self.id} name={self.name} />
             <div class="mg-rowtext">
               <div class="mg-name">{self.name ?? "Player"}</div>
-              <div class="mg-sub mono">{games(self.games)}</div>
+              <div class="mg-sub mono">{sub(self)}</div>
             </div>
           </div>
           <div class="mg-divider">
@@ -197,7 +335,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             <Avatar id={other.id} name={other.name} glow />
             <div class="mg-rowtext">
               <div class="mg-name">{other.name ?? "Player"}</div>
-              <div class="mg-sub mono">{games(other.games)}</div>
+              <div class="mg-sub mono">{sub(other)}</div>
             </div>
           </div>
         </div>
@@ -207,9 +345,17 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             class="mg-opt mg-opt--merge tapc"
             onClick={() => setMode("pick")}
           >
-            <span class="mg-opt-title">Merge the two</span>
-            <span class="mg-opt-sub">
-              Keep one profile with everything from both
+            <span class="mg-opt-icon">
+              <MergeIcon />
+            </span>
+            <span class="mg-opt-body">
+              <span class="mg-opt-title">Merge the two</span>
+              <span class="mg-opt-sub">
+                Keep one profile with everything from both
+              </span>
+            </span>
+            <span class="mg-opt-chev">
+              <Chevron />
             </span>
           </button>
           <button
@@ -217,9 +363,17 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             class="mg-opt tapc"
             onClick={() => setMode("switch")}
           >
-            <span class="mg-opt-title">Switch to {other.name ?? "it"}</span>
-            <span class="mg-opt-sub">
-              Leave {self.name ?? "this profile"}; reachable only by its link
+            <span class="mg-opt-icon">
+              <SwitchIcon />
+            </span>
+            <span class="mg-opt-body">
+              <span class="mg-opt-title">Switch to {other.name ?? "it"}</span>
+              <span class="mg-opt-sub">
+                Leave {self.name ?? "this profile"}; reachable only by its link
+              </span>
+            </span>
+            <span class="mg-opt-chev">
+              <Chevron />
             </span>
           </button>
           <button
@@ -234,85 +388,127 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     );
   }
 
-  // 2b — pick the primary.
+  // 2b — pick the primary + what combines.
   if (mode === "pick" && self && other) {
-    const pick = (isSelf: boolean) => (
-      <button
-        type="button"
-        class={"mg-pickrow tapc" +
-          (primaryIsSelf === isSelf ? " mg-pickrow--on" : "")}
-        onClick={() => setPrimaryIsSelf(isSelf)}
-      >
-        <Avatar
-          id={isSelf ? self.id : other.id}
-          name={isSelf ? self.name : other.name}
-          size={40}
-        />
-        <div class="mg-rowtext">
-          <div class="mg-name">
-            {(isSelf ? self.name : other.name) ?? "Player"}
-          </div>
-          <div class="mg-sub mono">
-            {games(isSelf ? self.games : other.games)}
-          </div>
-        </div>
-        <span class="mg-radio" aria-hidden="true" />
-      </button>
-    );
-    const primaryName = (primaryIsSelf ? self.name : other.name) ?? "profile";
-    return frame(
-      <div class="mg-inner">
+    const moreSelf = self.runs >= other.runs;
+    const pickRow = (isSelf: boolean) => {
+      const s = isSelf ? self : other;
+      const on = primaryIsSelf === isSelf;
+      const hasMore = isSelf === moreSelf;
+      return (
         <button
           type="button"
-          class="mg-back tapc"
-          aria-label="Back"
-          onClick={() => setMode("fork")}
+          class={"mg-pickrow tapc" + (on ? " mg-pickrow--on" : "")}
+          onClick={() => setPrimaryIsSelf(isSelf)}
         >
-          ‹
+          <Avatar id={s.id} name={s.name} size={42} />
+          <div class="mg-rowtext">
+            <div class="mg-pickname">
+              <span class="mg-name">{s.name ?? "Player"}</span>
+              {hasMore && <span class="mg-badge">MORE DATA</span>}
+            </div>
+            <div class="mg-sub mono">rating {s.rating} · {runs(s.runs)}</div>
+          </div>
+          <span
+            class={"mg-radio" + (on ? " mg-radio--on" : "")}
+            aria-hidden="true"
+          >
+            {on && <Check />}
+          </span>
         </button>
-        <div class="mg-heading">Pick the primary</div>
-        <div class="mg-sub mg-sub--block">
+      );
+    };
+    const primaryName = (primaryIsSelf ? self.name : other.name) ?? "profile";
+    return sheetFrame(
+      "Merge accounts",
+      <div class="mg-body">
+        <div class="mg-section-lbl">Keep as primary</div>
+        <div class="mg-desc">
           The primary sets the name, colour and rating you keep going forward.
-          Every game from both is kept.
         </div>
         <div class="mg-picklist">
-          {pick(true)}
-          {pick(false)}
+          {pickRow(true)}
+          {pickRow(false)}
         </div>
-        <div class="mg-actions">
-          <button
-            type="button"
-            class="mg-btn mg-btn--primary tapc"
-            onClick={() => doMerge(primaryIsSelf ? "self" : "other")}
-          >
-            Merge into {primaryName}
-          </button>
+        <div class="mg-section-lbl">What we'll combine</div>
+        <div class="mg-combine">
+          <div class="mg-combine-row">
+            <span class="mg-combine-icon">
+              <ClockIcon />
+            </span>
+            <div>
+              <div class="mg-combine-title">Daily maze attempts</div>
+              <div class="mg-combine-sub">
+                For any day you both played, we keep your{" "}
+                <b>earliest attempt</b>. It can't be swapped for a faster one
+                from the other account.
+              </div>
+            </div>
+          </div>
+          <div class="mg-combine-row">
+            <span class="mg-combine-icon mg-combine-icon--ok">
+              <StackIcon />
+            </span>
+            <div>
+              <div class="mg-combine-title">Everything else</div>
+              <div class="mg-combine-sub">
+                Your other runs from both accounts all carry over.{" "}
+                <span class="mono">
+                  {self.runs} + {other.runs} becomes {self.runs + other.runs}
+                </span>.
+              </div>
+            </div>
+          </div>
         </div>
+        <div class="mg-note">
+          <InfoIcon />
+          <span>
+            Earliest-attempt keeps the leaderboard honest; a merge can't upgrade
+            a day's result.
+          </span>
+        </div>
+        <button
+          type="button"
+          class="mg-btn mg-btn--primary tapc mg-body-btn"
+          onClick={() => doMerge(primaryIsSelf ? "self" : "other")}
+        >
+          Merge into {primaryName}
+        </button>
       </div>,
     );
   }
 
-  // 2c — switch, after saving the current profile's link.
+  // 2c — switch, gated behind saving the current profile's link.
   if (mode === "switch" && self && other) {
     const url = new URL("/l/" + localId, location.origin).href;
-    return frame(
-      <div class="mg-inner">
-        <button
-          type="button"
-          class="mg-back tapc"
-          aria-label="Back"
-          onClick={() => setMode("fork")}
-        >
-          ‹
-        </button>
-        <div class="mg-heading">Save {self.name ?? "your"}'s link first</div>
-        <div class="mg-sub mg-sub--block">
-          Switching leaves {self.name ?? "this profile"}{" "}
-          on no device. This link is the only way back to it — keep it somewhere
-          safe.
+    return sheetFrame(
+      `Switch to ${other.name ?? "it"}?`,
+      <div class="mg-body">
+        <div class="mg-switch-avatars">
+          <div class="mg-switch-one">
+            <Avatar id={self.id} name={self.name} size={56} />
+            <div class="mg-switch-name">{self.name ?? "Player"}</div>
+          </div>
+          <span class="mg-switch-arrow" aria-hidden="true">→</span>
+          <div class="mg-switch-one">
+            <Avatar id={other.id} name={other.name} size={56} glow />
+            <div class="mg-switch-name">{other.name ?? "Player"}</div>
+          </div>
         </div>
-        <div class="mg-qr">
-          <QrCode value={url} />
+        <div class="mg-warn">
+          <span class="mg-warn-icon">
+            <WarnIcon />
+          </span>
+          <div>
+            This device will play as <b>{other.name ?? "the other profile"}</b>
+            {" "}
+            from now on. <b>{self.name ?? "This profile"}</b>{" "}
+            won't be here anymore; its {runs(self.runs)}{" "}
+            live only behind its login link.
+          </div>
+        </div>
+        <div class="mg-section-lbl">
+          Save {self.name ?? "your"}'s link first
         </div>
         <div class="mg-link">
           <div class="mg-url mono">{url.replace(/^https?:\/\//, "")}</div>
@@ -320,18 +516,24 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
-        <div class="mg-actions">
-          <button
-            type="button"
-            class="mg-btn mg-btn--primary tapc"
-            onClick={() => reloadAs(linkId)}
-          >
-            Switch to {other.name ?? "it"}
-          </button>
+        <div class="mg-desc">
+          Anyone with this link can sign back in as{" "}
+          {self.name ?? "this profile"} on any device.
         </div>
+        <button
+          type="button"
+          class="mg-btn mg-btn--primary tapc mg-body-btn"
+          disabled={!linkSaved}
+          onClick={() => reloadAs(linkId)}
+        >
+          Switch to {other.name ?? "it"}
+        </button>
+        {!linkSaved && (
+          <div class="mg-note-center">Copy the link to enable this</div>
+        )}
       </div>,
     );
   }
 
-  return frame(<div class="mg-spinner" aria-label="Loading" />);
+  return brandFrame(<div class="mg-spinner" aria-label="Loading" />);
 };
