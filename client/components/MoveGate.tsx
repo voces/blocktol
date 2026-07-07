@@ -458,9 +458,8 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             <div>
               <div class="mg-combine-title">Daily maze attempts</div>
               <div class="mg-combine-sub">
-                For any day you both played, we keep your{" "}
-                <b>earliest attempt</b>. It can't be swapped for a faster one
-                from the other account.
+                For any day you played on both, we keep whichever attempt{" "}
+                <b>came first</b>.
               </div>
             </div>
           </div>
@@ -482,8 +481,8 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         <div class="mg-note">
           <InfoIcon />
           <span>
-            Earliest-attempt keeps the leaderboard honest; a merge can't upgrade
-            a day's result.
+            The first attempt stands, so a merge can't cherry-pick a faster
+            time.
           </span>
         </div>
         <button
