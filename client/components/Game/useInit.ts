@@ -10,11 +10,6 @@ import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { computeVerdict } from "./verdict.ts";
 
-// How long a milestone free-play run holds its decorated pill and floating badge
-// before the board re-stages — long enough to read the win, matched by the
-// celebration's fade in the stylesheet.
-const VERDICT_HOLD_MS = 2000;
-
 export const useInit = () => {
   const game = useGame();
   const { applyRun } = useDailyItems();
@@ -177,29 +172,18 @@ export const useInit = () => {
       // The calendar / today panels update locally from the fresh attempts (see
       // the applyRun effect above) — no list refetch here.
       // Free play never spends a ranked attempt — it just re-stages the board.
+      // The milestone celebration (if any) fired at commit, not here; clear it
+      // as the board re-stages.
       if (freePlay) {
-        const restage = () =>
-          api.getBoard({ iteration, timeZone: getTimeZone() });
-        // A milestone (personal best / record / supreme) holds its decorated
-        // pill and a floating badge for a beat before re-staging; an ordinary
-        // run re-stages straight away.
-        const verdict = run
-          ? computeVerdict(run.duration, min, best, ownBest)
-          : null;
-        if (verdict) {
-          setVerdict(verdict);
-          setTimeout(() => {
-            setVerdict(undefined);
-            restage();
-          }, VERDICT_HOLD_MS);
-        } else restage();
+        setVerdict(undefined);
+        api.getBoard({ iteration, timeZone: getTimeZone() });
         return;
       }
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
       if (attemptsRemaining === 1) api.getDailySummary({ iteration });
       else api.startRun({ iteration, timeZone: getTimeZone() });
     },
-    [iteration, attemptsRemaining, freePlay, run, min, best, ownBest],
+    [iteration, attemptsRemaining, freePlay],
   );
 
   useApiListener("best", ({ maze }) => viewMaze(maze));
@@ -237,6 +221,11 @@ export const useInit = () => {
           created: Date.now(),
         },
       ]);
+      // A free-play result is known the instant it commits, so fire the
+      // milestone celebration (decorated pill + floating badge) now rather than
+      // at finish — it plays over the run and clears when the board re-stages.
+      const verdict = computeVerdict(run.duration, min, best, ownBest);
+      if (verdict) setVerdict(verdict);
     }
 
     game.dispatchEvent("runStart", run);
@@ -249,7 +238,7 @@ export const useInit = () => {
     // board (startRun / getBoard) resets them for the following build.
     setTouching(false);
     setThunderHover(undefined);
-  }, [time, run, freePlay, iteration, blocks, min, best]);
+  }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
 
   useApiListener(
     "updateRun",

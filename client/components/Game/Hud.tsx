@@ -170,9 +170,9 @@ export const Hud = () => {
           </button>
         )}
         {verdict
-          // A milestone free-play run just finished: hold its decorated verdict
-          // pill for a beat (the board re-stages after, see useInit). The
-          // celebration badge floats separately below.
+          // A milestone free-play run is executing: show its decorated verdict
+          // pill (fired at commit, cleared when the board re-stages at finish —
+          // see useInit). The celebration badge floats separately below.
           ? <VerdictPill verdict={verdict} />
           : time > 0
           ? staged

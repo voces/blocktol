@@ -30,11 +30,11 @@ export const RunClock = (
 };
 
 /**
- * The resolved pill a milestone free-play run holds for a beat before the board
- * re-stages: the final time and score %, in the outcome's colour. Record steps
- * out of the gradient to chartreuse (a ripple ring); supreme to gold (a glow); a
- * personal best keeps its live % colour and pulses instead — colour belongs to
- * the global %.
+ * The decorated pill a milestone free-play run shows while it executes: the
+ * final time and score %, in the outcome's colour. Record steps out of the
+ * gradient to chartreuse (a ripple ring); supreme to gold (a glow); a personal
+ * best keeps its live % colour and pulses instead — colour belongs to the
+ * global %.
  */
 export const VerdictPill = ({ verdict }: { verdict: Verdict }) => (
   <div

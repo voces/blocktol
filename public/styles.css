@@ -1235,8 +1235,9 @@ a:hover {
 /* The free-play win overlay: a badge anchored just under the timer, plus (for a
    personal best / supreme) a scatter of confetti over the board's top edge.
    Absolutely positioned, so it hangs over the gap without shifting the HUD row
-   or moving the board. It fades itself in then out over the hold (see
-   VERDICT_HOLD_MS); the pill above re-stages underneath when it clears. */
+   or moving the board. It fires the instant the run commits (the result is
+   already known) and plays over the run, fading in and holding; it's cleared
+   when the board re-stages at finish. */
 .celebrate {
   position: absolute;
   top: 100%;
@@ -1246,14 +1247,12 @@ a:hover {
   margin-top: 8px;
   pointer-events: none;
   z-index: 5;
-  animation: celebrateFade 2s ease forwards;
+  animation: celebrateFade 0.4s ease forwards;
 }
 
 @keyframes celebrateFade {
   0% { opacity: 0; transform: translateY(-6px); }
-  10% { opacity: 1; transform: translateY(0); }
-  82% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .celebrate__badge {
