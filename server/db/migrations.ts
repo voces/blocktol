@@ -75,6 +75,42 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `settings` text DEFAULT NULL;",
   },
+  {
+    version: 3,
+    name: "run-ranked",
+    // Record at start time whether a run is a *ranked* daily attempt: among the
+    // user's first three runs on the iteration, AND the iteration was the daily
+    // for the user's claimed local day (see db/run.ts startRun). Ranked-ness was
+    // previously inferred from DATE(run.created) = DATE(iteration.created) in
+    // server time, which is wrong at the edges: a daily's legal window spans
+    // ~50 hours of server time — UTC+14 reaches day D at D-1 10:00 UTC and
+    // UTC-12 leaves it at D+1 12:00 UTC (the same window rateDailies' 37h close
+    // waits out) — so offset players' attempts land on a neighbouring server
+    // date. Only the start request, which carries the player's timezone, can
+    // decide correctly, so the flag is written then and read everywhere else.
+    //
+    // The backfill approximates history with that full legal window (historic
+    // starts didn't record the claimed timezone): the first three runs per
+    // (user, iteration) created inside it. Runs join back on
+    // (user, iteration, created) — the table has no primary key — so
+    // equal-timestamp ties may mark an extra run, matching the old read
+    // predicate's tie behaviour. IF NOT EXISTS plus a re-runnable UPDATE keep
+    // the migration retry-safe if the batch dies before the version row lands.
+    up: `
+      ALTER TABLE \`run\` ADD COLUMN IF NOT EXISTS \`ranked\` tinyint(1) NOT NULL DEFAULT 0;
+
+      UPDATE run r
+      JOIN (
+        SELECT user, iteration, created,
+          ROW_NUMBER() OVER (PARTITION BY user, iteration ORDER BY created) rn
+        FROM run
+      ) x ON x.user = r.user AND x.iteration = r.iteration AND x.created = r.created
+      JOIN iteration i ON i.id = r.iteration
+      SET r.ranked = 1
+      WHERE x.rn <= 3
+        AND r.created >= DATE(i.created) - INTERVAL 14 HOUR
+        AND r.created < DATE(i.created) + INTERVAL 36 HOUR;`,
+  },
 ];
 
 // Fails fast on an ill-formed migration list: versions must be unique and form a

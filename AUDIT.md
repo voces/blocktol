@@ -13,9 +13,9 @@ general engineering review.
 ## 1. Concrete bugs
 
 - [x] **1a. Moving a block in free play commits the run (drops `freePlay`).**
-      _Fixed in #93 — the client flag is removed entirely; the server derives
-      commit-vs-void from the run itself, using the same first-three/same-day
-      predicate the read path (`allRunsByIteration`) badges with._
+      _Fixed in #93 — the client flag is removed entirely; ranked-ness is now
+      recorded on the run row at start time (where the timezone-aware daily
+      check lives — see 1h) and the write path commits off that flag._
       `client/components/Game/useInputEnd.ts:117` — the drag-to-move branch
       calls `api.updateRun({ iteration, blocks })` **without** `freePlay`,
       unlike the place (line 161), upgrade (line 88), and delete (line 46)
@@ -72,9 +72,10 @@ general engineering review.
   - `server/routes/iteration/run/abandon.ts` is registered in the API but never
     called by the client. Wire it up or remove it.
 
-- [ ] **1g. Daily resume trusts the `daily` flag, which an in-progress attempt
-      2/3 usually doesn't hold.** (Found 2026-07-07 while reviewing #93.) The
-      `daily` column means "the user's single counted result" — exactly one
+- [x] **1g. Daily resume trusts the `daily` flag, which an in-progress attempt
+      2/3 usually doesn't hold.** _Fixed in #93 — `getLatestRun` filters on the
+      recorded `ranked` flag instead._ (Found 2026-07-07 while reviewing #93.)
+      The `daily` column means "the user's single counted result" — exactly one
       `TRUE` per user/iteration, re-pointed at the best of the first three on
       every ranked save — not "this run is a ranked attempt": attempts 2/3
       insert `FALSE` and only gain the flag while beating the earlier attempts.
@@ -88,6 +89,31 @@ general engineering review.
       among the ranked three (the same first-three/same-day predicate #93 uses
       for commits — or a dedicated `ranked` column set at insert), not from
       `daily = TRUE`.
+
+- [x] **1h. Server-date predicates break for timezone-offset players.** _Fixed
+      in #93 — a `ranked` flag is recorded on the run row at start time (v3
+      migration + windowed backfill) and read everywhere the date predicate
+      lived._ (Found 2026-07-07 during #93 review.) A daily is pinned to the
+      player's claimed local day (`dailyParts(timeZone)` at `startRun`), so
+      iteration X is legally "today" for ~50 hours of server time — UTC+14
+      enters X at X−1 10:00 UTC, UTC−12 leaves it at X+1 12:00 UTC (the window
+      `getUnratedClosedIterations(hours = 37)` already waits out), and a
+      traveler can legally spread three attempts across it. Every
+      `DATE(run.created) = DATE(iteration.created)` predicate therefore
+      misclassified legal attempts landing on a neighbouring server date. Three
+      consumers were affected: `allRunsByIteration` marked them unranked (no
+      Daily badge, and voided-but-spent attempts hidden from the panel); the
+      `daily` demote/promote in `updateCurrentRun` matched nothing, so the
+      counted result stayed stuck on attempt 1 from insert — a **scoring bug**,
+      offset players' percentile-field contribution being attempt 1's time even
+      when a later attempt was best; and #93's original commit derivation copied
+      the predicate, which would have stopped offset players' attempts
+      committing at all.
+
+      Ranked-ness can only be decided at start time, when the claimed timezone
+      is in hand — any inference from `created` misfires on prompt free-play
+      replays of a neighbouring day inside the window. The backfill
+      approximates history with the full legal window.
 
 ---
 
