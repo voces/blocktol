@@ -2,8 +2,12 @@
 // code (common/pathing.ts) computes for the same placement. Its purpose is to
 // quantify the impact of a pathing change — e.g. switching Theta* for the exact
 // any-angle visibility-graph search — before it ships: how many runs shift, by
-// how much, and (critically) whether any run gets *slower* under the new code,
-// which for an optimal solver should essentially never happen.
+// how much, and whether any run gets *slower* under the new code. On a
+// thunder-free maze that should essentially never happen (a shorter distance is
+// a shorter time); WITH thunders it legitimately can, because findPath minimises
+// distance, not time — the new shorter path can pass nearer a thunder and eat
+// more slow penalty. So only a regression on a maze with NO fixed or player
+// thunder is a red flag worth inspecting.
 //
 // Dry-run by default: it only reports. Pass --apply to write the recomputed
 // optimal times back — UPDATE-ing each run's `time` and each iteration's `min`
@@ -138,8 +142,16 @@ const runRows = await sql<Run[]>`
   FROM run WHERE void = FALSE ${runFilter};
 `;
 
-const improved: RunDelta[] = []; // new time is faster (shorter path) — expected
-const regressed: RunDelta[] = []; // new time is slower — should not happen
+// Regression = the new path is genuinely LONGER, which for an optimal solver
+// should never happen. We can only judge that by path length, and a maze's time
+// only tracks its length when there are no thunders (findPath minimises
+// distance; slows are added after, so a shorter path can score a longer time by
+// passing nearer a thunder). So we length-classify only thunder-free mazes —
+// where duration IS the length in time — and bucket thunder mazes on their own:
+// still retimed, but not a length-regression signal.
+const improved: RunDelta[] = []; // thunder-free, shorter path — expected
+const regressed: RunDelta[] = []; // thunder-free, LONGER path — a real red flag
+const thunderChanged: RunDelta[] = []; // has thunders — retimed, not length-comparable
 const broken: { label: string; reason: string }[] = []; // no longer validates
 let unchanged = 0;
 
@@ -167,9 +179,18 @@ for (const run of runRows) {
 
   const delta = v.duration - run.time;
   const row: RunDelta = { run, recomputed: v.duration, delta, label };
-  if (Math.abs(delta) <= TIME_EPSILON) unchanged++;
-  else if (delta < 0) improved.push(row);
-  else regressed.push(row);
+  if (Math.abs(delta) <= TIME_EPSILON) {
+    unchanged++;
+  } else if (
+    iteration.shape.blocks.some((b) => b.thunder) ||
+    playerBlocks.some((b) => b.thunder)
+  ) {
+    thunderChanged.push(row);
+  } else if (delta < 0) {
+    improved.push(row);
+  } else {
+    regressed.push(row);
+  }
 }
 
 // ---- Report ---------------------------------------------------------------
@@ -224,13 +245,18 @@ console.log("\n=== Stored runs ===");
 console.log(`Scored runs examined: ${runRows.length}`);
 console.log(`  unchanged (±${TIME_EPSILON}s): ${unchanged}`);
 console.log(
-  `  faster under new pathing: ${improved.length} (${
+  `  retimed, thunder-free — shorter path: ${improved.length} (${
     stats(improved.map((r) => r.delta))
   })`,
 );
 console.log(
-  `  SLOWER under new pathing: ${regressed.length} (${
+  `  retimed, thunder-free — LONGER path: ${regressed.length} (${
     stats(regressed.map((r) => r.delta))
+  })`,
+);
+console.log(
+  `  retimed, has thunders (time ≠ length): ${thunderChanged.length} (${
+    stats(thunderChanged.map((r) => r.delta))
   })`,
 );
 console.log(`  no longer valid: ${broken.length}`);
@@ -238,12 +264,18 @@ console.log(`  no longer valid: ${broken.length}`);
 if (improved.length) {
   runSection("Biggest improvements (stored → new)", improved);
 }
+if (thunderChanged.length) {
+  runSection(
+    "Retimed (thunder maze — time shift isn't a length signal)",
+    thunderChanged,
+  );
+}
 if (regressed.length) {
-  runSection("⚠️  Regressions — new path is LONGER than stored", regressed);
+  runSection("⚠️  Regressions — new path is LONGER (thunder-free)", regressed);
   console.log(
-    "\n⚠️  An optimal solver should never be slower than the old one. Any row " +
-      "here means the old path was shorter than what the new code calls optimal " +
-      "— inspect these placements before applying.",
+    "\n⚠️  These are thunder-free mazes where the new path is genuinely longer " +
+      "than the stored one — an optimal solver should never do this. Inspect " +
+      "them before applying.",
   );
 }
 if (broken.length) {
@@ -276,10 +308,13 @@ for (const m of minChanged) {
 }
 
 let runsUpdated = 0;
-for (const { run, recomputed } of [...improved, ...regressed]) {
-  // The run table has no id, so pin the row on its identifying columns — the
-  // same keying scripts/auditRuns.ts uses. ABS(time - stored) guards the
-  // single-precision float rather than matching it exactly.
+// Every changed run is retimed — thunder mazes included; only the length-based
+// *classification* excludes them, not the retime.
+for (
+  const { run, recomputed } of [...improved, ...regressed, ...thunderChanged]
+) {
+  // The run table has no id, so pin the row on its identifying columns. ABS(time
+  // - stored) guards the single-precision float rather than matching it exactly.
   const res = await sql<ExecResult>`
     UPDATE run SET time = ${recomputed}
     WHERE user = ${run.user}
