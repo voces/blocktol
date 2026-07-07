@@ -256,7 +256,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   // Sub-page screens (pick, switch): a left-justified header bar with a back
   // button and title, no logo — the fork is where you came from.
   const sheetFrame = (title: string, children: h.JSX.Element) => (
-    <div class="mg mg--flush">
+    <div class="mg">
       <div class="mg-card">
         <div class="mg-header">
           <button

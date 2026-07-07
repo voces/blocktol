@@ -2434,10 +2434,9 @@ a:hover {
   padding: 2px 6px;
 }
 
-/* Sub-page frame (pick, switch): header bar + left-justified body. */
-.mg--flush {
-  padding-top: clamp(18px, 3.5vh, 40px);
-}
+/* Sub-page frame (pick, switch): header bar + left-justified body. Shares the
+   brand frame's top padding (via .mg) so stepping fork → pick keeps the top edge
+   fixed and the dialog only grows downward instead of jumping up. */
 .mg-header {
   display: flex;
   align-items: center;
