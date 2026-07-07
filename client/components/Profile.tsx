@@ -1,16 +1,22 @@
 import { Fragment, h } from "preact";
-import { useContext, useEffect, useRef, useState } from "preact/compat";
+import { useContext, useEffect, useState } from "preact/compat";
 import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { fetchProfile, useProfile } from "../hooks/useProfile.ts";
+import { useSettings } from "../hooks/useSettings.ts";
+import {
+  themes,
+  ZOOM_DEFAULT,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "../../common/settings.ts";
 import { avatarColor, avatarInitial } from "../util/avatar.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
-
-const loginLink = () => new URL(`/login/${getId()}`, location.origin).href;
+import { MoveDevice } from "./MoveDevice.tsx";
 
 const joinedLabel = (joined: number | null) =>
   joined == null ? null : new Date(joined).toLocaleDateString(undefined, {
@@ -62,17 +68,19 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
   const mobile = useMediaQuery("(max-width: 1199.98px)");
   const { attemptsRemaining } = useContext(GameStateContext);
   const { profile, refetch, patch } = useProfile();
+  const { settings, setSettings } = useSettings();
+  // The zoom setting only matters on touch, so it's hidden on non-touch pointers
+  // unless the user has moved it off the default (so a set value stays editable).
+  const touch = useMediaQuery("(pointer: coarse)");
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const copiedTimeout = useRef(-1);
+  const [moving, setMoving] = useState(false);
 
   // Refresh on open so the (cached) figures are current; the dialog stays
   // populated from the cache in the meantime.
   useEffect(() => {
     refetch();
-    return () => clearTimeout(copiedTimeout.current);
   }, []);
 
   const startEdit = () => {
@@ -91,17 +99,6 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
         setEditing(false);
       }
     }).catch(() => setSaving(false));
-  };
-
-  const copyLink = () => {
-    navigator.clipboard.write([
-      new ClipboardItem({
-        "text/plain": new Blob([loginLink()], { type: "text/plain" }),
-      }),
-    ]);
-    setCopied(true);
-    clearTimeout(copiedTimeout.current);
-    copiedTimeout.current = setTimeout(() => setCopied(false), 1500);
   };
 
   // Best build opens on the board (a static review), same route the today-result
@@ -248,15 +245,74 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
           </div>
         </button>
 
-        <button
-          type="button"
-          class="profile-action tapc"
-          onClick={copyLink}
-        >
-          <LinkIcon />
-          {copied ? "Copied login link!" : "Copy login link"}
-        </button>
+        <div class="pref">
+          <div class="section-title">Preferences</div>
+
+          <div class="pref__row">
+            <div class="pref__label">Appearance</div>
+            <div class="pref__seg" role="group" aria-label="Appearance">
+              {themes.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  class={"pref__seg-btn tapc" +
+                    (settings.theme === t ? " pref__seg-btn--active" : "")}
+                  aria-pressed={settings.theme === t}
+                  onClick={() => setSettings({ theme: t })}
+                >
+                  {t[0].toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {(touch || settings.zoom !== ZOOM_DEFAULT) && (
+            <div class="pref__row pref__row--stack">
+              <div class="pref__head">
+                <div>
+                  <div class="pref__label">Zoom when placing</div>
+                  <div class="pref__sub">Magnifies the board on touch.</div>
+                </div>
+                <div class="pref__value mono">
+                  {settings.zoom <= ZOOM_MIN
+                    ? "Off"
+                    : `${settings.zoom.toFixed(1)}×`}
+                </div>
+              </div>
+              <input
+                class="pref__slider"
+                type="range"
+                min={ZOOM_MIN}
+                max={ZOOM_MAX}
+                step={0.1}
+                value={settings.zoom}
+                aria-label="Zoom when placing"
+                onInput={(e) =>
+                  setSettings({ zoom: Number(e.currentTarget.value) })}
+              />
+            </div>
+          )}
+        </div>
+
+        <div class="pref">
+          <div class="section-title">Account</div>
+          <button
+            type="button"
+            class="profile-action profile-action--row tapc"
+            onClick={() => setMoving(true)}
+          >
+            <LinkIcon />
+            <div class="profile-action__text">
+              <div class="profile-action__title">Move to another device</div>
+              <div class="profile-action__sub">
+                Scan a code or copy your login link
+              </div>
+            </div>
+            <span class="profile-action__chev" aria-hidden="true">›</span>
+          </button>
+        </div>
       </div>
+      {moving && <MoveDevice name={name} onClose={() => setMoving(false)} />}
     </div>
   );
 };

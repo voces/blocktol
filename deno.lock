@@ -16,6 +16,7 @@
     "jsr:@std/path@^1.1.6": "1.1.6",
     "jsr:@std/streams@^1.1.1": "1.1.1",
     "npm:preact@^10.11.3": "10.29.3",
+    "npm:qrcode-generator@^1.4.4": "1.5.2",
     "npm:sqlstring@^2.3.3": "2.3.3",
     "npm:zod@^3.20.2": "3.25.76"
   },
@@ -78,6 +79,9 @@
     "preact@10.29.3": {
       "integrity": "sha512-D9NL1GAnJZhc3RndVs4gDdxEeU9TcHgywMrhhOsnpdlvFjdbx0gAsLUnH6JEhlJH5giL7Tx5biWPUSEXE/HPzw=="
     },
+    "qrcode-generator@1.5.2": {
+      "integrity": "sha512-pItrW0Z9HnDBnFmgiNrY1uxRdri32Uh9EjNYLPVC2zZ3ZRIIEqBoDgm4DkvDwNNDHTK7FNkmr8zAa77BYc9xNw=="
+    },
     "sqlstring@2.3.3": {
       "integrity": "sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg=="
     },
@@ -91,6 +95,7 @@
       "jsr:@std/http@1",
       "jsr:@std/path@1",
       "npm:preact@^10.11.3",
+      "npm:qrcode-generator@^1.4.4",
       "npm:sqlstring@^2.3.3",
       "npm:zod@^3.20.2"
     ]

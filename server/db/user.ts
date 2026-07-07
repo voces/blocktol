@@ -1,4 +1,5 @@
 import { randomName } from "../../common/random/name.ts";
+import { parseSettings } from "../../common/settings.ts";
 import { deserializeRun } from "../util/run.ts";
 import { format, raw, sql } from "./query.ts";
 
@@ -47,6 +48,19 @@ export const updateUserName = (id: string, name: string) =>
     SELECT id, name, rating FROM user WHERE id = ${id};
   `.then((r) => r[1][0]);
 
+// The user's persisted preferences, tolerant of legacy/absent blobs.
+export const getUserSettings = (id: string) =>
+  sql<{ settings: string | null }[]>`
+    SELECT settings FROM user WHERE id = ${id};
+  `.then((r) => parseSettings(r[0]?.settings ?? null));
+
+// Upsert so it never no-ops for a user whose row hasn't been seeded yet (a later
+// createOrUpdateUser backfills the name via COALESCE).
+export const updateUserSettings = (id: string, settings: string) =>
+  sql`
+    INSERT INTO user (id, settings) VALUES (${id}, ${settings})
+    ON DUPLICATE KEY UPDATE settings = ${settings};`;
+
 // The profile's headline figures, in one round trip:
 //   1. the user's own row (display name, rating, join date);
 //   2. dailies played (distinct iterations with a ranked daily run, abandoned
@@ -62,7 +76,12 @@ export const updateUserName = (id: string, name: string) =>
 // proportional to their history rather than the whole field.
 export const getUserStats = async (user: string) => {
   const [userRows, totals, bestRows, ranks] = await sql<[
-    { name: string | null; rating: number; joined: number }[],
+    {
+      name: string | null;
+      rating: number;
+      joined: number;
+      settings: string | null;
+    }[],
     { played: number | null; bestBuild: number | null }[],
     { iteration: number }[],
     {
@@ -73,7 +92,7 @@ export const getUserStats = async (user: string) => {
       others: number;
     }[],
   ]>`
-    SELECT name, rating, UNIX_TIMESTAMP(created) * 1000 joined
+    SELECT name, rating, UNIX_TIMESTAMP(created) * 1000 joined, settings
     FROM user WHERE id = ${user};
 
     SELECT
@@ -146,6 +165,7 @@ export const getUserStats = async (user: string) => {
     bestBuildIteration: bestRows[0]?.iteration ?? null,
     hundreds,
     medianPercentile,
+    settings: parseSettings(u?.settings ?? null),
   };
 };
 

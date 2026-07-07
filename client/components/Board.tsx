@@ -5,6 +5,7 @@ import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
+import { useSettings } from "../hooks/useSettings.ts";
 
 export const Board = (
   {
@@ -51,7 +52,11 @@ export const Board = (
     date: number;
   },
 ) => {
-  const zooming = touching && time > 0;
+  // Board magnification while placing (touch). A 1× setting disables it — the
+  // board never scales — so it behaves as if the zoom feature isn't there.
+  const { settings } = useSettings();
+  const zoom = settings.zoom;
+  const zooming = touching && time > 0 && zoom > 1;
   // Only pan the camera (animate transform-origin) once we're already zoomed
   // in, i.e. dragging the block a step. On the initial tap-to-zoom the origin
   // jumps instantly so it zooms straight into the tapped point instead of
@@ -108,7 +113,7 @@ export const Board = (
           transformOrigin: `${(placingBlock.x + 1) * 5}% ${
             placingBlock.y * 5
           }%`,
-          transform: zooming ? "scale(2)" : undefined,
+          transform: zooming ? `scale(${zoom})` : undefined,
         }}
         viewBox="0 0 20 20"
         ref={svgRef}

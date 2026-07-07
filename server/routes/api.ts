@@ -11,6 +11,7 @@ import { updateRun } from "./iteration/run/update.ts";
 import { getProfile } from "./profile.ts";
 import { rename } from "./rename.ts";
 import { reportClientError } from "./reportClientError.ts";
+import { setSettings } from "./setSettings.ts";
 
 const handlers = {
   list: listIterations,
@@ -24,6 +25,7 @@ const handlers = {
   getProfile,
   rename,
   reportClientError,
+  setSettings,
 };
 
 export type BlocktolApi = {

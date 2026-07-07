@@ -10,6 +10,8 @@ export const router = new Router();
 
 router.use(beginLogger);
 router.get("/login/:id", loginLink);
+// `/l/:id` is the short alias used by the move-to-device QR / link.
+router.get("/l/:id", loginLink);
 router.use(extractUserId);
 router.post("/api/:method", api);
 router.use(staticServe("public"));

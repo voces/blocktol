@@ -66,6 +66,15 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_run_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
+  {
+    version: 2,
+    name: "user-settings",
+    // Per-user preferences (theme, board zoom) as a JSON blob — see
+    // common/settings.ts. IF NOT EXISTS (MariaDB) keeps it safe if a column was
+    // ever added out of band.
+    up:
+      "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `settings` text DEFAULT NULL;",
+  },
 ];
 
 // Fails fast on an ill-formed migration list: versions must be unique and form a

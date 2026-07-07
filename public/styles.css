@@ -1900,3 +1900,306 @@ a:hover {
 .profile-action:hover {
   background: var(--surface-3);
 }
+
+/* Move-to-device row: a left-aligned action with a title + sub and a chevron. */
+.profile-action--row {
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.profile-action__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-action__title {
+  font: 600 14px var(--font);
+  color: var(--color);
+}
+
+.profile-action__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+.profile-action__chev {
+  flex: none;
+  font-size: 20px;
+  color: var(--text-mute);
+}
+
+/* Preferences: appearance segmented control + zoom slider. */
+.pref {
+  margin-bottom: 14px;
+}
+
+.pref__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.pref__row + .pref__row {
+  margin-top: 8px;
+}
+
+.pref__row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.pref__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pref__label {
+  font: 600 14px var(--font);
+  color: var(--color);
+}
+
+.pref__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+.pref__value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* Segmented System / Light / Dark — same shape as the runs sort toggle. */
+.pref__seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.pref__seg-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font: 600 12px var(--font);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.pref__seg-btn:hover {
+  color: var(--color);
+}
+
+.pref__seg-btn--active {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
+.pref__slider {
+  width: 100%;
+  accent-color: var(--accent-bright);
+  cursor: pointer;
+}
+
+/* ============================ Move-to-device sheet ======================== */
+.move {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+  background: rgba(6, 6, 10, 0.6);
+}
+
+@media (min-width: 1200px) {
+  .move {
+    align-items: center;
+    padding: 24px;
+  }
+}
+
+.move__sheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  max-height: 94vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
+  animation: profileSheetIn 0.22s ease;
+}
+
+@media (min-width: 1200px) {
+  .move__sheet {
+    max-width: 400px;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+    animation: none;
+  }
+}
+
+.move svg {
+  pointer-events: none;
+}
+
+.move__grab {
+  width: 38px;
+  height: 4px;
+  margin: 9px auto 2px;
+  border-radius: 99px;
+  background: var(--surface-3);
+}
+
+.move__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px;
+}
+
+.move__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-mute);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.move__icon:hover {
+  background: var(--surface-2);
+  color: var(--color);
+}
+
+.move__title {
+  flex: 1;
+  font: 700 18px var(--font);
+  color: var(--color);
+  text-align: left;
+}
+
+.move__body {
+  padding: 8px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.move__lead {
+  font: 500 13px var(--font);
+  color: var(--text-mute);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.move__lead .mono {
+  color: var(--text-dim);
+}
+
+/* QR card — always a light field (scannable), with the logo tile centered. */
+.move__qr {
+  position: relative;
+  width: min(240px, 68%);
+  margin: 0 auto 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.4);
+}
+
+.move__qr-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  padding: 4px;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.move__qr-logo img {
+  display: block;
+}
+
+.move__link {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.move__url {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.move__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 0 15px;
+  height: 40px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--accent-bright);
+  color: #fff;
+  font: 600 14px var(--font);
+  cursor: pointer;
+}
+
+.move__safety {
+  display: flex;
+  gap: 9px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--border));
+}
+
+.move__safety svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.move__safety div {
+  font: 500 12px var(--font);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
