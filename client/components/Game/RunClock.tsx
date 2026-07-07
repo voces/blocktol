@@ -143,18 +143,26 @@ const SPARK_COLORS: Record<Verdict["outcome"], string[]> = {
 // Confetti scattered on every side of the pill, as fractions of its box: fx/fy
 // are the anchor corner (0 = left/top edge, 1 = right/bottom edge) and dx/dy a
 // pixel nudge past it. So negative dy sits above the pill, dx past the right
-// edge sits to its right, and so on — a burst that surrounds the button rather
-// than trailing off one side. `d` staggers the twinkle.
+// edge sits to its right, and a positive dy past the bottom edge rains down over
+// the board — a burst that surrounds the button and falls below it rather than
+// trailing off one side. `d` staggers the twinkle.
 const SPARKS = [
+  // Above the pill.
   { fx: 0.2, fy: 0, dx: 0, dy: -22, size: 6, d: 0 },
   { fx: 0.6, fy: 0, dx: 10, dy: -30, size: 5, d: 0.3 },
   { fx: 1, fy: 0, dx: 16, dy: -10, size: 5, d: 0.5 },
-  { fx: 1, fy: 0.5, dx: 14, dy: 0, size: 4, d: 0.15 },
-  { fx: 1, fy: 1, dx: 8, dy: 12, size: 5, d: 0.4 },
-  { fx: 0.5, fy: 1, dx: 0, dy: 20, size: 6, d: 0.1 },
-  { fx: 0, fy: 1, dx: -10, dy: 14, size: 4, d: 0.35 },
-  { fx: 0, fy: 0.5, dx: -20, dy: 0, size: 5, d: 0.2 },
   { fx: 0, fy: 0, dx: -14, dy: -16, size: 4, d: 0.45 },
+  // Either side.
+  { fx: 1, fy: 0.5, dx: 16, dy: 0, size: 4, d: 0.15 },
+  { fx: 0, fy: 0.5, dx: -22, dy: 2, size: 5, d: 0.2 },
+  // Below, raining down over the board's top.
+  { fx: 1, fy: 1, dx: 18, dy: 20, size: 5, d: 0.4 },
+  { fx: 0.15, fy: 1, dx: -6, dy: 26, size: 6, d: 0.1 },
+  { fx: 0, fy: 1, dx: -26, dy: 40, size: 4, d: 0.55 },
+  { fx: 0.45, fy: 1, dx: 0, dy: 54, size: 5, d: 0.25 },
+  { fx: 0.8, fy: 1, dx: 8, dy: 48, size: 6, d: 0.6 },
+  { fx: 0.3, fy: 1, dx: -4, dy: 78, size: 4, d: 0.35 },
+  { fx: 0.65, fy: 1, dx: 6, dy: 88, size: 5, d: 0.7 },
 ];
 
 /**
@@ -202,7 +210,9 @@ const CelebrationOverlay = (
               top: `${s.fy * rect.height + s.dy}px`,
               width: `${s.size}px`,
               height: `${s.size}px`,
-              background: SPARK_COLORS[verdict.outcome][i],
+              background: SPARK_COLORS[verdict.outcome][
+                i % SPARK_COLORS[verdict.outcome].length
+              ],
               borderRadius: verdict.outcome === "supreme" ? "50%" : "1px",
               animationDelay: `${s.d}s`,
             }}
