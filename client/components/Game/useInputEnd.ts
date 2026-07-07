@@ -18,6 +18,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     checkpoint,
     grid,
     setTransitionBlock,
+    setThunderHover,
     invalid,
     setTouching,
     setBlocks,
@@ -27,6 +28,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     placingBlockRef,
     bricks,
     dragRef,
+    placingRef,
     iteration,
     staged,
     setStaged,
@@ -43,6 +45,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       }
       if (svg) svg.style.transform = "";
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
+      // The gesture is over: drop any lingering placement / thunder previews so
+      // they don't stick around after release (touch has no follow-up move to
+      // clear them).
+      placingRef.current = false;
+      setThunderHover(undefined);
 
       const drag = dragRef.current;
       if (drag) {

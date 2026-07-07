@@ -46,6 +46,12 @@ export const useGameState = () => {
     }
     | null
   >(null);
+  // True while a fresh-block placement press is in progress (pressed an empty
+  // cell with bricks in hand, not grabbing an existing block). Lets the hover
+  // logic treat the moving preview over any block as an invalid spot (a red
+  // preview) rather than the tap-to-upgrade preview, which is meant for a bare
+  // hover over your own block. Cleared on release.
+  const placingRef = useRef(false);
   // Whether the current grab has actually moved off its origin cell. Sticks true
   // for the rest of the drag (mirrors dragRef.current.dragged) so the board can
   // keep the upgrade radius hidden even if the block is dragged back to origin,
@@ -194,6 +200,7 @@ export const useGameState = () => {
     touching,
     transitionBlock,
     dragRef,
+    placingRef,
     dragMoved,
     setDragMoved,
     attempts,

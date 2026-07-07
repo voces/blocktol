@@ -24,6 +24,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     setTransitionBlock,
     setTouching,
     dragRef,
+    placingRef,
     setDragMoved,
   } = useContext(GameStateContext);
 
@@ -83,6 +84,10 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
             startClientY: clientY,
           }
           : null;
+        // Pressing an empty cell with bricks in hand starts a placement; keep
+        // that in scope so dragging the preview over an existing block reads as
+        // an invalid spot rather than a tap-to-upgrade.
+        placingRef.current = !overlap?.local && bricks > 0;
       }
 
       const drag = dragRef.current;
@@ -123,9 +128,17 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // show again on the next grab.
       setDragMoved(false);
 
-      setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
+      // Mid-placement, keep the preview visible over any block (it'll be red —
+      // you can't stack there). A bare hover instead hides the preview over your
+      // own block so its tap-to-upgrade radius reads clearly.
+      const placing = placingRef.current;
+      setPlacingBlock(() => ({
+        placing: (placing || !overlap?.local) && bricks > 0,
+        x,
+        y,
+      }));
 
-      let invalid = (!!overlap && !overlap.local) ||
+      let invalid = (!!overlap && (placing || !overlap.local)) ||
         (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
       if (
         !invalid && !overlap &&
@@ -148,8 +161,11 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         setThunderHover(undefined);
       }
 
+      // A bare hover over your own block previews the tap-to-upgrade radius; a
+      // placement dragged over it doesn't — the block can't go there, so no
+      // upgrade is implied.
       setTransitionBlock(
-        overlap?.local ? overlap : undefined,
+        !placing && overlap?.local ? overlap : undefined,
       );
     };
 
