@@ -109,25 +109,29 @@ export const percentileColor = (percent: number): string => {
   return `#${channel(r)}${channel(g)}${channel(b)}`;
 };
 
-/**
- * Colour for a run's *standing* — its position in [min, fieldBest] (how close to
- * the field's best). Cubed before the ramp so the top end gets far more colour
- * resolution: players grind toward the best, so 95% → 99% is a much bigger deal
- * than 80% → 84%, and the cube spreads those top runs across a wide slice of the
- * ramp instead of a thin green sliver. A standing of exactly 1 stays 1 (still the
- * ramp's top). Ranked percentiles are uniform by construction, so those are
- * coloured linearly via percentileColor directly — NOT through this.
- */
-export const standingColor = (standing: number): string =>
-  percentileColor(standing ** 3);
+// Exponent applied to a run's standing before the colour ramp (see
+// standingColor). Higher pushes colour further toward the top; tune here.
+export const STANDING_GAMMA = 4;
 
 /**
- * Banded (discrete-token) sibling of standingColor — the same cube, for the
+ * Colour for a run's *standing* — its position in [min, fieldBest] (how close to
+ * the field's best). Raised to STANDING_GAMMA before the ramp so the top end gets
+ * far more colour resolution: players grind toward the best, so 95% → 99% is a
+ * much bigger deal than 80% → 84%, and the curve spreads those top runs across a
+ * wide slice of the ramp instead of a thin green sliver. A standing of exactly 1
+ * stays 1 (still the ramp's top). Ranked percentiles are uniform by construction,
+ * so those are coloured linearly via percentileColor directly — NOT through this.
+ */
+export const standingColor = (standing: number): string =>
+  percentileColor(standing ** STANDING_GAMMA);
+
+/**
+ * Banded (discrete-token) sibling of standingColor — the same curve, for the
  * panels that colour a standing off the `--pct-N` tokens rather than the
  * continuous ramp. Ranked percentiles still go through percentileBand directly.
  */
 export const standingBand = (standing: number | null): string =>
-  percentileBand(standing == null ? null : standing ** 3);
+  percentileBand(standing == null ? null : standing ** STANDING_GAMMA);
 
 /** Black or white, whichever reads better on the given `#rrggbb` background. */
 export const readableInk = (hex: string): string => {

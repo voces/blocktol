@@ -3,6 +3,7 @@ import {
   percentileBand,
   percentileColor,
   readableInk,
+  STANDING_GAMMA,
   standingBand,
   standingColor,
 } from "./percentileColor.ts";
@@ -53,15 +54,15 @@ Deno.test("readableInk picks contrasting ink", () => {
   assertEquals(readableInk("#ffffff"), "#1a1a1a");
 });
 
-Deno.test("standingColor cubes the input before the ramp", () => {
-  // A full standing still lands on the ramp's top; other values are the cube.
+Deno.test("standingColor curves the input before the ramp", () => {
+  // A full standing still lands on the ramp's top; other values use the gamma.
   assertEquals(standingColor(1), percentileColor(1));
-  assertEquals(standingColor(0.5), percentileColor(0.125));
-  assertEquals(standingColor(0.9), percentileColor(0.9 ** 3));
+  assertEquals(standingColor(0.5), percentileColor(0.5 ** STANDING_GAMMA));
+  assertEquals(standingColor(0.9), percentileColor(0.9 ** STANDING_GAMMA));
 });
 
-Deno.test("standingBand cubes before banding, and passes null through", () => {
-  assertEquals(standingBand(0.5), percentileBand(0.125));
+Deno.test("standingBand curves before banding, and passes null through", () => {
+  assertEquals(standingBand(0.5), percentileBand(0.5 ** STANDING_GAMMA));
   assertEquals(standingBand(1), percentileBand(1));
   assertEquals(standingBand(null), percentileBand(null));
 });

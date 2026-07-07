@@ -50,9 +50,10 @@ const standing = (time: number | null, item: Item) => {
 // Overall standing (best of ranked + free play) drives the cell colour.
 const percentOf = (item: Item) => standing(item.ownBest, item);
 
-// The cell colour maps the day's best standing through the ramp (cubed, so the
-// top end spreads out) — the SAME mapping the runs panel uses for that run's
-// band, so a day's cell always matches the colour of its top run when opened.
+// The cell colour maps the day's best standing through the ramp (via
+// standingColor, which curves it so the top end spreads out) — the SAME mapping
+// the runs panel uses for that run's band, so a day's cell always matches the
+// colour of its top run when opened.
 const cellColor = (item: Item) => {
   if (item.supreme) return SUPREME_COLOR;
   const p = percentOf(item);
