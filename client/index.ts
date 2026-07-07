@@ -1,5 +1,9 @@
 import { h, render } from "preact";
 import { App } from "./components/App.tsx";
+import { initSettings } from "./hooks/useSettings.ts";
+
+// Apply the cached theme before first paint (the server value reconciles later).
+initSettings();
 
 render(h(App, {}), document.body);
 

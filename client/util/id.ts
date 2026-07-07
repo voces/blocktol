@@ -24,8 +24,12 @@ const randomId = () => {
 };
 
 export const getId = () => {
+  // Sign-in links: `/login/<id>` (long) and `/l/<id>` (the move-to-device
+  // short alias). Both drop the id into storage so the app boots as that user.
   if (location.pathname.startsWith("/login/")) {
     localStorage.setItem("id", location.pathname.slice(7));
+  } else if (location.pathname.startsWith("/l/")) {
+    localStorage.setItem("id", location.pathname.slice(3));
   }
 
   const storedId = localStorage.getItem("id");

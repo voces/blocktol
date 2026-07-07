@@ -1587,25 +1587,22 @@ a:hover {
    bottom sheet that hugs its content (so a sparse profile doesn't strand a
    full-screen void). Desktop: a centred dialog card, like the daily result.
    Both are dismissed by the backdrop or the close button. */
-.profile-modal {
+/* Shared dismissible overlay (see Modal.tsx): a bottom sheet on mobile, a
+   centered card on desktop. Used by the profile dialog and the move sheet.
+   Children own their padding; a per-use class (e.g. .profile-sheet) adds it. */
+.modal {
   position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
   box-sizing: border-box;
-  background: rgba(6, 6, 10, 0.72);
+  background: rgba(6, 6, 10, 0.68);
   /* Mobile default: anchored to the bottom as a sheet. */
   align-items: flex-end;
   justify-content: center;
 }
 
-/* Desktop: card centred (never past the viewport midpoint on short windows). */
-.profile-modal--desktop {
-  align-items: center;
-  padding: 24px;
-}
-
-.profile-modal__sheet {
+.modal__sheet {
   position: relative;
   box-sizing: border-box;
   width: 100%;
@@ -1613,15 +1610,32 @@ a:hover {
      min-content (which would push the sheet wider than a phone screen). */
   min-width: 0;
   max-width: 480px;
-  max-height: 92vh;
+  max-height: 94vh;
   overflow-y: auto;
   text-align: left;
   background: var(--surface);
   /* Bottom sheet: rounded top only, flush to the screen's bottom edge. */
   border-radius: 22px 22px 0 0;
-  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
   animation: profileSheetIn 0.22s ease;
+}
+
+/* Desktop: card centred, free-floating and rounded on all sides. */
+@media (min-width: 1200px) {
+  .modal {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .modal__sheet {
+    max-width: 420px;
+    max-height: none;
+    overflow-y: visible;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+    animation: none;
+  }
 }
 
 @keyframes profileSheetIn {
@@ -1635,41 +1649,54 @@ a:hover {
   }
 }
 
-/* On desktop the sheet is a free-floating rounded card. */
-.profile-modal--desktop .profile-modal__sheet {
-  max-width: 440px;
-  max-height: none;
-  overflow-y: visible;
-  padding: 22px;
-  border: 1px solid var(--border-strong);
-  border-radius: 20px;
-  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
-  animation: none;
+/* Profile dialog content padding (the move sheet manages its own). */
+.profile-sheet {
+  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1200px) {
+  .profile-sheet {
+    padding: 22px;
+  }
 }
 
 /* Decorative dialog icons (edit pencil, copy/link) must not act as board-input
    targets — the game's touch handlers zoom the board on any touched <svg>. Let
    the taps fall through to the buttons beneath. */
-.profile-modal svg {
+.modal svg {
   pointer-events: none;
 }
 
+/* Shared header/close icon button used across both modals so the affordances
+   (profile ×, move ‹ / ×) look identical. */
+.modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.modal__icon:hover {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
+/* The profile's close is the same button, pinned to the sheet corner. */
 .profile-modal__close {
   position: absolute;
   top: 14px;
   right: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--color);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
+  z-index: 1;
 }
 
 /* Header: avatar, name + join date, rating pinned to the right. Held to the
@@ -1827,10 +1854,6 @@ a:hover {
   text-align: center;
 }
 
-.profile-modal--desktop .profile-stat {
-  background: var(--surface-2);
-}
-
 .profile-stat__value {
   font-size: 22px;
   font-weight: 700;
@@ -1899,4 +1922,240 @@ a:hover {
 
 .profile-action:hover {
   background: var(--surface-3);
+}
+
+/* Move-to-device row: a left-aligned action with a title + sub and a chevron. */
+.profile-action--row {
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.profile-action__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-action__title {
+  font: 600 14px var(--font);
+  color: var(--color);
+}
+
+.profile-action__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+.profile-action__chev {
+  flex: none;
+  font-size: 20px;
+  color: var(--text-mute);
+}
+
+/* Preferences: appearance segmented control + zoom slider. */
+.pref {
+  margin-bottom: 14px;
+}
+
+.pref__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.pref__row + .pref__row {
+  margin-top: 8px;
+}
+
+.pref__row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.pref__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pref__label {
+  font: 600 14px var(--font);
+  color: var(--color);
+}
+
+.pref__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+.pref__value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* Segmented System / Light / Dark — same shape as the runs sort toggle. */
+.pref__seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.pref__seg-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font: 600 12px var(--font);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.pref__seg-btn:hover {
+  color: var(--color);
+}
+
+.pref__seg-btn--active {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
+.pref__slider {
+  width: 100%;
+  accent-color: var(--accent-bright);
+  cursor: pointer;
+}
+
+/* ===== Move-to-device sheet (shell is the shared .modal, see Modal.tsx) ==== */
+.move__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 4px;
+}
+
+.move__title {
+  flex: 1;
+  font: 700 18px var(--font);
+  color: var(--color);
+  text-align: left;
+}
+
+.move__body {
+  padding: 8px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+.move__lead {
+  font: 500 13px var(--font);
+  color: var(--text-mute);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.move__lead .mono {
+  color: var(--text-dim);
+}
+
+/* QR card — full width, always a light field (scannable), logo tile centered. */
+.move__qr {
+  position: relative;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.4);
+}
+
+.move__qr-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  padding: 4px;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.move__qr-logo img {
+  display: block;
+}
+
+.move__link {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.move__url {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  height: 40px;
+  /* Block (not flex) so text-overflow works: the start of the URL stays
+     visible, the tail ellipsises. line-height centres it in the pill. */
+  line-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.move__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 0 15px;
+  height: 40px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--accent-bright);
+  color: #fff;
+  font: 600 14px var(--font);
+  cursor: pointer;
+}
+
+.move__safety {
+  display: flex;
+  gap: 9px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--warn) 28%, var(--border));
+}
+
+.move__safety svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.move__safety div {
+  font: 500 12px var(--font);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.move__name {
+  font-weight: 700;
+  color: var(--color);
 }

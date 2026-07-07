@@ -11,6 +11,7 @@ import {
   useDailyItemsStore,
 } from "../hooks/useDailyItems.tsx";
 import { fetchProfile } from "../hooks/useProfile.ts";
+import { adoptServerSettings } from "../hooks/useSettings.ts";
 import { CalendarButton } from "./CalendarButton.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
@@ -70,8 +71,12 @@ export const App = () => {
         return;
       }
       // Warm the profile cache once the summary lands — by then any first-load
-      // name seeding has committed — so opening the profile is instant.
-      fetchProfile();
+      // name seeding has committed — so opening the profile is instant. Its
+      // payload carries the server-persisted settings; adopt them (the
+      // cross-device source of truth) over the boot-time localStorage guess.
+      fetchProfile().then((p) => {
+        if (p?.settings) adoptServerSettings(p.settings);
+      });
       if (ret.currentRun) return;
       if (ret.ranked.length < 3) {
         api.startRun({ iteration: "daily", timeZone: getTimeZone() });
