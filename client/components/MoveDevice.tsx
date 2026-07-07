@@ -43,11 +43,16 @@ const ShieldIcon = () => (
 /**
  * The "move to another device" sheet: a QR of the sign-in link plus the link
  * itself to copy. Scanning it (or opening the link) signs the other device in as
- * this user — see the `/l/:id` route and getId(). It opens over the profile
- * dialog; back and close both return to it.
+ * this user — see the `/l/:id` route and getId(). It replaces the profile dialog
+ * (not stacked over it): back (‹) returns to the profile, close (× / backdrop)
+ * dismisses to the board.
  */
 export const MoveDevice = (
-  { name, onClose }: { name: string; onClose: () => void },
+  { name, onBack, onClose }: {
+    name: string;
+    onBack: () => void;
+    onClose: () => void;
+  },
 ) => {
   const url = new URL("/l/" + getId(), location.origin).href;
   const display = url.replace(/^https?:\/\//, "");
@@ -70,7 +75,7 @@ export const MoveDevice = (
             type="button"
             class="move__icon tapc"
             aria-label="Back"
-            onClick={onClose}
+            onClick={onBack}
           >
             ‹
           </button>
@@ -106,7 +111,8 @@ export const MoveDevice = (
           <div class="move__safety">
             <ShieldIcon />
             <div>
-              Anyone with this link can sign in as <b>{name}</b>{" "}
+              Anyone with this link can sign in as{" "}
+              <b class="move__name">{name}</b>{" "}
               — it doesn't expire, so keep it private.
             </div>
           </div>

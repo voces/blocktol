@@ -64,7 +64,9 @@ const Stat = (
   </div>
 );
 
-const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
+const ProfileDialog = (
+  { onClose, onMove }: { onClose: () => void; onMove: () => void },
+) => {
   const mobile = useMediaQuery("(max-width: 1199.98px)");
   const { attemptsRemaining } = useContext(GameStateContext);
   const { profile, refetch, patch } = useProfile();
@@ -75,7 +77,6 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [moving, setMoving] = useState(false);
 
   // Refresh on open so the (cached) figures are current; the dialog stays
   // populated from the cache in the meantime.
@@ -299,7 +300,7 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
           <button
             type="button"
             class="profile-action profile-action--row tapc"
-            onClick={() => setMoving(true)}
+            onClick={onMove}
           >
             <LinkIcon />
             <div class="profile-action__text">
@@ -312,7 +313,6 @@ const ProfileDialog = ({ onClose }: { onClose: () => void }) => {
           </button>
         </div>
       </div>
-      {moving && <MoveDevice name={name} onClose={() => setMoving(false)} />}
     </div>
   );
 };
@@ -321,10 +321,16 @@ export const Profile = () => {
   const { attemptsRemaining } = useContext(GameStateContext);
   const { profile } = useProfile();
   const [open, setOpen] = useState(false);
+  // The move sheet replaces the dialog rather than stacking over it: opening it
+  // closes the dialog; its back button reopens the dialog, its close dismisses
+  // to the board.
+  const [moving, setMoving] = useState(false);
 
   // Hidden while a daily is in progress (mirrors the calendar button) — no
   // wandering off to the profile mid-run.
   if (attemptsRemaining !== 0) return null;
+
+  const name = profile?.name || "Anonymous";
 
   // Once the (prefetched) profile is loaded, the button is the coloured letter
   // avatar; until then, the neutral person glyph.
@@ -364,7 +370,25 @@ export const Profile = () => {
             </svg>
           )}
       </button>
-      {open && <ProfileDialog onClose={() => setOpen(false)} />}
+      {open && (
+        <ProfileDialog
+          onClose={() => setOpen(false)}
+          onMove={() => {
+            setOpen(false);
+            setMoving(true);
+          }}
+        />
+      )}
+      {moving && (
+        <MoveDevice
+          name={name}
+          onBack={() => {
+            setMoving(false);
+            setOpen(true);
+          }}
+          onClose={() => setMoving(false)}
+        />
+      )}
     </>
   );
 };
