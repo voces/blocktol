@@ -199,7 +199,19 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   };
   // Adopt a new identity (switch, adopt-other, merge-into-other, clean confirm):
   // commit the id and reboot so avatar, caches, and run state all reset cleanly.
-  const reloadAs = (id: string) => {
+  // Adopting an account that already has runs skips onboarding — a returning
+  // player on a new device shouldn't get the tutorial. `toast` (silent 2e only)
+  // rides sessionStorage to the fresh boot, where the app shows it over the board.
+  const reloadAs = (
+    id: string,
+    opts?: { adoptedRuns?: number; toast?: { title: string; sub: string } },
+  ) => {
+    if ((opts?.adoptedRuns ?? 0) > 0) {
+      localStorage.setItem("hasCompletedOnboarding", "true");
+    }
+    if (opts?.toast) {
+      sessionStorage.setItem("gateToast", JSON.stringify(opts.toast));
+    }
     adoptId(id);
     clearLinkFromUrl();
     location.assign("/");
@@ -209,13 +221,13 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     setMode("working");
     await api.merge({ other: linkId, primary: which });
     if (which === "self") proceed();
-    else reloadAs(linkId);
+    else reloadAs(linkId, { adoptedRuns: other?.runs ?? 0 });
   };
 
   useEffect(() => {
     let live = true;
     const ids = localId ? [localId, linkId] : [linkId];
-    api.moveInfo({ ids }).then((res) => {
+    api.moveInfo({ ids }).then(async (res) => {
       if (!live) return;
       if ("error" in res) return proceed(); // can't decide → don't block the app
       const s = localId ? res[0] : null;
@@ -238,7 +250,17 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       // the reverse (silently folding a tiny link into a real local profile):
       // opening a link implies it should likely be primary, so quietly demoting
       // it to a discarded secondary would surprise — show the fork instead.
-      if (selfRuns < SILENT_RATIO * otherRuns) return doMerge("other"); // 2e
+      if (selfRuns < SILENT_RATIO * otherRuns) { // 2e
+        setMode("working");
+        await api.merge({ other: linkId, primary: "other" });
+        return reloadAs(linkId, {
+          adoptedRuns: o.runs,
+          toast: {
+            title: `Signed in as ${o.name ?? "your other profile"}`,
+            sub: `${runs(selfRuns)} from this device came along.`,
+          },
+        });
+      }
 
       // Otherwise the fork — including a tiny link over a real profile. Default
       // the primary to the larger side.
@@ -312,7 +334,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             <button
               type="button"
               class="mg-btn mg-btn--primary tapc"
-              onClick={() => reloadAs(linkId)}
+              onClick={() => reloadAs(linkId, { adoptedRuns: other.runs })}
             >
               Continue as {other.name ?? "this player"}
             </button>
@@ -543,7 +565,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
           type="button"
           class="mg-btn mg-btn--primary tapc mg-body-btn"
           disabled={!linkSaved}
-          onClick={() => reloadAs(linkId)}
+          onClick={() => reloadAs(linkId, { adoptedRuns: other.runs })}
         >
           Switch to {other.name ?? "it"}
         </button>

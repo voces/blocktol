@@ -17,6 +17,7 @@ import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
 import { MoveGate } from "./MoveGate.tsx";
 import { Profile } from "./Profile.tsx";
+import { Toast } from "./Toast.tsx";
 import { getCleanLink, getPendingLink } from "../util/id.ts";
 
 const Shell = (
@@ -64,6 +65,25 @@ export const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(
     !hadCompletedOnboarding.current,
   );
+  // A one-shot toast left by the move/merge gate (silent adopt) — read once on
+  // boot and auto-dismissed. See MoveGate.reloadAs.
+  const [toast, setToast] = useState<{ title: string; sub?: string } | null>(
+    () => {
+      try {
+        const raw = sessionStorage.getItem("gateToast");
+        if (!raw) return null;
+        sessionStorage.removeItem("gateToast");
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    },
+  );
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
   const [retry, setRetry] = useState(0);
   const [disconnected, setDisconnected] = useState(false);
 
@@ -120,6 +140,13 @@ export const App = () => {
     <Shell gameState={gameState} dailyStore={dailyStore}>
       <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
       {disconnected && <Disconnected />}
+      {toast && (
+        <Toast
+          title={toast.title}
+          sub={toast.sub}
+          onClose={() => setToast(null)}
+        />
+      )}
     </Shell>
   );
 };
