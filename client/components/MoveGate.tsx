@@ -16,8 +16,9 @@ import { Logo } from "./Logo.tsx";
 // sign-in (see getPendingLink). This gate resolves it before the app boots —
 // ahead of onboarding, per the design. Outcomes:
 //   • clean device (no local profile) → confirm the adopt (1d)
-//   • one side has <5% of the other's runs → merge silently, no fork (2d / 2e)
-//   • both sides substantial → offer merge / switch / keep (2a → 2b / 2c)
+//   • this device nearly empty + a real link → adopt the link silently (2e)
+//   • otherwise (incl. a tiny link over a real profile) → merge / switch / keep
+//     (2a → 2b / 2c)
 // The runs figure and the threshold both use non-void run count (moveInfo).
 
 type Side =
@@ -160,6 +161,19 @@ const WarnIcon = () =>
     </g>,
     18,
   );
+const CopyIcon = () =>
+  svg(
+    <g
+      stroke="currentColor"
+      stroke-width={1.4}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <rect x={7} y={7} width={9} height={9} rx={2} />
+      <path d="M13 5.5V4.5A1.5 1.5 0 0 0 11.5 3H5A1.5 1.5 0 0 0 3.5 4.5V11a1.5 1.5 0 0 0 1.5 1.5h1" />
+    </g>,
+    15,
+  );
 
 type Mode = "loading" | "working" | "confirm" | "fork" | "pick" | "switch";
 
@@ -218,11 +232,16 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       // Clean device / no local data: confirm the adopt (1d).
       if (!localId || selfRuns === 0) return setMode("confirm");
 
-      // Escape hatches: one side almost empty → silent merge, no fork.
-      if (otherRuns < SILENT_RATIO * selfRuns) return doMerge("self"); // 2d
+      // Escape hatch, one direction only: this device has almost nothing and the
+      // link is a real account → adopt the link silently (2e). The link is
+      // plainly meant to be the primary here, and its identity wins. We do NOT do
+      // the reverse (silently folding a tiny link into a real local profile):
+      // opening a link implies it should likely be primary, so quietly demoting
+      // it to a discarded secondary would surprise — show the fork instead.
       if (selfRuns < SILENT_RATIO * otherRuns) return doMerge("other"); // 2e
 
-      // Both substantial → the fork. Default the primary to the larger side.
+      // Otherwise the fork — including a tiny link over a real profile. Default
+      // the primary to the larger side.
       setPrimaryIsSelf(selfRuns >= otherRuns);
       setMode("fork");
     }).catch(() => proceed());
@@ -513,10 +532,11 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         <div class="mg-link">
           <div class="mg-url mono">{url.replace(/^https?:\/\//, "")}</div>
           <button type="button" class="mg-copy tapc" onClick={copyLink}>
+            <CopyIcon />
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
-        <div class="mg-desc">
+        <div class="mg-caption">
           Anyone with this link can sign back in as{" "}
           {self.name ?? "this profile"} on any device.
         </div>

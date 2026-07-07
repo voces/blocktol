@@ -2473,10 +2473,10 @@ a:hover {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-mute);
-  margin: 18px 2px 8px;
+  margin: 20px 2px 9px;
 }
 .mg-body > .mg-section-lbl:first-child {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 .mg-desc {
   font: 500 12px var(--font);
@@ -2484,8 +2484,16 @@ a:hover {
   line-height: 1.45;
   margin: 0 2px 12px;
 }
+/* Helper caption tucked under a control (e.g. the link on switch). */
+.mg-caption {
+  font: 500 11.5px var(--font);
+  color: var(--text-mute);
+  line-height: 1.45;
+  text-align: left;
+  margin: 8px 2px 0;
+}
 .mg-body-btn {
-  margin-top: 18px;
+  margin-top: 20px;
 }
 .mg-btn[disabled] {
   opacity: 0.45;
@@ -2560,7 +2568,8 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 8px 0 4px;
+  padding: 2px 0 0;
+  margin-bottom: 18px;
 }
 .mg-switch-one {
   display: flex;
@@ -2583,7 +2592,6 @@ a:hover {
   border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
   border-radius: 14px;
   padding: 13px 15px;
-  margin: 16px 0 4px;
   text-align: left;
   font: 500 12.5px var(--font);
   /* Amber-tinted body so the white profile names pop against it. */
@@ -2602,16 +2610,18 @@ a:hover {
 }
 .mg-link {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--surface-2);
-  border-radius: 12px;
-  padding: 8px 8px 8px 12px;
+  align-items: stretch;
+  gap: 9px;
 }
 .mg-url {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 13px;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2619,12 +2629,15 @@ a:hover {
 }
 .mg-copy {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
-  background: var(--surface-3);
+  background: var(--surface-2);
   color: var(--text-dim);
-  border-radius: 9px;
-  padding: 8px 12px;
-  font: 600 12px var(--font);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font: 600 13px var(--font);
   cursor: pointer;
 }
 
