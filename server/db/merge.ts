@@ -16,13 +16,15 @@ export const nonVoidRunCount = (user: string) =>
 // primary row untouched and only moving runs onto it. Nothing is recomputed.
 //
 // The one correction is the daily flag. A day both devices played would leave two
-// runs flagged as that day's counted result (each device kept its own best), and
-// stats/calendar expect one. We keep the better and demote the other — but ONLY
-// ever clear a flag, never set one: a daily is legitimate only on the user's own
-// local day, decided at creation, so the pool of dailies is fixed to runs already
-// marked and a merge must never mint a new one from free play. A run is demoted
-// iff a strictly better daily sibling exists on the same iteration (higher time,
-// or equal time created earlier), so exactly the single best daily survives.
+// runs flagged as that day's counted result, and stats/calendar expect one. We
+// keep the EARLIEST attempt and demote the other — merging can't swap a day's
+// result for a faster run from the other account (an upgrade you didn't earn on
+// the day). And it ONLY ever clears a flag, never sets one: a daily is legitimate
+// only on the user's own local day, decided at creation, so the pool of dailies
+// is fixed to runs already marked and a merge must never mint one from free play.
+// A run is demoted iff an earlier-created daily sibling exists on the same
+// iteration (higher time breaks an exact-timestamp tie), so exactly the single
+// earliest daily survives.
 //
 // All of it is one round trip wrapped in a transaction. A single query runs on
 // one connection (the same guarantee startRun's session variables rely on), so
@@ -38,7 +40,7 @@ export const mergeUsers = (primary: string, secondary: string) =>
       ON o.user = r.user
       AND o.iteration = r.iteration
       AND o.daily = TRUE
-      AND (o.time > r.time OR (o.time = r.time AND o.created < r.created))
+      AND (o.created < r.created OR (o.created = r.created AND o.time > r.time))
     SET r.daily = FALSE
     WHERE r.user = ${primary} AND r.daily = TRUE;
 
