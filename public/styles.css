@@ -2159,3 +2159,566 @@ a:hover {
   font-weight: 700;
   color: var(--color);
 }
+
+/* ── Move / merge gate ─────────────────────────────────────────────────────
+   The pre-app takeover that resolves a sign-in link opening on a device that
+   already has a profile (see MoveGate.tsx): clean-adopt confirm, the fork, the
+   primary picker, and the switch/save-link screen. A centered card on a plain
+   backdrop — it stands in for the whole app, ahead of onboarding. */
+.mg {
+  min-height: var(--full-height, 100vh);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Top-anchored (not vertically centered) so the logo sits near the top and
+     content flows down, matching the mock — a lone confirm card shouldn't float
+     mid-screen. Clamped so it's high on a phone without gluing to the very top
+     of a tall desktop viewport. */
+  justify-content: flex-start;
+  padding: clamp(40px, 11vh, 120px) 18px 24px;
+  background: var(--background);
+}
+.mg-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.mg-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 19px var(--font);
+  color: var(--color);
+}
+.mg-inner {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+.mg-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font);
+  font-weight: 700;
+  color: #fff;
+  flex: none;
+}
+.mg-name {
+  font: 700 17px var(--font);
+  color: var(--color);
+}
+.mg-name--lg {
+  font-size: 22px;
+}
+.mg-sub {
+  font-size: 11.5px;
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+.mg-sub--block {
+  margin: -4px 2px 4px;
+  line-height: 1.5;
+  text-align: center;
+}
+.mg-heading {
+  font: 700 18px var(--font);
+  color: var(--color);
+  text-align: center;
+}
+
+/* Clean-adopt (1d): one card holding the label, profile, and both buttons. */
+.mg-confirm {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 26px 22px;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.6);
+}
+.mg-confirm-label {
+  text-align: center;
+  font: 600 12px var(--font);
+  letter-spacing: 0.05em;
+  color: var(--text-mute);
+  margin-bottom: 20px;
+}
+.mg-actions--inset {
+  margin-top: 20px;
+}
+.mg-profile--solo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The two-profile pair (fork) */
+.mg-pair {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.6);
+}
+.mg-lbl {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-mute);
+  margin: 0 2px 8px;
+}
+.mg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mg-rowtext {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.mg-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 2px;
+}
+.mg-divider::before,
+.mg-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.mg-divider span {
+  font: 600 10px var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.mg-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+}
+
+/* Buttons */
+.mg-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 15px;
+  padding: 15px 16px;
+  font: 700 15px var(--font);
+  cursor: pointer;
+}
+.mg-btn--primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 22px -12px var(--accent);
+}
+.mg-btn--ghost {
+  background: transparent;
+  color: var(--text-mute);
+  font-weight: 600;
+  padding: 12px;
+}
+.mg-opt {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 15px;
+  padding: 14px 16px;
+  cursor: pointer;
+  color: var(--text-mute);
+}
+.mg-opt-icon {
+  flex: none;
+  display: flex;
+  color: var(--accent);
+}
+.mg-opt-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mg-opt-chev {
+  flex: none;
+  display: flex;
+  color: var(--text-faint);
+}
+.mg-opt--merge {
+  border-color: transparent;
+  background: var(--accent);
+  box-shadow: 0 8px 22px -14px var(--accent);
+}
+.mg-opt--merge .mg-opt-icon,
+.mg-opt--merge .mg-opt-chev {
+  color: rgba(255, 255, 255, 0.9);
+}
+.mg-opt--merge .mg-opt-title {
+  color: #fff;
+}
+.mg-opt--merge .mg-opt-sub {
+  color: rgba(255, 255, 255, 0.82);
+}
+.mg-opt-title {
+  font: 700 15px var(--font);
+  color: var(--color);
+}
+.mg-opt-sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+}
+
+/* Primary picker */
+.mg-picklist {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.mg-pickrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 15px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.mg-pickrow--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mg-radio {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.mg-radio--on {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.mg-pickname {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.mg-badge {
+  font: 600 9.5px var(--font-mono);
+  letter-spacing: 0.05em;
+  color: var(--accent-bright);
+  background: var(--accent-soft);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+/* Sub-page frame (pick, switch): header bar + left-justified body. Shares the
+   brand frame's top padding (via .mg) so stepping fork → pick keeps the top edge
+   fixed and the dialog only grows downward instead of jumping up. */
+.mg-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 6px;
+}
+.mg-headback {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.mg-headtitle {
+  flex: 1;
+  text-align: left;
+  font: 700 18px var(--font);
+  color: var(--color);
+}
+.mg-body {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+.mg-section-lbl {
+  font: 600 10px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin: 20px 2px 9px;
+}
+.mg-body > .mg-section-lbl:first-child {
+  margin-top: 2px;
+}
+.mg-desc {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  line-height: 1.45;
+  margin: 0 2px 12px;
+}
+/* Helper caption tucked under a control (e.g. the link on switch). */
+.mg-caption {
+  font: 500 11.5px var(--font);
+  color: var(--text-mute);
+  line-height: 1.45;
+  text-align: left;
+  margin: 8px 2px 0;
+}
+.mg-body-btn {
+  margin-top: 20px;
+}
+.mg-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* "What we'll combine" info card */
+.mg-combine {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  overflow: hidden;
+}
+.mg-combine-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 15px;
+}
+.mg-combine-row + .mg-combine-row {
+  border-top: 1px solid var(--border);
+}
+.mg-combine-icon {
+  flex: none;
+  display: flex;
+  /* Warn amber: the earliest-attempt rule is a soft caveat worth noticing. */
+  color: var(--warn);
+  margin-top: 1px;
+}
+.mg-combine-icon--ok {
+  color: var(--win);
+}
+.mg-combine-title {
+  font: 600 14px var(--font);
+  color: var(--color);
+}
+.mg-combine-sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+.mg-combine-sub b {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.mg-note {
+  display: flex;
+  gap: 9px;
+  margin: 10px 3px 0;
+  color: var(--text-faint);
+}
+.mg-note svg {
+  flex: none;
+  margin-top: 1px;
+}
+.mg-note span {
+  font: 500 11px var(--font);
+  line-height: 1.5;
+}
+.mg-note-center {
+  text-align: center;
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 10px;
+}
+
+/* Switch (2c): the K → V hop + a warning */
+.mg-switch-avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 2px 0 0;
+  margin-bottom: 18px;
+}
+.mg-switch-one {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.mg-switch-name {
+  font: 600 13px var(--font);
+  color: var(--text-dim);
+}
+.mg-switch-arrow {
+  font-size: 22px;
+  color: var(--text-faint);
+}
+.mg-warn {
+  display: flex;
+  gap: 11px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  border-radius: 14px;
+  padding: 13px 15px;
+  text-align: left;
+  font: 500 12.5px var(--font);
+  /* Amber-tinted body so the white profile names pop against it. */
+  color: color-mix(in srgb, var(--warn) 55%, var(--text-dim));
+  line-height: 1.5;
+}
+.mg-warn b {
+  color: var(--color);
+  font-weight: 700;
+}
+.mg-warn-icon {
+  flex: none;
+  display: flex;
+  color: var(--warn);
+  margin-top: 1px;
+}
+.mg-link {
+  display: flex;
+  align-items: stretch;
+  gap: 9px;
+}
+.mg-url {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mg-copy {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+
+.mg-back {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.mg-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: mg-spin 0.8s linear infinite;
+  margin: 24px auto;
+}
+@keyframes mg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Transient status toast (bottom-centered over the board) — currently the
+   silent profile-adopt confirmation from the move/merge gate. See Toast.tsx. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: min(360px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 12px 12px 14px;
+  box-shadow: 0 18px 44px -16px rgba(0, 0, 0, 0.6);
+  text-align: left;
+  animation: toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.toast__icon {
+  flex: none;
+  display: flex;
+}
+.toast__body {
+  flex: 1;
+  min-width: 0;
+}
+.toast__title {
+  font: 700 13.5px var(--font);
+  color: var(--color);
+}
+.toast__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+.toast__close {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
