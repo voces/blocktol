@@ -868,6 +868,11 @@ a:hover {
   text-align: left;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
+  /* Breathing room under the last row when scrolled to the end, so it doesn't
+     sit flush against the viewport edge. Desktop only — the mobile rule below
+     zeroes panel padding (the whole page scrolls there). A block scroll
+     container honours bottom padding at the scroll end. */
+  padding-bottom: 16px;
 }
 
 .attempts__list {

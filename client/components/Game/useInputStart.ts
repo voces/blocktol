@@ -17,6 +17,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     setTransitionBlock,
     setTouching,
     dragRef,
+    setDragMoved,
   } = useContext(GameStateContext);
 
   useEffect(() => {
@@ -74,6 +75,9 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       if (drag) {
         // Sticky: once the pointer leaves the cell it pressed, it's a move.
         if (x !== drag.startX || y !== drag.startY) drag.dragged = true;
+        // Mirror the sticky flag so the board drops the upgrade radius for the
+        // rest of the drag — including a drag back onto the origin cell.
+        setDragMoved(drag.dragged);
         // Center the block on the pointer once dragging (same mapping as
         // placing a new block); keep it put until then so a tap doesn't nudge.
         const tx = drag.dragged ? x : drag.origin.x;
@@ -87,6 +91,10 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         );
         return;
       }
+
+      // Not dragging (a hover or a fresh press): the upgrade radius is free to
+      // show again on the next grab.
+      setDragMoved(false);
 
       setPlacingBlock(() => ({ placing: !overlap?.local && bricks > 0, x, y }));
 
