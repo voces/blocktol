@@ -3,6 +3,7 @@ import { useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { MessageMap } from "../../api.ts";
+import { Verdict } from "./verdict.ts";
 
 export const GameStateContext = createContext<
   ReturnType<typeof useGameState>
@@ -62,6 +63,17 @@ export const useGameState = () => {
   // it finishes.
   const [staged, setStaged] = useState(false);
   const [freePlay, setFreePlay] = useState(false);
+  // Field / personal bests and the iteration floor, captured when a board loads.
+  // Free play colours the live timer by the run's score in [min, best] and reads
+  // a finished run's milestone off these (see verdict.ts). NaN until a board with
+  // this data has loaded; ownBest is null when you've no prior run on it.
+  const [min, setMin] = useState(NaN);
+  const [best, setBest] = useState(NaN);
+  const [ownBest, setOwnBest] = useState<number | null>(null);
+  // The just-finished free-play run's milestone (personal best / record /
+  // supreme), held for a beat so the timer pill and floating badge can celebrate
+  // it before the board re-stages. Undefined the rest of the time.
+  const [verdict, setVerdict] = useState<Verdict>();
   // True while reviewing a past maze (a static, non-playable view). The HUD
   // surfaces a Play button in this state so there's an obvious way back to a
   // live board.
@@ -110,6 +122,7 @@ export const useGameState = () => {
     setStaged(false);
     setFreePlay(false);
     setViewing(false);
+    setVerdict(undefined);
   };
 
   // Review a previously-built maze (a past attempt or your best) on the board:
@@ -185,5 +198,13 @@ export const useGameState = () => {
     setViewing,
     calendarOpen,
     setCalendarOpen,
+    min,
+    setMin,
+    best,
+    setBest,
+    ownBest,
+    setOwnBest,
+    verdict,
+    setVerdict,
   };
 };
