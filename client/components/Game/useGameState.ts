@@ -131,6 +131,9 @@ export const useGameState = () => {
   const viewMaze = (maze: ReadonlyArray<Point & { thunder?: boolean }>) => {
     setRun(undefined);
     setStaged(false);
+    // Reviewing a past maze leaves the board inert (Play button); drop any
+    // lingering free-play verdict so it doesn't keep overriding the HUD.
+    setVerdict(undefined);
     setTime(-1);
     // Show what this run left unspent: every placed block cost a brick, every
     // thunder an extra snowflake. 0/0 when the whole budget was used. Hidden (-1)

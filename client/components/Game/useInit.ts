@@ -77,6 +77,10 @@ export const useInit = () => {
       setRun({ path: data.path, duration: data.duration, slows: data.slows });
       setStaged(false);
       setViewing(false);
+      // Drop any lingering free-play verdict — a new board is loading, so the
+      // previous run's celebration (which otherwise overrides the whole HUD)
+      // must not carry over.
+      setVerdict(undefined);
       setCheckpoint(data.checkpoint);
       setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
       setBricks(data.bricks);
@@ -110,6 +114,10 @@ export const useInit = () => {
       setFreePlay(true);
       setStaged(true);
       setViewing(false);
+      // Clear any lingering verdict so a re-stage (reset, day change, or the
+      // post-run restage) returns to the normal "to build" clock instead of the
+      // old celebration pill, which otherwise overrides the HUD.
+      setVerdict(undefined);
       setCheckpoint(data.checkpoint);
       // A staged board is the iteration's fixed pieces only — no player blocks
       // exist until the first placement opens the run.
