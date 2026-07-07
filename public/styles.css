@@ -1157,7 +1157,9 @@ a:hover {
    alongside the time. The daily clock stays the plain accent pill above. */
 .hud__run--score {
   position: relative;
-  align-items: baseline;
+  /* Centre the row in the fixed-height pill; the % is nudged to the time's
+     baseline below so time + % still sit on one line. */
+  align-items: center;
   gap: 8px;
   padding: 0 15px;
   /* Inline background/color (the live % colour + its readable ink) override the
@@ -1165,8 +1167,11 @@ a:hover {
 }
 
 .hud__run-time {
+  display: inline-flex;
+  align-items: baseline;
   font-size: 16px;
   font-weight: 700;
+  line-height: 1;
   color: inherit;
 }
 
@@ -1178,6 +1183,7 @@ a:hover {
 .hud__run-pct {
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   color: inherit;
   opacity: 0.78;
 }

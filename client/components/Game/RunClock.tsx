@@ -1,33 +1,19 @@
 import { h, JSX } from "preact";
-import { useEffect, useRef, useState } from "preact/compat";
 import { readableInk } from "../../../common/percentileColor.ts";
 import { climbColor, scorePercent, Verdict } from "./verdict.ts";
 
 /**
- * The free-play run clock: the live stopwatch doubled as a verdict. It counts up
- * like the daily clock, but the pill is tinted to the run's live score % (the
- * same standing ramp the runs panel uses) and shows that % beside the time — so
- * you read your time AND how good it is in one glance as the runner climbs.
- * Daily attempts stay blind (a plain clock); this is free-play only.
+ * The free-play run clock: the timer doubled as a verdict. Unlike the daily
+ * clock it doesn't tick up — a free-play result is already yours, so it reads
+ * the run's final time straight away, tinted to its score % (the same standing
+ * ramp the runs panel uses) with that % shown beside the time. The runner still
+ * animates across the board; only the number is settled. Daily attempts stay a
+ * blind stopwatch (see Hud); this is free-play only.
  */
 export const RunClock = (
   { to, min, best }: { to: number; min: number; best: number },
 ) => {
-  const now = useRef(Date.now()).current;
-  const [time, setTime] = useState(0);
-
-  useEffect(() => {
-    let animationFrame = -1;
-    const animate = () => {
-      const t = Math.min((Date.now() - now) / 1000, to);
-      setTime(t);
-      if (t < to) animationFrame = requestAnimationFrame(animate);
-    };
-    animate();
-    return () => cancelAnimationFrame(animationFrame);
-  }, []);
-
-  const percent = Math.max(0, Math.min(1, scorePercent(time, min, best)));
+  const percent = Math.max(0, Math.min(1, scorePercent(to, min, best)));
   const color = climbColor(percent);
   return (
     <div
@@ -35,7 +21,7 @@ export const RunClock = (
       style={{ background: color, color: readableInk(color) }}
     >
       <span class="mono hud__run-time">
-        {time.toFixed(2)}
+        {to.toFixed(2)}
         <span class="hud__run-s">s</span>
       </span>
       <span class="mono hud__run-pct">{Math.round(percent * 100)}%</span>
