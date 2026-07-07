@@ -55,8 +55,8 @@ if (onlyIteration !== undefined && !Number.isInteger(onlyIteration)) {
 // string entirely otherwise.
 const iterationFilter = (column: string) =>
   raw(onlyIteration !== undefined ? `WHERE ${column} = ${onlyIteration}` : "");
-const runFilter = onlyIteration !== undefined
-  ? raw(`AND iteration = ${onlyIteration}`)
+const runWhere = onlyIteration !== undefined
+  ? raw(`WHERE iteration = ${onlyIteration}`)
   : raw("");
 
 // ---- Load iterations + their fixed pieces ---------------------------------
@@ -137,9 +137,13 @@ type Run = {
 };
 type RunDelta = { run: Run; recomputed: number; delta: number; label: string };
 
+// Includes voided (abandoned) runs: their `time` is never used for a leaderboard
+// or `min`, but leaving them un-retimed leaves the DB with two times for the same
+// placement (a live run and a stale void one), so we normalize them too. Runs that
+// no longer validate still fall through to `broken` and are left untouched.
 const runRows = await sql<Run[]>`
   SELECT user, iteration, created, time, data
-  FROM run WHERE void = FALSE ${runFilter};
+  FROM run ${runWhere};
 `;
 
 // Regression = the new path is genuinely LONGER, which for an optimal solver
