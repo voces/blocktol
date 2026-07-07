@@ -7,9 +7,13 @@ import { log } from "./logging.ts";
 export const newIteration = async (date: Date) => {
   log.info("New iteration for", date.toDateString());
 
+  // Interior cells are 1..18 (0 and 19 are the border ring). The checkpoint is a
+  // single cell at coord + 0.5, so 0.5..17.5 spans the full interior and can sit
+  // flush against any edge. (An earlier 1.5 start left cell 1 unused, so the
+  // checkpoint could hug the bottom/right walls but never the top/left.)
   const checkpoint = {
-    x: 1.5 + Math.floor(Math.random() * 17),
-    y: 1.5 + Math.floor(Math.random() * 17),
+    x: 0.5 + Math.floor(Math.random() * 18),
+    y: 0.5 + Math.floor(Math.random() * 18),
   };
   const grid = newGrid();
 
