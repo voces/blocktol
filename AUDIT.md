@@ -72,6 +72,23 @@ general engineering review.
   - `server/routes/iteration/run/abandon.ts` is registered in the API but never
     called by the client. Wire it up or remove it.
 
+- [ ] **1g. Daily resume trusts the `daily` flag, which an in-progress attempt
+      2/3 usually doesn't hold.** (Found 2026-07-07 while reviewing #93.) The
+      `daily` column means "the user's single counted result" — exactly one
+      `TRUE` per user/iteration, re-pointed at the best of the first three on
+      every ranked save — not "this run is a ranked attempt": attempts 2/3
+      insert `FALSE` and only gain the flag while beating the earlier attempts.
+      But `getDailySummary` locates the in-progress run via
+      `getLatestRun(userId, id, /* dailyOnly */ true)`
+      (`server/routes/iteration/daily.ts:46`). Refresh mid-attempt-2 while
+      behind attempt 1 and it finds attempt 1 instead (old `created` →
+      `remainingTime <= 0` → `currentRun: null`), so the boot flow
+      (`App.tsx:110-112`) calls `startRun` and silently spends attempt 3 while
+      attempt 2's 60s window is still open. Fix: resume from the latest run
+      among the ranked three (the same first-three/same-day predicate #93 uses
+      for commits — or a dedicated `ranked` column set at insert), not from
+      `daily = TRUE`.
+
 ---
 
 ## 2. Race conditions on the client
