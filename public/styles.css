@@ -950,10 +950,17 @@ a:hover {
   background: var(--surface-2);
 }
 
-/* The run currently on the board (a review): an accent border and label so it's
-   clear which row you're looking at. */
+/* The run currently on the board (a review): keep the row's own band colour but
+   lift it — a stronger border and a saturated band-tinted fill — plus a matching
+   label, so it's easy to spot which row you're looking at without introducing a
+   second (blue) accent. */
 .attempts__row--viewing {
-  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  border-color: color-mix(in srgb, var(--band) 70%, var(--border));
+  background: color-mix(in srgb, var(--band) 18%, var(--surface));
+}
+
+.attempts__row--viewing:hover {
+  background: color-mix(in srgb, var(--band) 24%, var(--surface));
 }
 
 .attempts__viewing {
@@ -961,7 +968,7 @@ a:hover {
   flex: none;
   font: 600 11px var(--font);
   letter-spacing: 0.02em;
-  color: var(--accent-bright);
+  color: var(--band);
 }
 
 .attempts__time {

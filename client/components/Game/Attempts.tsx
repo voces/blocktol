@@ -9,6 +9,12 @@ type Attempt = MessageMap["getDailySummary"]["attempts"][number];
 
 type Sort = "best" | "recent";
 
+// Persist the runs sort across visits. Defaults to best for anything unset or
+// unrecognized.
+const SORT_KEY = "runsSort";
+const storedSort = (): Sort =>
+  localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
+
 // Order-independent key for a maze, so the row whose maze is currently on the
 // board can be matched however its blocks happen to be ordered.
 const mazeKey = (
@@ -48,9 +54,14 @@ const formatWhen = (created: number) => {
 export const Attempts = () => {
   const { viewedAttempts, viewMaze, attemptsRemaining, blocks, viewing } =
     useContext(GameStateContext);
-  // Local-only ordering. Defaults to best (longest) first; "recent" orders by
-  // when each maze last ran. Sorting only — the merged rows are the same.
-  const [sort, setSort] = useState<Sort>("best");
+  // Local-only ordering, remembered across visits. Defaults to best (longest)
+  // first; "recent" orders by when each maze last ran. Sorting only — the merged
+  // rows are the same.
+  const [sort, setSort] = useState<Sort>(storedSort);
+  const pickSort = (mode: Sort) => {
+    localStorage.setItem(SORT_KEY, mode);
+    setSort(mode);
+  };
   const attempts = viewedAttempts ?? [];
 
   // Mid-daily the list shows in a simplified form — time, when, and which is
@@ -130,7 +141,7 @@ export const Attempts = () => {
                 class={"attempts__sort-btn tapc" +
                   (sort === mode ? " attempts__sort-btn--active" : "")}
                 aria-pressed={sort === mode}
-                onClick={() => setSort(mode)}
+                onClick={() => pickSort(mode)}
               >
                 {mode === "recent" ? "Recent" : "Best"}
               </button>
