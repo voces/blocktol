@@ -336,7 +336,11 @@ export const listDailies = async (
     ROUND(MAX(CASE WHEN daily = TRUE THEN time ELSE null END), 2) dailyBest,
     min
   FROM iteration
-  LEFT JOIN run ON iteration.id = run.iteration
+  -- void = FALSE lives in the ON clause, not WHERE, so a day whose only runs are
+  -- voided still returns its row (with null aggregates) rather than dropping out
+  -- of the page. Without this, a lone voided run feeds ownBest/best and lights up
+  -- a calendar cell — even flagging supreme — for a run that shouldn't count.
+  LEFT JOIN run ON iteration.id = run.iteration AND run.void = FALSE
   WHERE id IN ${page}
   GROUP BY 1
   ORDER BY id DESC;
