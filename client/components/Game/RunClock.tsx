@@ -1,4 +1,5 @@
-import { h, JSX } from "preact";
+import { Fragment, h, JSX } from "preact";
+import { createPortal, useLayoutEffect, useRef, useState } from "preact/compat";
 import { readableInk } from "../../../common/percentileColor.ts";
 import { climbColor, scorePercent, Verdict } from "./verdict.ts";
 
@@ -31,26 +32,53 @@ export const RunClock = (
 
 /**
  * The decorated pill a milestone free-play run shows while it executes: the
- * final time and score %, in the outcome's colour. Record steps out of the
- * gradient to chartreuse (a ripple ring); supreme to gold (a glow); a personal
- * best keeps its live % colour and pulses instead — colour belongs to the
- * global %.
+ * final time and score %, in the outcome's colour. The celebration effects
+ * (glow / ripple / confetti / badge) are NOT drawn on the pill — the HUD sits at
+ * the top-right corner of `.game`, whose overflow is clipped for the mobile
+ * scroll layout, so anything spilling above or right of the pill would be cut
+ * off. Instead they render in a viewport-fixed layer anchored to the pill's
+ * measured box (see CelebrationOverlay), free to spread on every side.
  */
-export const VerdictPill = ({ verdict }: { verdict: Verdict }) => (
-  <div
-    class={`hud__run hud__run--score hud__run--${verdict.outcome}`}
-    style={{ background: verdict.color, color: readableInk(verdict.color) }}
-  >
-    {verdict.outcome === "record" && (
-      <span class="hud__run-ring" aria-hidden="true" />
-    )}
-    <span class="mono hud__run-time">
-      {verdict.time.toFixed(2)}
-      <span class="hud__run-s">s</span>
-    </span>
-    <span class="mono hud__run-pct">{Math.round(verdict.percent * 100)}%</span>
-  </div>
-);
+export const VerdictPill = ({ verdict }: { verdict: Verdict }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (ref.current) setRect(ref.current.getBoundingClientRect());
+    };
+    measure();
+    globalThis.addEventListener("resize", measure);
+    globalThis.addEventListener("scroll", measure, true);
+    return () => {
+      globalThis.removeEventListener("resize", measure);
+      globalThis.removeEventListener("scroll", measure, true);
+    };
+  }, []);
+
+  return (
+    <>
+      <div
+        ref={ref}
+        class="hud__run hud__run--score"
+        style={{ background: verdict.color, color: readableInk(verdict.color) }}
+      >
+        <span class="mono hud__run-time">
+          {verdict.time.toFixed(2)}
+          <span class="hud__run-s">s</span>
+        </span>
+        <span class="mono hud__run-pct">
+          {Math.round(verdict.percent * 100)}%
+        </span>
+      </div>
+      {rect &&
+        createPortal(
+          <CelebrationOverlay verdict={verdict} rect={rect} />,
+          document.body,
+        )}
+    </>
+  );
+};
 
 const StarIcon = () => (
   <svg width={12} height={12} viewBox="0 0 16 16" aria-hidden="true">
@@ -87,17 +115,6 @@ const BADGE: Record<Verdict["outcome"], { label: string; icon: JSX.Element }> =
     supreme: { label: "SUPREME", icon: <CrownIcon /> },
   };
 
-// Confetti positions (top / right, in px from the anchor under the timer), so a
-// win scatters a few flecks over the board's top edge. Record ripples the pill
-// itself instead, so it stays clean.
-const SPARKLES = [
-  { top: 8, right: 26, size: 6, delay: 0 },
-  { top: 30, right: 84, size: 5, delay: 0.2 },
-  { top: 4, right: 150, size: 5, delay: 0.4 },
-  { top: 44, right: 200, size: 6, delay: 0.1 },
-  { top: 20, right: 260, size: 4, delay: 0.3 },
-];
-
 // A personal best throws multi-hued confetti (little squares); a supreme keeps
 // to golds (little sparks), matching the badge. Record ripples the pill instead,
 // so it grows no confetti — its entry is unused.
@@ -109,6 +126,8 @@ const SPARK_COLORS: Record<Verdict["outcome"], string[]> = {
     "hsl(45,90%,60%)",
     "hsl(265,60%,66%)",
     "hsl(160,60%,52%)",
+    "hsl(220,72%,62%)",
+    "hsl(45,90%,66%)",
   ],
   supreme: [
     "hsl(45,90%,62%)",
@@ -116,37 +135,76 @@ const SPARK_COLORS: Record<Verdict["outcome"], string[]> = {
     "hsl(45,90%,70%)",
     "hsl(45,85%,64%)",
     "hsl(45,90%,58%)",
+    "hsl(42,88%,60%)",
+    "hsl(48,90%,68%)",
   ],
 };
 
+// Confetti scattered on every side of the pill, as fractions of its box: fx/fy
+// are the anchor corner (0 = left/top edge, 1 = right/bottom edge) and dx/dy a
+// pixel nudge past it. So negative dy sits above the pill, dx past the right
+// edge sits to its right, and so on — a burst that surrounds the button rather
+// than trailing off one side. `d` staggers the twinkle.
+const SPARKS = [
+  { fx: 0.2, fy: 0, dx: 0, dy: -22, size: 6, d: 0 },
+  { fx: 0.6, fy: 0, dx: 10, dy: -30, size: 5, d: 0.3 },
+  { fx: 1, fy: 0, dx: 16, dy: -10, size: 5, d: 0.5 },
+  { fx: 1, fy: 0.5, dx: 14, dy: 0, size: 4, d: 0.15 },
+  { fx: 1, fy: 1, dx: 8, dy: 12, size: 5, d: 0.4 },
+  { fx: 0.5, fy: 1, dx: 0, dy: 20, size: 6, d: 0.1 },
+  { fx: 0, fy: 1, dx: -10, dy: 14, size: 4, d: 0.35 },
+  { fx: 0, fy: 0.5, dx: -20, dy: 0, size: 5, d: 0.2 },
+  { fx: 0, fy: 0, dx: -14, dy: -16, size: 4, d: 0.45 },
+];
+
 /**
- * The floating win overlay: a badge anchored just under the timer and (for pb /
- * supreme) a scatter of confetti over the board's top. It's absolutely
- * positioned — never part of the HUD layout — so it hangs over the gap and the
- * board without shifting the row or moving the board. It fades itself in and
- * out; the parent clears it when the board re-stages.
+ * The free-play win overlay, fixed to the viewport and anchored over the pill's
+ * measured box so it escapes `.game`'s clipped overflow — glow, ripple, confetti
+ * and badge can all spill above / right / around the button without being cut.
+ * It fires the instant the run commits (the result is already known) and plays
+ * over the run; the pill unmounts it when the board re-stages at finish.
  */
-export const Celebration = ({ verdict }: { verdict: Verdict }) => {
+const CelebrationOverlay = (
+  { verdict, rect }: { verdict: Verdict; rect: DOMRect },
+) => {
   const { label, icon } = BADGE[verdict.outcome];
   return (
-    <div class="celebrate" aria-hidden="true">
+    <div
+      class="celebrate"
+      aria-hidden="true"
+      style={{
+        top: `${rect.top}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+      }}
+    >
+      {
+        /* Glow / ripple over the pill's footprint (a transparent overlay, so the
+          time reads through) — unclipped up here in the fixed layer. */
+      }
+      {verdict.outcome === "record" ? <span class="celebrate__ring" /> : (
+        <span
+          class={`celebrate__glow celebrate__glow--${verdict.outcome}`}
+        />
+      )}
       <div class={`celebrate__badge celebrate__badge--${verdict.outcome}`}>
         {icon}
         <span class="celebrate__label">{label}</span>
       </div>
       {verdict.outcome !== "record" &&
-        SPARKLES.map((s, i) => (
+        SPARKS.map((s, i) => (
           <span
             key={i}
             class="celebrate__spark"
             style={{
-              top: `${s.top}px`,
-              right: `${s.right}px`,
+              left: `${s.fx * rect.width + s.dx}px`,
+              top: `${s.fy * rect.height + s.dy}px`,
               width: `${s.size}px`,
               height: `${s.size}px`,
               background: SPARK_COLORS[verdict.outcome][i],
               borderRadius: verdict.outcome === "supreme" ? "50%" : "1px",
-              animationDelay: `${s.delay}s`,
+              animationDelay: `${s.d}s`,
             }}
           />
         ))}

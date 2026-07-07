@@ -4,7 +4,7 @@ import { api } from "../../api.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { Timer } from "../Timer.tsx";
 import { GameStateContext } from "./useGameState.ts";
-import { Celebration, RunClock, VerdictPill } from "./RunClock.tsx";
+import { RunClock, VerdictPill } from "./RunClock.tsx";
 
 const IDLE_MS = 5_000;
 
@@ -231,7 +231,6 @@ export const Hud = () => {
             </button>
           )
           : null}
-        {verdict && <Celebration verdict={verdict} />}
       </div>
     </div>
   );

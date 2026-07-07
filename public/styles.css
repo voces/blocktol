@@ -1188,33 +1188,9 @@ a:hover {
   opacity: 0.78;
 }
 
-/* Resolved milestones step out of / accent the gradient. Record ties the field
-   best → a ripple ring; supreme beats it → a gold glow; a personal best keeps
-   its live % colour and pulses (colour belongs to the global %). */
-.hud__run--record {
-  overflow: visible;
-}
-
-.hud__run-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 11px;
-  border: 2px solid var(--peak);
-  pointer-events: none;
-  animation: wrRing 1.4s ease-out infinite;
-}
-
-.hud__run--supreme {
-  animation: supremeGlow 1.8s ease-in-out infinite;
-}
-
-.hud__run--pb {
-  animation: pbPulse 1.6s ease-in-out infinite;
-}
-
 @keyframes pbPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(79, 131, 230, 0); }
-  50% { box-shadow: 0 0 15px 1px rgba(79, 131, 230, 0.5); }
+  50% { box-shadow: 0 0 16px 2px rgba(79, 131, 230, 0.55); }
 }
 
 @keyframes wrRing {
@@ -1223,8 +1199,8 @@ a:hover {
 }
 
 @keyframes supremeGlow {
-  0%, 100% { box-shadow: 0 0 10px 0 rgba(230, 180, 40, 0.35); }
-  50% { box-shadow: 0 0 24px 4px rgba(230, 180, 40, 0.62); }
+  0%, 100% { box-shadow: 0 0 12px 1px rgba(230, 180, 40, 0.4); }
+  50% { box-shadow: 0 0 26px 5px rgba(230, 180, 40, 0.66); }
 }
 
 @keyframes sparkle {
@@ -1232,32 +1208,52 @@ a:hover {
   50% { opacity: 1; transform: scale(1.15); }
 }
 
-/* The free-play win overlay: a badge anchored just under the timer, plus (for a
-   personal best / supreme) a scatter of confetti over the board's top edge.
-   Absolutely positioned, so it hangs over the gap without shifting the HUD row
-   or moving the board. It fires the instant the run commits (the result is
-   already known) and plays over the run, fading in and holding; it's cleared
-   when the board re-stages at finish. */
+/* The free-play win overlay: the milestone's glow / ripple over the pill, a
+   badge under it, and (for a personal best / supreme) confetti bursting out on
+   every side. It's fixed to the viewport and positioned over the pill's measured
+   box (see CelebrationOverlay), NOT nested in the HUD — the HUD sits at the
+   clipped top-right corner of `.game`, so drawing here lets the effects spill
+   above and right of the button without being cut. It fires when the run commits
+   and is unmounted when the board re-stages at finish; it fades opacity only, so
+   the glow stays aligned to the pill. */
 .celebrate {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 0;
-  height: 0;
-  margin-top: 8px;
+  position: fixed;
   pointer-events: none;
-  z-index: 5;
+  z-index: 12;
   animation: celebrateFade 0.4s ease forwards;
 }
 
 @keyframes celebrateFade {
-  0% { opacity: 0; transform: translateY(-6px); }
-  100% { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Glow / ripple sit over the pill's footprint; transparent-centred, so the time
+   reads through, and they cast their shadow outward unclipped up here. */
+.celebrate__glow,
+.celebrate__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  pointer-events: none;
+}
+
+.celebrate__glow--pb {
+  animation: pbPulse 1.6s ease-in-out infinite;
+}
+
+.celebrate__glow--supreme {
+  animation: supremeGlow 1.8s ease-in-out infinite;
+}
+
+.celebrate__ring {
+  border: 2px solid var(--peak);
+  animation: wrRing 1.4s ease-out infinite;
 }
 
 .celebrate__badge {
   position: absolute;
-  top: 0;
+  top: calc(100% + 8px);
   right: 0;
   display: flex;
   align-items: center;
