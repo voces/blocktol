@@ -90,9 +90,8 @@ export const MoveDevice = (
       </div>
       <div class="move__body">
         <p class="move__lead">
-          Open <span class="mono">{location.host}</span>{" "}
-          on your other device and point its camera here, or copy the link
-          below.
+          Scan this code with your other device's camera, or copy the link below
+          and open it there.
         </p>
         <div class="move__qr">
           <QrCode value={url} />
