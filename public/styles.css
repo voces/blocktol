@@ -875,6 +875,50 @@ a:hover {
   padding-bottom: 16px;
 }
 
+/* Heading row: the "Runs" title and the local sort toggle. Carries the title's
+   old margin so the two sit on one line above the list. */
+.attempts__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 4px 10px;
+}
+
+.attempts__head .section-title {
+  margin: 0;
+}
+
+/* Segmented Recent / Best sort control. */
+.attempts__sort {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.attempts__sort-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font: 600 11px var(--font);
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.attempts__sort-btn:hover {
+  color: var(--color);
+}
+
+.attempts__sort-btn--active {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
 .attempts__list {
   display: flex;
   flex-direction: column;
@@ -904,6 +948,20 @@ a:hover {
 
 .attempts__row--clickable:hover {
   background: var(--surface-2);
+}
+
+/* The run currently on the board (a review): an accent border and label so it's
+   clear which row you're looking at. */
+.attempts__row--viewing {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+}
+
+.attempts__viewing {
+  margin-left: auto;
+  flex: none;
+  font: 600 11px var(--font);
+  letter-spacing: 0.02em;
+  color: var(--accent-bright);
 }
 
 .attempts__time {
