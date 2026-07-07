@@ -955,12 +955,12 @@ a:hover {
    label, so it's easy to spot which row you're looking at without introducing a
    second (blue) accent. */
 .attempts__row--viewing {
-  border-color: color-mix(in srgb, var(--band) 70%, var(--border));
-  background: color-mix(in srgb, var(--band) 18%, var(--surface));
+  border-color: color-mix(in srgb, var(--band) 60%, var(--border));
+  background: color-mix(in srgb, var(--band) 13%, var(--surface));
 }
 
 .attempts__row--viewing:hover {
-  background: color-mix(in srgb, var(--band) 24%, var(--surface));
+  background: color-mix(in srgb, var(--band) 18%, var(--surface));
 }
 
 .attempts__viewing {
