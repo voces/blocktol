@@ -549,14 +549,14 @@ a:hover {
 }
 
 /* Each chip is tinted to its percentile band (--chip, set inline); supreme
-   adds the gold glow — matching the result modal, not a fixed green/blue. */
+   adds the gold glow — matching the result modal, not a fixed green/blue. Border
+   + faint fill come from .band-card. */
 .today-result__chip {
   flex: 1;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--chip) 30%, var(--border));
   border-radius: 14px;
-  background: var(--surface);
+  --band-card-tint: var(--chip);
 }
 
 .today-result__chip--glow {
@@ -590,7 +590,7 @@ a:hover {
 }
 
 .today-result__chip--clickable:hover {
-  background: var(--surface-2);
+  --band-card-fill: 9%;
 }
 
 /* Calendar — a bounded one-month picker, same on desktop and mobile (see
@@ -875,6 +875,50 @@ a:hover {
   padding-bottom: 16px;
 }
 
+/* Heading row: the "Runs" title and the local sort toggle. Carries the title's
+   old margin so the two sit on one line above the list. */
+.attempts__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 4px 10px;
+}
+
+.attempts__head .section-title {
+  margin: 0;
+}
+
+/* Segmented Recent / Best sort control. */
+.attempts__sort {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.attempts__sort-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-mute);
+  font: 600 11px var(--font);
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.attempts__sort-btn:hover {
+  color: var(--color);
+}
+
+.attempts__sort-btn--active {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
 .attempts__list {
   display: flex;
   flex-direction: column;
@@ -888,9 +932,9 @@ a:hover {
   align-items: center;
   gap: 12px;
   padding: 10px 13px;
-  border: 1px solid color-mix(in srgb, var(--band) 30%, var(--border));
   border-radius: 13px;
-  background: var(--surface);
+  /* Border + faint fill come from .band-card, tinted to this row's band. */
+  --band-card-tint: var(--band);
 }
 
 .attempts__row--glow {
@@ -903,7 +947,29 @@ a:hover {
 }
 
 .attempts__row--clickable:hover {
-  background: var(--surface-2);
+  --band-card-fill: 9%;
+}
+
+/* The run currently on the board (a review): keep the row's own band colour but
+   lift it — a heavier border and the deeper "highlighted" fill (shared with the
+   daily-result best row) — plus a matching label, so it's easy to spot which row
+   you're looking at without a second (blue) accent. Just tunes the band-card
+   knobs, so no specificity fight. */
+.attempts__row--viewing {
+  --band-card-edge: 60%;
+  --band-card-fill: 13%;
+}
+
+.attempts__row--viewing:hover {
+  --band-card-fill: 18%;
+}
+
+.attempts__viewing {
+  margin-left: auto;
+  flex: none;
+  font: 600 11px var(--font);
+  letter-spacing: 0.02em;
+  color: var(--band);
 }
 
 .attempts__time {
@@ -1379,16 +1445,39 @@ a:hover {
   background: var(--surface-2);
 }
 
-/* Best attempt: a border and fill tinted to --accent (green for best). */
+/* Best attempt: the shared band-card look, tinted to --accent with a heavier
+   border and the same deeper "highlighted" fill as the viewed runs row. */
 .result__row--best {
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  --band-card-tint: var(--accent);
+  --band-card-edge: 55%;
+  --band-card-fill: 13%;
 }
 
 /* The glow is reserved for supreme (record) results — on the row and the
    matching "you beat 100%" banner. */
 .result__row--glow {
   box-shadow: 0 0 16px -2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Shared "card tinted to a percentile band" look: a band-derived border and a
+   faint band fill over the surface. A caller sets --band-card-tint (its band /
+   chip / accent colour); --band-card-edge tunes the border strength for a
+   heavier variant. Used by the runs rows, today cards, and the daily-result best
+   row so the treatment stays identical. Defined here (after .result__row) so it
+   wins over that neutral base; component modifiers that need to override it
+   (e.g. the viewed runs row) raise their own specificity. */
+.band-card {
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--band-card-tint) var(--band-card-edge, 30%),
+      var(--border)
+    );
+  background: color-mix(
+    in srgb,
+    var(--band-card-tint) var(--band-card-fill, 3%),
+    var(--surface)
+  );
 }
 
 .result__banner--glow {

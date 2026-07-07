@@ -1,11 +1,30 @@
 import { h } from "preact";
-import { useContext } from "preact/compat";
+import { useContext, useState } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import { standingColor } from "../../../common/percentileColor.ts";
 import { MessageMap } from "../../api.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Attempt = MessageMap["getDailySummary"]["attempts"][number];
+
+type Sort = "best" | "recent";
+
+// Persist the runs sort across visits. Defaults to best for anything unset or
+// unrecognized.
+const SORT_KEY = "runsSort";
+const storedSort = (): Sort =>
+  localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
+
+// Order-independent key for a maze, so the row whose maze is currently on the
+// board can be matched however its blocks happen to be ordered.
+const mazeKey = (
+  maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean }>,
+) =>
+  JSON.stringify(
+    [...maze]
+      .map((b) => [b.x, b.y, b.thunder ? 1 : 0])
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]),
+  );
 
 // When a run happened, from the viewer's clock: relative (Xs/Xm/Xh ago) if it's
 // today OR within the last 8 hours — so an 11pm run still reads "3h ago" at 2am —
@@ -33,9 +52,16 @@ const formatWhen = (created: number) => {
 // first, labelled by when they last ran. The best run carries the BEST — or
 // SUPREME, when it tops the field — badge. Clicking a row re-renders that maze.
 export const Attempts = () => {
-  const { viewedAttempts, viewMaze, attemptsRemaining } = useContext(
-    GameStateContext,
-  );
+  const { viewedAttempts, viewMaze, attemptsRemaining, blocks, viewing } =
+    useContext(GameStateContext);
+  // Local-only ordering, remembered across visits. Defaults to best (longest)
+  // first; "recent" orders by when each maze last ran. Sorting only — the merged
+  // rows are the same.
+  const [sort, setSort] = useState<Sort>(storedSort);
+  const pickSort = (mode: Sort) => {
+    localStorage.setItem(SORT_KEY, mode);
+    setSort(mode);
+  };
   const attempts = viewedAttempts ?? [];
 
   // Mid-daily the list shows in a simplified form — time, when, and which is
@@ -80,15 +106,49 @@ export const Attempts = () => {
     }
   }
 
-  // Best (longest) first; the top row is therefore the BEST/SUPREME one.
-  const groups = [...byMaze.values()].sort((a, b) =>
+  // Best (longest) first identifies the BEST/SUPREME row regardless of the
+  // chosen order; "recent" instead orders by each maze's latest run.
+  const byDuration = [...byMaze.values()].sort((a, b) =>
     b.attempt.duration - a.attempt.duration
   );
-  const bestIdx = groups.length ? 0 : -1;
+  const bestGroup = byDuration[0];
+  const groups = sort === "recent"
+    ? [...byMaze.values()].sort((a, b) => b.latest - a.latest)
+    : byDuration;
+
+  // The maze currently on the board when reviewing a past run (viewMaze makes it
+  // the local blocks) — used to flag its row as being viewed.
+  const viewingKey = viewing
+    ? mazeKey(
+      blocks.filter((b) => b.local).map((b) => ({
+        x: b.x,
+        y: b.y,
+        thunder: b.thunder,
+      })),
+    )
+    : null;
 
   return (
     <div class="attempts">
-      <div class="section-title">Runs</div>
+      <div class="attempts__head">
+        <div class="section-title">Runs</div>
+        {groups.length > 1 && (
+          <div class="attempts__sort" role="group" aria-label="Sort runs">
+            {(["recent", "best"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                class={"attempts__sort-btn tapc" +
+                  (sort === mode ? " attempts__sort-btn--active" : "")}
+                aria-pressed={sort === mode}
+                onClick={() => pickSort(mode)}
+              >
+                {mode === "recent" ? "Recent" : "Best"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {groups.length
         ? (
           <div class="attempts__list">
@@ -109,10 +169,14 @@ export const Attempts = () => {
                 : peak
                 ? "var(--peak)"
                 : standingColor(attempt.percent);
+              const isBest = group === bestGroup;
+              const isViewing = viewingKey != null &&
+                mazeKey(attempt.maze) === viewingKey;
               return (
                 <div
-                  class={"attempts__row attempts__row--clickable tapc" +
-                    (supreme ? " attempts__row--glow" : "")}
+                  class={"attempts__row band-card attempts__row--clickable tapc" +
+                    (supreme ? " attempts__row--glow" : "") +
+                    (isViewing ? " attempts__row--viewing" : "")}
                   key={i}
                   style={{ "--band": band }}
                   title="View this maze"
@@ -133,9 +197,9 @@ export const Attempts = () => {
                       {!simplified && group.ranked && (
                         <span class="attempts__daily">Daily</span>
                       )}
-                      {i === bestIdx && (!simplified || groups.length > 1) && (
+                      {isBest && (!simplified || groups.length > 1) && (
                         <span class="attempts__badge">
-                          {supreme ? "SUPREME" : "BEST"}
+                          {supreme ? "SUPREME" : peak ? "RECORD" : "BEST"}
                         </span>
                       )}
                     </div>
@@ -150,6 +214,7 @@ export const Attempts = () => {
                       </div>
                     )}
                   </div>
+                  {isViewing && <span class="attempts__viewing">viewing</span>}
                 </div>
               );
             })}
