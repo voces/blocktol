@@ -2586,7 +2586,8 @@ a:hover {
   margin: 16px 0 4px;
   text-align: left;
   font: 500 12.5px var(--font);
-  color: var(--text-dim);
+  /* Amber-tinted body so the white profile names pop against it. */
+  color: color-mix(in srgb, var(--warn) 55%, var(--text-dim));
   line-height: 1.5;
 }
 .mg-warn b {
