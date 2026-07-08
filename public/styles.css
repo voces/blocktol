@@ -270,6 +270,37 @@ body {
   touch-action: manipulation;
 }
 
+/* Full-screen fallback when a render crash unmounts the app (see
+   ErrorBoundary) — a plain card and a reload button, no game chrome. */
+.crash {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.crash__card {
+  max-width: 360px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+
+.crash__title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.crash__sub {
+  color: var(--text-mute);
+  font-size: 14px;
+}
+
 /* Ghost of a reverted (never-persisted) block: puffs up for a beat, then
    collapses to nothing where it stood — the rollback reads as an implosion
    rather than a glitch. transform-box scopes the scale to the block itself

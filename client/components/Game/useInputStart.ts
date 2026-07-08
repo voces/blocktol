@@ -2,6 +2,14 @@ import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
 import { isBorderPoint, isInvalidMove, isTouchSource } from "./helpers.ts";
+import {
+  dragMoved,
+  invalid as invalidSignal,
+  placingBlock,
+  thunderHover,
+  touching,
+  transitionBlock,
+} from "./interaction.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 // How far (in screen pixels) a grabbed block's pointer must travel before the
@@ -13,26 +21,20 @@ const DRAG_SLOP = 12;
 
 export const useInputStart = (svg: SVGSVGElement | null) => {
   const {
-    time,
+    timeRef,
     blocks,
-    setPlacingBlock,
     bricks,
     checkpoint,
     grid,
-    setInvalid,
-    setThunderHover,
-    setTransitionBlock,
-    setTouching,
     dragRef,
     placingRef,
-    setDragMoved,
   } = useContext(GameStateContext);
 
   useEffect(() => {
     // `press` is a pointer/touch down: if it lands on a local block we grab it
     // to drag; otherwise it (and subsequent moves) position a placement preview.
     const callback = (clientX: number, clientY: number, press = false) => {
-      if (!svg || time <= 0) return;
+      if (!svg || timeRef.current <= 0) return;
 
       const box = svg.getBoundingClientRect();
       const xRaw = Math.min(
@@ -109,34 +111,33 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         }
         // Mirror the sticky flag so the board drops the upgrade radius for the
         // rest of the drag — including a drag back onto the origin cell.
-        setDragMoved(drag.dragged);
+        dragMoved.value = drag.dragged;
         // Center the block on the pointer once dragging (same mapping as
         // placing a new block); keep it put until then so a tap doesn't nudge.
         const tx = drag.dragged ? x : drag.origin.x;
         const ty = drag.dragged ? y : drag.origin.y;
         const atOrigin = tx === drag.origin.x && ty === drag.origin.y;
-        setTransitionBlock(drag.origin);
-        setThunderHover(undefined);
-        setPlacingBlock(() => ({ placing: true, x: tx, y: ty }));
-        setInvalid(
-          !atOrigin && isInvalidMove(grid, checkpoint, drag.origin, tx, ty),
-        );
+        transitionBlock.value = drag.origin;
+        thunderHover.value = undefined;
+        placingBlock.value = { placing: true, x: tx, y: ty };
+        invalidSignal.value = !atOrigin &&
+          isInvalidMove(grid, checkpoint, drag.origin, tx, ty);
         return;
       }
 
       // Not dragging (a hover or a fresh press): the upgrade radius is free to
       // show again on the next grab.
-      setDragMoved(false);
+      dragMoved.value = false;
 
       // Mid-placement, keep the preview visible over any block (it'll be red —
       // you can't stack there). A bare hover instead hides the preview over your
       // own block so its tap-to-upgrade radius reads clearly.
       const placing = placingRef.current;
-      setPlacingBlock(() => ({
+      placingBlock.value = {
         placing: (placing || !overlap?.local) && bricks > 0,
         x,
         y,
-      }));
+      };
 
       let invalid = (!!overlap && (placing || !overlap.local)) ||
         (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
@@ -153,20 +154,16 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
       }
 
-      setInvalid(invalid);
+      invalidSignal.value = invalid;
 
-      if (overlap && !overlap.local && overlap.thunder) {
-        setThunderHover(overlap);
-      } else {
-        setThunderHover(undefined);
-      }
+      thunderHover.value = overlap && !overlap.local && overlap.thunder
+        ? overlap
+        : undefined;
 
       // A bare hover over your own block previews the tap-to-upgrade radius; a
       // placement dragged over it doesn't — the block can't go there, so no
       // upgrade is implied.
-      setTransitionBlock(
-        !placing && overlap?.local ? overlap : undefined,
-      );
+      transitionBlock.value = !placing && overlap?.local ? overlap : undefined;
     };
 
     const mousemoveCallback = (e: MouseEvent) => {
@@ -205,7 +202,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // Ignore taps on the board's border/wall band so they don't zoom or
       // place blocks — that ring holds the HUD controls (Ready?, best score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
-      setTouching(true);
+      touching.value = true;
       callback(touch.clientX, touch.clientY, true);
       e.preventDefault();
     };
@@ -217,5 +214,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("touchstart", touchstartCallback);
       globalThis.removeEventListener("touchmove", touchmoveCallback);
     };
-  }, [svg, bricks, blocks, checkpoint, time]);
+    // The clock and pointer state are read through refs/signals, so the
+    // listeners only re-register when the board itself changes.
+  }, [svg, bricks, blocks, checkpoint]);
 };

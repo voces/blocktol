@@ -3,7 +3,28 @@ import { useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { MessageMap } from "../../api.ts";
+import {
+  BoardBlock,
+  dragMoved,
+  invalid,
+  placingBlock,
+  thunderHover,
+  touching,
+  transitionBlock,
+} from "./interaction.ts";
 import { Verdict } from "./verdict.ts";
+
+// The board's mode — one name for what the sentinels (time / staged / viewing
+// / run) encode in combination. Derived, not enforced: writers still set the
+// primitives, but consumers get a legal state by construction instead of
+// re-deriving the combination themselves.
+export type BoardPhase =
+  | "loading" // nothing fetched yet (boot)
+  | "viewing" // static review of a past maze (Play button)
+  | "staged" // free play before the opening placement (clock frozen)
+  | "building" // a run's build window is counting down
+  | "running" // the runner is animating
+  | "idle"; // between a finished run and the next board
 
 export const GameStateContext = createContext<
   ReturnType<typeof useGameState>
@@ -17,17 +38,6 @@ export const GameStateContext = createContext<
 );
 
 export const useGameState = () => {
-  const placingBlockRef = useRef({ x: 0, y: 0, placing: false });
-  const [, _setPlacingBlock] = useState(placingBlockRef.current);
-  const setPlacingBlock: typeof _setPlacingBlock = (s) => {
-    if (typeof s === "function") {
-      placingBlockRef.current = s(placingBlockRef.current);
-    } else placingBlockRef.current = s;
-    _setPlacingBlock(s);
-  };
-  const [transitionBlock, setTransitionBlock] = useState<
-    Point & { local?: boolean; thunder?: boolean; active?: boolean }
-  >();
   // The local block currently grabbed for a drag (repositioning), if any.
   // `startX/startY` is the cell the pointer pressed in and `startClientX/Y` the
   // raw press point in screen pixels; `dragged` sticks true only once the pointer
@@ -52,25 +62,14 @@ export const useGameState = () => {
   // preview) rather than the tap-to-upgrade preview, which is meant for a bare
   // hover over your own block. Cleared on release.
   const placingRef = useRef(false);
-  // Whether the current grab has actually moved off its origin cell. Sticks true
-  // for the rest of the drag (mirrors dragRef.current.dragged) so the board can
-  // keep the upgrade radius hidden even if the block is dragged back to origin,
-  // where a position comparison alone would wrongly re-show it.
-  const [dragMoved, setDragMoved] = useState(false);
   const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
-  const [blocks, setBlocks] = useState<
-    ReadonlyArray<NonNullable<typeof transitionBlock>>
-  >(
-    [],
-  );
+  const [blocks, setBlocks] = useState<ReadonlyArray<BoardBlock>>([]);
   // The local blocks the SERVER last accepted: seeded when a board loads
   // (startRun / getBoard / summary resume) and advanced on each confirmed
   // updateRun save. Edits stay optimistic; when a save comes back expired or
   // rejected, the board snaps back to this maze — the one the run will
   // actually execute (see the run-saver handlers wired in useInit).
-  const savedBlocksRef = useRef<
-    ReadonlyArray<NonNullable<typeof transitionBlock>>
-  >([]);
+  const savedBlocksRef = useRef<ReadonlyArray<BoardBlock>>([]);
   // Transient implosion ghosts: where a reverted (never-persisted) block just
   // vanished, a short puff-then-collapse plays so the removal reads as
   // deliberate rather than a glitch. Each ghost self-clears ~0.4s after spawn.
@@ -84,7 +83,15 @@ export const useGameState = () => {
   // left over. -1 until a board has loaded.
   const [bricksTotal, setBricksTotal] = useState(-1);
   const [powerTotal, setPowerTotal] = useState(-1);
-  const [time, setTime] = useState(-2);
+  const [time, _setTime] = useState(-2);
+  // Handlers registered once (the input hooks) read the clock through this
+  // mirror rather than putting `time` in their dependency arrays — which
+  // re-registered the global listeners on every tick.
+  const timeRef = useRef(time);
+  const setTime: typeof _setTime = (t) => {
+    timeRef.current = typeof t === "function" ? t(timeRef.current) : t;
+    _setTime(t);
+  };
   // Wall-clock end of the build window (ms epoch), set when a run loads. The
   // countdown derives from it (see useClock) instead of decrementing, so a
   // background-tab-throttled interval can't leave the client "building" after
@@ -114,7 +121,6 @@ export const useGameState = () => {
   // surfaces a Play button in this state so there's an obvious way back to a
   // live board.
   const [viewing, setViewing] = useState(false);
-  const [invalid, setInvalid] = useState(false);
   const grid = useRef(newGrid()).current;
   const [run, setRun] = useState<
     {
@@ -122,10 +128,6 @@ export const useGameState = () => {
       duration: number;
       slows: { time: number; thunder: Point }[];
     }
-  >();
-  const [touching, setTouching] = useState(false);
-  const [thunderHover, setThunderHover] = useState<
-    Point & { local?: boolean }
   >();
   const [date, setDate] = useState(NaN);
   // Mobile-only: the full-screen calendar picker's open state. Opened by the
@@ -150,16 +152,16 @@ export const useGameState = () => {
     setPower(-1);
     setTime(-1);
     setDate(NaN);
-    setTouching(false);
-    setInvalid(false);
-    setTransitionBlock(undefined);
-    setPlacingBlock((pb) => ({ ...pb, placing: false }));
-    setThunderHover(undefined);
+    touching.value = false;
+    invalid.value = false;
+    transitionBlock.value = undefined;
+    placingBlock.value = { ...placingBlock.value, placing: false };
+    thunderHover.value = undefined;
     setStaged(false);
     setFreePlay(false);
     setViewing(false);
     setVerdict(undefined);
-    setDragMoved(false);
+    dragMoved.value = false;
   };
 
   // Review a previously-built maze (a past attempt or your best) on the board:
@@ -179,17 +181,29 @@ export const useGameState = () => {
     const usedPower = maze.filter((b) => b.thunder).length;
     setBricks(bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - usedBricks));
     setPower(powerTotal < 0 ? -1 : Math.max(0, powerTotal - usedPower));
-    setTouching(false);
-    setInvalid(false);
-    setTransitionBlock(undefined);
-    setThunderHover(undefined);
-    setPlacingBlock((pb) => ({ ...pb, placing: false }));
+    touching.value = false;
+    invalid.value = false;
+    transitionBlock.value = undefined;
+    thunderHover.value = undefined;
+    placingBlock.value = { ...placingBlock.value, placing: false };
     setViewing(true);
     setBlocks((blocks) => [
       ...blocks.filter((b) => !b.local),
       ...maze.map((b) => ({ ...b, local: true })),
     ]);
   };
+
+  const phase: BoardPhase = time === -2
+    ? "loading"
+    : viewing
+    ? "viewing"
+    : staged
+    ? "staged"
+    : run && time < 0
+    ? "running"
+    : time > 0
+    ? "building"
+    : "idle";
 
   return {
     blocks,
@@ -202,8 +216,7 @@ export const useGameState = () => {
     checkpoint,
     date,
     grid,
-    invalid,
-    placingBlockRef,
+    phase,
     power,
     run,
     setBlocks,
@@ -212,23 +225,14 @@ export const useGameState = () => {
     setPowerTotal,
     setCheckpoint,
     setDate,
-    setInvalid,
-    setPlacingBlock,
     setPower,
     setRun,
-    setThunderHover,
     setTime,
+    timeRef,
     deadlineRef,
-    setTouching,
-    setTransitionBlock,
-    thunderHover,
     time,
-    touching,
-    transitionBlock,
     dragRef,
     placingRef,
-    dragMoved,
-    setDragMoved,
     attempts,
     setAttempts,
     clear,

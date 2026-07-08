@@ -1,6 +1,14 @@
 import { useContext, useRef } from "preact/compat";
-import { Fragment, h } from "preact";
+import { Fragment, h, RefObject } from "preact";
 import { Board } from "../Board.tsx";
+import {
+  dragMoved,
+  invalid,
+  placingBlock,
+  thunderHover,
+  touching,
+  transitionBlock,
+} from "./interaction.ts";
 import { useInit } from "./useInit.ts";
 import { useClock } from "./useClock.ts";
 import { useInputStart } from "./useInputStart.ts";
@@ -14,27 +22,53 @@ import { Attempts } from "./Attempts.tsx";
 import { AttemptsRemaining } from "./AttemptsRemaining.tsx";
 import { Hud } from "./Hud.tsx";
 
-export const Game = (
-  { extraAttemptBannerTime }: { extraAttemptBannerTime?: boolean },
+// The board and everything pointer-driven, isolated so signal writes at
+// mousemove speed re-render only this subtree — the HUD and panels above it
+// don't see a thing. (IntroBoard keeps driving Board with plain props.)
+const BoardArea = (
+  { svgRef, onSlow }: {
+    svgRef: RefObject<SVGSVGElement>;
+    onSlow: ReturnType<typeof useOnSlow>;
+  },
 ) => {
-  const svgRef = useRef<SVGSVGElement>(null);
   const {
     time,
     blocks,
     checkpoint,
     grid,
-    invalid,
-    transitionBlock,
     power,
-    placingBlockRef,
-    touching,
-    thunderHover,
     run,
     setRun,
     date,
-    dragMoved,
     implosions,
   } = useContext(GameStateContext);
+  return (
+    <Board
+      placingBlock={placingBlock.value}
+      touching={touching.value}
+      time={time}
+      svgRef={svgRef}
+      transitionBlock={transitionBlock.value}
+      power={power}
+      thunderHover={thunderHover.value}
+      blocks={blocks}
+      checkpoint={checkpoint}
+      invalid={invalid.value}
+      run={run}
+      onFinish={() => setRun(undefined)}
+      grid={grid}
+      onSlow={onSlow}
+      date={date}
+      dragMoved={dragMoved.value}
+      implosions={implosions}
+    />
+  );
+};
+
+export const Game = (
+  { extraAttemptBannerTime }: { extraAttemptBannerTime?: boolean },
+) => {
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useInit();
   useClock();
@@ -47,25 +81,7 @@ export const Game = (
       <div class="game">
         <div class="game__board">
           <Hud />
-          <Board
-            placingBlock={placingBlockRef.current}
-            touching={touching}
-            time={time}
-            svgRef={svgRef}
-            transitionBlock={transitionBlock}
-            power={power}
-            thunderHover={thunderHover}
-            blocks={blocks}
-            checkpoint={checkpoint}
-            invalid={invalid}
-            run={run}
-            onFinish={() => setRun(undefined)}
-            grid={grid}
-            onSlow={onSlow}
-            date={date}
-            dragMoved={dragMoved}
-            implosions={implosions}
-          />
+          <BoardArea svgRef={svgRef} onSlow={onSlow} />
           <AttemptsRemaining
             extraAttemptBannerTime={extraAttemptBannerTime ?? false}
           />

@@ -17,6 +17,12 @@ import {
 } from "../../store/board.ts";
 import { rebuildGrid } from "./helpers.ts";
 import {
+  placingBlock,
+  thunderHover,
+  touching,
+  transitionBlock,
+} from "./interaction.ts";
+import {
   finalizeRunSaver,
   resetRunSaver,
   setRunSaverHandlers,
@@ -31,11 +37,7 @@ export const useInit = () => {
   const game = useGame();
   const {
     setTime,
-    setPlacingBlock,
     grid,
-    setThunderHover,
-    setTransitionBlock,
-    setTouching,
     setBlocks,
     savedBlocksRef,
     setImplosions,
@@ -169,9 +171,9 @@ export const useInit = () => {
       deadlineRef.current = null;
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
-      setPlacingBlock((pb) => ({ ...pb, placing: false }));
-      setTransitionBlock(undefined);
-      setThunderHover(undefined);
+      placingBlock.value = { ...placingBlock.value, placing: false };
+      transitionBlock.value = undefined;
+      thunderHover.value = undefined;
       // Bests now include any run just committed, so the next free-play run is
       // judged against the updated bar.
       setMin(data.min);
@@ -312,14 +314,14 @@ export const useInit = () => {
 
     game.dispatchEvent("runStart", run);
 
-    setPlacingBlock((pb) => ({ ...pb, placing: false }));
-    setTransitionBlock(undefined);
+    placingBlock.value = { ...placingBlock.value, placing: false };
+    transitionBlock.value = undefined;
     setTime(-1);
     // Leave bricks/power as they were — the HUD keeps showing the leftover
     // counts through the run animation rather than blanking them out. The next
     // board (startRun / getBoard) resets them for the following build.
-    setTouching(false);
-    setThunderHover(undefined);
+    touching.value = false;
+    thunderHover.value = undefined;
   }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
 
   // Snap the board back to the last maze the server accepted: the optimistic

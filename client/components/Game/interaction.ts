@@ -1,0 +1,43 @@
+import { signal } from "@preact/signals";
+import { Point } from "../../../common/types.ts";
+
+// Pointer-frequency interaction state as signals. These change on every
+// mousemove/touchmove; as context state they re-rendered the entire game tree
+// at pointer speed (every write rebuilt the context value, and every consumer
+// re-rendered). As signals, writes bypass the render path entirely and only
+// the component reading `.value` — the board area — re-renders. Handlers read
+// the latest value via `.peek()`/`.value` like a ref, so the input effects no
+// longer need these in their dependency arrays either.
+
+export type PlacingBlock = Point & { placing: boolean };
+export type BoardBlock = Point & {
+  local?: boolean;
+  thunder?: boolean;
+  active?: boolean;
+};
+
+// The placement preview / grabbed block's current cell.
+export const placingBlock = signal<PlacingBlock>({
+  x: 0,
+  y: 0,
+  placing: false,
+});
+
+// The local block a hover or drag currently concerns (upgrade radius, drag
+// origin hiding).
+export const transitionBlock = signal<BoardBlock | undefined>(undefined);
+
+// A fixed thunder block being hovered (its radius preview).
+export const thunderHover = signal<(Point & { local?: boolean }) | undefined>(
+  undefined,
+);
+
+// Whether the previewed placement/move is illegal (red preview).
+export const invalid = signal(false);
+
+// Whether the current grab has really moved off its origin (sticky; see
+// useInputStart) — hides the upgrade radius for the rest of the drag.
+export const dragMoved = signal(false);
+
+// A touch gesture is in progress (drives the placing zoom).
+export const touching = signal(false);
