@@ -48,15 +48,20 @@ const BeatIcon = ({ kind }: { kind: keyof typeof BEAT_ICON }) => (
 );
 
 export const Daily = () => {
-  const { attempts, clear, iteration } = useContext(GameStateContext);
+  const {
+    attempts,
+    clear,
+    iteration,
+    dailyResultClosed,
+    setDailyResultClosed,
+  } = useContext(GameStateContext);
   const stats = useApiListener("getDailySummary")?.stats ?? null;
   const [copied, setCopied] = useState(false);
   const [timeout, setTimeoutId] = useState(-1);
-  const [hideDailyResult, setHideDailyResult] = useState(false);
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
-  if (!attempts || hideDailyResult) return null;
+  if (!attempts || dailyResultClosed) return null;
 
   const date = new Date().toLocaleDateString(undefined, {
     dateStyle: "medium",
@@ -223,7 +228,7 @@ export const Daily = () => {
               // stages instantly; the response refreshes bests/attempts.
               clear();
               showBoard(iteration);
-              setHideDailyResult(true);
+              setDailyResultClosed(true);
             }}
           >
             Keep playing

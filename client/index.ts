@@ -17,6 +17,7 @@ initSettings();
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   prime("getDailySummary", { timeZone: getTimeZone() });
   prime("getProfile", {});
+  prime("standings", { timeZone: getTimeZone() });
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);

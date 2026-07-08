@@ -17,7 +17,7 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../common/settings.ts";
-import { avatarColor, avatarInitial } from "../util/avatar.ts";
+import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
