@@ -35,19 +35,34 @@ export const getDailyStandings = (iteration: number) =>
   `;
 
 // Everyone with a non-void run on this iteration, with their best build that
-// day — ranked attempts AND free play, unlike getDailyStandings' ranked-only
-// field. This is the standings "PB" sort's population (best maze built on that
-// day's board, however), and it also supplies the daily board's "PB" secondary
-// per player. A day the viewer only free-played still has rows here even when
-// the ranked daily field is empty. Names come along for the players who never
-// appear in the ranked field.
+// day and WHEN it was first set — ranked attempts AND free play, unlike
+// getDailyStandings' ranked-only field. This is the standings "PB" sort's
+// population (best maze built on that day's board, however), and it also
+// supplies the daily board's "PB" secondary per player. A day the viewer only
+// free-played still has rows here even when the ranked daily field is empty.
+// The `at` (earliest run at that best time, matching getDailyStandings' tie
+// rule) is the PB row's "2h ago" sub-line. Names come along for the players
+// who never appear in the ranked field.
 export const getIterationBests = (iteration: number) =>
-  sql<{ user: string; name: string | null; best: number }[]>`
-    SELECT r.user user, u.name name, MAX(r.time) best
-    FROM run r
-    JOIN user u ON u.id = r.user
-    WHERE r.iteration = ${iteration} AND r.void = FALSE
-    GROUP BY r.user, u.name;
+  sql<{ user: string; name: string | null; best: number; at: number }[]>`
+    SELECT
+      best.user user,
+      u.name name,
+      best.t best,
+      UNIX_TIMESTAMP(MIN(r.created)) * 1000 at
+    FROM (
+      SELECT user, MAX(time) t
+      FROM run
+      WHERE iteration = ${iteration} AND void = FALSE
+      GROUP BY user
+    ) best
+    JOIN run r
+      ON r.user = best.user
+      AND r.iteration = ${iteration}
+      AND r.void = FALSE
+      AND r.time = best.t
+    JOIN user u ON u.id = best.user
+    GROUP BY best.user, best.t, u.name;
   `;
 
 // The iteration facts the standings header needs: whether the field is frozen

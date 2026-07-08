@@ -3,11 +3,14 @@
 // sheet. Resolves "today" from the caller's timezone exactly like
 // getDailySummary; the { iteration } variant serves a specific (past) day.
 //
-// One field, two sorts of the SAME day's players: "daily" ranks by the day's
-// best build (rows carry each player's all-time PB as the secondary line);
-// "pb" re-ranks the very same players by their all-time best (rows carry that
-// day's time). Both report the same player count; the client toggles between
-// them, and the dock reflects whichever is active.
+// One request, one cached field, two boards of the SAME day's runs — returned
+// together so the client toggles instantly without a second round trip:
+//   - "daily" ranks the players with a ranked daily run by that time (rows
+//     carry their best build that day as the secondary line);
+//   - "pb" ranks EVERYONE with a non-void run by their best build that day
+//     (rows carry their ranked daily time, or null if they only free-played).
+// Each board is fully ranked/windowed server-side (ids never reach the wire);
+// the client just renders whichever the dock/sheet has active.
 
 import { z } from "zod";
 import { avatarHue } from "../../../common/avatar.ts";
@@ -22,13 +25,12 @@ import { LRUMap } from "../../util/LRUMap.ts";
 import { buildStandings, FieldEntry } from "../../util/standings.ts";
 import { method } from "../apiHelpers.ts";
 
-const standingsBody = z.intersection(
-  z.union([
-    z.object({ timeZone: z.string() }),
-    z.object({ iteration: z.number().min(1) }),
-  ]),
-  z.object({ sort: z.enum(["daily", "pb"]).optional() }),
-);
+// Either "today" (resolved from the caller's timezone) or a specific past day.
+// No sort — the response carries both boards.
+const standingsBody = z.union([
+  z.object({ timeZone: z.string() }),
+  z.object({ iteration: z.number().min(1) }),
+]);
 
 // How long a cached day's field is served before a refetch. Applies to every
 // day, not just live ones: the field now counts free play (the PB sort), and a
@@ -44,18 +46,20 @@ const CLOSE_MS = 37 * 3_600_000;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// One player on the day: their best build that day counting any non-void run
-// (`pb`, the PB sort's value / the daily board's secondary) and their best
-// RANKED daily run (`daily`, the daily sort's value / the PB board's
-// secondary — null if they only free-played that day), plus when the daily
-// best was set. The route projects this into a FieldEntry per sort.
+// One player on the day, carrying both boards' values and when each was set:
+// their best build that day counting any non-void run (`pb`/`pbAt`, the PB
+// sort's value + timestamp / the daily board's secondary) and their best
+// RANKED daily run (`daily`/`dailyAt`, the daily sort's value + timestamp /
+// the PB board's secondary — null/0 if they only free-played that day). The
+// route projects this into a FieldEntry per sort, each with its own timestamp.
 type Player = {
   user: string;
   name: string;
   hue: number;
   daily: number | null;
+  dailyAt: number;
   pb: number;
-  at: number;
+  pbAt: number;
 };
 
 type Field = {
@@ -92,8 +96,9 @@ const loadField = async (iteration: number): Promise<Field> => {
         name: b.name ?? "anonymous",
         hue: avatarHue(b.user),
         daily: d ? d.time : null,
+        dailyAt: d ? d.at : 0,
         pb: round2(b.best),
-        at: d ? d.at : 0,
+        pbAt: Number(b.at),
       };
     }),
   };
@@ -121,11 +126,12 @@ const cachedField = (iteration: number) => {
   return promise;
 };
 
-// Project the day's players into a ranked field for the chosen sort, best
-// first. Daily ranks only those with a ranked run (`daily` non-null) by that
-// time; PB ranks EVERYONE with a non-void run by their best build that day.
-// The ranked value is `time`; the other board's value is `secondary` (null on
-// the PB board for someone who only free-played — rendered "—").
+// Project the day's players into a ranked field for one sort, best first.
+// Daily ranks only those with a ranked run (`daily` non-null) by that time; PB
+// ranks EVERYONE with a non-void run by their best build that day. Each row's
+// `time` is the sort's value, `at` its timestamp (when that build/run was set),
+// and `secondary` the OTHER board's value (null on the PB board for someone who
+// only free-played — rendered "—").
 const project = (players: Player[], sort: "daily" | "pb"): FieldEntry[] =>
   sort === "pb"
     ? [...players]
@@ -138,25 +144,26 @@ const project = (players: Player[], sort: "daily" | "pb"): FieldEntry[] =>
         name: p.name,
         hue: p.hue,
         time: p.pb,
-        at: p.at,
+        at: p.pbAt,
         secondary: p.daily,
       }))
     : players
       .filter((p): p is Player & { daily: number } => p.daily !== null)
       .sort((a, b) =>
-        b.daily - a.daily || a.at - b.at || a.name.localeCompare(b.name)
+        b.daily - a.daily || a.dailyAt - b.dailyAt ||
+        a.name.localeCompare(b.name)
       )
       .map((p) => ({
         user: p.user,
         name: p.name,
         hue: p.hue,
         time: p.daily,
-        at: p.at,
+        at: p.dailyAt,
         secondary: p.pb,
       }));
 
 export const standings = method(standingsBody, true)(
-  async ({ userId, sort = "daily", ...rest }) => {
+  async ({ userId, ...rest }) => {
     const iteration = "timeZone" in rest
       ? await (() => {
         const { year, month, day } = dailyParts(rest.timeZone);
@@ -165,27 +172,24 @@ export const standings = method(standingsBody, true)(
       : rest.iteration;
 
     const field = await cachedField(iteration);
-    const { players, me, rows } = buildStandings(
-      project(field.players, sort),
-      userId,
-    );
+    const daily = buildStandings(project(field.players, "daily"), userId);
+    const pb = buildStandings(project(field.players, "pb"), userId);
 
     // The "until ranked" countdown is a daily-board concept — it tracks when
-    // the ranked field freezes. It locks once the day is rated (or its close
-    // has passed — frozen at the close either way). The PB board counts free
-    // play too, which never "ranks", so it shows no countdown.
-    const final = sort === "pb" ||
-      field.rated || field.closesAt <= Date.now();
+    // the ranked field freezes, locking once the day is rated (or its close has
+    // passed). It's a top-level fact of the day; the PB board counts free play,
+    // which never "ranks", so it never shows a countdown regardless.
+    const final = field.rated || field.closesAt <= Date.now();
 
+    // rowUsers/meUser (the parallel id arrays) are deliberately dropped — the
+    // raw id is the bearer credential and must never reach the wire.
     return {
       iteration,
       day: field.day,
-      sort,
-      players,
       final,
-      closesAt: sort === "daily" && !final ? field.closesAt : null,
-      me,
-      rows,
+      closesAt: final ? null : field.closesAt,
+      daily: { players: daily.players, me: daily.me, rows: daily.rows },
+      pb: { players: pb.players, me: pb.me, rows: pb.rows },
     };
   },
 );
