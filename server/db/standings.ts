@@ -34,19 +34,23 @@ export const getDailyStandings = (iteration: number) =>
     ORDER BY best.t DESC, at ASC;
   `;
 
-// Each listed player's all-time best build (any iteration, daily or free),
-// `void = FALSE` — the same figure as the profile's bestBuild. The standings
-// PB sort re-ranks the day's players by this; it also annotates the daily
-// board's rows with a "PB" secondary. Restricted to the day's players (an
-// `IN (...)` over user_void_time_idx, so each user's MAX is an index range)
-// rather than the whole user base. Empty in → no query.
-export const getPbForUsers = (users: readonly string[]) =>
+// Each listed player's best build (any daily or free), `void = FALSE`, ON OR
+// BEFORE the given iteration — their PB "as of that day". Iteration ids are
+// monotonic per day, so `iteration <= upto` bounds it to that day and earlier:
+// on today's board it's the current all-time PB (same figure as the profile's
+// bestBuild); on a past day's board it's the PB as it stood then, so a later
+// improvement doesn't leak backwards. The standings PB sort re-ranks the day's
+// players by this, and the daily board shows it as each row's "PB" secondary.
+// Restricted to the day's players (an `IN (...)` over user_void_time_idx, so
+// each user's MAX is an index range) rather than the whole user base. Empty in
+// → no query.
+export const getPbForUsers = (users: readonly string[], upto: number) =>
   users.length === 0 ? Promise.resolve(new Map<string, number>()) : sql<
     { user: string; pb: number }[]
   >`
     SELECT user, MAX(time) pb
     FROM run
-    WHERE void = FALSE AND user IN (${users})
+    WHERE void = FALSE AND iteration <= ${upto} AND user IN (${users})
     GROUP BY user;
   `.then((r) => new Map(r.map((x) => [x.user, x.pb])));
 

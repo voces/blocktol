@@ -69,7 +69,9 @@ const loadField = async (iteration: number): Promise<Field> => {
     getStandingsMeta(iteration),
     getDailyStandings(iteration),
   ]);
-  const pb = await getPbForUsers(rows.map((r) => r.user));
+  // PB as of THIS day — bounded to this iteration and earlier, so a past day's
+  // board shows historical PBs, not ones set later.
+  const pb = await getPbForUsers(rows.map((r) => r.user), iteration);
   return {
     rated: !!meta.rated,
     day: [meta.y, meta.m, meta.d],
