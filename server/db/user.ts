@@ -37,11 +37,6 @@ export const createOrUpdateUser = (id: string, name?: string) =>
   `.then((r) => r[1][0])
     : createOrUpdateUserWithName(id, name);
 
-export const getUserPlays = (id: string) =>
-  sql<({ count: number } | undefined)[]>`
-    SELECT COUNT(1) count FROM run WHERE user = ${id} AND daily = TRUE;
-  `.then((r) => r[0]?.count ?? 0);
-
 export const updateUserName = (id: string, name: string) =>
   sql<[unknown, User[]]>`
     INSERT INTO user (id, name) VALUES (${id}, ${name}) ON DUPLICATE KEY UPDATE name = ${name};
@@ -168,19 +163,6 @@ export const getUserStats = async (user: string) => {
     settings: parseSettings(u?.settings ?? null),
   };
 };
-
-// Counts a user's first 3 runs for an iteration, including abandoned (void)
-// runs — starting a daily and not finishing it still costs an attempt, matching
-// `dailyAttempts` (the timezone-based view).
-export const dailyAttemptsByIteration = (user: string, iteration: number) =>
-  sql<{ time: number }[]>`
-    SELECT time
-    FROM run
-    WHERE user = ${user}
-      AND iteration = ${iteration}
-    ORDER BY created ASC
-    LIMIT 3;
-  `.then((r) => r.map((r) => r.time));
 
 // The ranked daily attempts (at most three, by construction of the `ranked`
 // flag — see db/run.ts startRun), oldest first, with the maze each run built

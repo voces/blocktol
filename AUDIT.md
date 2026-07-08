@@ -73,7 +73,12 @@ general engineering review.
       spent daily attempt. Restrict retries to reads, or make writes idempotent
       (client-generated run id + unique key).
 
-- [ ] **1f. Dead/broken files.**
+- [x] **1f. Dead/broken files.** _Swept in #96: deleted `useConnectionState`
+      (broken import), `useApi`, `getUserPlays`, `getCurrentRun`,
+      `dailyAttemptsByIteration`, and `getLatestRun`'s unread `daily` field.
+      `abandonRun`/`voidCurrentRun` stay until their stated stale-client window
+      closes (~2026-07-13) — remove then. The `deno check` CI blind spot
+      (entrypoint graphs only) remains worth knowing about._
   - `client/hooks/useConnectionState.ts` imports `../contexts/Connection.ts`,
     which doesn't exist. Only type-checks because nothing imports it, so it's
     outside the `deno check` graph. Delete it (and note the CI blind spot:
