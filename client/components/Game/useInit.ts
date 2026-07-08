@@ -8,6 +8,11 @@ import { useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { rebuildGrid } from "./helpers.ts";
+import {
+  finalizeRunSaver,
+  resetRunSaver,
+  setRunSaverHandlers,
+} from "./runSaver.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { computeVerdict } from "./verdict.ts";
 
@@ -27,6 +32,7 @@ export const useInit = () => {
     setBlocks,
     savedBlocksRef,
     setImplosions,
+    deadlineRef,
     setPower,
     setBricks,
     setBricksTotal,
@@ -106,6 +112,9 @@ export const useInit = () => {
         data.power + data.blocks.filter((b) => b.player && b.thunder).length,
       );
       setTime(Math.floor(data.remainingTime));
+      // Wall-clock deadline for the build countdown (useClock derives the
+      // display from it, immune to background-tab interval throttling).
+      deadlineRef.current = Date.now() + data.remainingTime * 1000;
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
       // Field / personal bests for the free-play verdict (see verdict.ts). These
@@ -137,12 +146,18 @@ export const useInit = () => {
       // exist until the first placement opens the run.
       setBlocks(data.blocks.map((b) => ({ ...b })));
       savedBlocksRef.current = [];
+      // A re-stage orphans any in-flight/queued save from the abandoned build;
+      // drop it so a late verdict can't touch this board.
+      resetRunSaver();
       setBricks(data.bricks);
       setPower(data.power);
       // A staged board has no player blocks yet, so its budget is the full total.
       setBricksTotal(data.bricks);
       setPowerTotal(data.power);
       setTime(60);
+      // No countdown until the first placement's startRun response restarts
+      // the clock with a fresh deadline (useClock holds still on null).
+      deadlineRef.current = null;
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
       setPlacingBlock((pb) => ({ ...pb, placing: false }));
@@ -192,6 +207,9 @@ export const useInit = () => {
     "runFinish",
     () => {
       if (iteration === undefined) return;
+      // The finished build's saves are history — a lingering retry must not
+      // write a stale maze onto the next attempt's run.
+      resetRunSaver();
       // The calendar / today panels update locally from the fresh attempts (see
       // the applyRun effect above) — no list refetch here.
       // Free play never spends a ranked attempt — it just re-stages the board.
@@ -214,12 +232,22 @@ export const useInit = () => {
   useEffect(() => {
     if (time !== 0 || !run) return;
 
+    // The run is now executing: nothing unconfirmed can make it in anymore.
+    // Cancel pending saves/retries, and if an edit never confirmed, snap back
+    // to the accepted maze (its blocks implode) so what animates — and what
+    // free play commits below — matches what the server executes.
+    const reverted = finalizeRunSaver();
+    if (reverted) revertToSaved();
+    const localBlocks = reverted
+      ? savedBlocksRef.current
+      : blocks.filter((b) => b.local);
+
     // The run is now executing (the clock hit 0, or the player tapped start / R).
     // A free-play run counts only from this point — commit it non-void so it
     // lands in the panel and best; leaving before now kept it void (abandoned).
     // A daily attempt is already committed on build, so it's left alone.
     if (freePlay && iteration !== undefined) {
-      const maze = blocks.filter((b) => b.local).map((b) =>
+      const maze = localBlocks.map((b) =>
         b.thunder ? { x: b.x, y: b.y, thunder: true } : { x: b.x, y: b.y }
       );
       // An empty maze (every block deleted before running) isn't a real
@@ -315,23 +343,27 @@ export const useInit = () => {
     );
   };
 
-  useApiListener("updateRun", (e) => {
-    if ("expired" in e) {
-      // The server's 60s window closed before this save landed. Undo the edit
+  // Wired every render so the callbacks close over fresh state. The saver
+  // serializes saves and only reports verdicts for the current board
+  // generation (see runSaver.ts), so these can act without re-checking.
+  setRunSaverHandlers({
+    onAccepted: (blocks, r) => {
+      // The confirmed maze becomes the revert target; its recomputed path
+      // drives the board.
+      savedBlocksRef.current = blocks;
+      setRun({ path: r.path, duration: r.duration, slows: r.slows });
+    },
+    onExpired: () => {
+      // The server's 60s window closed before the save landed. Undo the edit
       // (it popped in optimistically but was never persisted) and start the
       // run — that's what the server is doing — rather than surfacing an
       // error. Guarded so an already-running board isn't re-zeroed, which
       // would re-fire the time-0 commit effect.
       revertToSaved();
       setTime((t) => t > 0 ? 0 : t);
-      return;
-    }
-    setRun({ path: e.path, duration: e.duration, slows: e.slows });
-  });
-
-  // A rejected save (validation, bad iteration) means the server kept its
-  // previous maze: undo the optimistic edit and keep building.
-  useApiListener("error", ({ method }) => {
-    if (method === "updateRun") revertToSaved();
+    },
+    // A rejected save (validation) means the server kept its previous maze:
+    // undo the optimistic edit and keep building.
+    onRejected: revertToSaved,
   });
 };

@@ -3,6 +3,7 @@ import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { api } from "../../api.ts";
+import { saveRun } from "./runSaver.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
   isBorderPoint,
@@ -23,7 +24,6 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     invalid,
     setTouching,
     setBlocks,
-    savedBlocksRef,
     power,
     setPower,
     setBricks,
@@ -37,18 +37,15 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
   } = useContext(GameStateContext);
 
   useEffect(() => {
-    // Persist the local maze. Only a CONFIRMED save advances the revert
-    // target — an expired or rejected save leaves it put, and useInit's
-    // updateRun/error listeners snap the board back to it.
+    // Persist the local maze via the run saver: serialized (one in-flight
+    // save, newer edits coalesce), retried on network failure, and reconciled
+    // by useInit's handlers — only a CONFIRMED save advances the revert
+    // target; an expired or rejected save snaps the board back to it.
     const persist = (blocks: ReadonlyArray<Point & { local?: boolean }>) => {
-      const locals = blocks.filter((b) => b.local);
-      api.updateRun({ iteration: iteration ?? -1, blocks: locals }).then(
-        (r) => {
-          if (!("error" in r) && !("expired" in r)) {
-            savedBlocksRef.current = locals;
-          }
-        },
-      );
+      saveRun({
+        iteration: iteration ?? -1,
+        blocks: blocks.filter((b) => b.local),
+      });
     };
 
     // Remove a local block, refunding its brick (and power, if it was a
