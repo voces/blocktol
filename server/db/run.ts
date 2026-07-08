@@ -78,20 +78,6 @@ export const commitRun = (user: string, iteration: number) =>
     LIMIT 1;
   `;
 
-export const getCurrentRun = (user: string) =>
-  sql<{ iteration: number; created: string; time: number }[] | undefined>`
-    SELECT iteration, created, time FROM run
-    WHERE user = ${user}
-    ORDER BY created DESC LIMIT 1`.then((r) =>
-    r?.[0]
-      ? {
-        iteration: r[0].iteration,
-        created: new Date(r[0].created),
-        time: r[0].time,
-      }
-      : undefined
-  );
-
 // Save the caller's in-progress build (latest run, within the 60s window).
 // Whether the save also commits comes off the run row itself: `ranked` was
 // recorded at start (see startRun), the only moment the timezone-aware daily
@@ -171,10 +157,10 @@ export const getLatestRun = (
   rankedOnly?: boolean,
 ) =>
   sql<
-    | { iteration: number; created: string; daily: number; data: string }[]
+    | { iteration: number; created: string; data: string }[]
     | undefined
   >`
-    SELECT iteration, created, daily, data
+    SELECT iteration, created, data
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
@@ -185,7 +171,6 @@ export const getLatestRun = (
       ? ({
         iteration: r[0].iteration,
         created: r[0].created,
-        daily: !!r[0].daily,
         maze: deserializeRun(r[0].data),
       })
       : null
