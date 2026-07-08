@@ -16,6 +16,12 @@ import { raw, sql, sqlOnce } from "./query.ts";
 // UTC-12 midnights), so only the start request knows. `daily` is a different
 // flag — the single *counted* result — seeded on the first attempt and
 // re-pointed at the best ranked run as builds save (see updateCurrentRun).
+//
+// The NOT EXISTS guard dedupes near-simultaneous starts (a double-fired event,
+// two tabs racing boot): the @priorRuns check and the INSERT are separate
+// statements, so two concurrent batches could otherwise both insert — spending
+// two attempts at once. 2s covers a race without ever blocking a legitimate
+// next attempt (the shortest run outlasts it) or an early tap-to-start.
 export const startRun = (
   iteration: number,
   user: string,
@@ -43,9 +49,16 @@ export const startRun = (
     ORDER BY id LIMIT 1;
 
     INSERT INTO run (user, iteration, time, data, void, daily, ranked)
-    VALUES (${user}, ${iteration}, ${minTime}, '', TRUE,
+    SELECT ${user}, ${iteration}, ${minTime}, '', TRUE,
       (@priorRuns = 0) AND @isDaily,
-      (@priorRuns < 3) AND @isDaily);`;
+      (@priorRuns < 3) AND @isDaily
+    FROM DUAL
+    WHERE NOT EXISTS (
+      SELECT 1 FROM run
+      WHERE user = ${user}
+        AND iteration = ${iteration}
+        AND TIMESTAMPDIFF(SECOND, created, NOW()) < 2
+    );`;
 
 // Abandon the user's current run on an iteration by voiding it, so it drops out
 // of the panel and never counts toward best/standing. Constrained to
@@ -93,6 +106,10 @@ export const commitRun = (user: string, iteration: number) =>
 // edit was NOT persisted instead of implying success. Checked off the row's
 // own age rather than the UPDATE's changedRows, which is also 0 for a save
 // carrying identical data.
+//
+// The whole batch rides one transaction: a failure between the save and the
+// daily re-pointing must not leave void cleared with the counted-result flags
+// half-reassigned.
 export const updateCurrentRun = (
   user: string,
   time: number,
@@ -100,8 +117,15 @@ export const updateCurrentRun = (
   iteration: number,
 ) =>
   sql<
-    [unknown, { ranked: number; fresh: number }[] | undefined, ...unknown[]]
+    [
+      unknown,
+      unknown,
+      { ranked: number; fresh: number }[] | undefined,
+      ...unknown[],
+    ]
   >`
+    START TRANSACTION;
+
     SET @ranked := FALSE;
 
     SELECT @ranked := ranked ranked,
@@ -143,8 +167,10 @@ export const updateCurrentRun = (
             AND ranked = TRUE
         ) t1
       )
-    ORDER BY created ASC LIMIT 1;`.then((r) => ({
-    saved: !!r?.[1]?.[0]?.fresh,
+    ORDER BY created ASC LIMIT 1;
+
+    COMMIT;`.then((r) => ({
+    saved: !!r?.[2]?.[0]?.fresh,
   }));
 
 // `rankedOnly` filters to the daily's three attempts — the resume path uses it

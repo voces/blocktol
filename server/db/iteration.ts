@@ -1,5 +1,6 @@
 import { Point } from "../../common/types.ts";
 import { memoize } from "../util/memoize.ts";
+import { UserError } from "../util/UserError.ts";
 import { ExecResult, format, raw, sql, sqlOnce } from "./query.ts";
 
 export const getIterationCount = () =>
@@ -97,6 +98,22 @@ export const getDailyIterationId = (year: number, month: number, day: number) =>
       AND DAY(created) = ${day}
     ORDER BY id
     LIMIT 1`.then((r) => r[0]?.id);
+
+// The routes' variant: a date with no daily yet (the generation cron hasn't
+// produced it) is a clean, client-visible 400 rather than `undefined` flowing
+// into getIteration and blowing up as an unhandled 500. The generation cron
+// keeps using getDailyIterationId — for it, "missing" is the signal to create.
+export const requireDailyIterationId = (
+  year: number,
+  month: number,
+  day: number,
+) =>
+  getDailyIterationId(year, month, day).then((id) => {
+    if (id === undefined) {
+      throw new UserError("no daily available for that date yet");
+    }
+    return id;
+  });
 
 export const getDailyIteration = (year: number, month: number, day: number) =>
   getDailyIterationId(year, month, day).then((id) =>

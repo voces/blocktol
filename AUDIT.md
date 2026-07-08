@@ -204,7 +204,9 @@ general engineering review.
       remaining time from a deadline timestamp (`start + 60_000 - Date.now()`)
       on each tick.
 
-- [ ] **2e. Runner finish depends on Preact's render timing.**
+- [x] **2e. Runner finish depends on Preact's render timing.** _Fixed in #101 —
+      the next frame is scheduled only while unfinished, so finishing no longer
+      depends on the parent unmounting before the queued frame._
       `client/components/Runner.tsx:29` schedules the next
       `requestAnimationFrame` _before_ checking for finish, and on finish calls
       `onFinish()` + dispatches `runFinish` without cancelling the queued frame.
@@ -214,30 +216,42 @@ general engineering review.
       `startRun`/`getDailySummary` repeatedly. Fix: `return` before scheduling
       the next frame, or a `finished` flag.
 
-- [ ] **2f. Side effects inside state updaters.** `api.updateRun(...)` +
-      `rebuildGrid(...)` live _inside_ `setBlocks(prev => …)` updater functions.
-      Preact currently invokes updaters once, but updaters are contractually
-      pure — under React (or double-invoke tooling) each placement double-fires
-      the API call. Compute `newBlocks`, then `setBlocks(newBlocks)`, then call
-      the API.
+- [x] **2f. Side effects inside state updaters.** _Fixed in #101 — the save,
+      grid rebuild, and setBlocks now run in a plain `apply()` outside the
+      updater; the effect re-registers on `blocks` so the closure stays fresh._
+      `api.updateRun(...)` + `rebuildGrid(...)` live _inside_
+      `setBlocks(prev => …)` updater functions. Preact currently invokes
+      updaters once, but updaters are contractually pure — under React (or
+      double-invoke tooling) each placement double-fires the API call. Compute
+      `newBlocks`, then `setBlocks(newBlocks)`, then call the API.
 
 ---
 
 ## 3. Server-side notes
 
-- [ ] **3a. No transactions on the run write path.** `updateCurrentRun`'s commit
-      branch is three sequential statements (`server/db/run.ts:99-140`) with no
+- [x] **3a. No transactions on the run write path.** _Fixed in #101 —
+      `updateCurrentRun`'s batch rides one transaction, so void can't be cleared
+      with the daily flags half-reassigned._ `updateCurrentRun`'s commit branch
+      is three sequential statements (`server/db/run.ts:99-140`) with no
       `START TRANSACTION` (unlike `mergeUsers`, which does it right). A failure
       between statements leaves `void = FALSE` with daily flags half-reassigned;
       concurrent updates from 2a interleave here too.
-- [ ] **3b. `startRun` TOCTOU.** The "first run / is daily" checks ride session
-      variables in one batch, but nothing prevents two concurrent `startRun`s
-      (double-click, retry from 1e) from both inserting. Unique constraint or
-      `INSERT ... SELECT ... WHERE NOT EXISTS`.
-- [ ] **3c. `getDailyIterationId` returning `undefined`** (no daily generated
-      yet for that date) flows into `getIteration(undefined)` → unhandled 500
-      rather than a clean error.
-- [ ] **3d. `server/routes/iteration/daily.ts:104`** throws
+- [x] **3b. `startRun` TOCTOU.** _Fixed in #101 — the INSERT carries a NOT
+      EXISTS guard against a run created within the last 2s: dedupes
+      double-fires and racing tabs without ever blocking a legitimate next
+      attempt (the shortest run outlasts the window)._ The "first run / is
+      daily" checks ride session variables in one batch, but nothing prevents
+      two concurrent `startRun`s (double-click, retry from 1e) from both
+      inserting. Unique constraint or `INSERT ... SELECT ... WHERE NOT EXISTS`.
+- [x] **3c. `getDailyIterationId` returning `undefined`** _Fixed in #101 —
+      routes use `requireDailyIterationId`, which throws a clean `UserError`
+      (400) when the date has no daily; the generation cron keeps the
+      undefined-returning variant (missing is its signal to create)._ (no daily
+      generated yet for that date) flows into `getIteration(undefined)` →
+      unhandled 500 rather than a clean error.
+- [x] **3d. `server/routes/iteration/daily.ts:104`** _Fixed in #101 — a corrupt
+      persisted maze degrades to `currentRun: null` (logged) instead of 500ing
+      the boot call for the rest of the window._ throws
       `"Unexpected invalid path on daily recovery"` — one corrupt persisted maze
       makes `getDailySummary` (the boot call!) 500 for that user for the rest of
       the 60s window. Degrade to `currentRun: null`.
@@ -413,19 +427,23 @@ scars correctly fixed; CI covers fmt/check/test/build.
       all of them. Even before a store migration: split it (interaction vs board
       vs meta/panels) and memoize the context value to cut mousemove-driven
       full-tree re-renders.
-- [ ] **6c. Duplicated scoring/standing logic.** The `(t - min)/(best - min)`
-      clamp appears in `useInit.ts:222-224`, `Calendar.tsx:43-48`, and
-      `TodayResult.tsx:16-21`, mirroring server `mapAttempts` — four places to
-      drift. Extract `common/standing.ts` used by both sides.
+- [x] **6c. Duplicated scoring/standing logic.** _Fixed in #101 —
+      `common/standing.ts` (with tests) is now the single definition used by the
+      server's `mapAttempts` and all three client surfaces._ The
+      `(t - min)/(best - min)` clamp appears in `useInit.ts:222-224`,
+      `Calendar.tsx:43-48`, and `TodayResult.tsx:16-21`, mirroring server
+      `mapAttempts` — four places to drift. Extract `common/standing.ts` used by
+      both sides.
 - [ ] **6d. Test coverage gap.** Good for pure logic (pathing, rating,
       validateRun, migrations); zero for the run lifecycle
       (start/update/commit/void state machine — where 1a/1c live) and zero for
       client behavior. The lifecycle is testable as pure route handlers with a
       fake `sql`; highest-value gap.
-- [ ] **6e. `useRefState`** (`client/hooks/useRefState.ts`) recreates its object
-      each render, so `current` after a same-render write reads stale — used
-      once (Markdown.tsx) in a way that survives this, but it's a trap. Replace
-      with plain state or a real ref + forceUpdate.
+- [x] **6e. `useRefState`** _Fixed in #101 — Markdown uses a state-backed
+      callback ref; the hook is deleted._ (`client/hooks/useRefState.ts`)
+      recreates its object each render, so `current` after a same-render write
+      reads stale — used once (Markdown.tsx) in a way that survives this, but
+      it's a trap. Replace with plain state or a real ref + forceUpdate.
 - [ ] **6f. Error surfacing.** No error boundary; `App`'s `disconnected` state
       only covers the boot request; `Disconnected` never shows for mid-game
       failures (see 2c).

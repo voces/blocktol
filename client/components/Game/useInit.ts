@@ -3,6 +3,7 @@ import { offsets } from "../../../common/constants.ts";
 import { newGrid } from "../../../common/pathing.ts";
 import { api, MessageMap } from "../../api.ts";
 import { Point } from "../../../common/types.ts";
+import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
@@ -277,9 +278,7 @@ export const useInit = () => {
         // to 100%); the re-stage's authoritative list replaces this optimistic
         // row once it lands.
         const fieldBest = Math.max(best, run.duration);
-        const denom = fieldBest - min;
-        const scored = (d: number) =>
-          denom > 0 ? Math.max(0, Math.min(1, (d - min) / denom)) : 1;
+        const scored = (d: number) => standing(d, min, fieldBest);
         const supreme = run.duration > best;
         setViewedAttempts((attempts) => [
           // A supreme raises the field best, so every existing run re-scores

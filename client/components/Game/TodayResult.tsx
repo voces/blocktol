@@ -5,6 +5,7 @@ import {
   percentileBand,
   standingBand,
 } from "../../../common/percentileColor.ts";
+import { standing } from "../../../common/standing.ts";
 import { api } from "../../api.ts";
 import { showBoard } from "../../store/board.ts";
 import { DailyItem, dailyItems } from "../../store/dailyItems.ts";
@@ -15,9 +16,7 @@ type Item = DailyItem;
 
 const percentOf = (item: Item) =>
   typeof item.ownBest === "number" && typeof item.best === "number"
-    ? item.best === item.min
-      ? 1
-      : (item.ownBest - item.min) / (item.best - item.min)
+    ? standing(item.ownBest, item.min, item.best)
     : null;
 
 // Today's standing at a glance: the ranked result (best of the three attempts,

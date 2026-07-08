@@ -1,6 +1,5 @@
 import { useEffect, useState } from "preact/compat";
 import { Fragment, h, JSX } from "preact";
-import { useRefState } from "../../hooks/useRefState.ts";
 import { randomColor } from "./helpers.ts";
 
 type Token = {
@@ -120,14 +119,16 @@ export type Colors = Record<string, string | undefined>;
 const ColorMarkdown = (
   { node, colors }: { node: NodeWithChildren; colors: Colors },
 ) => {
-  const ref = useRefState<HTMLSpanElement | null>(null);
-  const content = ref.current?.textContent;
+  // A state-backed callback ref: mounting sets the element, triggering the
+  // second render that can read its textContent to pick the colour.
+  const [el, setEl] = useState<HTMLSpanElement | null>(null);
+  const content = el?.textContent;
   const color = content
     ? (colors[content] ?? (colors[content] = randomColor()))
     : undefined;
 
   return (
-    <span ref={ref} style={{ color }}>
+    <span ref={setEl} style={{ color }}>
       {node.children.map((node) => (
         <InnerMarkdown
           node={node}
