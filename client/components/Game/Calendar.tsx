@@ -1,5 +1,5 @@
 import { Fragment, h } from "preact";
-import { useContext, useEffect, useRef, useState } from "preact/compat";
+import { useContext, useEffect, useState } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
   PEAK_COLOR,
@@ -8,9 +8,14 @@ import {
   standingColor,
   SUPREME_COLOR,
 } from "../../../common/percentileColor.ts";
-import { api } from "../../api.ts";
 import { showBoard } from "../../store/board.ts";
-import { DailyItem, useDailyItems } from "../../hooks/useDailyItems.tsx";
+import {
+  DailyItem,
+  dailyItems,
+  ensureMonth,
+  oldestDaily,
+  refreshMonth,
+} from "../../store/dailyItems.ts";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -67,7 +72,10 @@ const lastDay = (idx: number) =>
   new Date(Math.floor(idx / 12), (idx % 12) + 1, 0).getDate();
 
 export const Calendar = () => {
-  const { items, oldest } = useDailyItems();
+  // Signals: reading .value subscribes this component to months landing and
+  // finished runs patching a day.
+  const items = dailyItems.value;
+  const oldest = oldestDaily.value;
   const {
     freePlay,
     staged,
@@ -82,11 +90,6 @@ export const Calendar = () => {
   const selected = iteration;
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
-  // Months (idx = year*12 + month0) we've already asked the server for.
-  const requested = useRef(new Set<number>());
-  // Bumped when a month fetch fails, to re-run the load effect (e.g. after a
-  // brief disconnect on cold load) — the failed month is freed to retry.
-  const [retry, setRetry] = useState(0);
   // The very first daily's month — the floor `canPrev` pages back to (from the
   // server, so gaps in the user's own play don't stop paging short of history).
   const oldestIdx = oldest ? oldest[0] * 12 + (oldest[1] - 1) : undefined;
@@ -128,33 +131,17 @@ export const Calendar = () => {
 
   const shownEarliest = page === 0 ? earliestDefault : earliestDefault - page;
 
-  // Load each rendered month, plus the one just older so we know whether history
-  // continues before the user pages there — once each, via the range API.
-  const ensureMonth = (idx: number) => {
-    if (idx < 0 || requested.current.has(idx)) return;
-    requested.current.add(idx);
-    const y = Math.floor(idx / 12);
-    const m0 = idx % 12;
-    const next = idx + 1;
-    api.list({
-      start: [y, m0 + 1, 1],
-      end: [Math.floor(next / 12), (next % 12) + 1, 1],
-    }).catch(() => {
-      // Free the month so a later pass retries it (e.g. after a reconnect).
-      requested.current.delete(idx);
-      setTimeout(() => setRetry((r) => r + 1), 1500);
-    });
-  };
+  // Load each rendered month — the store dedupes and retries (see
+  // store/dailyItems.ts), so this just declares what this render needs.
   const ensureKey = segments.map((s) => s.idx).join(",");
   useEffect(() => {
     for (const s of segments) ensureMonth(s.idx);
-    // ensureKey captures exactly the months this render needs; retry re-fires it.
-  }, [ensureKey, retry]);
+  }, [ensureKey]);
 
   // A brand-new user's current-month fetch can land before their first run is
   // recorded — the server bounds the list to iterations they've played, so it
   // comes back empty and gets cached. Once the daily is done (their runs now
-  // exist), drop the cache for this month and refetch so the calendar fills in.
+  // exist), refetch this month so the calendar fills in.
   useEffect(() => {
     if (attemptsRemaining !== 0) {
       // The daily just (re)started — make sure a stale-open picker doesn't linger
@@ -162,8 +149,7 @@ export const Calendar = () => {
       setCalendarOpen(false);
       return;
     }
-    requested.current.delete(currentIdx);
-    setRetry((r) => r + 1);
+    refreshMonth(currentIdx);
   }, [attemptsRemaining]);
 
   // Page back until the earliest shown month reaches the first daily ever.

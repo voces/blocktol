@@ -289,10 +289,13 @@ general engineering review.
       `startRun`/`getBoard` for that iteration). With an iteration cache (§5)
       stage instantly from cache and reconcile on response — the same pattern
       the optimistic runs-panel row (`useInit.ts:226-247`) already does.
-- [ ] **4c. View-best waterfall.** `Profile.tsx:113` and `TodayResult.tsx:50`:
-      `getBoard(...).then(() => api.best(...))` — two serial RTTs to look at a
-      maze. Fire in parallel and stage when both land (or have `best` return the
-      board too).
+- [x] **4c. View-best waterfall.** _Fixed in #100 — the best-maze fetch and the
+      board stage run in parallel (`Promise.all`), overlaying once both land and
+      skipping if a newer navigation superseded the stage; the `best` response
+      listener moved out of `useInit` into the call sites._ `Profile.tsx:113`
+      and `TodayResult.tsx:50`: `getBoard(...).then(() => api.best(...))` — two
+      serial RTTs to look at a maze. Fire in parallel and stage when both land
+      (or have `best` return the board too).
 - [ ] **4d. More optimistic surfaces.**
   - Result modal: on the last daily finish the client already knows all three
     durations — render optimistically, fill percentiles when the summary lands.
@@ -323,14 +326,15 @@ No need for Apollo. For a Preact app this size, the natural shape is
 **`@preact/signals` + a thin typed query/mutation layer** over the existing RPC
 proxy:
 
-- [ ] **5a. Normalized entity cache.** _Stage 1 landed in #99:
-      `client/store/board.ts` holds the per-iteration board cache with a single
-      `ingest` normalizing every board-shaped response, plus the
-      request-identity loaders (see 2b/4b). Remaining: fold in
-      attempts/dailyItems/profile, then the query layer (5b) and signals-based
-      subscriptions (5c) so panels read the store directly._ Three entity types
-      cover almost everything, keyed by `iteration` (which every response
-      already carries):
+- [x] **5a. Normalized entity cache.** _Stage 1 (#99): `client/store/board.ts` —
+      per-iteration board cache, single `ingest`, request-identity loaders (see
+      2b/4b). Stage 2 (#100): `store/dailyItems.ts` and `store/profile.ts` fold
+      the daily list and profile in as signal-backed module stores (the context
+      provider and both hand-rolled hook caches are gone). Per-iteration
+      attempts ride the board cache; `viewedAttempts` deliberately remains game
+      state — it's the current view, not a cache._ Three entity types cover
+      almost everything, keyed by `iteration` (which every response already
+      carries):
 
   ```
   iterations:  Map<iterationId, IterationBoard>  // fixed pieces, checkpoint, budgets, min/best/ownBest
@@ -346,8 +350,12 @@ proxy:
   best/dailyBest recomputation becomes a _derived_ (computed) value from
   `attempts`, not a hand-maintained patch mirroring server logic.
 
-- [ ] **5b. Query layer** (~80 lines that replace Apollo): per-key request state
-      with dedupe, staleness, and latest-wins:
+- [x] **5b. Query layer** _Done in #100 — `store/query.ts` (`keyedQuery`):
+      per-key coalescing, staleness windows, rejection-frees-the-key retry, and
+      `bust` for known-stale data. Replaces the profile cache's hand-rolled
+      dedupe and the calendar's month bookkeeping (requested set + retry state).
+      Board latest-wins lives in the #99 loaders._ (~80 lines that replace
+      Apollo): per-key request state with dedupe, staleness, and latest-wins:
 
   ```ts
   const board = query('board', (iteration) => api.getBoard({iteration, ...}), {staleMs: 30_000})
@@ -358,7 +366,11 @@ proxy:
   `useProfile` (dedupe + staleness + subscribers) is already this, hand-rolled
   for one endpoint — generalize it rather than writing a fifth cache.
 
-- [ ] **5c. Mutation layer** with the three things §2 shows are missing:
+- [x] **5c. Mutation layer** _Done across #95 (`runSaver`: sequencing,
+      optimistic apply + revert, retry policy) and #100 (@preact/signals in;
+      dailyItems/profile subscriptions are fine-grained). Converting the
+      remaining game-state fields (bricks, placingBlock, …) to signals is the
+      optional 6b follow-up._ with the three things §2 shows are missing:
       **sequencing** (per-run trailing-edge queue for `updateRun`), **optimistic
       apply + rollback**, and an **error/retry policy** (surface `Disconnected`,
       re-send latest maze). Signals give fine-grained subscriptions for free —

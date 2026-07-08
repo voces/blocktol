@@ -7,9 +7,8 @@ import {
 } from "../../../common/percentileColor.ts";
 import { api } from "../../api.ts";
 import { showBoard } from "../../store/board.ts";
+import { DailyItem, dailyItems } from "../../store/dailyItems.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
-import { DailyItem, useDailyItems } from "../../hooks/useDailyItems.tsx";
-import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Item = DailyItem;
@@ -25,7 +24,7 @@ const percentOf = (item: Item) =>
 // with its field percentile and rating) and the personal best (which may be a
 // higher unranked free-play run).
 export const TodayResult = () => {
-  const { items } = useDailyItems();
+  const items = dailyItems.value;
   const summary = useApiListener("getDailySummary");
   const { viewMaze, attemptsRemaining, iteration } = useContext(
     GameStateContext,
@@ -51,6 +50,18 @@ export const TodayResult = () => {
     if (onToday || !today) return show();
     showBoard(today.iteration).then((staged) => {
       if (staged) show();
+    });
+  };
+
+  // The personal best's maze lives server-side: fetch it and stage the board
+  // in parallel (two round trips become one), overlaying once both land —
+  // skipped if a newer navigation superseded the stage.
+  const reviewBest = () => {
+    if (!today) return;
+    const best = api.best({ iteration: today.iteration });
+    const staged = onToday ? Promise.resolve(true) : showBoard(today.iteration);
+    Promise.all([staged, best]).then(([ok, b]) => {
+      if (ok && !("error" in b)) viewMaze(b.maze);
     });
   };
 
@@ -123,9 +134,7 @@ export const TodayResult = () => {
               : "")}
           style={{ "--chip": personalBand }}
           title={today && personalBest != null ? "View this maze" : undefined}
-          onClick={today && personalBest != null
-            ? () => reviewToday(() => api.best({ iteration: today.iteration }))
-            : undefined}
+          onClick={today && personalBest != null ? reviewBest : undefined}
         >
           <span class="today-result__head">Personal best</span>
           <div class="today-result__value mono">
