@@ -13,26 +13,29 @@ import {
 
 type Row = StandingsData["rows"][number];
 
-// One board row. A single accent per row — achievement wins over identity, so
-// a record state (gold/lime) outranks the viewer's own accent; the avatar
-// keeps the player's identity colour regardless. The "you" accent IS your
-// identity colour (fed through --you; the stylesheet's green is only the
-// fallback), so your row matches your avatar everywhere.
+// One board row. A single accent per row: your identity colour on your own
+// row, overridden by a record state's hue (gold/lime) when you hold one —
+// achievement picks the COLOUR, but the "you" treatments (left bar, accented
+// sub/rank/time) persist either way, so your row is findable at #1 too. The
+// accent rides the --you custom property; the stylesheet's green is only the
+// fallback. The avatar keeps the player's identity colour regardless.
 const BoardRow = ({ row }: { row: Row }) => {
   const state = row.record === "beat"
     ? "gold"
     : row.record === "match"
     ? "lime"
-    : row.you
-    ? "you"
     : null;
+  const accent = state === "gold"
+    ? "var(--gold)"
+    : state === "lime"
+    ? "var(--peak)"
+    : avatarColorFromHue(row.hue);
   return (
     <div
       class={"standings-row band-card" +
-        (state ? ` standings-row--${state}` : "")}
-      style={state === "you"
-        ? { "--you": avatarColorFromHue(row.hue) }
-        : undefined}
+        (state ? ` standings-row--${state}` : "") +
+        (row.you ? " standings-row--you" : "")}
+      style={row.you ? { "--you": accent } : undefined}
     >
       <span class="standings-row__rank mono">
         {row.record === "beat" && <Crown />}

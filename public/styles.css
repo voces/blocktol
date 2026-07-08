@@ -3086,8 +3086,10 @@ a:hover {
   --band-card-fill: 9%;
 }
 
-/* --you is your identity colour, inlined by the row (Sheet.tsx) so your row
-   matches your avatar; --win is only the fallback. */
+/* --you is your row's accent, inlined by the row (Sheet.tsx): your identity
+   colour, or the record hue (gold/lime) when you hold one — so the "you"
+   treatments survive at #1 and your row stays findable. --win is only the
+   fallback. */
 .standings-row--you {
   --band-card-tint: var(--you, var(--win));
   --band-card-edge: 42%;
@@ -3165,6 +3167,10 @@ a:hover {
 }
 
 .standings-row--you .standings-row__sub {
+  color: var(--you, var(--win));
+}
+
+.standings-row--you .standings-row__time {
   color: var(--you, var(--win));
 }
 
