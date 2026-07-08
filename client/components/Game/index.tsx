@@ -33,6 +33,7 @@ export const Game = (
     setRun,
     date,
     dragMoved,
+    implosions,
   } = useContext(GameStateContext);
 
   useInit();
@@ -63,6 +64,7 @@ export const Game = (
             onSlow={onSlow}
             date={date}
             dragMoved={dragMoved}
+            implosions={implosions}
           />
           <AttemptsRemaining
             extraAttemptBannerTime={extraAttemptBannerTime ?? false}

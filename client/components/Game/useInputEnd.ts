@@ -23,6 +23,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     invalid,
     setTouching,
     setBlocks,
+    savedBlocksRef,
     power,
     setPower,
     setBricks,
@@ -36,16 +37,27 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
   } = useContext(GameStateContext);
 
   useEffect(() => {
+    // Persist the local maze. Only a CONFIRMED save advances the revert
+    // target — an expired or rejected save leaves it put, and useInit's
+    // updateRun/error listeners snap the board back to it.
+    const persist = (blocks: ReadonlyArray<Point & { local?: boolean }>) => {
+      const locals = blocks.filter((b) => b.local);
+      api.updateRun({ iteration: iteration ?? -1, blocks: locals }).then(
+        (r) => {
+          if (!("error" in r) && !("expired" in r)) {
+            savedBlocksRef.current = locals;
+          }
+        },
+      );
+    };
+
     // Remove a local block, refunding its brick (and power, if it was a
     // thunder). Shared by a tap-delete and by dragging a block somewhere it
     // can't be placed.
     const removeBlock = (block: Point & { thunder?: boolean }) => {
       setBlocks((blocks) => {
         const newBlocks = blocks.filter((b) => b !== block);
-        api.updateRun({
-          iteration: iteration ?? -1,
-          blocks: newBlocks.filter((b) => b.local),
-        });
+        persist(newBlocks);
         rebuildGrid(grid, checkpoint, newBlocks);
         return newBlocks;
       });
@@ -83,10 +95,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
               const newBlocks = blocks.map((b) =>
                 b === origin ? { ...origin, thunder: true } : b
               );
-              api.updateRun({
-                iteration: iteration ?? -1,
-                blocks: newBlocks.filter((b) => b.local),
-              });
+              persist(newBlocks);
               rebuildGrid(grid, checkpoint, newBlocks);
               return newBlocks;
             });
@@ -111,10 +120,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
               const newBlocks = blocks.map((b) =>
                 b === origin ? { ...b, x: target.x, y: target.y } : b
               );
-              api.updateRun({
-                iteration: iteration ?? -1,
-                blocks: newBlocks.filter((b) => b.local),
-              });
+              persist(newBlocks);
               rebuildGrid(grid, checkpoint, newBlocks);
               return newBlocks;
             });
@@ -148,6 +154,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         // (staged is now false) is a plain updateRun.
         if (staged) {
           if (iteration !== undefined) {
+            // The startRun response re-seeds the revert target via handleRun.
             api.startRun({
               iteration,
               timeZone: getTimeZone(),
@@ -155,10 +162,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
             });
           }
         } else {
-          api.updateRun({
-            iteration: iteration ?? -1,
-            blocks: newBlocks.filter((b) => b.local),
-          });
+          persist(newBlocks);
         }
         rebuildGrid(grid, checkpoint, newBlocks);
         return newBlocks;

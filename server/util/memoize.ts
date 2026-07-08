@@ -55,6 +55,15 @@ export const memoize = <Fn extends (...args: any[]) => any>(fn: Fn) => {
     if (container.has(arg)) return container.get(arg) as ReturnType<Fn>;
     const value = fn(...args) as ReturnType<Fn>;
     container.set(arg, value);
+    // A cached rejected promise would serve the failure to every later caller
+    // (one transient error permanently poisons the entry) — evict on rejection
+    // so the next call retries. Guarded delete: only evict if the entry is
+    // still this promise (a clear/bust + refill may have replaced it).
+    if ((value as unknown) instanceof Promise) {
+      (value as Promise<unknown>).catch(() => {
+        if (container.get(arg) === value) container.delete(arg);
+      });
+    }
     return value;
   };
 
@@ -71,35 +80,59 @@ export const memoize = <Fn extends (...args: any[]) => any>(fn: Fn) => {
   return Object.assign(memoizedFn, { clear, bust });
 };
 
-const isResolved = async (promise: Promise<unknown>) => {
-  const resolved = Symbol("resolved");
+// Whether the promise has settled (resolved OR rejected) — the race must not
+// itself throw on a rejected promise, so the candidate is wrapped.
+const isSettled = async (promise: Promise<unknown>) => {
+  const pending = Symbol("pending");
   const p = await Promise.race([
-    promise,
-    new Promise((resolve) => setTimeout(() => resolve(resolved), 1)),
+    promise.then(() => undefined, () => undefined),
+    new Promise((resolve) => setTimeout(() => resolve(pending), 1)),
   ]);
-  return p === resolved;
+  return p !== pending;
 };
 
 export const trailer = <
-  // Value,
-  // PValue extends Promise<Value>,
   // deno-lint-ignore no-explicit-any
   Fn extends (...args: any[]) => Promise<any>,
 >(
   fn: Fn,
 ) =>
   memoize((...args: Parameters<Fn>): () => Promise<ReturnType<Fn>> => {
-    let promise = fn(...args);
+    // Every fetch gets a no-op rejection handler attached at creation: a
+    // background refresh that rejects before anyone awaits it would otherwise
+    // trip Deno's unhandledrejection. Awaiters still see the rejection.
+    const kick = () => {
+      const p = fn(...args);
+      p.catch(() => {});
+      return p;
+    };
+    let promise = kick();
     let v: Awaited<ReturnType<Fn>>;
     let hasResolvedAtLeastOnce = false;
 
     return async () => {
       if (!hasResolvedAtLeastOnce) {
-        v = await promise;
-        hasResolvedAtLeastOnce = true;
-      } else if (await isResolved(promise)) {
-        v = await promise;
-        promise = fn(...args);
+        // No stale value to fall back on: surface the failure, but swap in a
+        // fresh fetch first so the next call retries instead of awaiting the
+        // same rejected promise forever. The identity check keeps concurrent
+        // rejected awaiters from each kicking off their own retry.
+        const p = promise;
+        try {
+          v = await p;
+          hasResolvedAtLeastOnce = true;
+        } catch (err) {
+          if (promise === p) promise = kick();
+          throw err;
+        }
+      } else if (await isSettled(promise)) {
+        // Stale-while-revalidate: take the settled refresh if it succeeded —
+        // keep serving the stale value if it failed — and kick off the next
+        // refresh either way.
+        const p = promise;
+        try {
+          v = await p;
+        } catch { /* keep the stale value */ }
+        if (promise === p) promise = kick();
       }
 
       return v;

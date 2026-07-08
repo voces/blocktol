@@ -83,6 +83,16 @@ export const sql = <T = unknown>(
   return query<T>(SqlString.format(strings.join("?"), values));
 };
 
+// For non-idempotent statements (bare INSERTs): no retry. `sql`'s retry can
+// re-execute a query whose first attempt actually landed but whose response
+// was lost (e.g. the 3s timeout) — for an INSERT that means a duplicate row,
+// e.g. a silently spent daily attempt. Idempotent writes (upserts, UPDATEs
+// that set absolute values) should keep using `sql`; the retry is safe there.
+export const sqlOnce = <T = unknown>(
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => query<T>(SqlString.format(strings.join("?"), values), 0);
+
 export const format = (
   strings: TemplateStringsArray,
   ...values: unknown[]

@@ -1,6 +1,6 @@
 import { Point } from "../../common/types.ts";
 import { deserializeRun, serializeRun } from "../util/run.ts";
-import { raw, sql } from "./query.ts";
+import { raw, sql, sqlOnce } from "./query.ts";
 
 // Every run starts void. A daily attempt counts once its maze is built
 // (updateCurrentRun clears void for ranked runs); a free-play run counts only
@@ -24,7 +24,9 @@ export const startRun = (
   month: number,
   day: number,
 ) =>
-  sql`
+  // sqlOnce: the INSERT isn't idempotent — a retry after a lost response would
+  // create a second run, silently spending an extra daily attempt.
+  sqlOnce`
     SET @priorRuns := NULL;
     SET @isDaily := FALSE;
 
@@ -99,16 +101,25 @@ export const getCurrentRun = (user: string) =>
 // only counts once it executes — see commitRun) and skips the reassignment. A
 // single multi-statement query runs on one connection, so @ranked is visible
 // to every statement in the batch.
+//
+// Returns whether the save landed: `saved` is false when the run's 60s window
+// has closed (or there's no run at all), so the route can tell the client its
+// edit was NOT persisted instead of implying success. Checked off the row's
+// own age rather than the UPDATE's changedRows, which is also 0 for a save
+// carrying identical data.
 export const updateCurrentRun = (
   user: string,
   time: number,
   blocks: (Point & { thunder?: boolean; player?: boolean })[],
   iteration: number,
 ) =>
-  sql`
+  sql<
+    [unknown, { ranked: number; fresh: number }[] | undefined, ...unknown[]]
+  >`
     SET @ranked := FALSE;
 
-    SELECT @ranked := ranked
+    SELECT @ranked := ranked ranked,
+           TIMESTAMPDIFF(SECOND, created, NOW()) < 60 fresh
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
@@ -146,7 +157,9 @@ export const updateCurrentRun = (
             AND ranked = TRUE
         ) t1
       )
-    ORDER BY created ASC LIMIT 1;`;
+    ORDER BY created ASC LIMIT 1;`.then((r) => ({
+    saved: !!r?.[1]?.[0]?.fresh,
+  }));
 
 // `rankedOnly` filters to the daily's three attempts — the resume path uses it
 // to find an in-progress attempt. Filtering on `daily` here would be wrong: an

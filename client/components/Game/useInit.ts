@@ -7,8 +7,12 @@ import { useApiListener } from "../../hooks/useApiListener.ts";
 import { useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
+import { rebuildGrid } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { computeVerdict } from "./verdict.ts";
+
+// Monotonic key for implosion ghosts, so overlapping reverts can't collide.
+let implosionId = 0;
 
 export const useInit = () => {
   const game = useGame();
@@ -21,10 +25,15 @@ export const useInit = () => {
     setTransitionBlock,
     setTouching,
     setBlocks,
+    savedBlocksRef,
+    setImplosions,
     setPower,
     setBricks,
     setBricksTotal,
     setPowerTotal,
+    bricksTotal,
+    powerTotal,
+    checkpoint,
     setRun,
     setCheckpoint,
     setDate,
@@ -83,6 +92,11 @@ export const useInit = () => {
       setVerdict(undefined);
       setCheckpoint(data.checkpoint);
       setBlocks(data.blocks.map((b) => b.player ? { ...b, local: true } : b));
+      // What the board resumes with IS what the server has — the revert target
+      // for a later expired/rejected save.
+      savedBlocksRef.current = data.blocks
+        .filter((b) => b.player)
+        .map((b) => ({ ...b, local: true }));
       setBricks(data.bricks);
       setPower(data.power);
       // Full budget = what's left plus what's already been placed this run, so a
@@ -122,6 +136,7 @@ export const useInit = () => {
       // A staged board is the iteration's fixed pieces only — no player blocks
       // exist until the first placement opens the run.
       setBlocks(data.blocks.map((b) => ({ ...b })));
+      savedBlocksRef.current = [];
       setBricks(data.bricks);
       setPower(data.power);
       // A staged board has no player blocks yet, so its budget is the full total.
@@ -265,8 +280,58 @@ export const useInit = () => {
     setThunderHover(undefined);
   }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
 
-  useApiListener(
-    "updateRun",
-    (e) => setRun({ path: e.path, duration: e.duration, slows: e.slows }),
-  );
+  // Snap the board back to the last maze the server accepted: the optimistic
+  // edit it's undoing was never persisted, so this is the maze the run will
+  // actually execute. Blocks, grid, and the brick/power chips (recomputed from
+  // the board's full budget) all revert together. Each removed block leaves a
+  // brief implosion ghost in its place so the removal reads as deliberate.
+  const revertToSaved = () => {
+    const saved = savedBlocksRef.current;
+    const next = [...blocks.filter((b) => !b.local), ...saved];
+    const removed = blocks.filter(
+      (b) => b.local && !saved.some((s) => s.x === b.x && s.y === b.y),
+    );
+    if (removed.length) {
+      const ghosts = removed.map((b) => ({
+        x: b.x,
+        y: b.y,
+        thunder: b.thunder,
+        id: ++implosionId,
+      }));
+      const ids = new Set(ghosts.map((g) => g.id));
+      setImplosions((cur) => [...cur, ...ghosts]);
+      // Outlive the 0.28s animation, then drop these ghosts (later spawns
+      // stay).
+      setTimeout(
+        () => setImplosions((cur) => cur.filter((g) => !ids.has(g.id))),
+        400,
+      );
+    }
+    rebuildGrid(grid, checkpoint, next);
+    setBlocks(next);
+    setBricks(bricksTotal < 0 ? -1 : bricksTotal - saved.length);
+    setPower(
+      powerTotal < 0 ? -1 : powerTotal - saved.filter((b) => b.thunder).length,
+    );
+  };
+
+  useApiListener("updateRun", (e) => {
+    if ("expired" in e) {
+      // The server's 60s window closed before this save landed. Undo the edit
+      // (it popped in optimistically but was never persisted) and start the
+      // run — that's what the server is doing — rather than surfacing an
+      // error. Guarded so an already-running board isn't re-zeroed, which
+      // would re-fire the time-0 commit effect.
+      revertToSaved();
+      setTime((t) => t > 0 ? 0 : t);
+      return;
+    }
+    setRun({ path: e.path, duration: e.duration, slows: e.slows });
+  });
+
+  // A rejected save (validation, bad iteration) means the server kept its
+  // previous maze: undo the optimistic edit and keep building.
+  useApiListener("error", ({ method }) => {
+    if (method === "updateRun") revertToSaved();
+  });
 };
