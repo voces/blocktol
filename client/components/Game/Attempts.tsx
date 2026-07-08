@@ -1,7 +1,10 @@
 import { h } from "preact";
 import { useContext, useState } from "preact/compat";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
-import { standingColor } from "../../../common/percentileColor.ts";
+import {
+  percentileBand,
+  standingColor,
+} from "../../../common/percentileColor.ts";
 import { MessageMap } from "../../api.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -216,7 +219,16 @@ export const Attempts = () => {
                       <div class="attempts__sub">
                         <span>{formatPercentile(attempt.percent)}%</span>
                         {group.ranked && attempt.percentile != null && (
-                          <span class="attempts__pct">
+                          // Coloured by the percentile ITSELF — the row's band
+                          // is the standing (% of the field's range), a
+                          // different metric, and inheriting it could paint a
+                          // p100 red.
+                          <span
+                            class="attempts__pct"
+                            style={{
+                              "--pct": percentileBand(attempt.percentile),
+                            }}
+                          >
                             p{formatPercentile(attempt.percentile)}
                           </span>
                         )}

@@ -1086,10 +1086,13 @@ a:hover {
   margin-top: 2px;
 }
 
-/* Ranked (daily) field percentile — pXX, tinted by the row's band. */
+/* Ranked (daily) field percentile — pXX, tinted by the percentile ITSELF
+   (inlined as --pct by the row). The card's band is the standing — a
+   different metric that could paint a p100 red; it remains only the
+   fallback. */
 .attempts__pct {
   font: 700 11px var(--font-mono);
-  color: var(--band);
+  color: var(--pct, var(--band));
 }
 
 .attempts__empty {
