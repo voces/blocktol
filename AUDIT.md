@@ -12,7 +12,10 @@ general engineering review.
 
 ## 1. Concrete bugs
 
-- [ ] **1a. Moving a block in free play commits the run (drops `freePlay`).**
+- [x] **1a. Moving a block in free play commits the run (drops `freePlay`).**
+      _Fixed in #93 — the client flag is removed entirely; ranked-ness is now
+      recorded on the run row at start time (where the timezone-aware daily
+      check lives — see 1h) and the write path commits off that flag._
       `client/components/Game/useInputEnd.ts:117` — the drag-to-move branch
       calls `api.updateRun({ iteration, blocks })` **without** `freePlay`,
       unlike the place (line 161), upgrade (line 88), and delete (line 46)
@@ -24,8 +27,9 @@ general engineering review.
       run toward history and field best, breaking the "void until it executes"
       invariant.
 
-- [ ] **1b. `reportClientError` can recurse infinitely.** `client/api.ts:47` and
-      `:55` — every failed request fires `api.reportClientError(...)`, which
+- [x] **1b. `reportClientError` can recurse infinitely.** _Fixed in #93 — a
+      failed `reportClientError` is never itself reported._ `client/api.ts:47`
+      and `:55` — every failed request fires `api.reportClientError(...)`, which
       itself goes through the same proxy. If the server is returning errors or
       non-JSON (outage, proxy HTML error page), each failed report triggers
       another report, unboundedly — a self-inflicted request storm exactly when
@@ -67,6 +71,53 @@ general engineering review.
     race (no latest-wins guard). Delete rather than fix.
   - `server/routes/iteration/run/abandon.ts` is registered in the API but never
     called by the client. Wire it up or remove it.
+  - `getUserPlays` (`server/db/user.ts:40`) has no callers (found 2026-07-07
+    while validating `daily`'s consumers — see 6g). `getCurrentRun`
+    (`server/db/run.ts`) likewise. `getLatestRun` returns a `daily` field its
+    only caller never reads.
+
+- [x] **1g. Daily resume trusts the `daily` flag, which an in-progress attempt
+      2/3 usually doesn't hold.** _Fixed in #93 — `getLatestRun` filters on the
+      recorded `ranked` flag instead._ (Found 2026-07-07 while reviewing #93.)
+      The `daily` column means "the user's single counted result" — exactly one
+      `TRUE` per user/iteration, re-pointed at the best of the first three on
+      every ranked save — not "this run is a ranked attempt": attempts 2/3
+      insert `FALSE` and only gain the flag while beating the earlier attempts.
+      But `getDailySummary` locates the in-progress run via
+      `getLatestRun(userId, id, /* dailyOnly */ true)`
+      (`server/routes/iteration/daily.ts:46`). Refresh mid-attempt-2 while
+      behind attempt 1 and it finds attempt 1 instead (old `created` →
+      `remainingTime <= 0` → `currentRun: null`), so the boot flow
+      (`App.tsx:110-112`) calls `startRun` and silently spends attempt 3 while
+      attempt 2's 60s window is still open. Fix: resume from the latest run
+      among the ranked three (the same first-three/same-day predicate #93 uses
+      for commits — or a dedicated `ranked` column set at insert), not from
+      `daily = TRUE`.
+
+- [x] **1h. Server-date predicates break for timezone-offset players.** _Fixed
+      in #93 — a `ranked` flag is recorded on the run row at start time (v3
+      migration + windowed backfill) and read everywhere the date predicate
+      lived._ (Found 2026-07-07 during #93 review.) A daily is pinned to the
+      player's claimed local day (`dailyParts(timeZone)` at `startRun`), so
+      iteration X is legally "today" for ~50 hours of server time — UTC+14
+      enters X at X−1 10:00 UTC, UTC−12 leaves it at X+1 12:00 UTC (the window
+      `getUnratedClosedIterations(hours = 37)` already waits out), and a
+      traveler can legally spread three attempts across it. Every
+      `DATE(run.created) = DATE(iteration.created)` predicate therefore
+      misclassified legal attempts landing on a neighbouring server date. Three
+      consumers were affected: `allRunsByIteration` marked them unranked (no
+      Daily badge, and voided-but-spent attempts hidden from the panel); the
+      `daily` demote/promote in `updateCurrentRun` matched nothing, so the
+      counted result stayed stuck on attempt 1 from insert — a **scoring bug**,
+      offset players' percentile-field contribution being attempt 1's time even
+      when a later attempt was best; and #93's original commit derivation copied
+      the predicate, which would have stopped offset players' attempts
+      committing at all.
+
+      Ranked-ness can only be decided at start time, when the claimed timezone
+      is in hand — any inference from `created` misfires on prompt free-play
+      replays of a neighbouring day inside the window. The backfill
+      approximates history with the full legal window.
 
 ---
 
@@ -309,6 +360,27 @@ scars correctly fixed; CI covers fmt/check/test/build.
 - [ ] **6f. Error surfacing.** No error boundary; `App`'s `disconnected` state
       only covers the boot request; `Disconnected` never shows for mid-game
       failures (see 2c).
+
+- [ ] **6g. Optional: retire the `daily` column.** (Consumers validated
+      2026-07-07.) Post-#93, `daily` means exactly one thing everywhere — the
+      user's counted result, i.e. their best non-void **ranked** run on the
+      iteration — and has always meant that (git: the earliest visible schema
+      seeds only attempt 1 at insert and re-points the flag at the best via the
+      inline reassignment; the dead `markDaily` removed in #52 was literally
+      "flag the single best non-void run"). Its live readers: rating
+      (`getRatingParticipants`, `getIterationDailyTimeCounts`), the live
+      percentile field (`getIterationTimeCounts`), the calendar (`listDailies`'s
+      `ownDailyBest`/`dailyBest`/`dailyPercentile`), and the profile (`played`,
+      median percentile, records). All of those reduce to
+      `MAX(time) … WHERE ranked AND NOT void GROUP BY user`, so the column is
+      _almost_ derivable — the one non-derivable bit is `mergeUsers`'
+      earliest-day-wins policy (a merge must not cherry-pick the faster day).
+      Retiring `daily` therefore requires moving that policy into `ranked`
+      (demote the losing day's ranked flags at merge), rewriting the four reader
+      queries as per-user MAX subqueries (losing the cheap
+      `iteration_daily_void_time_idx` index-only aggregation), and dropping the
+      demote/promote statements from the `updateRun` hot path. Correct as-is;
+      worth doing only as a simplification.
 
 ---
 

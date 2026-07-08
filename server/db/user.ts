@@ -182,14 +182,17 @@ export const dailyAttemptsByIteration = (user: string, iteration: number) =>
     LIMIT 3;
   `.then((r) => r.map((r) => r.time));
 
-// The same first-3 attempts, but with the maze each run built — the ranked
-// attempts (result modal, attempts-remaining).
+// The ranked daily attempts (at most three, by construction of the `ranked`
+// flag — see db/run.ts startRun), oldest first, with the maze each run built
+// (result modal, attempts-remaining). Void included — an abandoned attempt
+// still spends a slot.
 export const attemptRunsByIteration = (user: string, iteration: number) =>
   sql<{ time: number; data: string; created: string }[]>`
     SELECT time, data, created
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
+      AND ranked = TRUE
     ORDER BY created ASC
     LIMIT 3;
   `.then((r) =>
@@ -202,14 +205,9 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
 
 // The user's own runs on an iteration (their ranked attempts plus any free
 // play), oldest first, with each run's maze, creation time, and whether it was a
-// ranked daily attempt.
-//
-// A run is a ranked attempt iff it's among the first three AND was created on the
-// iteration's own day — matching how the daily flag is assigned (a daily attempt
-// can only happen on the user's local day the daily was live). Free play — same
-// day after the three attempts, or a replay of a past day — never qualifies, so
-// it isn't badged "Daily". `created <= the third-oldest run` bounds the first
-// three (COALESCE keeps them all when there are fewer than three).
+// ranked daily attempt — read straight off the `ranked` flag recorded at start
+// time (see db/run.ts startRun), the only moment the timezone-aware daily check
+// can be made.
 //
 // Non-void runs are always returned, plus voided runs that are ranked attempts
 // (a daily attempt started but never built still counts as spent). Voided free
@@ -217,30 +215,11 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
 // padded with empty rows.
 export const allRunsByIteration = (user: string, iteration: number) =>
   sql<{ time: number; data: string; created: string; ranked: number }[]>`
-    SELECT
-      time, data, created,
-      (
-        created <= COALESCE((
-          SELECT created FROM run
-          WHERE user = ${user} AND iteration = ${iteration}
-          ORDER BY created ASC LIMIT 1 OFFSET 2
-        ), created)
-        AND DATE(created) = DATE((SELECT created FROM iteration WHERE id = ${iteration}))
-      ) ranked
+    SELECT time, data, created, ranked
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
-      AND (
-        void = FALSE
-        OR (
-          created <= COALESCE((
-            SELECT created FROM run
-            WHERE user = ${user} AND iteration = ${iteration}
-            ORDER BY created ASC LIMIT 1 OFFSET 2
-          ), created)
-          AND DATE(created) = DATE((SELECT created FROM iteration WHERE id = ${iteration}))
-        )
-      )
+      AND (void = FALSE OR ranked = TRUE)
     ORDER BY created ASC
     LIMIT 100;
   `.then((r) =>

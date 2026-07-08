@@ -44,21 +44,32 @@ export const api = new Proxy({}, {
         const data = await resp.json();
         if (!("error" in data)) em.dispatchEvent(method, data);
         else {
-          api.reportClientError({
-            message: "Failed request",
-            data: { status: resp.status, error: data.error },
-          });
+          // Never report a failed report: reportClientError rides this same
+          // proxy, so during an outage every failed report would otherwise fire
+          // another — an unbounded loop hammering the server exactly when it's
+          // least healthy.
+          if (method !== "reportClientError") {
+            // Fire-and-forget; swallow its own failure (e.g. network down) so
+            // it doesn't surface as an unhandled rejection.
+            api.reportClientError({
+              message: "Failed request",
+              data: { status: resp.status, method, error: data.error },
+            }).catch(() => {});
+          }
           em.dispatchEvent("error", { method, input, error: data });
         }
         return data;
       } catch (err) {
-        api.reportClientError({
-          message: "Failed request",
-          data: {
-            status: resp.status,
-            error: err instanceof Error ? err.message : String(err),
-          },
-        });
+        if (method !== "reportClientError") {
+          api.reportClientError({
+            message: "Failed request",
+            data: {
+              status: resp.status,
+              method,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          }).catch(() => {});
+        }
         throw err;
       }
     };
