@@ -3099,19 +3099,6 @@ a:hover {
   --band-card-fill: 11%;
 }
 
-/* Your row also gets a left accent bar, so it's findable at a glance while
-   scrolling past record-coloured rows. */
-.standings-row--you::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  border-radius: 4px 0 0 4px;
-  background: var(--you, var(--win));
-}
-
 .standings-row__rank {
   flex: none;
   min-width: 34px;

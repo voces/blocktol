@@ -15,10 +15,11 @@ type Row = StandingsData["rows"][number];
 
 // One board row. A single accent per row: your identity colour on your own
 // row, overridden by a record state's hue (gold/lime) when you hold one —
-// achievement picks the COLOUR, but the "you" treatments (left bar, accented
-// sub/rank/time) persist either way, so your row is findable at #1 too. The
-// accent rides the --you custom property; the stylesheet's green is only the
-// fallback. The avatar keeps the player's identity colour regardless.
+// achievement picks the COLOUR, but the "you" treatments (accented
+// sub/rank/time, stronger wash) persist either way, so your row is findable
+// at #1 too. The accent rides the --you custom property; the stylesheet's
+// green is only the fallback. The avatar keeps the player's identity colour
+// regardless.
 const BoardRow = ({ row }: { row: Row }) => {
   const state = row.record === "beat"
     ? "gold"
