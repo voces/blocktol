@@ -5,9 +5,11 @@ import { useDragToClose } from "../../hooks/useDragToClose.ts";
 import {
   fetchStandings,
   refreshStandings,
+  setStandingsSort,
   standingsByKey,
   standingsKey,
   StandingsSort,
+  standingsSort,
   todayIteration,
 } from "../../store/standings.ts";
 import { Crown } from "./icons.tsx";
@@ -97,7 +99,8 @@ export const StandingsSheet = (
     onClose: () => void;
   },
 ) => {
-  const [sort, setSort] = useState<StandingsSort>("daily");
+  // The sort is shared with the dock and persisted across visits.
+  const sort = standingsSort.value;
 
   // Fetch the viewed (day, sort); refetch as the sort or day changes. Today
   // resolves server-side from the timezone.
@@ -121,21 +124,24 @@ export const StandingsSheet = (
     ? undefined
     : standingsByKey.value.get(standingsKey(keyIt, sort));
 
+  // A bare text button per the design — the active sort is accent-underlined
+  // with a ▾ caret, the other muted.
   const SortTab = (
     { value, label }: { value: StandingsSort; label: string },
   ) => (
     <button
       type="button"
-      class={"standings-sort__tab tapc" +
-        (sort === value ? " standings-sort__tab--active" : "")}
+      class={"standings-sortby__tab tapc" +
+        (sort === value ? " standings-sortby__tab--active" : "")}
       aria-pressed={sort === value}
       onClick={() => {
-        setSort(value);
+        setStandingsSort(value);
         // Opening onto possibly-stale ranks — refresh behind the switch.
         refreshStandings(isToday ? undefined : iteration, value);
       }}
     >
       {label}
+      {sort === value ? " ▾" : ""}
     </button>
   );
 
@@ -158,7 +164,9 @@ export const StandingsSheet = (
         <div class="standings-sheet__head" {...handlers}>
           <div>
             <div class="standings-sheet__title">Standings</div>
-            <div class="standings-sheet__date">{s ? formatDay(s.day) : ""}</div>
+            <div class="standings-sheet__date">
+              {s ? `${formatDay(s.day)} · ${s.players} players` : ""}
+            </div>
           </div>
           <div class="standings-sheet__side">
             {/* Daily board only; the PB board is all-time and never locks. */}
@@ -178,14 +186,10 @@ export const StandingsSheet = (
             </button>
           </div>
         </div>
-        <div class="standings-sheet__controls">
-          <div class="standings-sort" role="group" aria-label="Sort standings">
-            <SortTab value="daily" label="Daily" />
-            <SortTab value="pb" label="PB" />
-          </div>
-          <span class="standings-sheet__meta">
-            <span class="mono">{s?.players ?? 0}</span> players
-          </span>
+        <div class="standings-sortby" role="group" aria-label="Sort standings">
+          <span class="standings-sortby__label mono">SORT BY</span>
+          <SortTab value="daily" label="DAILY" />
+          <SortTab value="pb" label="PB" />
         </div>
         <div class="standings-sheet__list">
           {(s?.rows ?? []).map((row) => (

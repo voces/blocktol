@@ -2998,47 +2998,38 @@ a:hover {
   display: none;
 }
 
-/* Sort toggle (Daily / PB) on the left, player count on the right. */
-.standings-sheet__controls {
+/* Sort control per the design: a "SORT BY" label, then DAILY / PB as bare
+   text buttons — the active one accent-coloured, underlined, with a caret. */
+.standings-sortby {
   flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   padding: 0 20px 10px;
 }
 
-.standings-sort {
-  display: flex;
-  gap: 3px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  padding: 3px;
+.standings-sortby__label {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
 }
 
-.standings-sort__tab {
+.standings-sortby__tab {
   border: 0;
-  border-radius: 6px;
-  padding: 5px 12px;
-  cursor: pointer;
-  font: 600 11px var(--font);
+  padding: 0;
   background: transparent;
+  cursor: pointer;
+  font: 700 11px var(--font-mono);
+  letter-spacing: 0.04em;
   color: var(--text-mute);
+  text-underline-offset: 4px;
 }
 
-.standings-sort__tab--active {
-  background: var(--surface-3);
-  color: var(--color);
-}
-
-.standings-sheet__meta {
-  font: 500 12px var(--font);
-  color: var(--text-mute);
-  white-space: nowrap;
-}
-
-.standings-sheet__meta .mono {
-  font-weight: 600;
+.standings-sortby__tab--active {
+  color: var(--accent-bright);
+  text-decoration: underline;
 }
 
 .standings-sheet__list {

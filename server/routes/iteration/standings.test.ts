@@ -141,23 +141,32 @@ Deno.test({
       });
       assertEquals(asLeader.rows.map((r) => r.you)[0], true);
 
-      // The PB sort ranks by all-time best across the whole field. The
-      // viewer's 60 free-play run is their PB, so they sit near the top; their
-      // row's secondary is their time on the viewed day (34). (The field is the
-      // global player base, so we assert the viewer's own row, not exact ranks.)
+      // The PB sort re-ranks the SAME day's players by their all-time best.
+      // The viewer's 60 free-play run is their PB, so they jump to #1 (day
+      // best was only 5th); each row's secondary is that day's time. Same five
+      // players, same count — just re-sorted.
       const pb = await standings.handler(
         { iteration, sort: "pb" },
         authed(viewer),
       );
       assert(!("error" in pb), "expected a pb standings payload");
       assertEquals(pb.sort, "pb");
+      assertEquals(pb.players, 5);
       assertEquals(pb.closesAt, null); // all-time never locks
-      assertEquals(pb.me?.time, 60);
-      assertEquals(pb.me?.secondary, 34);
-      const youRow = pb.rows.find((r) => r.you);
-      assert(youRow, "viewer should appear in the PB window");
-      assertEquals(youRow.time, 60);
-      assertEquals(youRow.secondary, 34);
+      assertEquals(pb.me, {
+        rank: 1,
+        tied: false,
+        time: 60,
+        secondary: 34,
+        record: "beat",
+        percentile: 1,
+      });
+      // PB order: viewer 60, leader 40, {tiedA,tiedB} 38.5, fourth 36.
+      assertEquals(pb.rows.map((r) => r.time), [60, 40, 38.5, 38.5, 36]);
+      assertEquals(pb.rows.map((r) => r.rank), [1, 2, 3, 3, 5]);
+      // Secondary is each player's time that day (leader's day best was 40).
+      assertEquals(pb.rows.map((r) => r.secondary), [34, 40, 38.5, 38.5, 36]);
+      assertEquals(pb.rows.find((r) => r.you)?.time, 60);
       for (const row of pb.rows) assert(!("user" in row));
     } finally {
       // The iteration cascade removes the seeded runs; users their own.

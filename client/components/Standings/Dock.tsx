@@ -6,6 +6,7 @@ import {
   refreshStandings,
   standingsByKey,
   standingsKey,
+  standingsSort,
   todayIteration,
 } from "../../store/standings.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
@@ -34,22 +35,25 @@ export const StandingsDock = () => {
   const revealed = isToday ? attemptsRemaining === 0 : true;
 
   const [open, setOpen] = useState(false);
-  // Fetch the viewed day (boot consumes the primed today fetch); re-fires as
-  // the calendar swaps days or the today entry first resolves.
+  // The dock reflects whichever sort is active (persisted, shared with the
+  // sheet) — its rank and leader switch between the daily and PB boards.
+  const sort = standingsSort.value;
+  // Fetch the viewed (day, sort) (boot consumes the primed today fetch);
+  // re-fires as the calendar swaps days, the sort toggles, or the today entry
+  // first resolves.
   useEffect(() => {
-    fetchStandings(isToday ? undefined : iteration);
-  }, [iteration, isToday]);
+    fetchStandings(isToday ? undefined : iteration, sort);
+  }, [iteration, isToday, sort]);
   // The reveal follows the player's own attempts, which move today's board:
   // re-rank behind the appearing dock.
   useEffect(() => {
-    if (revealed && isToday) refreshStandings();
-  }, [revealed]);
+    if (revealed && isToday) refreshStandings(undefined, sort);
+  }, [revealed, sort]);
 
-  // The dock always shows the daily board (the sheet owns the sort toggle).
   const key = isToday ? todayIteration.value : iteration;
   const s = key === undefined
     ? undefined
-    : standingsByKey.value.get(standingsKey(key, "daily"));
+    : standingsByKey.value.get(standingsKey(key, sort));
   const leader = s?.rows[0];
   const me = s?.me ?? null;
 
@@ -77,7 +81,7 @@ export const StandingsDock = () => {
         onClick={() => {
           setOpen(true);
           // The sheet is opening onto possibly-stale ranks; refresh behind it.
-          refreshStandings(isToday ? undefined : iteration);
+          refreshStandings(isToday ? undefined : iteration, sort);
         }}
       >
         <span class="standings-dock__chevron">
@@ -103,7 +107,9 @@ export const StandingsDock = () => {
               ? (
                 <>
                   {leader.record === "beat" && <Crown />}
-                  {leader.you ? "you lead" : `${leader.name} leads`}
+                  {sort === "pb"
+                    ? (leader.you ? "you top PB" : `${leader.name} tops PB`)
+                    : (leader.you ? "you lead" : `${leader.name} leads`)}
                   {" · "}
                   <span
                     class={"mono" +

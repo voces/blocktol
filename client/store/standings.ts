@@ -23,6 +23,18 @@ export const todayIteration = signal<number | undefined>(undefined);
 export const standingsKey = (iteration: number, sort: StandingsSort) =>
   `${iteration}:${sort}`;
 
+// The chosen sort, shared by the dock and sheet and persisted across visits
+// (like the runs panel's sort) — so toggling in the sheet sticks, and the
+// collapsed dock reflects whichever board is active.
+const SORT_KEY = "standingsSort";
+export const standingsSort = signal<StandingsSort>(
+  localStorage.getItem(SORT_KEY) === "pb" ? "pb" : "daily",
+);
+export const setStandingsSort = (sort: StandingsSort) => {
+  localStorage.setItem(SORT_KEY, sort);
+  standingsSort.value = sort;
+};
+
 api.addEventListener("standings", (s) => {
   const next = new Map(standingsByKey.value);
   next.set(`${s.iteration}:${s.sort}`, s);
