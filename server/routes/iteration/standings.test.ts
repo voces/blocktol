@@ -141,10 +141,10 @@ Deno.test({
       });
       assertEquals(asLeader.rows.map((r) => r.you)[0], true);
 
-      // The PB sort re-ranks the SAME day's players by their all-time best.
-      // The viewer's 60 free-play run is their PB, so they jump to #1 (day
-      // best was only 5th); each row's secondary is that day's time. Same five
-      // players, same count — just re-sorted.
+      // The PB sort re-ranks the SAME day's players by their best build as of
+      // this day. The viewer's 60 free-play run (on this iteration) is their
+      // PB, so they jump to #1 (day best was only 5th); each row's secondary is
+      // that day's time. Same five players, same count — just re-sorted.
       const pb = await standings.handler(
         { iteration, sort: "pb" },
         authed(viewer),
@@ -174,6 +174,44 @@ Deno.test({
       for (const user of users) {
         await sql`DELETE FROM user WHERE id = ${user};`;
       }
+    }
+  },
+});
+
+Deno.test({
+  name: "standings PB is scoped to the viewed day — no future leak",
+  ignore: !live,
+  fn: async () => {
+    // Two days (early < late, by monotonic iteration id) and one player.
+    const early = await testIteration();
+    const late = await testIteration();
+    const user = await testUser();
+    try {
+      await seedRun(user, early, 20); // early day's daily run
+      await seedRun(user, late, 30); // late day's daily run (so they're on it)
+      // A better build made on the LATER day — it must NOT count toward the
+      // early day's PB.
+      await seedRun(user, late, 60, { daily: false });
+
+      const e = await standings.handler(
+        { iteration: early, sort: "pb" },
+        authed(user),
+      );
+      assert(!("error" in e));
+      // As of the early day, the player's PB is 20 — the 30/60 came later.
+      assertEquals(e.me?.time, 20);
+
+      const l = await standings.handler(
+        { iteration: late, sort: "pb" },
+        authed(user),
+      );
+      assert(!("error" in l));
+      // As of the late day, everything counts: PB is the 60 free-play build.
+      assertEquals(l.me?.time, 60);
+    } finally {
+      await sql`DELETE FROM iteration WHERE id = ${early};`;
+      await sql`DELETE FROM iteration WHERE id = ${late};`;
+      await sql`DELETE FROM user WHERE id = ${user};`;
     }
   },
 });
