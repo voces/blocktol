@@ -1,9 +1,22 @@
 import { h, render } from "preact";
-import { App } from "./components/App.tsx";
+import { prime } from "./api.ts";
+import { App, getHasCompletedOnboarding } from "./components/App.tsx";
 import { initSettings } from "./hooks/useSettings.ts";
+import { getCleanLink, getPendingLink } from "./util/id.ts";
+import { getTimeZone } from "./util/timeZone.ts";
 
 // Apply the cached theme before first paint (the server value reconciles later).
 initSettings();
+
+// Head start on the boot round trips: fire them during module evaluation,
+// before the first render; App's calls consume these primed responses (see
+// api.prime). Skipped mid-onboarding (the app defers its fetch then anyway)
+// and while a sign-in link is pending (the gate must resolve identity first —
+// priming would bake in the wrong user).
+if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
+  prime("getDailySummary", { timeZone: getTimeZone() });
+  prime("getProfile", {});
+}
 
 render(h(App, {}), document.body);
 
