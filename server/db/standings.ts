@@ -34,25 +34,21 @@ export const getDailyStandings = (iteration: number) =>
     ORDER BY best.t DESC, at ASC;
   `;
 
-// Each listed player's best build (any daily or free), `void = FALSE`, ON OR
-// BEFORE the given iteration — their PB "as of that day". Iteration ids are
-// monotonic per day, so `iteration <= upto` bounds it to that day and earlier:
-// on today's board it's the current all-time PB (same figure as the profile's
-// bestBuild); on a past day's board it's the PB as it stood then, so a later
-// improvement doesn't leak backwards. The standings PB sort re-ranks the day's
-// players by this, and the daily board shows it as each row's "PB" secondary.
-// Restricted to the day's players (an `IN (...)` over user_void_time_idx, so
-// each user's MAX is an index range) rather than the whole user base. Empty in
-// → no query.
-export const getPbForUsers = (users: readonly string[], upto: number) =>
-  users.length === 0 ? Promise.resolve(new Map<string, number>()) : sql<
-    { user: string; pb: number }[]
-  >`
-    SELECT user, MAX(time) pb
-    FROM run
-    WHERE void = FALSE AND iteration <= ${upto} AND user IN (${users})
-    GROUP BY user;
-  `.then((r) => new Map(r.map((x) => [x.user, x.pb])));
+// Everyone with a non-void run on this iteration, with their best build that
+// day — ranked attempts AND free play, unlike getDailyStandings' ranked-only
+// field. This is the standings "PB" sort's population (best maze built on that
+// day's board, however), and it also supplies the daily board's "PB" secondary
+// per player. A day the viewer only free-played still has rows here even when
+// the ranked daily field is empty. Names come along for the players who never
+// appear in the ranked field.
+export const getIterationBests = (iteration: number) =>
+  sql<{ user: string; name: string | null; best: number }[]>`
+    SELECT r.user user, u.name name, MAX(r.time) best
+    FROM run r
+    JOIN user u ON u.id = r.user
+    WHERE r.iteration = ${iteration} AND r.void = FALSE
+    GROUP BY r.user, u.name;
+  `;
 
 // The iteration facts the standings header needs: whether the field is frozen
 // (rated), its calendar day, and the day's start — from which the "until
