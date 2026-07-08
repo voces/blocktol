@@ -3,12 +3,11 @@ import { useEffect, useState } from "preact/compat";
 import { avatarColorFromHue, avatarInitial } from "../../../common/avatar.ts";
 import { useDragToClose } from "../../hooks/useDragToClose.ts";
 import {
+  boardOf,
   fetchStandings,
-  refreshStandings,
   setStandingsSort,
   standingsByKey,
   StandingsData,
-  standingsKey,
   StandingsSort,
   standingsSort,
   todayIteration,
@@ -22,9 +21,7 @@ import {
   formatTime,
 } from "./helpers.ts";
 
-type Row = NonNullable<
-  ReturnType<typeof standingsByKey.value.get>
->["rows"][number];
+type Row = NonNullable<ReturnType<typeof boardOf>>["rows"][number];
 
 // One board row. A single accent per row: your identity colour on your own
 // row, overridden by a record state's hue (gold/lime) when you hold one —
@@ -36,6 +33,8 @@ type Row = NonNullable<
 //
 // The big number is the sort's ranked value; the small line is the other
 // board's value — "PB {pb}" on the daily board, "day {time}" on the PB board.
+// Both boards carry a per-row timestamp (when the daily best / the best build
+// was set), shown as the "2h ago" sub-line.
 const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
   const state = row.record === "beat"
     ? "gold"
@@ -47,11 +46,7 @@ const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
     : state === "lime"
     ? "var(--peak)"
     : avatarColorFromHue(row.hue);
-  // The PB board has no per-row timestamp; the daily board shows when the best
-  // was set. The viewer is always tagged "you".
-  const sub = sort === "daily"
-    ? (row.you ? `you · ${formatAgo(row.at)}` : formatAgo(row.at))
-    : (row.you ? "you" : "");
+  const sub = row.you ? `you · ${formatAgo(row.at)}` : formatAgo(row.at);
   const smallLabel = sort === "daily" ? "PB" : "day";
   return (
     <div
@@ -91,8 +86,8 @@ const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
 // The expanded standings: a bottom sheet on mobile, a right-hand side sheet on
 // desktop (purely CSS, see `.standings-modal`). The podium and the viewer's
 // neighbourhood, with exact "N between" separators where the window skips.
-// Follows the board's viewed day; toggles between the daily and all-time-PB
-// sorts (each fetched/cached on demand).
+// Follows the board's viewed day; toggles between the daily and PB sorts — both
+// arrive in one response, so the toggle is instant.
 export const StandingsSheet = (
   { iteration, isToday, onClose }: {
     iteration?: number;
@@ -100,16 +95,12 @@ export const StandingsSheet = (
     onClose: () => void;
   },
 ) => {
-  // The sort is shared with the dock and persisted across visits.
+  // The sort is shared with the dock and persisted across visits. Both boards
+  // ride the same response, so switching it never fetches.
   const sort = standingsSort.value;
 
-  // Warm BOTH sorts as soon as the sheet opens (the day's field is cached
-  // server-side, so the second is cheap) — so toggling reads from the store
-  // instantly instead of flashing an empty sheet on the first PB open.
   useEffect(() => {
-    const it = isToday ? undefined : iteration;
-    fetchStandings(it, "daily");
-    fetchStandings(it, "pb");
+    fetchStandings(isToday ? undefined : iteration);
   }, [iteration, isToday]);
 
   // The countdown only needs minute resolution; re-render on a slow tick.
@@ -126,20 +117,16 @@ export const StandingsSheet = (
   const keyIt = isToday ? todayIteration.value : iteration;
   const live = keyIt === undefined
     ? undefined
-    : standingsByKey.value.get(standingsKey(keyIt, sort));
+    : standingsByKey.value.get(keyIt);
 
-  // Keep the last board on screen while a switch (or first load) is in flight,
-  // so the sheet never collapses to an empty shell. Track its sort too, so its
-  // rows render with the metric they belong to until the requested sort lands.
-  const [shown, setShown] = useState<
-    { data: StandingsData; sort: StandingsSort } | undefined
-  >();
+  // Keep the last response on screen while a first load is in flight, so the
+  // sheet never collapses to an empty shell.
+  const [shown, setShown] = useState<StandingsData | undefined>();
   useEffect(() => {
-    if (live) setShown({ data: live, sort });
-  }, [live, sort]);
-  const view = live ? { data: live, sort } : shown;
-  const s = view?.data;
-  const viewSort = view?.sort ?? sort;
+    if (live) setShown(live);
+  }, [live]);
+  const s = live ?? shown;
+  const b = boardOf(s, sort);
 
   // A bare text button per the design — the active sort is accent-underlined
   // with a ▾ caret, the other muted.
@@ -151,11 +138,7 @@ export const StandingsSheet = (
       class={"standings-sortby__tab tapc" +
         (sort === value ? " standings-sortby__tab--active" : "")}
       aria-pressed={sort === value}
-      onClick={() => {
-        setStandingsSort(value);
-        // Opening onto possibly-stale ranks — refresh behind the switch.
-        refreshStandings(isToday ? undefined : iteration, value);
-      }}
+      onClick={() => setStandingsSort(value)}
     >
       {label}
       {sort === value ? " ▾" : ""}
@@ -182,12 +165,12 @@ export const StandingsSheet = (
           <div>
             <div class="standings-sheet__title">Standings</div>
             <div class="standings-sheet__date">
-              {s ? `${formatDay(s.day)} · ${s.players} players` : ""}
+              {s && b ? `${formatDay(s.day)} · ${b.players} players` : ""}
             </div>
           </div>
           <div class="standings-sheet__side">
-            {/* Daily board only; the PB board is all-time and never locks. */}
-            {s?.closesAt != null && (
+            {/* Daily board only; the PB board counts free play and never locks. */}
+            {sort === "daily" && s?.closesAt != null && (
               <span class="standings-sheet__timer">
                 <span class="mono">{formatCountdown(s.closesAt)}</span>
                 <span>until ranked</span>
@@ -209,7 +192,7 @@ export const StandingsSheet = (
           <SortTab value="pb" label="PB" />
         </div>
         <div class="standings-sheet__list">
-          {(s?.rows ?? []).map((row) => (
+          {(b?.rows ?? []).map((row) => (
             <Fragment key={row.rank + row.name}>
               {row.gapBefore > 0 && (
                 <div class="standings-gap">
@@ -218,12 +201,12 @@ export const StandingsSheet = (
                   <span />
                 </div>
               )}
-              <BoardRow row={row} sort={viewSort} />
+              <BoardRow row={row} sort={sort} />
             </Fragment>
           ))}
-          {s && s.rows.length === 0 && (
+          {b && b.rows.length === 0 && (
             <div class="standings-sheet__empty">
-              {viewSort === "daily" ? "No runs this day" : "No runs yet"}
+              {sort === "daily" ? "No runs this day" : "No runs yet"}
             </div>
           )}
         </div>

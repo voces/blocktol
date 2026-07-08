@@ -2,10 +2,10 @@ import { Fragment, h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { percentileColor } from "../../../common/percentileColor.ts";
 import {
+  boardOf,
   fetchStandings,
   refreshStandings,
   standingsByKey,
-  standingsKey,
   standingsSort,
   todayIteration,
 } from "../../store/standings.ts";
@@ -36,26 +36,25 @@ export const StandingsDock = () => {
 
   const [open, setOpen] = useState(false);
   // The dock reflects whichever sort is active (persisted, shared with the
-  // sheet) — its rank and leader switch between the daily and PB boards.
+  // sheet) — its rank and leader switch between the daily and PB boards, both
+  // of which ride the one response, so the switch never fetches.
   const sort = standingsSort.value;
-  // Fetch the viewed (day, sort) (boot consumes the primed today fetch);
-  // re-fires as the calendar swaps days, the sort toggles, or the today entry
-  // first resolves.
+  // Fetch the viewed day (boot consumes the primed today fetch); re-fires as
+  // the calendar swaps days or the today entry first resolves.
   useEffect(() => {
-    fetchStandings(isToday ? undefined : iteration, sort);
-  }, [iteration, isToday, sort]);
+    fetchStandings(isToday ? undefined : iteration);
+  }, [iteration, isToday]);
   // The reveal follows the player's own attempts, which move today's board:
   // re-rank behind the appearing dock.
   useEffect(() => {
-    if (revealed && isToday) refreshStandings(undefined, sort);
-  }, [revealed, sort]);
+    if (revealed && isToday) refreshStandings(undefined);
+  }, [revealed]);
 
   const key = isToday ? todayIteration.value : iteration;
-  const s = key === undefined
-    ? undefined
-    : standingsByKey.value.get(standingsKey(key, sort));
-  const leader = s?.rows[0];
-  const me = s?.me ?? null;
+  const s = key === undefined ? undefined : standingsByKey.value.get(key);
+  const b = boardOf(s, sort);
+  const leader = b?.rows[0];
+  const me = b?.me ?? null;
 
   // Your rank wears your standing: record states first (gold for an outright
   // #1, chartreuse for a shared record), then the continuous percentile ramp —
@@ -81,7 +80,7 @@ export const StandingsDock = () => {
         onClick={() => {
           setOpen(true);
           // The sheet is opening onto possibly-stale ranks; refresh behind it.
-          refreshStandings(isToday ? undefined : iteration, sort);
+          refreshStandings(isToday ? undefined : iteration);
         }}
       >
         <span class="standings-dock__chevron">
