@@ -6,7 +6,7 @@ import {
   getIterationOtherBest,
   getIterationTimeCounts,
 } from "../../db/iteration.ts";
-import { getLatestRun } from "../../db/run.ts";
+import { getLatestRun, startRun as dbStartRun } from "../../db/run.ts";
 import {
   allRunsByIteration,
   attemptRunsByIteration,
@@ -35,26 +35,61 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       timeCounts,
       otherBest,
       iteration,
-      latestRun,
-      allRuns,
-      rankedRuns,
       user,
     ] = await Promise.all([
       iterationId.then((id) => getIterationTimeCounts(id, userId)),
       iterationId.then((id) => getIterationOtherBest(id, userId)),
       iterationId.then((id) => getIteration(id)),
+      createOrUpdateUser(userId),
+    ]);
+
+    let [latestRun, allRuns, rankedRuns] = await Promise.all([
       iterationId.then((id) => getLatestRun(userId, id, true)),
       iterationId.then((id) => allRunsByIteration(userId, id)),
       // The ranked three include void (abandoned) runs — abandoning still
       // spends an attempt, so they must count even though the panel hides them.
       iterationId.then((id) => attemptRunsByIteration(userId, id)),
-      createOrUpdateUser(userId),
     ]);
 
-    const remainingTime = Math.floor(
-      60 - (Date.now() - new Date(latestRun?.created ?? 0).getTime()) /
-          1000,
-    );
+    const remaining = (created: string | undefined) =>
+      Math.floor(60 - (Date.now() - new Date(created ?? 0).getTime()) / 1000);
+
+    // Boot (the timeZone variant): auto-start the next daily attempt when
+    // nothing is in progress and attempts remain, so the board is playable off
+    // this one response. The client used to read the summary and then issue a
+    // second startRun round trip; semantics are unchanged — opening the app
+    // starts the attempt, and abandoning it still spends it. Old cached
+    // clients guard their follow-up startRun on currentRun, so they won't
+    // double-start; the new client keeps that startRun as a fallback should
+    // this insert fail. Not done for the {iteration} variant, which reviews a
+    // specific day rather than booting.
+    if (
+      "timeZone" in rest && rankedRuns.length < 3 &&
+      !(latestRun && remaining(latestRun.created) > 0)
+    ) {
+      const { year, month, day } = dailyParts(rest.timeZone);
+      try {
+        await dbStartRun(
+          await iterationId,
+          userId,
+          iteration.min,
+          year,
+          month,
+          day,
+        );
+        [latestRun, allRuns, rankedRuns] = await Promise.all([
+          iterationId.then((id) => getLatestRun(userId, id, true)),
+          iterationId.then((id) => allRunsByIteration(userId, id)),
+          iterationId.then((id) => attemptRunsByIteration(userId, id)),
+        ]);
+      } catch (err) {
+        // The summary still serves without the auto-start; the client's
+        // fallback startRun recovers the board.
+        console.error(err);
+      }
+    }
+
+    const remainingTime = remaining(latestRun?.created);
     const currentRun = latestRun && remainingTime > 0
       ? (() => {
         const blocks = [

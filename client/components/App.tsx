@@ -48,7 +48,7 @@ const Shell = (
   </DailyItemsContext.Provider>
 );
 
-const getHasCompletedOnboarding = () =>
+export const getHasCompletedOnboarding = () =>
   localStorage.getItem("hasCompletedOnboarding") === "true";
 const setHasCompletedOnboarding = () =>
   localStorage.setItem("hasCompletedOnboarding", "true");
@@ -99,20 +99,23 @@ export const App = () => {
         setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
         return;
       }
-      // Warm the profile cache once the summary lands — by then any first-load
-      // name seeding has committed — so opening the profile is instant. Its
-      // payload carries the server-persisted settings; adopt them (the
-      // cross-device source of truth) over the boot-time localStorage guess.
-      fetchProfile().then((p) => {
-        if (p?.settings) adoptServerSettings(p.settings);
-      });
       if (ret.currentRun) return;
+      // The summary auto-starts the daily server-side and returns it as
+      // currentRun; this explicit start is only the fallback for when that
+      // insert failed.
       if (ret.ranked.length < 3) {
         api.startRun({ iteration: "daily", timeZone: getTimeZone() });
       }
     }).catch(() => {
       setDisconnected(true);
       setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
+    });
+    // Warm the profile cache in parallel — the route seeds the user row
+    // itself, so this no longer waits on the summary's first-load seeding.
+    // Its payload carries the server-persisted settings; adopt them (the
+    // cross-device source of truth) over the boot-time localStorage guess.
+    fetchProfile().then((p) => {
+      if (p?.settings) adoptServerSettings(p.settings);
     });
   }, [showOnboarding, linkPending, retry]);
 

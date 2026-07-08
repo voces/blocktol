@@ -250,10 +250,21 @@ general engineering review.
 
 ## 4. Serial async calls & optimistic rendering opportunities
 
-- [ ] **4a. Boot waterfall (the big one).** Cold load: `getDailySummary` (RTT 1)
-      → _then_ `startRun` (RTT 2) before the board is playable, with
-      `getProfile` and the calendar's `list` also gated behind RTT 1
-      (`client/components/App.tsx:95-116`). Options, increasing effort:
+- [x] **4a. Boot waterfall (the big one).** _Fixed in #98 — three pieces: (1)
+      `getDailySummary` (timeZone variant) auto-starts the daily server-side and
+      returns it as `currentRun`, collapsing boot to one round trip (the
+      client's explicit `startRun` remains as a fallback; old clients guard on
+      `currentRun`, so no double start); (2) the profile fetch runs in parallel
+      with the summary (the profile route now seeds the user row so the race is
+      safe); (3) `api.prime()` fires both requests at module evaluation, before
+      the first render — the app's calls consume the in-flight responses through
+      the normal dispatch path. Inlining data in the HTML was evaluated and
+      rejected: identity lives in localStorage (the HTML request is anonymous)
+      and the service worker pre-caches `index.html`, so a bootstrap payload
+      would be both impossible to personalize and stale._ Cold load:
+      `getDailySummary` (RTT 1) → _then_ `startRun` (RTT 2) before the board is
+      playable, with `getProfile` and the calendar's `list` also gated behind
+      RTT 1 (`client/components/App.tsx:95-116`). Options, increasing effort:
   1. Fire `getProfile` + current month's `list` in parallel with
      `getDailySummary` (the name-seeding order concern only matters on a user's
      very first ever load — `getDailySummary` calls `createOrUpdateUser`
