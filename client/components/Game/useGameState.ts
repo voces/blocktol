@@ -71,6 +71,12 @@ export const useGameState = () => {
   const savedBlocksRef = useRef<
     ReadonlyArray<NonNullable<typeof transitionBlock>>
   >([]);
+  // Transient implosion ghosts: where a reverted (never-persisted) block just
+  // vanished, a short puff-then-collapse plays so the removal reads as
+  // deliberate rather than a glitch. Each ghost self-clears ~0.4s after spawn.
+  const [implosions, setImplosions] = useState<
+    ReadonlyArray<Point & { id: number; thunder?: boolean }>
+  >([]);
   const [bricks, setBricks] = useState(-1);
   const [power, setPower] = useState(-1);
   // The iteration's full brick/power budget (remaining + already placed at load),
@@ -182,6 +188,8 @@ export const useGameState = () => {
   return {
     blocks,
     savedBlocksRef,
+    implosions,
+    setImplosions,
     bricks,
     bricksTotal,
     powerTotal,

@@ -270,6 +270,32 @@ body {
   touch-action: manipulation;
 }
 
+/* Ghost of a reverted (never-persisted) block: puffs up for a beat, then
+   collapses to nothing where it stood — the rollback reads as an implosion
+   rather than a glitch. transform-box scopes the scale to the block itself
+   (SVG transforms otherwise originate at the viewBox corner). */
+.board-implode {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: implode 0.28s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes implode {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+}
+
 .btn {
   padding: 10px 16px;
   margin: 1px;

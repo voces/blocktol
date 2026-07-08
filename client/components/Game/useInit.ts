@@ -11,6 +11,9 @@ import { rebuildGrid } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { computeVerdict } from "./verdict.ts";
 
+// Monotonic key for implosion ghosts, so overlapping reverts can't collide.
+let implosionId = 0;
+
 export const useInit = () => {
   const game = useGame();
   const { applyRun } = useDailyItems();
@@ -23,6 +26,7 @@ export const useInit = () => {
     setTouching,
     setBlocks,
     savedBlocksRef,
+    setImplosions,
     setPower,
     setBricks,
     setBricksTotal,
@@ -279,10 +283,30 @@ export const useInit = () => {
   // Snap the board back to the last maze the server accepted: the optimistic
   // edit it's undoing was never persisted, so this is the maze the run will
   // actually execute. Blocks, grid, and the brick/power chips (recomputed from
-  // the board's full budget) all revert together.
+  // the board's full budget) all revert together. Each removed block leaves a
+  // brief implosion ghost in its place so the removal reads as deliberate.
   const revertToSaved = () => {
     const saved = savedBlocksRef.current;
     const next = [...blocks.filter((b) => !b.local), ...saved];
+    const removed = blocks.filter(
+      (b) => b.local && !saved.some((s) => s.x === b.x && s.y === b.y),
+    );
+    if (removed.length) {
+      const ghosts = removed.map((b) => ({
+        x: b.x,
+        y: b.y,
+        thunder: b.thunder,
+        id: ++implosionId,
+      }));
+      const ids = new Set(ghosts.map((g) => g.id));
+      setImplosions((cur) => [...cur, ...ghosts]);
+      // Outlive the 0.28s animation, then drop these ghosts (later spawns
+      // stay).
+      setTimeout(
+        () => setImplosions((cur) => cur.filter((g) => !ids.has(g.id))),
+        400,
+      );
+    }
     rebuildGrid(grid, checkpoint, next);
     setBlocks(next);
     setBricks(bricksTotal < 0 ? -1 : bricksTotal - saved.length);

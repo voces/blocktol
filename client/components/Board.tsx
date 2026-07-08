@@ -25,6 +25,7 @@ export const Board = (
     onSlow,
     date,
     dragMoved,
+    implosions,
   }: {
     placingBlock: Point & { placing: boolean };
     touching: boolean;
@@ -50,6 +51,8 @@ export const Board = (
     grid: boolean[][];
     onSlow: (thunder: Point & { local?: boolean }) => void;
     date: number;
+    // Optional: the intro board never reverts, so it has no ghosts to show.
+    implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
   },
 ) => {
   // Board magnification while placing (touch). A 1× setting disables it — the
@@ -223,6 +226,20 @@ export const Board = (
             fill="var(--maze-checkpoint)"
           />
         )}
+        {
+          /* Ghosts of reverted (never-persisted) blocks: a brief puff-then-
+          collapse where each one stood, so the rollback reads as deliberate.
+          Visual only — no pointer interaction; they self-clear from state. */
+        }
+        {implosions?.map((g) => (
+          <g key={g.id} class="board-implode">
+            <Block
+              x={g.x}
+              y={g.y}
+              color={g.thunder ? "player-thunder" : "player-block"}
+            />
+          </g>
+        ))}
         {placingBlock.placing && (
           <Block
             x={placingBlock.x}
