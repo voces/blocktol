@@ -434,11 +434,20 @@ scars correctly fixed; CI covers fmt/check/test/build.
       `Calendar.tsx:43-48`, and `TodayResult.tsx:16-21`, mirroring server
       `mapAttempts` — four places to drift. Extract `common/standing.ts` used by
       both sides.
-- [ ] **6d. Test coverage gap.** Good for pure logic (pathing, rating,
-      validateRun, migrations); zero for the run lifecycle
-      (start/update/commit/void state machine — where 1a/1c live) and zero for
-      client behavior. The lifecycle is testable as pure route handlers with a
-      fake `sql`; highest-value gap.
+- [x] **6d. Test coverage gap.** _Fixed in #102 — seven integration tests
+      (`lifecycle.test.ts`) exercise the real route handlers against the real
+      dev database, covering the void/ranked/daily state machine: ranked
+      recording + commit-on-build, free play staying void through builds AND
+      moves (the 1a regression), expired saves persisting nothing (1c), resume
+      finding the in-progress attempt (1g), the counted result re-pointing, the
+      start race guard (3b), and boot auto-start (#98). A fake `sql` was
+      rejected deliberately: the semantics live in multi-statement SQL (session
+      variables, window checks, transactions) a fake would mis-emulate. Tests
+      self-skip without SQL_PASSWORD; CI runs them once the repository secret is
+      added._ Good for pure logic (pathing, rating, validateRun, migrations);
+      zero for the run lifecycle (start/update/commit/void state machine — where
+      1a/1c live) and zero for client behavior. The lifecycle is testable as
+      pure route handlers with a fake `sql`; highest-value gap.
 - [x] **6e. `useRefState`** _Fixed in #101 — Markdown uses a state-backed
       callback ref; the hook is deleted._ (`client/hooks/useRefState.ts`)
       recreates its object each render, so `current` after a same-render write

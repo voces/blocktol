@@ -25,7 +25,10 @@
     "dev": "deno task bundle --watch & deno run --no-check=remote --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,NEW_RELIC_API_KEY --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
     "migrate": "deno run --no-check=remote --allow-net --allow-env=APP_ENV,SQL_PASSWORD server/db/migrate.ts",
-    "test": "deno test"
+    // net/env grants are for the run-lifecycle integration tests, which hit
+    // the (dev) database through the SQL proxy; they self-skip when
+    // SQL_PASSWORD isn't set, and the pure tests need no permissions.
+    "test": "deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD"
   },
   "deploy": {
     "build": "deno task build",
