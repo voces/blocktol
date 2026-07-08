@@ -114,7 +114,9 @@ export const Attempts = () => {
   const byDuration = [...byMaze.values()].sort((a, b) =>
     b.attempt.duration - a.attempt.duration
   );
-  const bestGroup = byDuration[0];
+  // The best time itself, so EVERY row that ties it is badged BEST — not just
+  // the first one (these rows are distinct mazes that happen to share a time).
+  const bestDuration = byDuration[0]?.attempt.duration;
   const groups = sort === "recent"
     ? [...byMaze.values()].sort((a, b) => b.latest - a.latest)
     : byDuration;
@@ -172,7 +174,7 @@ export const Attempts = () => {
                 : peak
                 ? "var(--peak)"
                 : standingColor(attempt.percent);
-              const isBest = group === bestGroup;
+              const isBest = attempt.duration === bestDuration;
               const isViewing = viewingKey != null &&
                 mazeKey(attempt.maze) === viewingKey;
               // Mid-daily (simplified) the rows are inert: reviewing a past
