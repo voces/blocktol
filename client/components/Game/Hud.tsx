@@ -65,13 +65,12 @@ export const Hud = () => {
     bricks,
     power,
     blocks,
+    phase,
     time,
     run,
     setTime,
     iteration,
-    staged,
     freePlay,
-    viewing,
     attemptsRemaining,
     min,
     best,
@@ -98,9 +97,9 @@ export const Hud = () => {
     showBoard(iteration);
   };
   // Shown mid-round for free play only: after the first placement opens the run
-  // (staged is false) and while not reviewing a past maze. Daily runs (freePlay
-  // false) never get it.
-  const showReset = freePlay && !staged && !viewing;
+  // and while not reviewing a past maze. Daily runs (freePlay false) never get
+  // it.
+  const showReset = freePlay && phase !== "staged" && phase !== "viewing";
 
   // Keyboard shortcut: R runs the current build now, or starts a fresh run once
   // the previous one has finished (power === -1 marks the idle/finished state).
@@ -139,7 +138,7 @@ export const Hud = () => {
   const endPress = () => setPressing(false);
 
   const outOfResources = bricks <= 0 && power <= 0;
-  const flashing = (outOfResources || idle) && !pressing && !staged;
+  const flashing = (outOfResources || idle) && !pressing;
 
   return (
     <div class="hud">
@@ -174,37 +173,37 @@ export const Hud = () => {
           // pill (fired at commit, cleared when the board re-stages at finish —
           // see useInit). The celebration badge floats separately below.
           ? <VerdictPill verdict={verdict} />
-          : time > 0
-          ? staged
-            ? (
-              // Free play before the first placement: the clock is frozen and
-              // inert — placing a tile, not tapping, starts the run.
-              <div class="hud__build hud__build--staged">
-                <span class="hud__build-face hud__build-time">
-                  <span class="mono">{formatBuild(time)}</span>
-                  <span class="hud__build-label">to build</span>
-                </span>
-              </div>
-            )
-            : (
-              <button
-                type="button"
-                class={"hud__build tapc" + (flashing ? " flashing" : "") +
-                  (pressing ? " pressing" : "")}
-                onClick={() => setTime(0)}
-                onPointerDown={onPointerDown}
-                onPointerUp={endPress}
-                onPointerLeave={endPress}
-                onPointerCancel={endPress}
-              >
-                <span class="hud__build-face hud__build-time">
-                  <span class="mono">{formatBuild(time)}</span>
-                  <span class="hud__build-label">to build</span>
-                </span>
-                <span class="hud__build-face hud__build-ready">Ready?</span>
-              </button>
-            )
-          : run && time < 0
+          : phase === "staged"
+          ? (
+            // Free play before the first placement: the clock is frozen and
+            // inert — placing a tile, not tapping, starts the run.
+            <div class="hud__build hud__build--staged">
+              <span class="hud__build-face hud__build-time">
+                <span class="mono">{formatBuild(time)}</span>
+                <span class="hud__build-label">to build</span>
+              </span>
+            </div>
+          )
+          : phase === "building"
+          ? (
+            <button
+              type="button"
+              class={"hud__build tapc" + (flashing ? " flashing" : "") +
+                (pressing ? " pressing" : "")}
+              onClick={() => setTime(0)}
+              onPointerDown={onPointerDown}
+              onPointerUp={endPress}
+              onPointerLeave={endPress}
+              onPointerCancel={endPress}
+            >
+              <span class="hud__build-face hud__build-time">
+                <span class="mono">{formatBuild(time)}</span>
+                <span class="hud__build-label">to build</span>
+              </span>
+              <span class="hud__build-face hud__build-ready">Ready?</span>
+            </button>
+          )
+          : phase === "running" && run
           ? (
             // Same clock slot, now counting up the live run. Free play turns it
             // into the verdict — tinted to the run's live score % with the %
@@ -220,7 +219,7 @@ export const Hud = () => {
                 </div>
               )
           )
-          : viewing
+          : phase === "viewing"
           ? (
             // Reviewing a past maze: the clock slot becomes the way back to play.
             <button type="button" class="hud__build tapc" onClick={onPlay}>
@@ -230,6 +229,7 @@ export const Hud = () => {
               </span>
             </button>
           )
+          // loading / idle (between a finished run and the next board).
           : null}
       </div>
     </div>

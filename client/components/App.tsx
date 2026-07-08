@@ -6,6 +6,7 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
+import { failures } from "../store/connection.ts";
 import { fetchProfile } from "../store/profile.ts";
 import { adoptServerSettings } from "../hooks/useSettings.ts";
 import { CalendarButton } from "./CalendarButton.tsx";
@@ -134,7 +135,12 @@ export const App = () => {
   return (
     <Shell gameState={gameState}>
       <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
-      {disconnected && <Disconnected />}
+      {
+        /* Boot failure, or persistent mid-game transport failures (the run
+        saver keeps retrying underneath — this just tells the player why the
+        board stopped responding). */
+      }
+      {(disconnected || failures.value >= 2) && <Disconnected />}
       {toast && (
         <Toast
           title={toast.title}

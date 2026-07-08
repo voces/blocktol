@@ -3,6 +3,12 @@ import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { startBoardRun } from "../../store/board.ts";
+import {
+  placingBlock,
+  thunderHover,
+  touching,
+  transitionBlock,
+} from "./interaction.ts";
 import { saveRun } from "./runSaver.ts";
 import {
   isBorderPoint,
@@ -14,20 +20,14 @@ import { GameStateContext } from "./useGameState.ts";
 
 export const useInputEnd = (svg: SVGSVGElement | null) => {
   const {
-    time,
-    setPlacingBlock,
+    timeRef,
     checkpoint,
     grid,
-    setTransitionBlock,
-    setThunderHover,
-    invalid,
-    setTouching,
     blocks,
     setBlocks,
     power,
     setPower,
     setBricks,
-    placingBlockRef,
     bricks,
     dragRef,
     placingRef,
@@ -64,22 +64,22 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     // `onBoard` is whether the release landed on the playable board (not a HUD
     // control, text, or the border ring / outside the SVG).
     const commit = (onBoard: boolean) => {
-      if (time <= 0) {
+      if (timeRef.current <= 0) {
         dragRef.current = null;
         return;
       }
       if (svg) svg.style.transform = "";
-      setPlacingBlock((pb) => ({ ...pb, placing: false }));
+      placingBlock.value = { ...placingBlock.value, placing: false };
       // The gesture is over: drop any lingering placement / thunder previews so
       // they don't stick around after release (touch has no follow-up move to
       // clear them).
       placingRef.current = false;
-      setThunderHover(undefined);
+      thunderHover.value = undefined;
 
       const drag = dragRef.current;
       if (drag) {
         dragRef.current = null;
-        setTransitionBlock(undefined);
+        transitionBlock.value = undefined;
         const { origin, dragged } = drag;
 
         // Never left its origin cell → a tap: upgrade to thunder with power,
@@ -103,7 +103,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         // otherwise remove it (refunding its brick / power) — dragging a block
         // somewhere it can't go deletes it, same as a tap-delete. Back on its
         // origin, or released off-board, it snaps back untouched.
-        const target = placingBlockRef.current;
+        const target = placingBlock.peek();
         if (target.x !== origin.x || target.y !== origin.y) {
           if (!onBoard) return;
           if (isInvalidMove(grid, checkpoint, origin, target.x, target.y)) {
@@ -122,7 +122,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       if (!onBoard) return;
 
       // Place a new block at the previewed cell.
-      const { x, y } = placingBlockRef.current;
+      const { x, y } = placingBlock.peek();
 
       if (bricks <= 0) return;
 
@@ -157,7 +157,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       setBricks((bricks) => bricks - 1);
       if (staged) setStaged(false);
 
-      setPlacingBlock({ ...placingBlockRef.current, placing: false });
+      placingBlock.value = { ...placingBlock.peek(), placing: false };
     };
 
     const mouseupCallback = (e: MouseEvent) => {
@@ -169,7 +169,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     const touchendCallback = (e: TouchEvent) => {
       const touch = e.changedTouches[0];
       const target = touch.target;
-      setTouching(false);
+      touching.value = false;
       const onBoard = target instanceof SVGElement &&
         !(target instanceof SVGTextElement) &&
         !isBorderPoint(svg, touch.clientX, touch.clientY);
@@ -181,16 +181,14 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("mouseup", mouseupCallback);
       globalThis.removeEventListener("touchend", touchendCallback);
     };
+    // The clock and pointer state are read through refs/signals; the
+    // listeners re-register only when the board itself changes. apply() reads
+    // the render's blocks, so blocks stays a dependency.
   }, [
     svg,
-    placingBlockRef.current,
-    invalid,
     checkpoint,
-    time,
     power,
     bricks,
-    // apply() reads the render's blocks now that side effects live outside
-    // the setBlocks updater — re-register so the closure stays fresh.
     blocks,
     iteration,
     staged,

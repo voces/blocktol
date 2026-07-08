@@ -1,4 +1,5 @@
 import type { BlocktolApi } from "../common/api.ts";
+import { noteFailure, noteSuccess } from "./store/connection.ts";
 import { Emitter, emitter } from "./util/emitter.ts";
 import { getId } from "./util/id.ts";
 
@@ -60,11 +61,21 @@ export const api = new Proxy({}, {
     return async (input: Parameters<BlocktolApi[keyof BlocktolApi]>) => {
       const preloaded = primed.get(method);
       if (preloaded) primed.delete(method);
-      const resp = await (preloaded ?? fetch(`/api/${method}`, {
-        method: "POST",
-        body: JSON.stringify(input),
-        headers: { authorization: getId() },
-      }));
+      let resp: Response;
+      try {
+        resp = await (preloaded ?? fetch(`/api/${method}`, {
+          method: "POST",
+          body: JSON.stringify(input),
+          headers: { authorization: getId() },
+        }));
+      } catch (err) {
+        // Transport-level failure (the server never responded): feed the
+        // connection tracker, which surfaces the Disconnected overlay once
+        // failures persist.
+        noteFailure();
+        throw err;
+      }
+      noteSuccess();
       try {
         const data = await resp.json();
         if (!("error" in data)) em.dispatchEvent(method, data);

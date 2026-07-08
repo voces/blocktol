@@ -1,6 +1,7 @@
 import { h, render } from "preact";
 import { prime } from "./api.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
+import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { initSettings } from "./hooks/useSettings.ts";
 import { getCleanLink, getPendingLink } from "./util/id.ts";
 import { getTimeZone } from "./util/timeZone.ts";
@@ -18,7 +19,7 @@ if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   prime("getProfile", {});
 }
 
-render(h(App, {}), document.body);
+render(h(ErrorBoundary, null, h(App, {})), document.body);
 
 globalThis.addEventListener("contextmenu", (e) => e.preventDefault());
 

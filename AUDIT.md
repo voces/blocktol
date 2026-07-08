@@ -392,9 +392,14 @@ proxy:
       placement; `placingBlock` stays out of the render path for components that
       don't draw it.
 
-- [ ] **5d. Model the board phase explicitly.** The board's mode is encoded in
-      sentinels: `time === -2` (never loaded) vs `-1` (idle/finished) vs `0`
-      (run starting), `bricks === -1`, `date NaN`, plus
+- [x] **5d. Model the board phase explicitly.** _Done (derived form) in #103 —
+      `useGameState` computes a `BoardPhase`
+      (loading/viewing/staged/building/running/idle) from the primitives and the
+      Hud renders off it, replacing its nested sentinel ternaries. Deliberately
+      derived rather than enforced at the writers: consumers get legal states by
+      construction without rewriting every transition._ The board's mode is
+      encoded in sentinels: `time === -2` (never loaded) vs `-1` (idle/finished)
+      vs `0` (run starting), `bricks === -1`, `date NaN`, plus
       `staged`/`freePlay`/`viewing` booleans whose legal combinations live only
       in comments. A discriminated union —
       `{phase: 'loading'|'staged'|'building'|'running'|'reviewing', ...}` —
@@ -417,16 +422,26 @@ refactor; `mergeUsers` is careful, transactional, and documented; the emitter's
 snapshot-dispatch and `useApiListener`'s ref-callback pattern are real debugging
 scars correctly fixed; CI covers fmt/check/test/build.
 
-- [ ] **6a. Effect dependency churn.** `useInputStart`/`useInputEnd` tear down
-      and re-register 4–6 _global_ listeners whenever `time` ticks (every
-      second), `blocks`, `bricks`, etc. change; `useInputEnd.ts:199` has
-      `placingBlockRef.current` in a dep array (only works because
-      `setPlacingBlock` also renders). Register once, read current values from
-      refs (`useApiListener` already uses this trick).
-- [ ] **6b. `useGameState` is a god object** — 30+ states, every consumer gets
-      all of them. Even before a store migration: split it (interaction vs board
-      vs meta/panels) and memoize the context value to cut mousemove-driven
-      full-tree re-renders.
+- [x] **6a. Effect dependency churn.** _Fixed in #103 — pointer state moved to
+      signals (read like refs in handlers) and the clock is read through a
+      `timeRef` mirror, so the global input listeners re-register only when the
+      board itself changes (blocks/bricks/checkpoint), not per tick or per
+      pointer move._ `useInputStart`/`useInputEnd` tear down and re-register 4–6
+      _global_ listeners whenever `time` ticks (every second), `blocks`,
+      `bricks`, etc. change; `useInputEnd.ts:199` has `placingBlockRef.current`
+      in a dep array (only works because `setPlacingBlock` also renders).
+      Register once, read current values from refs (`useApiListener` already
+      uses this trick).
+- [x] **6b. `useGameState` is a god object** _Substantially addressed by
+      #100/#103 — server entities left for module stores, and the
+      pointer-frequency fields (placingBlock, transitionBlock, thunderHover,
+      invalid, dragMoved, touching) are signals in `Game/interaction.ts`:
+      mousemove no longer re-renders App or rebuilds the context, and only the
+      `BoardArea` subscriber re-renders at pointer speed. The remaining context
+      is board + panel state that legitimately re-renders its consumers._ — 30+
+      states, every consumer gets all of them. Even before a store migration:
+      split it (interaction vs board vs meta/panels) and memoize the context
+      value to cut mousemove-driven full-tree re-renders.
 - [x] **6c. Duplicated scoring/standing logic.** _Fixed in #101 —
       `common/standing.ts` (with tests) is now the single definition used by the
       server's `mapAttempts` and all three client surfaces._ The
@@ -453,9 +468,14 @@ scars correctly fixed; CI covers fmt/check/test/build.
       recreates its object each render, so `current` after a same-render write
       reads stale — used once (Markdown.tsx) in a way that survives this, but
       it's a trap. Replace with plain state or a real ref + forceUpdate.
-- [ ] **6f. Error surfacing.** No error boundary; `App`'s `disconnected` state
-      only covers the boot request; `Disconnected` never shows for mid-game
-      failures (see 2c).
+- [x] **6f. Error surfacing.** _Fixed in #103 — an `ErrorBoundary` wraps the app
+      (crash → report + reload card instead of a blank page), and a connection
+      signal counts consecutive transport failures so the `Disconnected` overlay
+      now also covers mid-game outages (shown only once failures persist, so a
+      single flaky request stays invisible while the run saver retries
+      underneath)._ No error boundary; `App`'s `disconnected` state only covers
+      the boot request; `Disconnected` never shows for mid-game failures (see
+      2c).
 
 - [ ] **6g. Optional: retire the `daily` column.** (Consumers validated
       2026-07-07.) Post-#93, `daily` means exactly one thing everywhere — the
