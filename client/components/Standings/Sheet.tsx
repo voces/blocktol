@@ -7,6 +7,7 @@ import {
   refreshStandings,
   setStandingsSort,
   standingsByKey,
+  StandingsData,
   standingsKey,
   StandingsSort,
   standingsSort,
@@ -102,11 +103,14 @@ export const StandingsSheet = (
   // The sort is shared with the dock and persisted across visits.
   const sort = standingsSort.value;
 
-  // Fetch the viewed (day, sort); refetch as the sort or day changes. Today
-  // resolves server-side from the timezone.
+  // Warm BOTH sorts as soon as the sheet opens (the day's field is cached
+  // server-side, so the second is cheap) — so toggling reads from the store
+  // instantly instead of flashing an empty sheet on the first PB open.
   useEffect(() => {
-    fetchStandings(isToday ? undefined : iteration, sort);
-  }, [iteration, isToday, sort]);
+    const it = isToday ? undefined : iteration;
+    fetchStandings(it, "daily");
+    fetchStandings(it, "pb");
+  }, [iteration, isToday]);
 
   // The countdown only needs minute resolution; re-render on a slow tick.
   const [, setTick] = useState(0);
@@ -120,9 +124,22 @@ export const StandingsSheet = (
   const { offset, handlers } = useDragToClose(onClose);
 
   const keyIt = isToday ? todayIteration.value : iteration;
-  const s = keyIt === undefined
+  const live = keyIt === undefined
     ? undefined
     : standingsByKey.value.get(standingsKey(keyIt, sort));
+
+  // Keep the last board on screen while a switch (or first load) is in flight,
+  // so the sheet never collapses to an empty shell. Track its sort too, so its
+  // rows render with the metric they belong to until the requested sort lands.
+  const [shown, setShown] = useState<
+    { data: StandingsData; sort: StandingsSort } | undefined
+  >();
+  useEffect(() => {
+    if (live) setShown({ data: live, sort });
+  }, [live, sort]);
+  const view = live ? { data: live, sort } : shown;
+  const s = view?.data;
+  const viewSort = view?.sort ?? sort;
 
   // A bare text button per the design — the active sort is accent-underlined
   // with a ▾ caret, the other muted.
@@ -201,12 +218,12 @@ export const StandingsSheet = (
                   <span />
                 </div>
               )}
-              <BoardRow row={row} sort={sort} />
+              <BoardRow row={row} sort={viewSort} />
             </Fragment>
           ))}
           {s && s.rows.length === 0 && (
             <div class="standings-sheet__empty">
-              {sort === "daily" ? "No runs this day" : "No runs yet"}
+              {viewSort === "daily" ? "No runs this day" : "No runs yet"}
             </div>
           )}
         </div>
