@@ -67,7 +67,7 @@ export const useGameState = () => {
   // (startRun / getBoard / summary resume) and advanced on each confirmed
   // updateRun save. Edits stay optimistic; when a save comes back expired or
   // rejected, the board snaps back to this maze — the one the run will
-  // actually execute (see useInit's updateRun/error listeners).
+  // actually execute (see the run-saver handlers wired in useInit).
   const savedBlocksRef = useRef<
     ReadonlyArray<NonNullable<typeof transitionBlock>>
   >([]);
@@ -85,6 +85,12 @@ export const useGameState = () => {
   const [bricksTotal, setBricksTotal] = useState(-1);
   const [powerTotal, setPowerTotal] = useState(-1);
   const [time, setTime] = useState(-2);
+  // Wall-clock end of the build window (ms epoch), set when a run loads. The
+  // countdown derives from it (see useClock) instead of decrementing, so a
+  // background-tab-throttled interval can't leave the client "building" after
+  // the server's window closed. Null while no countdown should tick (staged
+  // free play before the opening placement's startRun response).
+  const deadlineRef = useRef<number | null>(null);
   // The iteration currently loaded on the board (ranked or free-play).
   const [iteration, setIteration] = useState<number>();
   // Free play stages the board without a run: `staged` freezes the build clock
@@ -212,6 +218,7 @@ export const useGameState = () => {
     setRun,
     setThunderHover,
     setTime,
+    deadlineRef,
     setTouching,
     setTransitionBlock,
     thunderHover,

@@ -135,10 +135,14 @@ general engineering review.
 
 ## 2. Race conditions on the client
 
-- [ ] **2a. `updateRun` has no ordering — two races in one.** Every build action
-      fires `api.updateRun` fire-and-forget from inside a `setBlocks` updater
-      (`useInputEnd.ts:46`, `:88`, `:117`, `:161`). Two rapid actions create two
-      in-flight POSTs:
+- [x] **2a. `updateRun` has no ordering — two races in one.** _Fixed in #95 —
+      saves are serialized client-side through a trailing-edge queue of depth 1
+      (`runSaver.ts`): at most one in flight, newer edits coalesce to the latest
+      full maze, so out-of-order writes and stale responses can't happen. Chosen
+      over a `seq` column: no migration or protocol change, and each save
+      already carries the whole maze._ Every build action fires `api.updateRun`
+      fire-and-forget from inside a `setBlocks` updater (`useInputEnd.ts:46`,
+      `:88`, `:117`, `:161`). Two rapid actions create two in-flight POSTs:
   - _Server:_ last-arrival-wins on `UPDATE run SET data = ...` — if request B (2
     blocks) is overtaken by request A (1 block), the persisted maze is the older
     one. No sequence number, no version check.
@@ -162,17 +166,28 @@ general engineering review.
       a `wantedIteration` ref set at click time (or a request id) and drop
       mismatched responses. Falls out naturally of the store proposal in §5.
 
-- [ ] **2c. Failed writes are silently swallowed — optimistic state with no
-      reconciliation.** All `updateRun`/`commitRun`/`startRun` calls in the
-      input path ignore rejections (a network drop during a build = board and
-      server permanently diverge; the run scores off the last maze that happened
-      to save). There's an `error` event on the emitter (`client/api.ts:51`) but
-      **nothing subscribes to it**. At minimum: subscribe once, show the
-      `Disconnected` treatment, and re-send the current maze (the payload is the
-      full block list, so a retry-with-latest-state loop fixes both dropped and
-      reordered writes).
+- [x] **2c. Failed writes are silently swallowed — optimistic state with no
+      reconciliation.** _Fixed in #95 for the build path — the run saver retries
+      the latest maze with backoff on network failure (silently, per the
+      smooth-over-error-UI direction), and at run start `finalize` cancels
+      pending work and snaps any still-unconfirmed edit back to the accepted
+      maze (with the implosion), so the animation always matches what the server
+      scores. A late response from a previous board generation is ignored.
+      `startRun`/`commitRun` failures remain unhandled (rarer; board-load retry
+      is 4a/store territory)._ All `updateRun`/`commitRun`/`startRun` calls in
+      the input path ignore rejections (a network drop during a build = board
+      and server permanently diverge; the run scores off the last maze that
+      happened to save). There's an `error` event on the emitter
+      (`client/api.ts:51`) but **nothing subscribes to it**. At minimum:
+      subscribe once, show the `Disconnected` treatment, and re-send the current
+      maze (the payload is the full block list, so a retry-with-latest-state
+      loop fixes both dropped and reordered writes).
 
-- [ ] **2d. Countdown clock drift.** `useClock.ts:12` decrements a counter with
+- [x] **2d. Countdown clock drift.** _Fixed in #95 — the countdown derives from
+      a wall-clock deadline (`deadlineRef`, set when a run loads) on a 250ms
+      tick, so a throttled background tab catches up to the honest value —
+      including 0, which starts the run — instead of lagging the server's
+      window._ `useClock.ts:12` decrements a counter with
       `setInterval(…, 1000)`. Intervals throttle in background tabs and drift
       generally, while the server enforces wall-clock 60s — the player can still
       be "building" after the server window closed (compounds 1c). Fix: compute
