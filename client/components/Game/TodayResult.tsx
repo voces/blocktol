@@ -6,6 +6,7 @@ import {
   standingBand,
 } from "../../../common/percentileColor.ts";
 import { api } from "../../api.ts";
+import { showBoard } from "../../store/board.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { DailyItem, useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { getTimeZone } from "../../util/timeZone.ts";
@@ -43,12 +44,14 @@ export const TodayResult = () => {
 
   // These results are today's, but the board might be showing another day. Load
   // today's board first (so the maze renders on the right fixed pieces and the
-  // calendar selects today) before overlaying the reviewed maze.
+  // calendar selects today) before overlaying the reviewed maze — skipped if a
+  // newer navigation superseded this one mid-flight.
   const onToday = today && iteration === today.iteration;
   const reviewToday = (show: () => void) => {
     if (onToday || !today) return show();
-    api.getBoard({ iteration: today.iteration, timeZone: getTimeZone() })
-      .then(show);
+    showBoard(today.iteration).then((staged) => {
+      if (staged) show();
+    });
   };
 
   const ranked = summary?.ranked ?? [];

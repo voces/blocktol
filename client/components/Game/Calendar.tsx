@@ -9,10 +9,9 @@ import {
   SUPREME_COLOR,
 } from "../../../common/percentileColor.ts";
 import { api } from "../../api.ts";
-import { useApiListener } from "../../hooks/useApiListener.ts";
+import { showBoard } from "../../store/board.ts";
 import { DailyItem, useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
-import { getTimeZone } from "../../util/timeZone.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Item = DailyItem;
@@ -69,9 +68,18 @@ const lastDay = (idx: number) =>
 
 export const Calendar = () => {
   const { items, oldest } = useDailyItems();
-  const { freePlay, staged, attemptsRemaining, calendarOpen, setCalendarOpen } =
-    useContext(GameStateContext);
-  const [selected, setSelected] = useState(NaN);
+  const {
+    freePlay,
+    staged,
+    attemptsRemaining,
+    calendarOpen,
+    setCalendarOpen,
+    iteration,
+  } = useContext(GameStateContext);
+  // The loaded board IS the selection — reading it off game state (rather
+  // than mirroring response events) can't drift when a superseded response
+  // is discarded by the board loader.
+  const selected = iteration;
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
   // Months (idx = year*12 + month0) we've already asked the server for.
@@ -82,9 +90,6 @@ export const Calendar = () => {
   // The very first daily's month — the floor `canPrev` pages back to (from the
   // server, so gaps in the user's own play don't stop paging short of history).
   const oldestIdx = oldest ? oldest[0] * 12 + (oldest[1] - 1) : undefined;
-
-  useApiListener("startRun", (e) => setSelected(e.iteration));
-  useApiListener("getBoard", (e) => setSelected(e.iteration));
 
   // Mobile keeps it simple: always just the current month. The previous-month
   // rule below is desktop only.
@@ -185,12 +190,10 @@ export const Calendar = () => {
       // Re-clicking the current board's date cancels an in-progress free-play
       // build — re-stage a fresh board. Ranked attempts (and an untouched staged
       // board) are left alone.
-      if (freePlay && !staged) {
-        api.getBoard({ iteration: item.iteration, timeZone: getTimeZone() });
-      }
+      if (freePlay && !staged) showBoard(item.iteration);
       return;
     }
-    api.getBoard({ iteration: item.iteration, timeZone: getTimeZone() });
+    showBoard(item.iteration);
   };
 
   const cell = (year: number, month0: number, day: number) => {
