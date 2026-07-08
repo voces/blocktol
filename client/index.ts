@@ -18,6 +18,12 @@ if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   prime("getDailySummary", { timeZone: getTimeZone() });
   prime("getProfile", {});
   prime("standings", { timeZone: getTimeZone() });
+  // Today's free-play board, so a boot onto a finished daily stages behind the
+  // result card with no round trip at "keep playing". `soft` makes an unfinished
+  // daily a quiet { incomplete } rather than a 403 (see getBoard); showBoard
+  // discards that and fetches for real, so priming can never wedge a later
+  // stage.
+  prime("getBoard", { timeZone: getTimeZone(), soft: true });
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);

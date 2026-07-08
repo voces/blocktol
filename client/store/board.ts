@@ -20,7 +20,9 @@ import { getTimeZone } from "../util/timeZone.ts";
 // The staged-board shape: an iteration's fixed pieces and FULL budgets (what
 // handleStaged expects), never the mid-run leftovers.
 export type BoardData = Pick<
-  MessageMap["getBoard"],
+  // getBoard's soft mode can answer { incomplete } (a primed boot before the
+  // daily's done); exclude it so the board shape stays a plain record here.
+  Exclude<MessageMap["getBoard"], { incomplete: true }>,
   | "iteration"
   | "date"
   | "checkpoint"
@@ -100,16 +102,29 @@ export const showBoard = (iteration?: number) => {
   const s = ++seq;
   const cached = iteration !== undefined ? boards.get(iteration) : undefined;
   if (cached) handlers.onStaged(cached);
-  return api.getBoard(
-    iteration !== undefined
-      ? { iteration, timeZone: getTimeZone() }
-      : { timeZone: getTimeZone() },
-  ).then((r) => {
-    if ("error" in r || s !== seq) return s === seq && !!cached;
+  const req = () =>
+    api.getBoard(
+      iteration !== undefined
+        ? { iteration, timeZone: getTimeZone() }
+        : { timeZone: getTimeZone() },
+    );
+  const settle = (r: Awaited<ReturnType<typeof req>>) => {
+    if ("error" in r || "incomplete" in r || s !== seq) {
+      return s === seq && !!cached;
+    }
     ingestBoard(r);
     handlers.onStaged(r);
     return true;
-  }).catch(() => !!cached && s === seq);
+  };
+  return req()
+    .then((r) =>
+      // A boot-primed soft board lands here as { incomplete } when the daily
+      // wasn't finished at prime time. Discard it and fetch for real (the real
+      // call sends no `soft`, so it can't come back incomplete) — this is what
+      // keeps a stale prime from wedging the first true stage of the session.
+      "incomplete" in r && s === seq ? req().then(settle) : settle(r)
+    )
+    .catch(() => !!cached && s === seq);
 };
 
 /**
