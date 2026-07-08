@@ -90,14 +90,13 @@ export const StandingsSheet = (
             <div class="standings-sheet__date">{s ? formatDay(s.day) : ""}</div>
           </div>
           <div class="standings-sheet__side">
-            {s && (s.final
-              ? <span class="standings-sheet__final">Final</span>
-              : s.closesAt != null && (
-                <span class="standings-sheet__timer">
-                  <span class="mono">{formatCountdown(s.closesAt)}</span>
-                  <span>until ranked</span>
-                </span>
-              ))}
+            {/* Final days just show no countdown (closesAt is null then). */}
+            {s?.closesAt != null && (
+              <span class="standings-sheet__timer">
+                <span class="mono">{formatCountdown(s.closesAt)}</span>
+                <span>until ranked</span>
+              </span>
+            )}
             <button
               type="button"
               class="modal__icon standings-sheet__close"

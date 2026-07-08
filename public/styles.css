@@ -2978,13 +2978,6 @@ a:hover {
   color: var(--text-mute);
 }
 
-.standings-sheet__final {
-  font: 700 12px var(--font-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-mute);
-}
-
 /* Mobile closes via the handle / scrim; the × appears on the desktop side
    sheet, which has neither. */
 .standings-sheet__close {
