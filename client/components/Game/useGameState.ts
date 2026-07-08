@@ -138,12 +138,6 @@ export const useGameState = () => {
     MessageMap["getDailySummary"]["attempts"]
   >();
   const [attemptsRemaining, setAttemptsRemaining] = useState(-1);
-  // Whether the daily result card has been dismissed ("Keep playing"). Shared
-  // state (not Daily-local) because the standings dock keys off it: standings
-  // stay hidden — mid-daily AND while the result is up — and only reveal once
-  // the result has been closed, so the board can't anchor how a player
-  // approaches their attempts or upstage their own reveal.
-  const [dailyResultClosed, setDailyResultClosed] = useState(false);
   // The completed attempts on the maze currently being viewed (feeds the
   // attempts panel), independent of the `attempts` that trigger the result modal.
   const [viewedAttempts, setViewedAttempts] = useState<
@@ -245,8 +239,6 @@ export const useGameState = () => {
     viewMaze,
     attemptsRemaining,
     setAttemptsRemaining,
-    dailyResultClosed,
-    setDailyResultClosed,
     viewedAttempts,
     setViewedAttempts,
     iteration,

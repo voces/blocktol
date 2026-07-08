@@ -228,7 +228,14 @@ export const useInit = () => {
 
       if (ranked.length === 3) {
         setAttemptsRemaining(0);
-        return setAttempts(ranked);
+        setAttempts(ranked);
+        // The result card is (about to be) up: stage the free-play board
+        // behind it now, so closing lands on a ready board instead of
+        // spending the getBoard round trip at the close — and a boot onto a
+        // finished daily doesn't sit on an empty board under the card.
+        // (`iteration` is set post-attempt; undefined on boot = today.)
+        showBoard(iteration);
+        return;
       }
 
       setAttemptsRemaining(3 - ranked.length);

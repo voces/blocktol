@@ -137,7 +137,7 @@ const ProfileDialog = (
     <Modal class="profile-sheet" onClose={onClose}>
       <button
         type="button"
-        class="modal__icon profile-modal__close tapc"
+        class="modal__icon modal__close-x profile-modal__close tapc"
         aria-label="Close profile"
         onClick={onClose}
       >

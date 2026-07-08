@@ -12,9 +12,13 @@ const entry = (i: number, time: number): FieldEntry => ({
 const fieldOf = (...times: number[]) => times.map((t, i) => entry(i, t));
 
 Deno.test("ranks a strictly-ordered field with podium + neighbourhood", () => {
-  // 10 players, viewer 7th (index 6).
+  // 10 players, viewer 7th (index 6), with a tight window so the podium /
+  // neighbourhood / gap mechanics are visible on a small field.
   const field = fieldOf(40, 39, 38, 37, 36, 35, 34, 33, 32, 31);
-  const { players, me, rows } = buildStandings(field, "u6");
+  const { players, me, rows } = buildStandings(field, "u6", {
+    top: 3,
+    around: 1,
+  });
 
   assertEquals(players, 10);
   // Percentile is self-excluded (beat 3 of the 9 others).
@@ -49,7 +53,7 @@ Deno.test("competition ranking: ties share a rank, next skips past", () => {
 
 Deno.test("viewer inside the podium: no duplicates, window merges", () => {
   const field = fieldOf(40, 39, 38, 37, 36);
-  const { rows } = buildStandings(field, "u1");
+  const { rows } = buildStandings(field, "u1", { top: 3, around: 1 });
 
   assertEquals(rows.map((r) => r.rank), [1, 2, 3]);
   assertEquals(rows.filter((r) => r.you).length, 1);
@@ -58,7 +62,10 @@ Deno.test("viewer inside the podium: no duplicates, window merges", () => {
 
 Deno.test("viewer absent: me is null, rows are the podium", () => {
   const field = fieldOf(40, 39, 38, 37);
-  const { me, rows } = buildStandings(field, "stranger");
+  const { me, rows } = buildStandings(field, "stranger", {
+    top: 3,
+    around: 1,
+  });
 
   assertEquals(me, null);
   assertEquals(rows.map((r) => r.rank), [1, 2, 3]);
@@ -66,7 +73,7 @@ Deno.test("viewer absent: me is null, rows are the podium", () => {
 
 Deno.test("viewer last: neighbourhood clamps at the field's end", () => {
   const field = fieldOf(40, 39, 38, 37, 36, 35);
-  const { rows } = buildStandings(field, "u5");
+  const { rows } = buildStandings(field, "u5", { top: 3, around: 1 });
 
   assertEquals(rows.map((r) => r.rank), [1, 2, 3, 5, 6]);
   assertEquals(rows.map((r) => r.gapBefore), [0, 0, 0, 1, 0]);
@@ -121,4 +128,23 @@ Deno.test("rows never carry a user id", () => {
       ],
     );
   }
+});
+
+Deno.test("default window: whole small fields, a full sheet on big ones", () => {
+  // A small field ships entirely — no gaps to render.
+  const small = buildStandings(
+    fieldOf(...Array.from({ length: 8 }, (_, i) => 40 - i)),
+    "u5",
+  );
+  assertEquals(small.rows.length, 8);
+  assertEquals(small.rows.every((r) => r.gapBefore === 0), true);
+
+  // A big field: top 25 plus the viewer's +/-10 neighbourhood, one exact gap.
+  const big = buildStandings(
+    fieldOf(...Array.from({ length: 200 }, (_, i) => 400 - i)),
+    "u149",
+  );
+  assertEquals(big.rows.length, 25 + 21);
+  assertEquals(big.rows[25].rank, 140);
+  assertEquals(big.rows[25].gapBefore, 139 - 25);
 });

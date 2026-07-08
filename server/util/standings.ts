@@ -35,10 +35,14 @@ export type StandingsRow = {
 // `field` must be sorted best-first (time DESC, at ASC — getDailyStandings'
 // order). Standard competition ranking: tied times share a rank and the next
 // distinct time skips past them (1, 2, 2, 4).
+//
+// The default window is generous — small fields ship whole and big ones still
+// fill a desktop-height sheet — and the client just renders what it gets
+// (the sheet scrolls); gaps stay exact either way.
 export const buildStandings = (
   field: readonly FieldEntry[],
   viewer: string,
-  { top = 3, around = 1 } = {},
+  { top = 25, around = 10 } = {},
 ) => {
   const ranks: number[] = [];
   for (let i = 0; i < field.length; i++) {

@@ -19,21 +19,18 @@ import { StandingsSheet } from "./Sheet.tsx";
 // the whole feature to that day's (frozen) board.
 //
 // On TODAY the dock is hidden — but still occupying its slot, so nothing
-// below jumps — until the daily is done AND its result card has been closed:
-// surfacing the field mid-daily would anchor how a player approaches their
-// remaining attempts, and surfacing it under the result card would upstage
-// their own reveal. Past days are final, so they show unconditionally. The
-// data itself is prefetched from boot so the reveal is instant.
+// below jumps — until the daily is done: surfacing the field mid-daily would
+// anchor how a player approaches their remaining attempts. It renders the
+// moment the third attempt lands, UNDER the result card's tint (z-index below
+// `.result`, like the runs panel filling in behind it), so closing the card
+// uncovers already-fresh standings. Past days are final, so they show
+// unconditionally. The data itself is prefetched from boot.
 export const StandingsDock = () => {
-  const { iteration, attemptsRemaining, dailyResultClosed } = useContext(
-    GameStateContext,
-  );
+  const { iteration, attemptsRemaining } = useContext(GameStateContext);
   // Until a board (or today's standings) has loaded, treat the view as today.
   const isToday = iteration === undefined ||
     iteration === todayIteration.value;
-  const revealed = isToday
-    ? attemptsRemaining === 0 && dailyResultClosed
-    : true;
+  const revealed = isToday ? attemptsRemaining === 0 : true;
 
   const [open, setOpen] = useState(false);
   // Fetch the viewed day (boot consumes the primed today fetch); re-fires as

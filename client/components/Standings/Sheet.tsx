@@ -1,6 +1,7 @@
 import { Fragment, h } from "preact";
 import { useEffect, useState } from "preact/compat";
 import { avatarColorFromHue, avatarInitial } from "../../../common/avatar.ts";
+import { useDragToClose } from "../../hooks/useDragToClose.ts";
 import { StandingsData } from "../../store/standings.ts";
 import { Crown } from "./icons.tsx";
 import {
@@ -79,12 +80,17 @@ export const StandingsSheet = (
     return () => clearInterval(t);
   }, []);
 
+  // Mobile: dragging the notch/header down slides the sheet with the finger
+  // and closes past the threshold.
+  const { offset, handlers } = useDragToClose(onClose);
+
   return (
     <div class="standings-modal" onClick={onClose}>
       <div
         class="standings-sheet"
         role="dialog"
         aria-label="Standings"
+        style={offset ? { transform: `translateY(${offset}px)` } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -92,8 +98,9 @@ export const StandingsSheet = (
           class="standings-sheet__handle tapc"
           aria-label="Close standings"
           onClick={onClose}
+          {...handlers}
         />
-        <div class="standings-sheet__head">
+        <div class="standings-sheet__head" {...handlers}>
           <div>
             <div class="standings-sheet__title">Standings</div>
             <div class="standings-sheet__date">{s ? formatDay(s.day) : ""}</div>

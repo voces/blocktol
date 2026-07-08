@@ -3213,3 +3213,49 @@ a:hover {
 .standings-dock--hidden {
   visibility: hidden;
 }
+
+/* ==== Mobile sheet dismissal (shared) =====================================
+   On mobile every sheet closes like a sheet: a grab notch at the top — tap or
+   drag down (useDragToClose) — replacing the per-dialog ×, which stays for
+   desktop. Absolute so existing sheet padding/layout is untouched;
+   touch-action lets the drag own the gesture instead of the scroller. */
+.modal__handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  padding: 10px 44px 8px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.modal__handle::before {
+  content: "";
+  display: block;
+  width: 38px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border-strong);
+}
+
+.standings-sheet__handle,
+.standings-sheet__head {
+  touch-action: none;
+}
+
+@media (max-width: 1199.98px) {
+  .modal__handle {
+    display: block;
+  }
+
+  /* visibility (not display) so headers that balance a back button against
+     the × (move sheet) keep their centring. */
+  .modal__close-x {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
