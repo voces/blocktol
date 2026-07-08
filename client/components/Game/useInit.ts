@@ -204,7 +204,19 @@ export const useInit = () => {
     ({ attempts, ranked, currentRun }) => {
       // `attempts` is the full list (panel); `ranked` (first three) drives the
       // result modal and the attempts-remaining count.
-      setViewedAttempts(attempts);
+      //
+      // The server keeps the open-window run out of `attempts` — it's the
+      // board, not a finished row. On boot that's right (the run resumes
+      // below, and a phantom row would spoil nothing but look wrong). But the
+      // post-final-attempt refetch happens moments after the run EXECUTED on
+      // this client — its 60s window can still be open server-side — and
+      // without folding it back in from `ranked` (same shaping) the panel
+      // shows 2 of 3 rounds until the next board load.
+      const panel = time === -2 ? attempts : [
+        ...attempts,
+        ...ranked.filter((r) => !attempts.some((a) => a.created === r.created)),
+      ].sort((a, b) => a.created - b.created);
+      setViewedAttempts(panel);
 
       if (currentRun && time === -2) {
         setAttemptsRemaining(3 - ranked.length + 1);

@@ -2872,7 +2872,9 @@ a:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 40;
+    /* Above the scrolling panel, below every overlay (result 20, calendar
+       picker 50, modals 60). */
+    z-index: 15;
     border: 0;
     border-top: 1px solid var(--border-strong);
     border-radius: 22px 22px 0 0;

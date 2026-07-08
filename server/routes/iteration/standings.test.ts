@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { sql } from "../../db/query.ts";
 import { createOrUpdateUser } from "../../db/user.ts";
 import { extractUserId } from "../../middleware/userid.ts";
@@ -73,8 +73,10 @@ Deno.test({
       assertEquals(result.iteration, iteration);
       assertEquals(result.day, [2001, 1, 1]);
       assertEquals(result.players, 5);
-      assertEquals(result.final, false);
-      assertExists(result.closesAt);
+      // Unrated, but its close is long past — the field is frozen, so it
+      // reads final with no countdown.
+      assertEquals(result.final, true);
+      assertEquals(result.closesAt, null);
       assertEquals(result.me, { rank: 5, tied: false, time: 34 });
 
       // Competition ranking off each player's best: 40, T2 38.5, T2 38.5,

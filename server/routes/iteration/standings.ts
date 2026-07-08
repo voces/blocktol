@@ -97,12 +97,17 @@ export const standings = method(standingsBody, true)(
     const field = await cachedField(iteration);
     const { players, me, rows } = buildStandings(field.entries, userId);
 
+    // Final once rated OR once the close has passed: the field is frozen at
+    // the close either way — the rated flag only lags it by the cron's sweep
+    // (and legacy iterations from before the flag existed never get it).
+    const final = field.rated || field.closesAt <= Date.now();
+
     return {
       iteration,
       day: field.day,
       players,
-      final: field.rated,
-      closesAt: field.rated ? null : field.closesAt,
+      final,
+      closesAt: final ? null : field.closesAt,
       me,
       rows,
     };

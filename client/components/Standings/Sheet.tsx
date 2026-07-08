@@ -1,7 +1,7 @@
 import { Fragment, h } from "preact";
 import { useEffect, useState } from "preact/compat";
 import { avatarColorFromHue, avatarInitial } from "../../../common/avatar.ts";
-import { standings, StandingsData } from "../../store/standings.ts";
+import { StandingsData } from "../../store/standings.ts";
 import { Crown } from "./icons.tsx";
 import {
   formatAgo,
@@ -56,9 +56,13 @@ const BoardRow = ({ row }: { row: Row }) => {
 // The expanded standings: a bottom sheet on mobile, a right-hand side sheet on
 // desktop (purely CSS, see `.standings-modal`). The podium and the viewer's
 // neighbourhood, with exact "N between" separators where the window skips.
-export const StandingsSheet = ({ onClose }: { onClose: () => void }) => {
-  const s = standings.value;
-
+// The dock passes the viewed day's data down, so both always show one day.
+export const StandingsSheet = (
+  { standings: s, onClose }: {
+    standings: StandingsData | undefined;
+    onClose: () => void;
+  },
+) => {
   // The countdown only needs minute resolution; re-render on a slow tick.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -121,7 +125,7 @@ export const StandingsSheet = ({ onClose }: { onClose: () => void }) => {
             </Fragment>
           ))}
           {s && s.rows.length === 0 && (
-            <div class="standings-sheet__empty">No runs yet today</div>
+            <div class="standings-sheet__empty">No runs this day</div>
           )}
         </div>
       </div>
