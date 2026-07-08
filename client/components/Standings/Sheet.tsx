@@ -14,8 +14,10 @@ import {
 type Row = StandingsData["rows"][number];
 
 // One board row. A single accent per row — achievement wins over identity, so
-// a record state (gold/lime) outranks the viewer's own green; the avatar keeps
-// the player's identity colour regardless.
+// a record state (gold/lime) outranks the viewer's own accent; the avatar
+// keeps the player's identity colour regardless. The "you" accent IS your
+// identity colour (fed through --you; the stylesheet's green is only the
+// fallback), so your row matches your avatar everywhere.
 const BoardRow = ({ row }: { row: Row }) => {
   const state = row.record === "beat"
     ? "gold"
@@ -28,6 +30,9 @@ const BoardRow = ({ row }: { row: Row }) => {
     <div
       class={"standings-row band-card" +
         (state ? ` standings-row--${state}` : "")}
+      style={state === "you"
+        ? { "--you": avatarColorFromHue(row.hue) }
+        : undefined}
     >
       <span class="standings-row__rank mono">
         {row.record === "beat" && <Crown />}

@@ -3086,8 +3086,10 @@ a:hover {
   --band-card-fill: 9%;
 }
 
+/* --you is your identity colour, inlined by the row (Sheet.tsx) so your row
+   matches your avatar; --win is only the fallback. */
 .standings-row--you {
-  --band-card-tint: var(--win);
+  --band-card-tint: var(--you, var(--win));
   --band-card-edge: 42%;
   --band-card-fill: 11%;
 }
@@ -3102,7 +3104,7 @@ a:hover {
   bottom: 0;
   width: 4px;
   border-radius: 4px 0 0 4px;
-  background: var(--win);
+  background: var(--you, var(--win));
 }
 
 .standings-row__rank {
@@ -3126,7 +3128,7 @@ a:hover {
 }
 
 .standings-row--you .standings-row__rank {
-  color: var(--win);
+  color: var(--you, var(--win));
 }
 
 .standings-row__avatar {
@@ -3163,7 +3165,7 @@ a:hover {
 }
 
 .standings-row--you .standings-row__sub {
-  color: var(--win);
+  color: var(--you, var(--win));
 }
 
 .standings-row__time {
