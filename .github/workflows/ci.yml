@@ -27,6 +27,12 @@ jobs:
 
       - name: Test
         run: deno task test
+        # The run-lifecycle integration tests exercise the dev database when
+        # SQL_PASSWORD is configured as a repository secret; without it they
+        # self-skip and only the pure tests run.
+        env:
+          APP_ENV: dev
+          SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
 
       - name: Build client
         run: deno task build
