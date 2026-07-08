@@ -4,7 +4,8 @@ import { percentileColor } from "../../../common/percentileColor.ts";
 import {
   fetchStandings,
   refreshStandings,
-  standingsByIteration,
+  standingsByKey,
+  standingsKey,
   todayIteration,
 } from "../../store/standings.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
@@ -44,8 +45,11 @@ export const StandingsDock = () => {
     if (revealed && isToday) refreshStandings();
   }, [revealed]);
 
+  // The dock always shows the daily board (the sheet owns the sort toggle).
   const key = isToday ? todayIteration.value : iteration;
-  const s = key === undefined ? undefined : standingsByIteration.value.get(key);
+  const s = key === undefined
+    ? undefined
+    : standingsByKey.value.get(standingsKey(key, "daily"));
   const leader = s?.rows[0];
   const me = s?.me ?? null;
 
@@ -121,7 +125,8 @@ export const StandingsDock = () => {
       </button>
       {open && revealed && (
         <StandingsSheet
-          standings={s}
+          iteration={isToday ? undefined : iteration}
+          isToday={isToday}
           onClose={() => setOpen(false)}
         />
       )}

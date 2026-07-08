@@ -12,6 +12,16 @@ Deno.test("formatRank marks shared ranks with T", () => {
   assertEquals(formatRank(211, false), "211");
 });
 
+Deno.test("formatRank approximates large ranks (PB board)", () => {
+  // At the thousands, exact digits are noise and tie state is fuzzy — collapse
+  // to "~N.Nk" and drop the T.
+  assertEquals(formatRank(1900, false), "~1.9k");
+  assertEquals(formatRank(1949, true), "~1.9k");
+  assertEquals(formatRank(2000, false), "~2k");
+  assertEquals(formatRank(999, false), "999");
+  assertEquals(formatRank(1000, false), "~1k");
+});
+
 Deno.test("formatAgo coarsens with distance", () => {
   const now = 1_000_000_000_000;
   assertEquals(formatAgo(now - 30 * 1000, now), "now");

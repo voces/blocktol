@@ -26,6 +26,7 @@ Deno.test("ranks a strictly-ordered field with podium + neighbourhood", () => {
     rank: 7,
     tied: false,
     time: 34,
+    secondary: null,
     record: null,
     percentile: 3 / 9,
   });
@@ -91,7 +92,13 @@ Deno.test("a unique top is 'beat'; a shared top is 'match' for all", () => {
 });
 
 Deno.test("empty and single-player fields", () => {
-  assertEquals(buildStandings([], "u0"), { players: 0, me: null, rows: [] });
+  assertEquals(buildStandings([], "u0"), {
+    players: 0,
+    me: null,
+    rows: [],
+    rowUsers: [],
+    meUser: null,
+  });
 
   const solo = buildStandings(fieldOf(40), "u0");
   assertEquals(solo.players, 1);
@@ -100,10 +107,28 @@ Deno.test("empty and single-player fields", () => {
     rank: 1,
     tied: false,
     time: 40,
+    secondary: null,
     record: "beat",
     percentile: null,
   });
   assertEquals(solo.rows.map((r) => r.record), ["beat"]);
+});
+
+Deno.test("secondary passes through; window users are returned, not on rows", () => {
+  // Entries carry a secondary (e.g. each daily player's PB); rows surface it,
+  // while the parallel user list stays server-side for attaching values.
+  const field: FieldEntry[] = [
+    { user: "a", name: "a", hue: 0, time: 40, at: 0, secondary: 42 },
+    { user: "b", name: "b", hue: 1, time: 38, at: 0, secondary: 39 },
+    { user: "c", name: "c", hue: 2, time: 36, at: 0 }, // no secondary → null
+  ];
+  const { rows, me, rowUsers, meUser } = buildStandings(field, "b");
+  assertEquals(rows.map((r) => r.secondary), [42, 39, null]);
+  assertEquals(me?.secondary, 39);
+  assertEquals(rowUsers, ["a", "b", "c"]);
+  assertEquals(meUser, "b");
+  // rowUsers is a sibling of rows, never a field ON a row.
+  for (const row of rows) assert(!("user" in row));
 });
 
 Deno.test("rows never carry a user id", () => {
@@ -122,6 +147,7 @@ Deno.test("rows never carry a user id", () => {
         "name",
         "rank",
         "record",
+        "secondary",
         "tied",
         "time",
         "you",

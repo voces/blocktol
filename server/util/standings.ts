@@ -8,8 +8,16 @@ export type FieldEntry = {
   user: string;
   name: string;
   hue: number;
+  // The ranked value: the daily-best time on the daily board, the all-time PB
+  // on the PB board. Higher is better (longest maze wins).
   time: number;
   at: number;
+  // The OTHER value, shown as the row's small metric line: the player's PB on
+  // the daily board, their time that day on the PB board. Absent/null when it
+  // can't be computed (e.g. a PB-board player who didn't play the viewed day) —
+  // the daily board sets it here; the PB board attaches it per-window afterward
+  // (see the route), so this is optional.
+  secondary?: number | null;
 };
 
 export type StandingsRow = {
@@ -20,7 +28,11 @@ export type StandingsRow = {
   name: string;
   hue: number;
   time: number;
+  // The small metric line (the other board's value): PB on the daily board,
+  // the day's time on the PB board. null when there's none.
+  secondary: number | null;
   // When this best was first set (ms epoch) — the row's "2h ago" sub-line.
+  // 0 on the PB board (all-time, no single timestamp).
   at: number;
   // The field's record states, mirroring the attempts panel's supreme/peak
   // split: a UNIQUE field-best is "beat" (gold, crowned); rows tying a SHARED
@@ -89,8 +101,9 @@ export const buildStandings = (
     return more === 0 ? 1 : (less + (equal - 1) / 2) / others;
   };
 
+  const windowIdx = [...indices].sort((a, b) => a - b);
   let prev = -1;
-  const rows = [...indices].sort((a, b) => a - b).map((i): StandingsRow => {
+  const rows = windowIdx.map((i): StandingsRow => {
     const gapBefore = prev < 0 ? 0 : i - prev - 1;
     prev = i;
     return {
@@ -100,6 +113,7 @@ export const buildStandings = (
       name: field[i].name,
       hue: field[i].hue,
       time: field[i].time,
+      secondary: field[i].secondary ?? null,
       at: field[i].at,
       record: recordOf(i),
       gapBefore,
@@ -112,9 +126,14 @@ export const buildStandings = (
       rank: ranks[meIdx],
       tied: tiedAt(meIdx),
       time: field[meIdx].time,
+      secondary: field[meIdx].secondary ?? null,
       record: recordOf(meIdx),
       percentile: percentileOf(meIdx),
     },
     rows,
+    // The window's player ids, parallel to `rows` (and `meUser`), so the route
+    // can attach each row's secondary without the ids ever reaching the wire.
+    rowUsers: windowIdx.map((i) => field[i].user),
+    meUser: meIdx < 0 ? null : field[meIdx].user,
   };
 };

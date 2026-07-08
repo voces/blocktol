@@ -2998,14 +2998,43 @@ a:hover {
   display: none;
 }
 
-.standings-sheet__meta {
+/* Sort toggle (Daily / PB) on the left, player count on the right. */
+.standings-sheet__controls {
   flex: none;
   display: flex;
-  justify-content: flex-end;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 0 20px 10px;
+}
+
+.standings-sort {
+  display: flex;
+  gap: 3px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.standings-sort__tab {
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font: 600 11px var(--font);
+  background: transparent;
+  color: var(--text-mute);
+}
+
+.standings-sort__tab--active {
+  background: var(--surface-3);
+  color: var(--color);
+}
+
+.standings-sheet__meta {
   font: 500 12px var(--font);
   color: var(--text-mute);
+  white-space: nowrap;
 }
 
 .standings-sheet__meta .mono {
@@ -3173,11 +3202,26 @@ a:hover {
   color: var(--you, var(--win));
 }
 
-.standings-row__time {
+/* The ranked value (big) over the other board's value (small), right-aligned. */
+.standings-row__nums {
   flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.standings-row__time {
   font-size: 18px;
   font-weight: 700;
+  line-height: 1;
   color: var(--color);
+}
+
+.standings-row__small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-faint);
 }
 
 .standings-row--gold .standings-row__time {

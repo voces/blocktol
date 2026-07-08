@@ -111,6 +111,19 @@ export const migrations: Migration[] = [
         AND r.created >= DATE(i.created) - INTERVAL 14 HOUR
         AND r.created < DATE(i.created) + INTERVAL 36 HOUR;`,
   },
+  {
+    version: 4,
+    name: "run-user-void-time-index",
+    // Covering index for the standings PB board — each player's all-time best
+    // build, `SELECT user, MAX(time) FROM run WHERE void = FALSE GROUP BY user`
+    // (see db/standings.ts getPbStandings / getPbForUsers). The leftmost `user`
+    // groups, `void` filters, and `time` is read for the MAX, so MariaDB can
+    // satisfy it from the index alone (a loose index scan) rather than scanning
+    // the whole table. IF NOT EXISTS keeps it safe if the index was ever added
+    // out of band. MariaDB dialect.
+    up:
+      "ALTER TABLE `run` ADD INDEX IF NOT EXISTS `user_void_time_idx` (`user`, `void`, `time`);",
+  },
 ];
 
 // Fails fast on an ill-formed migration list: versions must be unique and form a

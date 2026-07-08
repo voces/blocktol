@@ -1,9 +1,16 @@
 // Pure formatting for the standings dock/sheet, split out for unit tests.
 // Each takes `now` so tests don't race the clock.
 
-// "T2" when the rank is shared, plain "2" otherwise.
-export const formatRank = (rank: number, tied: boolean) =>
-  `${tied ? "T" : ""}${rank}`;
+// "T2" when the rank is shared, plain "2" otherwise. Large ranks (the PB
+// board's thousands) collapse to an approximate "~1.9k" — exact digits there
+// are noise, and the tie prefix drops since tie state is fuzzy at that scale.
+export const formatRank = (rank: number, tied: boolean) => {
+  if (rank >= 1000) {
+    const k = Math.round(rank / 100) / 10;
+    return `~${k}k`;
+  }
+  return `${tied ? "T" : ""}${rank}`;
+};
 
 // When a row's best was set — "now", "5m ago", "19h ago", "3d ago". Coarser
 // than the runs panel's formatter on purpose: board rows span the whole field,

@@ -34,6 +34,35 @@ export const getDailyStandings = (iteration: number) =>
     ORDER BY best.t DESC, at ASC;
   `;
 
+// Each listed player's all-time best build (any iteration, daily or free),
+// `void = FALSE` — the same figure as the profile's bestBuild. Used to annotate
+// the daily board's rows with a "PB" secondary. Restricted to the day's players
+// (an `IN (...)` over the new user_void_time_idx) so it stays proportional to
+// the field rather than the whole user base. Empty in → no query.
+export const getPbForUsers = (users: readonly string[]) =>
+  users.length === 0 ? Promise.resolve(new Map<string, number>()) : sql<
+    { user: string; pb: number }[]
+  >`
+    SELECT user, MAX(time) pb
+    FROM run
+    WHERE void = FALSE AND user IN (${users})
+    GROUP BY user;
+  `.then((r) => new Map(r.map((x) => [x.user, x.pb])));
+
+// The global PB leaderboard: every player's all-time best build, best-first.
+// One row per player over the whole run table (loose index scan on
+// user_void_time_idx), so the caller caches it and ranks in memory. Names come
+// along for the rows; the hue is derived from the id server-side.
+export const getPbStandings = () =>
+  sql<{ user: string; name: string | null; pb: number }[]>`
+    SELECT r.user user, u.name name, MAX(r.time) pb
+    FROM run r
+    JOIN user u ON u.id = r.user
+    WHERE r.void = FALSE
+    GROUP BY r.user, u.name
+    ORDER BY pb DESC;
+  `;
+
 // The iteration facts the standings header needs: whether the field is frozen
 // (rated), its calendar day, and the day's start — from which the "until
 // ranked" close is derived. DATE()/YEAR()-style reads keep the day identical
