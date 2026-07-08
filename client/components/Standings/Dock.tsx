@@ -1,5 +1,6 @@
 import { Fragment, h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
+import { percentileColor } from "../../../common/percentileColor.ts";
 import {
   fetchStandings,
   refreshStandings,
@@ -51,6 +52,20 @@ export const StandingsDock = () => {
   const leader = s?.rows[0];
   const me = s?.me ?? null;
 
+  // Your rank wears your standing: record states first (gold for an outright
+  // #1, chartreuse for a shared record), then the continuous percentile ramp —
+  // ranked percentiles are uniform by construction, so they colour linearly
+  // (no STANDING_GAMMA; see percentileColor).
+  const rankColor = !me
+    ? undefined
+    : me.record === "beat"
+    ? "var(--gold)"
+    : me.record === "match"
+    ? "var(--peak)"
+    : me.percentile != null
+    ? percentileColor(me.percentile)
+    : undefined;
+
   return (
     <>
       <button
@@ -73,7 +88,10 @@ export const StandingsDock = () => {
             {me && (
               <>
                 {" · "}
-                <span class="standings-dock__rank mono">
+                <span
+                  class="standings-dock__rank mono"
+                  style={rankColor ? { color: rankColor } : undefined}
+                >
                   #{formatRank(me.rank, me.tied)}
                 </span>
               </>

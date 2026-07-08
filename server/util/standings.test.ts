@@ -17,7 +17,14 @@ Deno.test("ranks a strictly-ordered field with podium + neighbourhood", () => {
   const { players, me, rows } = buildStandings(field, "u6");
 
   assertEquals(players, 10);
-  assertEquals(me, { rank: 7, tied: false, time: 34 });
+  // Percentile is self-excluded (beat 3 of the 9 others).
+  assertEquals(me, {
+    rank: 7,
+    tied: false,
+    time: 34,
+    record: null,
+    percentile: 3 / 9,
+  });
   assertEquals(rows.map((r) => r.rank), [1, 2, 3, 6, 7, 8]);
   assertEquals(rows.map((r) => r.you), [
     false,
@@ -71,6 +78,9 @@ Deno.test("a unique top is 'beat'; a shared top is 'match' for all", () => {
 
   const shared = buildStandings(fieldOf(40, 40, 38), "u0");
   assertEquals(shared.rows.map((r) => r.record), ["match", "match", null]);
+  // A viewer tied at the top still beat everyone below: record + p100.
+  assertEquals(shared.me?.record, "match");
+  assertEquals(shared.me?.percentile, 1);
 });
 
 Deno.test("empty and single-player fields", () => {
@@ -78,7 +88,14 @@ Deno.test("empty and single-player fields", () => {
 
   const solo = buildStandings(fieldOf(40), "u0");
   assertEquals(solo.players, 1);
-  assertEquals(solo.me, { rank: 1, tied: false, time: 40 });
+  // Nobody to rank against — no percentile, but the (vacuous) record stands.
+  assertEquals(solo.me, {
+    rank: 1,
+    tied: false,
+    time: 40,
+    record: "beat",
+    percentile: null,
+  });
   assertEquals(solo.rows.map((r) => r.record), ["beat"]);
 });
 

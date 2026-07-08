@@ -2837,6 +2837,8 @@ a:hover {
   text-overflow: ellipsis;
 }
 
+/* Fallback only — the component inlines the standing colour (gold /
+   chartreuse / percentile ramp) over this. */
 .standings-dock__rank {
   color: var(--win);
 }

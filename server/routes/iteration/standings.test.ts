@@ -77,7 +77,13 @@ Deno.test({
       // reads final with no countdown.
       assertEquals(result.final, true);
       assertEquals(result.closesAt, null);
-      assertEquals(result.me, { rank: 5, tied: false, time: 34 });
+      assertEquals(result.me, {
+        rank: 5,
+        tied: false,
+        time: 34,
+        record: null,
+        percentile: 0,
+      });
 
       // Competition ranking off each player's best: 40, T2 38.5, T2 38.5,
       // 4th 36, 5th 34 — a five-player field shows whole (podium ∪ viewer±1).
@@ -112,7 +118,13 @@ Deno.test({
       // A second viewer is served off the cached field: same board, own slice.
       const asLeader = await standings.handler({ iteration }, authed(leader));
       assert(!("error" in asLeader));
-      assertEquals(asLeader.me, { rank: 1, tied: false, time: 40 });
+      assertEquals(asLeader.me, {
+        rank: 1,
+        tied: false,
+        time: 40,
+        record: "beat",
+        percentile: 1,
+      });
       assertEquals(asLeader.rows.map((r) => r.you)[0], true);
     } finally {
       // The iteration cascade removes the seeded runs; users their own.

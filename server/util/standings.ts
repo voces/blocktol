@@ -64,6 +64,26 @@ export const buildStandings = (
 
   const topTime = field[0]?.time;
   const topShared = field.length > 1 && field[1].time === topTime;
+  const recordOf = (i: number): "beat" | "match" | null =>
+    field[i].time === topTime ? (topShared ? "match" : "beat") : null;
+
+  // The viewer's self-excluded ranked percentile (how much of the field they
+  // beat, ties split — the convention ratings/profile/calendar share), used
+  // to colour their rank on the percentile ramp. null when there's nobody to
+  // rank against.
+  const percentileOf = (i: number) => {
+    const others = field.length - 1;
+    if (others === 0) return null;
+    let less = 0;
+    let equal = 0;
+    let more = 0;
+    for (const e of field) {
+      if (e.time < field[i].time) less++;
+      else if (e.time === field[i].time) equal++;
+      else more++;
+    }
+    return more === 0 ? 1 : (less + (equal - 1) / 2) / others;
+  };
 
   let prev = -1;
   const rows = [...indices].sort((a, b) => a - b).map((i): StandingsRow => {
@@ -77,7 +97,7 @@ export const buildStandings = (
       hue: field[i].hue,
       time: field[i].time,
       at: field[i].at,
-      record: field[i].time === topTime ? (topShared ? "match" : "beat") : null,
+      record: recordOf(i),
       gapBefore,
     };
   });
@@ -88,6 +108,8 @@ export const buildStandings = (
       rank: ranks[meIdx],
       tied: tiedAt(meIdx),
       time: field[meIdx].time,
+      record: recordOf(meIdx),
+      percentile: percentileOf(meIdx),
     },
     rows,
   };
