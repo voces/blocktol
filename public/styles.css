@@ -150,6 +150,15 @@ body {
      avatar lines up with the right-hand panel's edge — not the raw viewport.
      Top inset lives on `body`; the header just keeps its bottom gap. */
   padding: 0 16px 20px;
+  /* Reserve the action buttons' height (36px) as the row's floor — the tallest
+     thing the header ever holds, above the 24px logo and the wordmark's line
+     box. Without it the row is only as tall as the logo until the
+     avatar/calendar buttons finish loading, then grows ~12px and pushes the
+     whole board down; a late web-font swap would nudge it too. Pinning the row
+     keeps --header-size (and the board's top) fixed from first paint. It's on
+     the row, not min-height — the header is border-box, so its padding already
+     clears any container min-height. */
+  grid-auto-rows: minmax(36px, auto);
 }
 
 .app-header__brand {
