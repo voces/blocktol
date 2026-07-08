@@ -27,8 +27,6 @@ export const Runner = (
     let nextSlow = 0;
 
     const cb = () => {
-      animationFrame = requestAnimationFrame(cb);
-
       const now = Date.now();
       const delta = now - last;
       last = now;
@@ -76,6 +74,12 @@ export const Runner = (
         game.dispatchEvent("runFinish", { kind: "runFinish" });
         return;
       }
+
+      // Scheduled only while unfinished — previously the next frame was queued
+      // before the finish check, so finishing depended on the parent unmounting
+      // this component before that frame fired; anything deferring that render
+      // would have re-dispatched runFinish (and its startRun) every frame.
+      animationFrame = requestAnimationFrame(cb);
     };
 
     cb();

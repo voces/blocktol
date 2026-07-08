@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { findPathFromData, pathDuration } from "../../../common/pathing.ts";
 import {
-  getDailyIterationId,
   getIteration,
   getIterationOtherBest,
   getIterationTimeCounts,
+  requireDailyIterationId,
 } from "../../db/iteration.ts";
 import { getLatestRun, startRun as dbStartRun } from "../../db/run.ts";
 import {
@@ -27,7 +27,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
     const iterationId = "timeZone" in rest
       ? (() => {
         const { year, month, day } = dailyParts(rest.timeZone);
-        return getDailyIterationId(year, month, day);
+        return requireDailyIterationId(year, month, day);
       })()
       : Promise.resolve(rest.iteration);
 
@@ -90,7 +90,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
     }
 
     const remainingTime = remaining(latestRun?.created);
-    const currentRun = latestRun && remainingTime > 0
+    const rawCurrentRun = latestRun && remainingTime > 0
       ? (() => {
         const blocks = [
           ...iteration.blocks,
@@ -135,9 +135,12 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       })()
       : null;
 
-    if (currentRun && "error" in currentRun) {
-      throw new Error("Unexpected invalid path on daily recovery");
-    }
+    // A corrupt persisted maze must not 500 the boot call for the rest of the
+    // run's window — degrade to no resumable run (logged above); the player
+    // gets a summary without a board rather than a broken app.
+    const currentRun = rawCurrentRun && "error" in rawCurrentRun
+      ? null
+      : rawCurrentRun;
 
     // The in-progress run is the board, not a finished attempt: keep it out of
     // the panel list, where it would show as a phantom min-time row (visible

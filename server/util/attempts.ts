@@ -1,3 +1,4 @@
+import { standing } from "../../common/standing.ts";
 import { Point } from "../../common/types.ts";
 import {
   getIteration,
@@ -42,11 +43,9 @@ export const mapAttempts = (
     duration: run.time,
     // Field percentile (how many you beat) for the result modal.
     percentile: percentileFromTimeCounts(timeCounts, run.time),
-    // Position in the field's range, (time - min) / (best - min) — the stat the
-    // runs panel and today-result show, and the band they colour by.
-    percent: fieldBest === min
-      ? 1
-      : Math.max(0, Math.min(1, (run.time - min) / (fieldBest - min))),
+    // Position in the field's range — the stat the runs panel and
+    // today-result show, and the band they colour by.
+    percent: standing(run.time, min, fieldBest),
     supreme: beatsField && i === bestIdx,
     // A ranked daily attempt (created on the daily's day, among the first three)
     // vs free play. Positional fallback for the ranked-three list, which carries

@@ -7,9 +7,9 @@
 import { z } from "zod";
 import { findPathFromData, pathDuration } from "../../../common/pathing.ts";
 import {
-  getDailyIterationId,
   getIteration,
   getIterationOtherBest,
+  requireDailyIterationId,
 } from "../../db/iteration.ts";
 import { dailyAttempts, getOwnBest } from "../../db/user.ts";
 import { iterationAttempts } from "../../util/attempts.ts";
@@ -33,7 +33,7 @@ export const getBoard = method(getBoardBody, true)(
     }
 
     const iteration = inputIteration ??
-      await getDailyIterationId(year, month, day);
+      await requireDailyIterationId(year, month, day);
 
     const [data, ownBest, otherBest, attempts] = await Promise.all([
       getIteration(iteration),

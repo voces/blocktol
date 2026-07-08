@@ -22,6 +22,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     setThunderHover,
     invalid,
     setTouching,
+    blocks,
     setBlocks,
     power,
     setPower,
@@ -36,27 +37,26 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
   } = useContext(GameStateContext);
 
   useEffect(() => {
-    // Persist the local maze via the run saver: serialized (one in-flight
-    // save, newer edits coalesce), retried on network failure, and reconciled
-    // by useInit's handlers — only a CONFIRMED save advances the revert
-    // target; an expired or rejected save snaps the board back to it.
-    const persist = (blocks: ReadonlyArray<Point & { local?: boolean }>) => {
+    // Apply a new block list: persist via the run saver (serialized, retried,
+    // reconciled by useInit's handlers), rebuild the pathing grid, and set
+    // state. Effectful work stays OUT of the setBlocks updater — updaters are
+    // contractually pure, and a double-invoked updater would double-fire the
+    // save. `blocks` from the render closure is fresh: the effect re-registers
+    // on it, and each gesture applies at most one edit.
+    const apply = (newBlocks: typeof blocks) => {
       saveRun({
         iteration: iteration ?? -1,
-        blocks: blocks.filter((b) => b.local),
+        blocks: newBlocks.filter((b) => b.local),
       });
+      rebuildGrid(grid, checkpoint, newBlocks);
+      setBlocks(newBlocks);
     };
 
     // Remove a local block, refunding its brick (and power, if it was a
     // thunder). Shared by a tap-delete and by dragging a block somewhere it
     // can't be placed.
     const removeBlock = (block: Point & { thunder?: boolean }) => {
-      setBlocks((blocks) => {
-        const newBlocks = blocks.filter((b) => b !== block);
-        persist(newBlocks);
-        rebuildGrid(grid, checkpoint, newBlocks);
-        return newBlocks;
-      });
+      apply(blocks.filter((b) => b !== block));
       setBricks((bricks) => bricks + 1);
       if (block.thunder) setPower((power) => power + 1);
     };
@@ -87,14 +87,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         if (!dragged) {
           if (!onBoard) return;
           if (!origin.thunder && power) {
-            setBlocks((blocks) => {
-              const newBlocks = blocks.map((b) =>
+            apply(
+              blocks.map((b) =>
                 b === origin ? { ...origin, thunder: true } : b
-              );
-              persist(newBlocks);
-              rebuildGrid(grid, checkpoint, newBlocks);
-              return newBlocks;
-            });
+              ),
+            );
             setPower((power) => power - 1);
           } else {
             removeBlock(origin);
@@ -112,14 +109,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
           if (isInvalidMove(grid, checkpoint, origin, target.x, target.y)) {
             removeBlock(origin);
           } else {
-            setBlocks((blocks) => {
-              const newBlocks = blocks.map((b) =>
+            apply(
+              blocks.map((b) =>
                 b === origin ? { ...b, x: target.x, y: target.y } : b
-              );
-              persist(newBlocks);
-              rebuildGrid(grid, checkpoint, newBlocks);
-              return newBlocks;
-            });
+              ),
+            );
           }
         }
         return;
@@ -143,25 +137,23 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         }
       } catch { /* do nothing */ }
 
-      setBlocks((blocks) => {
-        const newBlocks = [...blocks, { x, y, local: true }];
-        // Free play opens the run on this first placement: the block rides along
-        // with startRun rather than a separate updateRun. Every later placement
-        // (staged is now false) is a plain updateRun.
-        if (staged) {
-          if (iteration !== undefined) {
-            // Routed through the board loader so this run takes the board
-            // token: an in-flight re-stage from just before the placement
-            // can't clobber the freshly opened run. Its response re-seeds
-            // the revert target via handleRun.
-            startBoardRun(iteration, { x, y });
-          }
-        } else {
-          persist(newBlocks);
+      const newBlocks = [...blocks, { x, y, local: true }];
+      // Free play opens the run on this first placement: the block rides along
+      // with startRun rather than a separate updateRun. Every later placement
+      // (staged is now false) is a plain save.
+      if (staged) {
+        if (iteration !== undefined) {
+          // Routed through the board loader so this run takes the board
+          // token: an in-flight re-stage from just before the placement
+          // can't clobber the freshly opened run. Its response re-seeds
+          // the revert target via handleRun.
+          startBoardRun(iteration, { x, y });
         }
         rebuildGrid(grid, checkpoint, newBlocks);
-        return newBlocks;
-      });
+        setBlocks(newBlocks);
+      } else {
+        apply(newBlocks);
+      }
       setBricks((bricks) => bricks - 1);
       if (staged) setStaged(false);
 
@@ -197,6 +189,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     time,
     power,
     bricks,
+    // apply() reads the render's blocks now that side effects live outside
+    // the setBlocks updater — re-register so the closure stays fresh.
+    blocks,
     iteration,
     staged,
   ]);
