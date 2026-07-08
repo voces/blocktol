@@ -172,20 +172,29 @@ export const Attempts = () => {
               const isBest = group === bestGroup;
               const isViewing = viewingKey != null &&
                 mazeKey(attempt.maze) === viewingKey;
+              // Mid-daily (simplified) the rows are inert: reviewing a past
+              // maze would replace the live attempt's board, and even the
+              // affordance (pointer, hover, title) would invite wandering off
+              // mid-run — matching how the calendar and profile hide entirely.
+              const clickable = !simplified;
               return (
                 <div
-                  class={"attempts__row band-card attempts__row--clickable tapc" +
+                  class={"attempts__row band-card" +
+                    (clickable ? " attempts__row--clickable tapc" : "") +
                     (supreme ? " attempts__row--glow" : "") +
                     (isViewing ? " attempts__row--viewing" : "")}
                   key={i}
                   style={{ "--band": band }}
-                  title="View this maze"
-                  onClick={() => {
-                    viewMaze(attempt.maze);
-                    // Mobile scrolls the board out of view under the runs list;
-                    // snap back up to it (instant) so the reviewed maze is seen.
-                    document.querySelector(".game")?.scrollTo({ top: 0 });
-                  }}
+                  title={clickable ? "View this maze" : undefined}
+                  onClick={clickable
+                    ? () => {
+                      viewMaze(attempt.maze);
+                      // Mobile scrolls the board out of view under the runs
+                      // list; snap back up to it (instant) so the reviewed
+                      // maze is seen.
+                      document.querySelector(".game")?.scrollTo({ top: 0 });
+                    }
+                    : undefined}
                 >
                   <span class="attempts__time mono">{attempt.duration}s</span>
                   <div class="attempts__meta">
