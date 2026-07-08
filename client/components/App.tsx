@@ -1,6 +1,7 @@
 import { ComponentChildren, h } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
 import { api } from "../api.ts";
+import { startBoardRun } from "../store/board.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
@@ -103,9 +104,7 @@ export const App = () => {
       // The summary auto-starts the daily server-side and returns it as
       // currentRun; this explicit start is only the fallback for when that
       // insert failed.
-      if (ret.ranked.length < 3) {
-        api.startRun({ iteration: "daily", timeZone: getTimeZone() });
-      }
+      if (ret.ranked.length < 3) startBoardRun("daily");
     }).catch(() => {
       setDisconnected(true);
       setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);

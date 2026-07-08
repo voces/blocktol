@@ -7,6 +7,13 @@ import { useApiListener } from "../../hooks/useApiListener.ts";
 import { useDailyItems } from "../../hooks/useDailyItems.tsx";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
+import {
+  BoardData,
+  ingestBoard,
+  setBoardHandlers,
+  showBoard,
+  startBoardRun,
+} from "../../store/board.ts";
 import { rebuildGrid } from "./helpers.ts";
 import {
   finalizeRunSaver,
@@ -131,8 +138,10 @@ export const useInit = () => {
 
   // Free play: show the board without a run. Placement (not the clock) opens the
   // run, so the clock is staged and the whole attempt is flagged unranked.
+  // `data` is either a fresh getBoard response or a cached board staged
+  // optimistically (see store/board.ts) — same invariants either way.
   const handleStaged = useCallback(
-    (data: MessageMap["getBoard"]) => {
+    (data: BoardData) => {
       setRun(undefined);
       setFreePlay(true);
       setStaged(true);
@@ -174,14 +183,20 @@ export const useInit = () => {
     [],
   );
 
-  useApiListener("startRun", (e) => {
-    handleRun(e);
-    setViewedAttempts(e.attempts);
+  // Board staging comes through the board loaders (store/board.ts) rather
+  // than the response events: the loaders carry request identity, so a
+  // superseded response (click day A, then quickly day B) can never stage.
+  setBoardHandlers({
+    onRun: (e) => {
+      handleRun(e);
+      setViewedAttempts(e.attempts);
+    },
+    onStaged: (e) => {
+      handleStaged(e);
+      setViewedAttempts(e.attempts);
+    },
   });
-  useApiListener("getBoard", (e) => {
-    handleStaged(e);
-    setViewedAttempts(e.attempts);
-  });
+
   useApiListener(
     "getDailySummary",
     ({ attempts, ranked, currentRun }) => {
@@ -191,6 +206,9 @@ export const useInit = () => {
 
       if (currentRun && time === -2) {
         setAttemptsRemaining(3 - ranked.length + 1);
+        // The resumed board seeds the cache too, so post-daily navigation
+        // back to today stages instantly.
+        ingestBoard({ ...currentRun, attempts });
         return handleRun(currentRun);
       }
 
@@ -217,12 +235,12 @@ export const useInit = () => {
       // as the board re-stages.
       if (freePlay) {
         setVerdict(undefined);
-        api.getBoard({ iteration, timeZone: getTimeZone() });
+        showBoard(iteration);
         return;
       }
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
       if (attemptsRemaining === 1) api.getDailySummary({ iteration });
-      else api.startRun({ iteration, timeZone: getTimeZone() });
+      else startBoardRun(iteration);
     },
     [iteration, attemptsRemaining, freePlay],
   );

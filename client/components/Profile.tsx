@@ -3,6 +3,7 @@ import { useContext, useEffect, useState } from "preact/compat";
 import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
+import { showBoard } from "../store/board.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { fetchProfile, useProfile } from "../hooks/useProfile.ts";
 import { useSettings } from "../hooks/useSettings.ts";
@@ -110,8 +111,11 @@ const ProfileDialog = (
   const viewBest = () => {
     if (!canView) return;
     onClose();
-    api.getBoard({ iteration: bestIteration!, timeZone: getTimeZone() })
-      .then(() => api.best({ iteration: bestIteration! }));
+    // Stage the day's board (instant when cached), then overlay the best
+    // maze — skipped if a newer navigation superseded this one mid-flight.
+    showBoard(bestIteration!).then((staged) => {
+      if (staged) api.best({ iteration: bestIteration! });
+    });
   };
 
   const name = profile?.name || "Anonymous";

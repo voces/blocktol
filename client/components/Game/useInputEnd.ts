@@ -2,9 +2,8 @@ import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
-import { api } from "../../api.ts";
+import { startBoardRun } from "../../store/board.ts";
 import { saveRun } from "./runSaver.ts";
-import { getTimeZone } from "../../util/timeZone.ts";
 import {
   isBorderPoint,
   isInvalidMove,
@@ -151,12 +150,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         // (staged is now false) is a plain updateRun.
         if (staged) {
           if (iteration !== undefined) {
-            // The startRun response re-seeds the revert target via handleRun.
-            api.startRun({
-              iteration,
-              timeZone: getTimeZone(),
-              block: { x, y },
-            });
+            // Routed through the board loader so this run takes the board
+            // token: an in-flight re-stage from just before the placement
+            // can't clobber the freshly opened run. Its response re-seeds
+            // the revert target via handleRun.
+            startBoardRun(iteration, { x, y });
           }
         } else {
           persist(newBlocks);

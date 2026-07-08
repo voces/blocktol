@@ -162,11 +162,16 @@ general engineering review.
   Alternatively serialize on the client (a per-run trailing-edge queue of depth
   1 that coalesces to the latest maze).
 
-- [ ] **2b. Board-loading responses race with each other.**
-      `getBoard`/`startRun` responses drive the board via global emitter
-      listeners (`useInit.ts:147-154`). Click day A then quickly day B in the
-      calendar: whichever response arrives _last_ stages the board, which may be
-      A. Same for `TodayResult`/`Profile`'s
+- [x] **2b. Board-loading responses race with each other.** _Fixed in #99 — all
+      board navigation goes through `store/board.ts` loaders that consume their
+      own request's promise under a monotonic token, so a superseded response
+      can never stage; a placement's `startRun` takes the token too, so an
+      in-flight re-stage can't clobber a freshly opened run. The calendar's
+      selection now reads the loaded board off game state instead of mirroring
+      response events._ `getBoard`/`startRun` responses drive the board via
+      global emitter listeners (`useInit.ts:147-154`). Click day A then quickly
+      day B in the calendar: whichever response arrives _last_ stages the board,
+      which may be A. Same for `TodayResult`/`Profile`'s
       `getBoard().then(() => api.best(...))`. No request identity anywhere. Fix:
       a `wantedIteration` ref set at click time (or a request id) and drop
       mismatched responses. Falls out naturally of the store proposal in §5.
@@ -273,14 +278,17 @@ general engineering review.
      attempts remain — collapse RTT 2 into RTT 1.
   3. A single `boot` endpoint (summary + profile + current month) — one RTT to
      interactive.
-- [ ] **4b. "Keep playing" / Reset / day-switch round trips.**
-      `clear(); api.getBoard(...)` (`Daily.tsx:226`, `Hud.tsx:98`,
-      `Calendar.tsx:193`) blanks the board and waits a full RTT for data the
-      client largely already has (fixed pieces, checkpoint, budgets, min/best
-      all arrived with the previous `startRun`/`getBoard` for that iteration).
-      With an iteration cache (§5) stage instantly from cache and reconcile on
-      response — the same pattern the optimistic runs-panel row
-      (`useInit.ts:226-247`) already does.
+- [x] **4b. "Keep playing" / Reset / day-switch round trips.** _Fixed in #99 —
+      every board-shaped response ingests into a normalized per-iteration cache;
+      "keep playing", reset, and calendar picks stage synchronously from it
+      (measured ~40ms vs a full RTT) while the response reconciles
+      bests/attempts through the same handler._ `clear(); api.getBoard(...)`
+      (`Daily.tsx:226`, `Hud.tsx:98`, `Calendar.tsx:193`) blanks the board and
+      waits a full RTT for data the client largely already has (fixed pieces,
+      checkpoint, budgets, min/best all arrived with the previous
+      `startRun`/`getBoard` for that iteration). With an iteration cache (§5)
+      stage instantly from cache and reconcile on response — the same pattern
+      the optimistic runs-panel row (`useInit.ts:226-247`) already does.
 - [ ] **4c. View-best waterfall.** `Profile.tsx:113` and `TodayResult.tsx:50`:
       `getBoard(...).then(() => api.best(...))` — two serial RTTs to look at a
       maze. Fire in parallel and stage when both land (or have `best` return the
@@ -315,8 +323,14 @@ No need for Apollo. For a Preact app this size, the natural shape is
 **`@preact/signals` + a thin typed query/mutation layer** over the existing RPC
 proxy:
 
-- [ ] **5a. Normalized entity cache.** Three entity types cover almost
-      everything, keyed by `iteration` (which every response already carries):
+- [ ] **5a. Normalized entity cache.** _Stage 1 landed in #99:
+      `client/store/board.ts` holds the per-iteration board cache with a single
+      `ingest` normalizing every board-shaped response, plus the
+      request-identity loaders (see 2b/4b). Remaining: fold in
+      attempts/dailyItems/profile, then the query layer (5b) and signals-based
+      subscriptions (5c) so panels read the store directly._ Three entity types
+      cover almost everything, keyed by `iteration` (which every response
+      already carries):
 
   ```
   iterations:  Map<iterationId, IterationBoard>  // fixed pieces, checkpoint, budgets, min/best/ownBest

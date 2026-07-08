@@ -139,11 +139,21 @@ export const getDailySummary = method(getDailySummaryBody, true)(
       throw new Error("Unexpected invalid path on daily recovery");
     }
 
+    // The in-progress run is the board, not a finished attempt: keep it out of
+    // the panel list, where it would show as a phantom min-time row (visible
+    // since the auto-start above — and previously on any mid-attempt refresh).
+    // `ranked` still includes it: attempts-remaining counts it as underway.
+    const panelRuns = currentRun && latestRun
+      ? allRuns.filter(
+        (r) => r.created !== new Date(latestRun.created).getTime(),
+      )
+      : allRuns;
+
     return {
       rating: user?.rating ?? 1000,
       // `attempts` is the full non-void list (panel); `ranked` is the first three
       // (result modal + attempts-remaining), void included.
-      attempts: mapAttempts(allRuns, timeCounts, otherBest, iteration.min),
+      attempts: mapAttempts(panelRuns, timeCounts, otherBest, iteration.min),
       ranked: mapAttempts(rankedRuns, timeCounts, otherBest, iteration.min),
       stats: fieldQuantiles(timeCounts),
       currentRun,

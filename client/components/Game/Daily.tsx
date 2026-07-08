@@ -6,8 +6,7 @@ import { percentileBand } from "../../../common/percentileColor.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
-import { api } from "../../api.ts";
-import { getTimeZone } from "../../util/timeZone.ts";
+import { showBoard } from "../../store/board.ts";
 
 const ShareIcon = () => (
   <svg width={15} height={15} viewBox="0 0 16 16">
@@ -49,7 +48,7 @@ const BeatIcon = ({ kind }: { kind: keyof typeof BEAT_ICON }) => (
 );
 
 export const Daily = () => {
-  const { attempts, clear } = useContext(GameStateContext);
+  const { attempts, clear, iteration } = useContext(GameStateContext);
   const stats = useApiListener("getDailySummary")?.stats ?? null;
   const [copied, setCopied] = useState(false);
   const [timeout, setTimeoutId] = useState(-1);
@@ -219,11 +218,11 @@ export const Daily = () => {
             class="result__btn result__btn--keep"
             onClick={() => {
               // Free play: stage today's board (the run opens on the first
-              // placement, not now) rather than dropping to an empty board. The
-              // getBoard response reselects today in the daily list — which is
-              // already fresh (load and runFinish keep it current), so no relist.
+              // placement, not now) rather than dropping to an empty board.
+              // Today's board is cached from the daily attempts, so this
+              // stages instantly; the response refreshes bests/attempts.
               clear();
-              api.getBoard({ timeZone: getTimeZone() });
+              showBoard(iteration);
               setHideDailyResult(true);
             }}
           >

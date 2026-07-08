@@ -1,7 +1,6 @@
 import { h, JSX } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
-import { api } from "../../api.ts";
-import { getTimeZone } from "../../util/timeZone.ts";
+import { showBoard, startBoardRun } from "../../store/board.ts";
 import { Timer } from "../Timer.tsx";
 import { GameStateContext } from "./useGameState.ts";
 import { RunClock, VerdictPill } from "./RunClock.tsx";
@@ -84,18 +83,19 @@ export const Hud = () => {
   // otherwise it free-plays the day currently in view.
   const onPlay = () => {
     if (attemptsRemaining > 0) {
-      api.startRun({ iteration: "daily", timeZone: getTimeZone() });
+      startBoardRun("daily");
     } else if (iteration !== undefined) {
-      api.getBoard({ iteration, timeZone: getTimeZone() });
+      showBoard(iteration);
     }
   };
 
   // Free-play only: re-stage a fresh board, discarding the in-progress build.
   // A free-play run is void until it executes (see commitRun), so simply
-  // re-staging abandons it — no explicit void call needed.
+  // re-staging abandons it — no explicit void call needed. The board is
+  // cached, so the reset is instant.
   const onReset = () => {
     if (iteration === undefined) return;
-    api.getBoard({ iteration, timeZone: getTimeZone() });
+    showBoard(iteration);
   };
   // Shown mid-round for free play only: after the first placement opens the run
   // (staged is false) and while not reviewing a past maze. Daily runs (freePlay
@@ -108,7 +108,7 @@ export const Hud = () => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== "KeyR" || e.metaKey || !run) return;
       if (power === -1) {
-        if (iteration) api.startRun({ iteration, timeZone: getTimeZone() });
+        if (iteration) startBoardRun(iteration);
       } else setTime(0);
     };
     globalThis.addEventListener("keydown", onKeyDown);
