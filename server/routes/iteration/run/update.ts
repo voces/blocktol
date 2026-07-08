@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { is } from "../../../../common/typeguards.ts";
 import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
@@ -23,8 +22,6 @@ const updateRunBody = z.object({
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);
 
-const isUpdate = is.object({ changedRows: is.number });
-
 export const updateRun = method(updateRunBody, true)(
   async ({ iteration: iterationId, blocks, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
@@ -46,18 +43,17 @@ export const updateRun = method(updateRunBody, true)(
     // Must finish within the request: the new Deploy tears down the isolate
     // after the response, so a still-pending write can be killed mid-flight.
     try {
-      const r = await updateCurrentRun(
+      const { saved } = await updateCurrentRun(
         userId,
         duration,
         blocks.map((b) => ({ ...b, player: true })),
         iterationId,
       );
-      // The batch is [SET, SELECT @ranked, save UPDATE, demote, promote] — the
-      // save's result is the third entry.
-      const saved = Array.isArray(r) ? r[2] : r;
-      if (isUpdate(saved) && saved.changedRows === 0) {
-        log.error(req, "Unexpected no rows changed");
-      }
+      // The run's 60s window closed before this save (or there's no current
+      // run): the edit was NOT persisted. Not an error — success-shaped so the
+      // client doesn't report it; it reverts the optimistic edit to the last
+      // accepted maze and starts the run (which is what the server is doing).
+      if (!saved) return { expired: true as const };
     } catch (err) {
       log.error(req, err);
       return { error: "failed to save run", status: 500 };

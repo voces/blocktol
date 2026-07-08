@@ -36,8 +36,13 @@ general engineering review.
       the server is least healthy. Fix: exempt `reportClientError` from error
       reporting, or add a throttle/one-shot guard.
 
-- [ ] **1c. Placements in the final seconds are shown as saved but silently
-      dropped.** `server/db/run.ts:97` only persists within the 60s window
+- [x] **1c. Placements in the final seconds are shown as saved but silently
+      dropped.** _Fixed in #94 — `updateRun` returns `{ expired: true }` when
+      the window closed (checked off the run row's age, not `changedRows`); the
+      client keeps edits optimistic, tracks the last server-accepted maze
+      (`savedBlocksRef`), and on expiry snaps back to it and starts the run (the
+      server already has); on a rejected save it reverts and keeps building. No
+      error rendered._ `server/db/run.ts:97` only persists within the 60s window
       (`TIMESTAMPDIFF(SECOND, created, NOW()) < 60`). When the window has just
       closed, `changedRows === 0` is merely logged
       (`server/routes/iteration/run/update.ts:55-57`) and the route **still
@@ -47,19 +52,26 @@ general engineering review.
       include it. The route should return a "stale/expired" result the client
       can surface.
 
-- [ ] **1d. `memoize` caches rejected promises forever.**
-      `server/db/iteration.ts:10` (`getIteration`) +
+- [x] **1d. `memoize` caches rejected promises forever.** _Fixed in #94 —
+      rejected promises are evicted so the next call retries; `trailer` also
+      retries a failed initial fetch and keeps serving the stale value when a
+      background refresh fails (both previously wedged on the rejected
+      promise)._ `server/db/iteration.ts:10` (`getIteration`) +
       `server/util/memoize.ts:52-58` store the promise synchronously. One
       transient DB failure caches a rejected promise served to every subsequent
       request until the isolate recycles. Fix: `.catch()` → `bust()` on
       rejection.
 
-- [ ] **1e. Non-idempotent SQL is retried.** `server/db/query.ts:13` — `query()`
-      defaults to one retry on timeout/network failure for _every_ statement,
-      including `startRun`'s `INSERT INTO run`. A 3s timeout where the write
-      actually landed re-executes the INSERT on retry — a duplicate run row,
-      i.e. a silently spent daily attempt. Restrict retries to reads, or make
-      writes idempotent (client-generated run id + unique key).
+- [x] **1e. Non-idempotent SQL is retried.** _Fixed in #94 — a no-retry
+      `sqlOnce` tag covers the two non-idempotent statements (`startRun`'s and
+      `createIteration`'s bare INSERTs); the remaining writes are idempotent
+      (upserts / absolute-value UPDATEs), where retry is safe and stays on._
+      `server/db/query.ts:13` — `query()` defaults to one retry on
+      timeout/network failure for _every_ statement, including `startRun`'s
+      `INSERT INTO run`. A 3s timeout where the write actually landed
+      re-executes the INSERT on retry — a duplicate run row, i.e. a silently
+      spent daily attempt. Restrict retries to reads, or make writes idempotent
+      (client-generated run id + unique key).
 
 - [ ] **1f. Dead/broken files.**
   - `client/hooks/useConnectionState.ts` imports `../contexts/Connection.ts`,

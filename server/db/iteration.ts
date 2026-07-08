@@ -1,6 +1,6 @@
 import { Point } from "../../common/types.ts";
 import { memoize } from "../util/memoize.ts";
-import { ExecResult, format, raw, sql } from "./query.ts";
+import { ExecResult, format, raw, sql, sqlOnce } from "./query.ts";
 
 export const getIterationCount = () =>
   sql<{ count: number }[]>`
@@ -52,8 +52,11 @@ export const createIteration = (
   thunders: Point[],
   duration: number,
 ) =>
-  sql<[ExecResult, ExecResult, ExecResult[] | undefined]>`
-    INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min) 
+  // sqlOnce: a retry after a lost response would create a duplicate iteration
+  // for the day (the generation cron is the only caller, but it check-then-
+  // creates, so a duplicate here would stand).
+  sqlOnce<[ExecResult, ExecResult, ExecResult[] | undefined]>`
+    INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min)
     VALUES (${date}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y}, ${duration});
     SET @last_id = LAST_INSERT_ID();
     ${

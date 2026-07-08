@@ -63,6 +63,14 @@ export const useGameState = () => {
   >(
     [],
   );
+  // The local blocks the SERVER last accepted: seeded when a board loads
+  // (startRun / getBoard / summary resume) and advanced on each confirmed
+  // updateRun save. Edits stay optimistic; when a save comes back expired or
+  // rejected, the board snaps back to this maze — the one the run will
+  // actually execute (see useInit's updateRun/error listeners).
+  const savedBlocksRef = useRef<
+    ReadonlyArray<NonNullable<typeof transitionBlock>>
+  >([]);
   const [bricks, setBricks] = useState(-1);
   const [power, setPower] = useState(-1);
   // The iteration's full brick/power budget (remaining + already placed at load),
@@ -173,7 +181,10 @@ export const useGameState = () => {
 
   return {
     blocks,
+    savedBlocksRef,
     bricks,
+    bricksTotal,
+    powerTotal,
     checkpoint,
     date,
     grid,
