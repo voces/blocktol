@@ -15,6 +15,7 @@
     "jsr:@std/path@1": "1.1.6",
     "jsr:@std/path@^1.1.6": "1.1.6",
     "jsr:@std/streams@^1.1.1": "1.1.1",
+    "npm:@preact/signals@^2.5.1": "2.9.2_preact@10.29.3",
     "npm:preact@^10.11.3": "10.29.3",
     "npm:qrcode-generator@^1.4.4": "1.5.2",
     "npm:sqlstring@^2.3.3": "2.3.3",
@@ -76,6 +77,16 @@
     }
   },
   "npm": {
+    "@preact/signals-core@1.14.3": {
+      "integrity": "sha512-m0K3vnbSLC5rHs2ZVfeAMvBtT1zIyq4mxx5OlNncSgMj5Iz6W5Rn3kPrDxAC+iIKmiVe0lSl6U37t5ZkEWoVAw=="
+    },
+    "@preact/signals@2.9.2_preact@10.29.3": {
+      "integrity": "sha512-DvFPISNMSh3vPqRwPa1tAVAHl85aDq4pTyNu1bTGfrKr64F3EOCHjdUl9aUdohKBf1v9PRGLYuGFcJpfztkdoQ==",
+      "dependencies": [
+        "@preact/signals-core",
+        "preact"
+      ]
+    },
     "preact@10.29.3": {
       "integrity": "sha512-D9NL1GAnJZhc3RndVs4gDdxEeU9TcHgywMrhhOsnpdlvFjdbx0gAsLUnH6JEhlJH5giL7Tx5biWPUSEXE/HPzw=="
     },
@@ -94,6 +105,7 @@
       "jsr:@std/assert@1",
       "jsr:@std/http@1",
       "jsr:@std/path@1",
+      "npm:@preact/signals@^2.5.1",
       "npm:preact@^10.11.3",
       "npm:qrcode-generator@^1.4.4",
       "npm:sqlstring@^2.3.3",

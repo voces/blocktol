@@ -6,12 +6,7 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
-import {
-  DailyItemsContext,
-  DailyItemsStore,
-  useDailyItemsStore,
-} from "../hooks/useDailyItems.tsx";
-import { fetchProfile } from "../hooks/useProfile.ts";
+import { fetchProfile } from "../store/profile.ts";
 import { adoptServerSettings } from "../hooks/useSettings.ts";
 import { CalendarButton } from "./CalendarButton.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
@@ -22,31 +17,30 @@ import { Toast } from "./Toast.tsx";
 import { getCleanLink, getPendingLink } from "../util/id.ts";
 
 const Shell = (
-  { children, gameState, dailyStore }: {
+  { children, gameState }: {
     children: ComponentChildren;
     gameState: ReturnType<typeof useGameState>;
-    dailyStore: DailyItemsStore;
   },
 ) => (
-  // The providers wrap the header too, so its calendar button can share game
+  // The provider wraps the header too, so its calendar button can share game
   // state with the (mobile) calendar modal rendered down in the game tree.
-  <DailyItemsContext.Provider value={dailyStore}>
-    <GameStateContext.Provider value={gameState}>
-      <div style={{ textAlign: "center" }}>
-        <header class="app-header">
-          <div class="app-header__brand">
-            <Logo size={24} />
-            <h1>Blocktol</h1>
-          </div>
-          <div class="app-header__actions">
-            <CalendarButton />
-            <Profile />
-          </div>
-        </header>
-        {children}
-      </div>
-    </GameStateContext.Provider>
-  </DailyItemsContext.Provider>
+  // (Server entities — daily list, profile — live in module stores now, no
+  // provider needed.)
+  <GameStateContext.Provider value={gameState}>
+    <div style={{ textAlign: "center" }}>
+      <header class="app-header">
+        <div class="app-header__brand">
+          <Logo size={24} />
+          <h1>Blocktol</h1>
+        </div>
+        <div class="app-header__actions">
+          <CalendarButton />
+          <Profile />
+        </div>
+      </header>
+      {children}
+    </div>
+  </GameStateContext.Provider>
 );
 
 export const getHasCompletedOnboarding = () =>
@@ -119,7 +113,6 @@ export const App = () => {
   }, [showOnboarding, linkPending, retry]);
 
   const gameState = useGameState();
-  const dailyStore = useDailyItemsStore();
 
   if (linkPending) {
     return <MoveGate onResolved={() => setLinkPending(false)} />;
@@ -127,7 +120,7 @@ export const App = () => {
 
   if (showOnboarding) {
     return (
-      <Shell gameState={gameState} dailyStore={dailyStore}>
+      <Shell gameState={gameState}>
         <IntroBoard
           onDone={() => {
             setShowOnboarding(false);
@@ -139,7 +132,7 @@ export const App = () => {
   }
 
   return (
-    <Shell gameState={gameState} dailyStore={dailyStore}>
+    <Shell gameState={gameState}>
       <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
       {disconnected && <Disconnected />}
       {toast && (

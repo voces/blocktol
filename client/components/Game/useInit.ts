@@ -4,7 +4,7 @@ import { newGrid } from "../../../common/pathing.ts";
 import { api, MessageMap } from "../../api.ts";
 import { Point } from "../../../common/types.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
-import { useDailyItems } from "../../hooks/useDailyItems.tsx";
+import { applyRun } from "../../store/dailyItems.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
@@ -28,7 +28,6 @@ let implosionId = 0;
 
 export const useInit = () => {
   const game = useGame();
-  const { applyRun } = useDailyItems();
   const {
     setTime,
     setPlacingBlock,
@@ -62,7 +61,7 @@ export const useInit = () => {
     setFreePlay,
     setViewedAttempts,
     viewedAttempts,
-    viewMaze,
+
     setViewing,
     blocks,
     min,
@@ -244,8 +243,6 @@ export const useInit = () => {
     },
     [iteration, attemptsRemaining, freePlay],
   );
-
-  useApiListener("best", ({ maze }) => viewMaze(maze));
 
   useEffect(() => {
     if (time !== 0 || !run) return;

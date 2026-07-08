@@ -4,8 +4,12 @@ import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
 import { showBoard } from "../store/board.ts";
+import {
+  fetchProfile,
+  patchProfile,
+  profile as profileSignal,
+} from "../store/profile.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
-import { fetchProfile, useProfile } from "../hooks/useProfile.ts";
 import { useSettings } from "../hooks/useSettings.ts";
 import {
   themes,
@@ -69,8 +73,9 @@ const Stat = (
 const ProfileDialog = (
   { onClose, onMove }: { onClose: () => void; onMove: () => void },
 ) => {
-  const { attemptsRemaining } = useContext(GameStateContext);
-  const { profile, refetch, patch } = useProfile();
+  const { attemptsRemaining, viewMaze } = useContext(GameStateContext);
+  // Signal read: the dialog re-renders as the open-time refetch lands.
+  const profile = profileSignal.value;
   const { settings, setSettings } = useSettings();
   // The zoom setting only matters on touch, so it's hidden on non-touch pointers
   // unless the user has moved it off the default (so a set value stays editable).
@@ -82,7 +87,7 @@ const ProfileDialog = (
   // Refresh on open so the (cached) figures are current; the dialog stays
   // populated from the cache in the meantime.
   useEffect(() => {
-    refetch();
+    fetchProfile();
   }, []);
 
   const startEdit = () => {
@@ -97,7 +102,7 @@ const ProfileDialog = (
     api.rename({ name }).then((r) => {
       setSaving(false);
       if (r && !("error" in r)) {
-        if (profile) patch({ ...profile, name: r.name });
+        if (profile) patchProfile({ ...profile, name: r.name });
         setEditing(false);
       }
     }).catch(() => setSaving(false));
@@ -111,10 +116,14 @@ const ProfileDialog = (
   const viewBest = () => {
     if (!canView) return;
     onClose();
-    // Stage the day's board (instant when cached), then overlay the best
-    // maze — skipped if a newer navigation superseded this one mid-flight.
-    showBoard(bestIteration!).then((staged) => {
-      if (staged) api.best({ iteration: bestIteration! });
+    // Fetch the best maze and stage the day's board in parallel (two round
+    // trips become one), overlaying once both land — skipped if a newer
+    // navigation superseded the stage.
+    Promise.all([
+      showBoard(bestIteration!),
+      api.best({ iteration: bestIteration! }),
+    ]).then(([staged, best]) => {
+      if (staged && !("error" in best)) viewMaze(best.maze);
     });
   };
 
@@ -318,7 +327,7 @@ const ProfileDialog = (
 
 export const Profile = () => {
   const { attemptsRemaining } = useContext(GameStateContext);
-  const { profile } = useProfile();
+  const profile = profileSignal.value;
   const [open, setOpen] = useState(false);
   // The move sheet replaces the dialog rather than stacking over it: opening it
   // closes the dialog; its back button reopens the dialog, its close dismisses
