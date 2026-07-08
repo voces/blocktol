@@ -19,16 +19,22 @@ import { method } from "../apiHelpers.ts";
 const getBoardBody = z.object({
   timeZone: z.string(),
   iteration: z.number().min(1).optional(),
+  // Boot primes today's board so "keep playing" opens instantly — but at prime
+  // time the daily may not be done, which would 403. `soft` turns that lock
+  // into a plain { incomplete } (200) so priming never fires a spurious
+  // client-error report. Absent (every explicit caller), the 403 still stands.
+  soft: z.boolean().optional(),
 });
 
 export const getBoard = method(getBoardBody, true)(
-  async ({ userId, timeZone, iteration: inputIteration }) => {
+  async ({ userId, timeZone, iteration: inputIteration, soft }) => {
     const { year, month, day } = dailyParts(timeZone);
 
     // Free play unlocks once today's three attempts are spent; with today being
     // the latest day, that also unlocks every past day for replay.
     const todayAttempts = await dailyAttempts(userId, year, month, day);
     if (todayAttempts.length < 3) {
+      if (soft) return { incomplete: true as const };
       return { error: "daily not complete", status: 403 };
     }
 

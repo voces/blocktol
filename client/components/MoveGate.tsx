@@ -1,7 +1,7 @@
 import { h } from "preact";
 import { useEffect, useState } from "preact/compat";
 import { api } from "../api.ts";
-import { avatarColor, avatarInitial } from "../util/avatar.ts";
+import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import {
   adoptId,
   clearLinkFromUrl,

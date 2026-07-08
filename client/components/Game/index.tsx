@@ -21,6 +21,7 @@ import { Calendar } from "./Calendar.tsx";
 import { Attempts } from "./Attempts.tsx";
 import { AttemptsRemaining } from "./AttemptsRemaining.tsx";
 import { Hud } from "./Hud.tsx";
+import { StandingsDock } from "../Standings/Dock.tsx";
 
 // The board and everything pointer-driven, isolated so signal writes at
 // mousemove speed re-render only this subtree — the HUD and panels above it
@@ -93,6 +94,7 @@ export const Game = (
         }
         <div class="game__panel">
           <TodayResult />
+          <StandingsDock />
           <Attempts />
           <Calendar />
         </div>

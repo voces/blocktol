@@ -150,6 +150,15 @@ body {
      avatar lines up with the right-hand panel's edge — not the raw viewport.
      Top inset lives on `body`; the header just keeps its bottom gap. */
   padding: 0 16px 20px;
+  /* Reserve the action buttons' height (36px) as the row's floor — the tallest
+     thing the header ever holds, above the 24px logo and the wordmark's line
+     box. Without it the row is only as tall as the logo until the
+     avatar/calendar buttons finish loading, then grows ~12px and pushes the
+     whole board down; a late web-font swap would nudge it too. Pinning the row
+     keeps --header-size (and the board's top) fixed from first paint. It's on
+     the row, not min-height — the header is border-box, so its padding already
+     clears any container min-height. */
+  grid-auto-rows: minmax(36px, auto);
 }
 
 .app-header__brand {
@@ -463,7 +472,7 @@ a:hover {
       minmax(0, 340px) min(var(--maze-size), 100%) minmax(0, 340px);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
-      "today board attempts"
+      "today board standings"
       "cal   board attempts";
   }
 
@@ -554,9 +563,10 @@ a:hover {
     flex-direction: column;
     gap: 16px;
     /* Only vertical spacing; horizontal gutter comes from .game's
-       padding-inline, so the panels line up with the board's inset. Bottom gives
-       ~16px breathing room below the last panel (plus the home-indicator inset). */
-    padding-block: 4px calc(16px + env(safe-area-inset-bottom, 0px));
+       padding-inline, so the panels line up with the board's inset. Bottom
+       clears the pinned standings dock (~64px tall) plus breathing room and
+       the home-indicator inset, so the last run row scrolls out from under it. */
+    padding-block: 4px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Natural height, no flex compression. */
@@ -1085,10 +1095,13 @@ a:hover {
   margin-top: 2px;
 }
 
-/* Ranked (daily) field percentile — pXX, tinted by the row's band. */
+/* Ranked (daily) field percentile — pXX, tinted by the percentile ITSELF
+   (inlined as --pct by the row). The card's band is the standing — a
+   different metric that could paint a p100 red; it remains only the
+   fallback. */
 .attempts__pct {
   font: 700 11px var(--font-mono);
-  color: var(--band);
+  color: var(--pct, var(--band));
 }
 
 .attempts__empty {
@@ -2777,5 +2790,516 @@ a:hover {
   from {
     opacity: 0;
     transform: translate(-50%, 12px);
+  }
+}
+
+/* ==== Standings (dock + expanded sheet) ==================================
+   The collapsed sliver shows your rank and the current leader; tapping it
+   opens the full board. Colour discipline mirrors the runs panel: one accent
+   per row — gold for a #1 that beat everyone outright, lime (--peak) for rows
+   tying a shared record, green (--win) for your own row — everything else
+   stays neutral so the board reads calm. */
+
+.standings-dock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 13px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color);
+}
+
+/* Board-zoom guard, mirroring `.modal svg`: the game's touch handlers zoom on
+   any touched <svg>, so the dock/sheet icons must not be touch targets. */
+.standings-dock svg,
+.standings-modal svg {
+  pointer-events: none;
+}
+
+.standings-crown {
+  flex: none;
+}
+
+.standings-dock__chevron {
+  display: flex;
+  flex: none;
+  color: var(--text-mute);
+}
+
+.standings-dock__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.standings-dock__title {
+  font: 700 15px var(--font);
+  line-height: 1.1;
+  color: var(--color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fallback only — the component inlines the standing colour (gold /
+   chartreuse / percentile ramp) over this. */
+.standings-dock__rank {
+  color: var(--win);
+}
+
+.standings-dock__sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.standings-dock__lead--gold {
+  color: var(--gold);
+}
+
+/* A leader tied at the record wears the shared-record lime, mirroring the
+   sheet's match rows (gold stays reserved for an outright #1). */
+.standings-dock__lead--lime {
+  color: var(--peak);
+}
+
+/* Desktop: a peek card at the top of the right rail (its own grid area, above
+   the runs). */
+@media (min-width: 1200px) {
+  .standings-dock {
+    grid-area: standings;
+    align-self: start;
+  }
+}
+
+/* Mobile: pinned to the viewport bottom — the panel scrolls out from under it
+   (see .game__panel's bottom padding). */
+@media (max-width: 1199.98px) {
+  .standings-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Above the scrolling panel, below every overlay (result 20, calendar
+       picker 50, modals 60). */
+    z-index: 15;
+    border: 0;
+    border-top: 1px solid var(--border-strong);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.35);
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Scrim + sheet: a bottom sheet on mobile, a right-hand side sheet on
+   desktop. */
+.standings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: rgba(6, 6, 10, 0.55);
+}
+
+.standings-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 0;
+  max-height: 86%;
+  background: var(--surface);
+  border-top: 1px solid var(--border-strong);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.5);
+  text-align: left;
+  animation: profileSheetIn 0.22s ease;
+}
+
+.standings-sheet__handle {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 11px 0 5px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.standings-sheet__handle::before {
+  content: "";
+  width: 38px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border-strong);
+}
+
+.standings-sheet__head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 4px 20px 10px;
+}
+
+.standings-sheet__title {
+  font: 700 22px var(--font);
+  color: var(--color);
+}
+
+.standings-sheet__date {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+.standings-sheet__side {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.standings-sheet__timer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.standings-sheet__timer .mono {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color);
+}
+
+.standings-sheet__timer span:last-child {
+  font: 500 10px var(--font);
+  color: var(--text-mute);
+}
+
+/* Mobile closes via the handle / scrim; the × appears on the desktop side
+   sheet, which has neither. */
+.standings-sheet__close {
+  display: none;
+}
+
+/* Sort control per the design: a "SORT BY" label, then DAILY / PB as bare
+   text buttons — the active one accent-coloured, underlined, with a caret. */
+.standings-sortby {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px 10px;
+}
+
+.standings-sortby__label {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+
+.standings-sortby__tab {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  font: 700 11px var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--text-mute);
+  text-underline-offset: 4px;
+}
+
+.standings-sortby__tab--active {
+  color: var(--accent-bright);
+  text-decoration: underline;
+}
+
+.standings-sheet__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.standings-sheet__empty {
+  padding: 18px 2px;
+  font: 500 13px var(--font);
+  color: var(--text-mute);
+}
+
+@media (min-width: 1200px) {
+  .standings-modal {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .standings-sheet {
+    width: 412px;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    border-top: 0;
+    border-left: 1px solid var(--border-strong);
+    box-shadow: -18px 0 50px rgba(0, 0, 0, 0.45);
+    animation: standingsSideIn 0.18s ease;
+  }
+
+  .standings-sheet__handle {
+    display: none;
+  }
+
+  .standings-sheet__head {
+    padding-top: 20px;
+  }
+
+  .standings-sheet__close {
+    display: flex;
+  }
+}
+
+@keyframes standingsSideIn {
+  from {
+    transform: translateX(6%);
+    opacity: 0.6;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* One board row: rank | avatar | name/sub | time. Accents ride the band-card
+   tint; neutral rows zero it out and stay flat. */
+.standings-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  --band-card-tint: transparent;
+  --band-card-edge: 0%;
+  --band-card-fill: 0%;
+}
+
+.standings-row--gold {
+  --band-card-tint: var(--gold);
+  --band-card-edge: 32%;
+  --band-card-fill: 9%;
+}
+
+.standings-row--lime {
+  --band-card-tint: var(--peak);
+  --band-card-edge: 32%;
+  --band-card-fill: 9%;
+}
+
+/* --you is your row's accent, inlined by the row (Sheet.tsx): your identity
+   colour, or the record hue (gold/lime) when you hold one — so the "you"
+   treatments survive at #1 and your row stays findable. --win is only the
+   fallback. */
+.standings-row--you {
+  --band-card-tint: var(--you, var(--win));
+  --band-card-edge: 42%;
+  --band-card-fill: 11%;
+}
+
+.standings-row__rank {
+  flex: none;
+  min-width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-mute);
+}
+
+.standings-row--gold .standings-row__rank {
+  color: var(--gold);
+}
+
+.standings-row--lime .standings-row__rank {
+  color: var(--peak);
+}
+
+.standings-row--you .standings-row__rank {
+  color: var(--you, var(--win));
+}
+
+.standings-row__avatar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 15px var(--font);
+  color: #fff;
+}
+
+.standings-row__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.standings-row__name {
+  font: 600 15px var(--font);
+  color: var(--color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.standings-row__sub {
+  font: 500 11px var(--font);
+  color: var(--text-mute);
+}
+
+.standings-row--you .standings-row__sub {
+  color: var(--you, var(--win));
+}
+
+.standings-row--you .standings-row__time {
+  color: var(--you, var(--win));
+}
+
+/* The ranked value (big) over the other board's value (small), right-aligned. */
+.standings-row__nums {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.standings-row__time {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color);
+}
+
+.standings-row__small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-faint);
+}
+
+.standings-row--gold .standings-row__time {
+  color: var(--gold);
+}
+
+.standings-row--lime .standings-row__time {
+  color: var(--peak);
+}
+
+.standings-row__unit {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: 1px;
+}
+
+/* "N between" separator where the display window skips players. */
+.standings-gap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 6px;
+}
+
+.standings-gap > span:first-child,
+.standings-gap > span:last-child {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.standings-gap > .mono {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+/* Hidden but space-reserving until the daily result is closed (see Dock.tsx):
+   the dock's slot exists from boot, so its reveal can't shift the runs below
+   it (desktop rail) — and visibility drops it from the tab order and pointer
+   targets while concealed. */
+.standings-dock--hidden {
+  visibility: hidden;
+}
+
+/* ==== Mobile sheet dismissal (shared) =====================================
+   On mobile every sheet closes like a sheet: a grab notch at the top — tap or
+   drag down (useDragToClose) — replacing the per-dialog ×, which stays for
+   desktop. Absolute so existing sheet padding/layout is untouched;
+   touch-action lets the drag own the gesture instead of the scroller. */
+.modal__handle {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  padding: 10px 44px 8px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.modal__handle::before {
+  content: "";
+  display: block;
+  width: 38px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border-strong);
+}
+
+.standings-sheet__handle,
+.standings-sheet__head {
+  touch-action: none;
+}
+
+@media (max-width: 1199.98px) {
+  .modal__handle {
+    display: block;
+  }
+
+  /* visibility (not display) so headers that balance a back button against
+     the × (move sheet) keep their centring. */
+  .modal__close-x {
+    visibility: hidden;
+    pointer-events: none;
   }
 }

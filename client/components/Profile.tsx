@@ -17,7 +17,7 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../common/settings.ts";
-import { avatarColor, avatarInitial } from "../util/avatar.ts";
+import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
@@ -137,7 +137,7 @@ const ProfileDialog = (
     <Modal class="profile-sheet" onClose={onClose}>
       <button
         type="button"
-        class="modal__icon profile-modal__close tapc"
+        class="modal__icon modal__close-x profile-modal__close tapc"
         aria-label="Close profile"
         onClick={onClose}
       >

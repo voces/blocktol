@@ -5,6 +5,11 @@
 // the white initial would swing hue to hue.) The hue is chosen deterministically
 // from the user id, so a player's colour is identical on every device without
 // persisting anything.
+//
+// Shared (common/) because the server derives hues too: standings must ship
+// other players' avatar colours WITHOUT shipping their user ids — the raw id
+// is the bearer credential (the authorization header and /login/:id links) —
+// so the server hashes id → hue and the client renders from the hue alone.
 
 // Held constant across all avatars. L 0.58 keeps the white initial comfortably
 // readable (~3.5:1, AA for the large glyph) on every hue; C 0.15 stays in sRGB
@@ -18,8 +23,13 @@ const hash = (seed: string) => {
   return Math.abs(h);
 };
 
+export const avatarHue = (seed: string) => hash(seed) % 360;
+
+export const avatarColorFromHue = (hue: number) =>
+  `oklch(${AVATAR_LIGHTNESS} ${AVATAR_CHROMA} ${hue})`;
+
 export const avatarColor = (seed: string) =>
-  `oklch(${AVATAR_LIGHTNESS} ${AVATAR_CHROMA} ${hash(seed) % 360})`;
+  avatarColorFromHue(avatarHue(seed));
 
 export const avatarInitial = (name: string | null | undefined) =>
   (name ?? "").trim().charAt(0).toUpperCase() || "?";

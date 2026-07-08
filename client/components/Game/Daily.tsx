@@ -48,7 +48,7 @@ const BeatIcon = ({ kind }: { kind: keyof typeof BEAT_ICON }) => (
 );
 
 export const Daily = () => {
-  const { attempts, clear, iteration } = useContext(GameStateContext);
+  const { attempts, clear, iteration, staged } = useContext(GameStateContext);
   const stats = useApiListener("getDailySummary")?.stats ?? null;
   const [copied, setCopied] = useState(false);
   const [timeout, setTimeoutId] = useState(-1);
@@ -217,12 +217,14 @@ export const Daily = () => {
           <Button
             class="result__btn result__btn--keep"
             onClick={() => {
-              // Free play: stage today's board (the run opens on the first
-              // placement, not now) rather than dropping to an empty board.
-              // Today's board is cached from the daily attempts, so this
-              // stages instantly; the response refreshes bests/attempts.
-              clear();
-              showBoard(iteration);
+              // The free-play board was already staged in the background when
+              // this card opened (see useInit's finished-daily path), so
+              // closing usually just closes. The stage-now path is only the
+              // fallback for when that fetch failed or hasn't landed yet.
+              if (!staged) {
+                clear();
+                showBoard(iteration);
+              }
               setHideDailyResult(true);
             }}
           >

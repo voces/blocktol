@@ -1,10 +1,14 @@
 import { ComponentChildren, h } from "preact";
+import { useDragToClose } from "../hooks/useDragToClose.ts";
 
 /**
  * A dismissible overlay: a bottom sheet on mobile, a centered card on desktop
  * (purely CSS, see `.modal`). Tapping the backdrop closes it; the sheet stops
- * propagation so taps inside don't. Children own their own padding — pass a
- * `class` for per-use tweaks (e.g. `profile-sheet`).
+ * propagation so taps inside don't. On mobile a grab notch sits at the top —
+ * tap or drag down to close, matching the standings sheet — while desktop
+ * keeps each dialog's × (the notch hides; see `.modal__handle`). Children own
+ * their own padding — pass a `class` for per-use tweaks (e.g.
+ * `profile-sheet`).
  */
 export const Modal = (
   { onClose, class: cls, children }: {
@@ -12,13 +16,24 @@ export const Modal = (
     class?: string;
     children: ComponentChildren;
   },
-) => (
-  <div class="modal" onClick={onClose}>
-    <div
-      class={"modal__sheet" + (cls ? ` ${cls}` : "")}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {children}
+) => {
+  const { offset, handlers } = useDragToClose(onClose);
+  return (
+    <div class="modal" onClick={onClose}>
+      <div
+        class={"modal__sheet" + (cls ? ` ${cls}` : "")}
+        style={offset ? { transform: `translateY(${offset}px)` } : undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          class="modal__handle tapc"
+          aria-label="Close"
+          onClick={onClose}
+          {...handlers}
+        />
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
+};

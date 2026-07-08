@@ -81,7 +81,7 @@ export const MoveDevice = (
         <span class="move__title">Move to another device</span>
         <button
           type="button"
-          class="modal__icon tapc"
+          class="modal__icon modal__close-x tapc"
           aria-label="Close"
           onClick={onClose}
         >
