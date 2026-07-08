@@ -222,11 +222,17 @@ export const Attempts = () => {
                           // Coloured by the percentile ITSELF — the row's band
                           // is the standing (% of the field's range), a
                           // different metric, and inheriting it could paint a
-                          // p100 red.
+                          // p100 red. The two record states still sit above
+                          // the ramp: a supreme p100 is gold, a record-tying
+                          // one peak chartreuse.
                           <span
                             class="attempts__pct"
                             style={{
-                              "--pct": percentileBand(attempt.percentile),
+                              "--pct": supreme
+                                ? "var(--gold)"
+                                : peak
+                                ? "var(--peak)"
+                                : percentileBand(attempt.percentile),
                             }}
                           >
                             p{formatPercentile(attempt.percentile)}
