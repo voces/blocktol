@@ -114,14 +114,12 @@ export const migrations: Migration[] = [
   {
     version: 4,
     name: "run-user-void-time-index",
-    // Covering index for the standings PB sort — each day-player's best build
-    // as of that day, `SELECT user, MAX(time) FROM run WHERE void = FALSE AND
-    // iteration <= ? AND user IN (...) GROUP BY user` (see db/standings.ts
-    // getPbForUsers). The leftmost `user` groups (and matches the IN), `void`
-    // filters, and `time` is read for the MAX, so each user's best is an index
-    // range (the `iteration <=` bound is a cheap residual on those rows). IF
-    // NOT EXISTS keeps it safe if the index was ever added out of band. MariaDB
-    // dialect.
+    // Covering index for a player's all-time best build — `MAX(time) WHERE
+    // user = ? AND void = FALSE` (the profile's bestBuild, getUserStats): the
+    // leftmost `user` seeks, `void` filters, and `time` is read for the MAX, so
+    // it's a single index range. (The standings PB sort is scoped per
+    // iteration and rides iteration_daily_void_time_idx instead.) IF NOT EXISTS
+    // keeps it safe if the index was ever added out of band. MariaDB dialect.
     up:
       "ALTER TABLE `run` ADD INDEX IF NOT EXISTS `user_void_time_idx` (`user`, `void`, `time`);",
   },

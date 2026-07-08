@@ -14,7 +14,7 @@ import { avatarHue } from "../../../common/avatar.ts";
 import { requireDailyIterationId } from "../../db/iteration.ts";
 import {
   getDailyStandings,
-  getPbForUsers,
+  getIterationBests,
   getStandingsMeta,
 } from "../../db/standings.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
@@ -30,8 +30,10 @@ const standingsBody = z.intersection(
   z.object({ sort: z.enum(["daily", "pb"]).optional() }),
 );
 
-// How long a live day's cached field is served before a refetch. Once an
-// iteration is rated the field is frozen, so its entry never goes stale.
+// How long a cached day's field is served before a refetch. Applies to every
+// day, not just live ones: the field now counts free play (the PB sort), and a
+// closed day's PB can still move when someone replays that old board — so no
+// day is truly frozen, and none is cached indefinitely.
 const FRESH_MS = 15_000;
 
 // 37h after a daily's day starts, every timezone's play window has closed
@@ -42,14 +44,16 @@ const CLOSE_MS = 37 * 3_600_000;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// One row of the day's field: the two rankable values (that day's best build,
-// and the player's all-time PB) plus identity. The route projects this into a
-// FieldEntry per sort.
+// One player on the day: their best build that day counting any non-void run
+// (`pb`, the PB sort's value / the daily board's secondary) and their best
+// RANKED daily run (`daily`, the daily sort's value / the PB board's
+// secondary — null if they only free-played that day), plus when the daily
+// best was set. The route projects this into a FieldEntry per sort.
 type Player = {
   user: string;
   name: string;
   hue: number;
-  daily: number;
+  daily: number | null;
   pb: number;
   at: number;
 };
@@ -58,79 +62,76 @@ type Field = {
   rated: boolean;
   day: [number, number, number];
   closesAt: number;
-  players: Player[]; // best-first by the day's time (getDailyStandings order)
+  players: Player[]; // everyone with a non-void run on the day
 };
 
-// The day's players, each with their all-time PB folded in (one scoped
-// getPbForUsers per load, not per request), so the frequent dock/sheet reads
-// are pure in-memory projections.
+// The day's field: everyone with a non-void run that day (getIterationBests),
+// each carrying their best-that-day (pb) and, where they made ranked attempts,
+// their best ranked time + when (getDailyStandings). Both queries scope to this
+// iteration, so a day the viewer only free-played still populates the PB board
+// even though the ranked daily field is empty.
 const loadField = async (iteration: number): Promise<Field> => {
-  const [meta, rows] = await Promise.all([
+  const [meta, dailyRows, bests] = await Promise.all([
     getStandingsMeta(iteration),
     getDailyStandings(iteration),
+    getIterationBests(iteration),
   ]);
-  // PB as of THIS day — bounded to this iteration and earlier, so a past day's
-  // board shows historical PBs, not ones set later.
-  const pb = await getPbForUsers(rows.map((r) => r.user), iteration);
+  const daily = new Map(
+    dailyRows.map((r) => [r.user, { time: round2(r.time), at: Number(r.at) }]),
+  );
   return {
     rated: !!meta.rated,
     day: [meta.y, meta.m, meta.d],
     closesAt: Number(meta.dayStart) + CLOSE_MS,
-    players: rows.map((r) => {
-      const daily = round2(r.time);
+    // The id stays server-side — buildStandings uses it only to find the viewer
+    // and to attach secondaries; rows ship name + hue instead.
+    players: bests.map((b) => {
+      const d = daily.get(b.user);
       return {
-        // The id stays server-side — buildStandings uses it only to find the
-        // viewer and to attach secondaries; rows ship name + hue instead.
-        user: r.user,
-        name: r.name ?? "anonymous",
-        hue: avatarHue(r.user),
-        daily,
-        // PB is all-time, so ≥ the day's time; fall back to the day's time.
-        pb: round2(pb.get(r.user) ?? daily),
-        at: Number(r.at),
+        user: b.user,
+        name: b.name ?? "anonymous",
+        hue: avatarHue(b.user),
+        daily: d ? d.time : null,
+        pb: round2(b.best),
+        at: d ? d.at : 0,
       };
     }),
   };
 };
 
 // Each day's field is identical for every viewer, so it's fetched once per
-// freshness window and each request slices its own view. Rated (frozen) days
-// are served indefinitely; the LRU bounds how many sit in memory. A failed
-// fetch frees the entry so the next request retries rather than being served
-// the rejection.
+// freshness window and each request slices its own view. Every day expires
+// after FRESH_MS (a closed day's PB can still change via replays); the LRU
+// bounds how many sit in memory. A failed fetch frees the entry so the next
+// request retries rather than being served the rejection.
 const cache = new LRUMap<
   number,
-  { at: number; rated: boolean; promise: Promise<Field> }
+  { at: number; promise: Promise<Field> }
 >({ maxSize: 64 });
 
 const cachedField = (iteration: number) => {
   const cached = cache.get(iteration);
-  if (cached && (cached.rated || Date.now() - cached.at < FRESH_MS)) {
-    return cached.promise;
-  }
+  if (cached && Date.now() - cached.at < FRESH_MS) return cached.promise;
   const promise = loadField(iteration);
-  const entry = { at: Date.now(), rated: false, promise };
+  const entry = { at: Date.now(), promise };
   cache.set(iteration, entry);
-  promise.then(
-    (field) => {
-      entry.rated = field.rated;
-    },
-    () => {
-      if (cache.get(iteration) === entry) cache.delete(iteration);
-    },
-  );
+  promise.catch(() => {
+    if (cache.get(iteration) === entry) cache.delete(iteration);
+  });
   return promise;
 };
 
-// Project the day's players into a ranked field for the chosen sort. Daily
-// keeps the query's time-desc order; PB re-sorts the same players by their
-// all-time best (ties broken by the day's time, then name, for a stable
-// window). The ranked value is `time`; the other is `secondary`.
+// Project the day's players into a ranked field for the chosen sort, best
+// first. Daily ranks only those with a ranked run (`daily` non-null) by that
+// time; PB ranks EVERYONE with a non-void run by their best build that day.
+// The ranked value is `time`; the other board's value is `secondary` (null on
+// the PB board for someone who only free-played — rendered "—").
 const project = (players: Player[], sort: "daily" | "pb"): FieldEntry[] =>
   sort === "pb"
     ? [...players]
       .sort((a, b) =>
-        b.pb - a.pb || b.daily - a.daily || a.name.localeCompare(b.name)
+        b.pb - a.pb || (b.daily ?? 0) - (a.daily ?? 0) ||
+        a.name.localeCompare(b.name)
       )
       .map((p) => ({
         user: p.user,
@@ -140,14 +141,19 @@ const project = (players: Player[], sort: "daily" | "pb"): FieldEntry[] =>
         at: p.at,
         secondary: p.daily,
       }))
-    : players.map((p) => ({
-      user: p.user,
-      name: p.name,
-      hue: p.hue,
-      time: p.daily,
-      at: p.at,
-      secondary: p.pb,
-    }));
+    : players
+      .filter((p): p is Player & { daily: number } => p.daily !== null)
+      .sort((a, b) =>
+        b.daily - a.daily || a.at - b.at || a.name.localeCompare(b.name)
+      )
+      .map((p) => ({
+        user: p.user,
+        name: p.name,
+        hue: p.hue,
+        time: p.daily,
+        at: p.at,
+        secondary: p.pb,
+      }));
 
 export const standings = method(standingsBody, true)(
   async ({ userId, sort = "daily", ...rest }) => {
@@ -164,9 +170,10 @@ export const standings = method(standingsBody, true)(
       userId,
     );
 
-    // The daily board locks once its day is rated (or its close has passed —
-    // the field is frozen at the close either way). The PB board is all-time,
-    // so it never locks: no countdown.
+    // The "until ranked" countdown is a daily-board concept — it tracks when
+    // the ranked field freezes. It locks once the day is rated (or its close
+    // has passed — frozen at the close either way). The PB board counts free
+    // play too, which never "ranks", so it shows no countdown.
     const final = sort === "pb" ||
       field.rated || field.closesAt <= Date.now();
 

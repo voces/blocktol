@@ -64,7 +64,7 @@ Deno.test({
       await seedRun(viewer, iteration, 34);
       // Neither a voided daily run nor a free-play run belongs on the daily
       // board, however good — but a free-play run DOES count toward the PB
-      // (all-time best), so the viewer's PB secondary is 60, not 34.
+      // (best build that day), so the viewer's PB secondary is 60, not 34.
       await seedRun(viewer, iteration, 50, { voided: true });
       await seedRun(viewer, iteration, 60, { daily: false });
 
@@ -93,8 +93,8 @@ Deno.test({
       // 4th 36, 5th 34 — a five-player field shows whole (podium ∪ viewer±1).
       assertEquals(result.rows.map((r) => r.rank), [1, 2, 2, 4, 5]);
       assertEquals(result.rows.map((r) => r.time), [40, 38.5, 38.5, 36, 34]);
-      // Daily rows carry each player's all-time PB as the secondary; only the
-      // viewer's differs from their daily time (the 60 free-play run).
+      // Daily rows carry each player's best build that day as the secondary;
+      // only the viewer's differs from their daily time (the 60 free-play run).
       assertEquals(result.rows.map((r) => r.secondary), [
         40,
         38.5,
@@ -141,10 +141,11 @@ Deno.test({
       });
       assertEquals(asLeader.rows.map((r) => r.you)[0], true);
 
-      // The PB sort re-ranks the SAME day's players by their best build as of
+      // The PB sort re-ranks the SAME day's players by their best build on
       // this day. The viewer's 60 free-play run (on this iteration) is their
-      // PB, so they jump to #1 (day best was only 5th); each row's secondary is
-      // that day's time. Same five players, same count — just re-sorted.
+      // best that day, so they jump to #1 (ranked day best was only 5th); each
+      // row's secondary is that day's ranked time. Same five players, same
+      // count — just re-sorted.
       const pb = await standings.handler(
         { iteration, sort: "pb" },
         authed(viewer),
@@ -152,7 +153,7 @@ Deno.test({
       assert(!("error" in pb), "expected a pb standings payload");
       assertEquals(pb.sort, "pb");
       assertEquals(pb.players, 5);
-      assertEquals(pb.closesAt, null); // all-time never locks
+      assertEquals(pb.closesAt, null); // PB counts free play, so no countdown
       assertEquals(pb.me, {
         rank: 1,
         tied: false,
@@ -179,38 +180,57 @@ Deno.test({
 });
 
 Deno.test({
-  name: "standings PB is scoped to the viewed day — no future leak",
+  name: "standings PB counts a free-play-only day and stays scoped to it",
   ignore: !live,
   fn: async () => {
-    // Two days (early < late, by monotonic iteration id) and one player.
-    const early = await testIteration();
-    const late = await testIteration();
+    // Two days (A < B, by monotonic iteration id) and one player who ONLY free
+    // plays day A — no ranked daily run there. This is the regression the PB
+    // sort is built around: such a day used to render zero rows because the
+    // field was drawn from the ranked daily board alone.
+    const dayA = await testIteration();
+    const dayB = await testIteration();
     const user = await testUser();
     try {
-      await seedRun(user, early, 20); // early day's daily run
-      await seedRun(user, late, 30); // late day's daily run (so they're on it)
-      // A better build made on the LATER day — it must NOT count toward the
-      // early day's PB.
-      await seedRun(user, late, 60, { daily: false });
+      await seedRun(user, dayA, 20, { daily: false }); // free play only on A
+      await seedRun(user, dayA, 15, { daily: false }); // a worse build on A
+      await seedRun(user, dayB, 55, { daily: false }); // a better build on B
+      await seedRun(user, dayA, 90, { daily: false, voided: true }); // void: ignored
 
-      const e = await standings.handler(
-        { iteration: early, sort: "pb" },
+      // Daily board on A: the player has no ranked run, so they're off the
+      // board entirely — no rows, no `me`.
+      const dailyA = await standings.handler(
+        { iteration: dayA, sort: "daily" },
         authed(user),
       );
-      assert(!("error" in e));
-      // As of the early day, the player's PB is 20 — the 30/60 came later.
-      assertEquals(e.me?.time, 20);
+      assert(!("error" in dailyA));
+      assertEquals(dailyA.players, 0);
+      assertEquals(dailyA.me, null);
+      assertEquals(dailyA.rows.length, 0);
 
-      const l = await standings.handler(
-        { iteration: late, sort: "pb" },
+      // PB board on A: the player IS present, ranked by their best build that
+      // day (20, not the voided 90). Their daily secondary is null — they never
+      // ran a ranked attempt — and day B's 55 does not leak in.
+      const pbA = await standings.handler(
+        { iteration: dayA, sort: "pb" },
         authed(user),
       );
-      assert(!("error" in l));
-      // As of the late day, everything counts: PB is the 60 free-play build.
-      assertEquals(l.me?.time, 60);
+      assert(!("error" in pbA));
+      assertEquals(pbA.players, 1);
+      assertEquals(pbA.me?.time, 20);
+      assertEquals(pbA.me?.secondary, null);
+      assertEquals(pbA.rows.length, 1);
+      assertEquals(pbA.rows[0].secondary, null);
+
+      // PB board on B is its own day: 55, oblivious to day A's 20.
+      const pbB = await standings.handler(
+        { iteration: dayB, sort: "pb" },
+        authed(user),
+      );
+      assert(!("error" in pbB));
+      assertEquals(pbB.me?.time, 55);
     } finally {
-      await sql`DELETE FROM iteration WHERE id = ${early};`;
-      await sql`DELETE FROM iteration WHERE id = ${late};`;
+      await sql`DELETE FROM iteration WHERE id = ${dayA};`;
+      await sql`DELETE FROM iteration WHERE id = ${dayB};`;
       await sql`DELETE FROM user WHERE id = ${user};`;
     }
   },
