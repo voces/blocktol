@@ -71,6 +71,10 @@ general engineering review.
     race (no latest-wins guard). Delete rather than fix.
   - `server/routes/iteration/run/abandon.ts` is registered in the API but never
     called by the client. Wire it up or remove it.
+  - `getUserPlays` (`server/db/user.ts:40`) has no callers (found 2026-07-07
+    while validating `daily`'s consumers — see 6g). `getCurrentRun`
+    (`server/db/run.ts`) likewise. `getLatestRun` returns a `daily` field its
+    only caller never reads.
 
 - [x] **1g. Daily resume trusts the `daily` flag, which an in-progress attempt
       2/3 usually doesn't hold.** _Fixed in #93 — `getLatestRun` filters on the
@@ -356,6 +360,27 @@ scars correctly fixed; CI covers fmt/check/test/build.
 - [ ] **6f. Error surfacing.** No error boundary; `App`'s `disconnected` state
       only covers the boot request; `Disconnected` never shows for mid-game
       failures (see 2c).
+
+- [ ] **6g. Optional: retire the `daily` column.** (Consumers validated
+      2026-07-07.) Post-#93, `daily` means exactly one thing everywhere — the
+      user's counted result, i.e. their best non-void **ranked** run on the
+      iteration — and has always meant that (git: the earliest visible schema
+      seeds only attempt 1 at insert and re-points the flag at the best via the
+      inline reassignment; the dead `markDaily` removed in #52 was literally
+      "flag the single best non-void run"). Its live readers: rating
+      (`getRatingParticipants`, `getIterationDailyTimeCounts`), the live
+      percentile field (`getIterationTimeCounts`), the calendar (`listDailies`'s
+      `ownDailyBest`/`dailyBest`/`dailyPercentile`), and the profile (`played`,
+      median percentile, records). All of those reduce to
+      `MAX(time) … WHERE ranked AND NOT void GROUP BY user`, so the column is
+      _almost_ derivable — the one non-derivable bit is `mergeUsers`'
+      earliest-day-wins policy (a merge must not cherry-pick the faster day).
+      Retiring `daily` therefore requires moving that policy into `ranked`
+      (demote the losing day's ranked flags at merge), rewriting the four reader
+      queries as per-user MAX subqueries (losing the cheap
+      `iteration_daily_void_time_idx` index-only aggregation), and dropping the
+      demote/promote statements from the `updateRun` hot path. Correct as-is;
+      worth doing only as a simplification.
 
 ---
 
