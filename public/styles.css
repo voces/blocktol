@@ -2855,6 +2855,12 @@ a:hover {
   color: var(--gold);
 }
 
+/* A leader tied at the record wears the shared-record lime, mirroring the
+   sheet's match rows (gold stays reserved for an outright #1). */
+.standings-dock__lead--lime {
+  color: var(--peak);
+}
+
 /* Desktop: a peek card at the top of the right rail (its own grid area, above
    the runs). */
 @media (min-width: 1200px) {

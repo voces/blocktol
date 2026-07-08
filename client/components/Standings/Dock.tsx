@@ -90,6 +90,8 @@ export const StandingsDock = () => {
                     class={"mono" +
                       (leader.record === "beat"
                         ? " standings-dock__lead--gold"
+                        : leader.record === "match"
+                        ? " standings-dock__lead--lime"
                         : "")}
                   >
                     {formatTime(leader.time)}s
