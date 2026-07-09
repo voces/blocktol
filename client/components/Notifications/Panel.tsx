@@ -42,7 +42,7 @@ const Item = (
   let detail: string | null = null;
   if (item.kind === "daily_final") {
     const d = item.data as DailyFinalData;
-    if (d.variant === "none") {
+    if (d.variant === "placed") {
       detail = `your ${formatNotifTime(d.yourTime)} · day's best ${
         formatNotifTime(d.dayBest)
       }`;

@@ -8,7 +8,7 @@ export const notificationKinds = ["lost_top", "daily_final"] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
 // The daily-finalized notification's five faces (see classifyDailyOutcome):
-//   none    — an ordinary finish (#55/2363); compares your time to the day best
+//   placed  — an ordinary finish (#55/2363); compares your time to the day best
 //   t1      — TIED best of everyone's first-three attempts, but a free-play
 //             build bettered it (still a celebration)
 //   first   — the SOLE best of everyone's first-three attempts, bettered only in
@@ -16,7 +16,7 @@ export type NotificationKind = (typeof notificationKinds)[number];
 //   record  — like t1, but no free-play build beat it (a held record)
 //   supreme — like first, but no one even tied you, in ranked OR free play
 export const dailyVariants = [
-  "none",
+  "placed",
   "t1",
   "first",
   "record",
@@ -108,7 +108,7 @@ export const classifyDailyOutcome = (
   const base = { rank, players: field, yourTime: myDaily, dayBest };
 
   // Someone out-ranked you → an ordinary finish.
-  if (othersTopDaily > myDaily) return { ...base, variant: "none" };
+  if (othersTopDaily > myDaily) return { ...base, variant: "placed" };
 
   // You're (co-)top of the ranked board. Did another player's build better your
   // ranked mark in free play, or merely tie it?

@@ -19,10 +19,10 @@ Deno.test("classifyDailyOutcome: no ranked attempt → null", () => {
   assertEquals(classifyDailyOutcome([p("a", 40)], "me"), null);
 });
 
-Deno.test("classifyDailyOutcome: none — out-ranked", () => {
+Deno.test("classifyDailyOutcome: placed — out-ranked", () => {
   const field = [p("a", 50), p("b", 40), p("me", 30), p("c", 20)];
   assertEquals(classifyDailyOutcome(field, "me"), {
-    variant: "none",
+    variant: "placed",
     rank: 3,
     players: 4,
     yourTime: 30,
@@ -30,11 +30,11 @@ Deno.test("classifyDailyOutcome: none — out-ranked", () => {
   });
 });
 
-Deno.test("classifyDailyOutcome: none — day best counts free play", () => {
+Deno.test("classifyDailyOutcome: placed — day best counts free play", () => {
   // "a" free-played to 60 (pb 60) though their ranked time was 45; me #2.
   const field = [p("a", 45, 60), p("me", 40), p("b", 20)];
   const out = classifyDailyOutcome(field, "me");
-  assertEquals(out?.variant, "none");
+  assertEquals(out?.variant, "placed");
   assertEquals(out?.rank, 2);
   assertEquals(out?.dayBest, 60);
 });
