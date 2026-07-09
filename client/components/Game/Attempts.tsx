@@ -88,7 +88,11 @@ export const Attempts = () => {
     }
   >();
   for (const attempt of attempts) {
-    const key = JSON.stringify(attempt.maze);
+    // Order-INDEPENDENT key (same helper the "viewing" match uses): two runs
+    // that built the identical maze can store their blocks in a different order,
+    // and a raw JSON.stringify would split them into two rows that both flag
+    // "viewing". mazeKey sorts the blocks first, so they merge into one ×N row.
+    const key = mazeKey(attempt.maze);
     const group = byMaze.get(key);
     if (group) {
       group.count++;
