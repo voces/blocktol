@@ -16,6 +16,25 @@ export const standingsByKey = signal<ReadonlyMap<number, StandingsData>>(
   new Map(),
 );
 
+// Application-order guard. refreshStandings busts the cache and starts a fresh
+// fetch, so it can leave OVERLAPPING standings fetches in flight (a commit, the
+// dock revealing, and a notification regrade can all fire at once). Every
+// response would otherwise fold in LAND order — so a slow, older fetch could
+// clobber a newer one with stale ranks, and nothing re-triggers to correct it
+// (there's no standings poll). Each fetch takes a monotonic seq; a response
+// folds only if no newer fetch for that iteration has already folded, so the
+// latest-STARTED request always wins regardless of when it lands.
+let fetchSeq = 0;
+const appliedSeq = new Map<number, number>();
+
+const fold = (s: StandingsData, seq: number) => {
+  if ((appliedSeq.get(s.iteration) ?? 0) > seq) return;
+  appliedSeq.set(s.iteration, seq);
+  const next = new Map(standingsByKey.value);
+  next.set(s.iteration, s);
+  standingsByKey.value = next;
+};
+
 // The iteration the timezone ("today") fetch resolves to — how readers map the
 // board's current iteration onto an entry, and how the dock knows the viewed
 // day IS today (which gates its reveal; see Dock.tsx).
@@ -50,19 +69,15 @@ export const requestStandings = (iteration?: number) => {
   openStandingsRequest.value = { iteration };
 };
 
-api.addEventListener("standings", (s) => {
-  const next = new Map(standingsByKey.value);
-  next.set(s.iteration, s);
-  standingsByKey.value = next;
-});
-
 // The dedupe/query key: the iteration, or "today" (resolved server-side from
 // the timezone — the client doesn't know today's id until it answers).
 const qkey = (iteration: number | undefined) => `${iteration ?? "today"}`;
 
 // However often components ask, at most one request per day per freshness
-// window; a failed fetch frees the window so the next ask retries.
+// window; a failed fetch frees the window so the next ask retries. Folds its own
+// response (seq-guarded) rather than a broadcast listener, so ordering holds.
 const fetchOnce = keyedQuery(async (qk: string) => {
+  const seq = ++fetchSeq;
   const iteration = qk === "today" ? undefined : Number(qk);
   const s = await (iteration == null
     ? api.standings({ timeZone: getTimeZone() })
@@ -73,8 +88,24 @@ const fetchOnce = keyedQuery(async (qk: string) => {
   if (iteration == null) {
     todayIteration.value = s.iteration;
   }
+  fold(s, seq);
   return s;
 }, { staleMs: 30_000 });
+
+// Resolve a day's standings by calendar date (the /YYYYMMDD deep-link knows the
+// date, not the id) — folded with the same ordering guard. Returns the data,
+// whose `iteration` the caller uses to navigate.
+export const fetchStandingsForDate = async (
+  year: number,
+  month: number,
+  day: number,
+): Promise<StandingsData | undefined> => {
+  const seq = ++fetchSeq;
+  const s = await api.standings({ year, month, day }).catch(() => undefined);
+  if (!s || "error" in s) return undefined;
+  fold(s, seq);
+  return s;
+};
 
 // Fetch a day's standings (or serve the fresh cache); omit `iteration` for
 // today. Both boards come back in one response. Errors are swallowed — readers

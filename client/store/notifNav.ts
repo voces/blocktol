@@ -1,9 +1,9 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
-import { api } from "../api.ts";
 import { showBoard } from "./board.ts";
 import { markReadForDay } from "./notifications.ts";
 import {
+  fetchStandingsForDate,
   requestStandings,
   setStandingsSort,
   StandingsSort,
@@ -64,8 +64,8 @@ export const consumeDeepLink = async () => {
 
   arrivedViaDeepLink.value = true;
   try {
-    const s = await api.standings({ year, month, day });
-    if (!s || "error" in s) return;
+    const s = await fetchStandingsForDate(year, month, day);
+    if (!s) return;
     goToDay(s.iteration, sort);
     // Tapping the push counts as reading its notification.
     if (kind) markReadForDay(s.iteration, kind);
