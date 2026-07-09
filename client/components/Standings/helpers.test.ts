@@ -1,10 +1,5 @@
 import { assertEquals } from "@std/assert";
-import {
-  formatAgo,
-  formatCountdown,
-  formatRank,
-  formatTime,
-} from "./helpers.ts";
+import { formatAgo, formatCountdown, formatRank } from "./helpers.ts";
 
 Deno.test("formatRank marks shared ranks with T", () => {
   assertEquals(formatRank(1, false), "1");
@@ -43,10 +38,4 @@ Deno.test("formatCountdown counts down to 'soon'", () => {
   assertEquals(formatCountdown(now + 30_000, now), "1m");
   assertEquals(formatCountdown(now, now), "soon");
   assertEquals(formatCountdown(now - 3_600_000, now), "soon");
-});
-
-Deno.test("formatTime pins two decimals", () => {
-  assertEquals(formatTime(35.1), "35.10");
-  assertEquals(formatTime(30), "30.00");
-  assertEquals(formatTime(29.62), "29.62");
 });

@@ -56,6 +56,15 @@ export const updateUserSettings = (id: string, settings: string) =>
     INSERT INTO user (id, settings) VALUES (${id}, ${settings})
     ON DUPLICATE KEY UPDATE settings = ${settings};`;
 
+// The user's BCP-47 locale, captured passively (a subscribing device reports it)
+// so server-rendered push copy can match it. Upsert like updateUserSettings; the
+// caller only passes a canonicalised, non-null tag, so this never clobbers a
+// known locale with a bad one.
+export const updateUserLocale = (id: string, locale: string) =>
+  sql`
+    INSERT INTO user (id, locale) VALUES (${id}, ${locale})
+    ON DUPLICATE KEY UPDATE locale = ${locale};`;
+
 // The profile's headline figures, in one round trip:
 //   1. the user's own row (display name, rating, join date);
 //   2. dailies played (distinct iterations with a ranked daily run, abandoned

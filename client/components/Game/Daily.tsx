@@ -1,6 +1,7 @@
 import { h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { GameStateContext } from "./useGameState.ts";
+import { formatSeconds } from "../../../common/format.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import { percentileBand } from "../../../common/percentileColor.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
@@ -75,7 +76,7 @@ export const Daily = () => {
   const attemptLine = (
     { duration, percentile, supreme }: (typeof attempts)[number],
   ) =>
-    `${duration}s${
+    `${formatSeconds(duration, { min: 0 })}s${
       typeof percentile === "number"
         ? ` (p${formatPercentile(percentile)})`
         : ""
@@ -200,15 +201,21 @@ export const Daily = () => {
         {stats && (
           <div class="result__stats">
             <div class="result__stat">
-              <div class="result__stat-value mono">{stats.p25}s</div>
+              <div class="result__stat-value mono">
+                {formatSeconds(stats.p25, { min: 0 })}s
+              </div>
               <div class="result__stat-label">p25</div>
             </div>
             <div class="result__stat">
-              <div class="result__stat-value mono">{stats.median}s</div>
+              <div class="result__stat-value mono">
+                {formatSeconds(stats.median, { min: 0 })}s
+              </div>
               <div class="result__stat-label">median</div>
             </div>
             <div class="result__stat">
-              <div class="result__stat-value mono">{stats.p75}s</div>
+              <div class="result__stat-value mono">
+                {formatSeconds(stats.p75, { min: 0 })}s
+              </div>
               <div class="result__stat-label">p75</div>
             </div>
           </div>

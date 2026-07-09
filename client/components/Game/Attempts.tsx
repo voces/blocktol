@@ -1,5 +1,6 @@
 import { h } from "preact";
 import { useContext, useState } from "preact/compat";
+import { formatSeconds } from "../../../common/format.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
   percentileBand,
@@ -205,7 +206,9 @@ export const Attempts = () => {
                     }
                     : undefined}
                 >
-                  <span class="attempts__time mono">{attempt.duration}s</span>
+                  <span class="attempts__time mono">
+                    {formatSeconds(attempt.duration, { min: 0 })}s
+                  </span>
                   <div class="attempts__meta">
                     <div class="attempts__kind">
                       {formatWhen(group.latest)}

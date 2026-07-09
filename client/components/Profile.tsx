@@ -1,5 +1,6 @@
 import { Fragment, h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
+import { formatDecimal, formatSeconds } from "../../common/format.ts";
 import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
@@ -295,7 +296,9 @@ const ProfileDialog = (
       >
         <div class="profile-best__label">Best build</div>
         <div class="profile-best__value mono">
-          {profile?.bestBuild != null ? `${profile.bestBuild}s` : "—"}
+          {profile?.bestBuild != null
+            ? `${formatSeconds(profile.bestBuild, { min: 0 })}s`
+            : "—"}
         </div>
       </button>
 
@@ -350,7 +353,7 @@ const ProfileDialog = (
               <div class="pref__value mono">
                 {settings.zoom <= ZOOM_MIN
                   ? "Off"
-                  : `${settings.zoom.toFixed(1)}×`}
+                  : `${formatDecimal(settings.zoom, { min: 1, max: 1 })}×`}
               </div>
             </div>
             <input

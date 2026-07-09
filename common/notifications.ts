@@ -4,6 +4,8 @@
 // without a database, and both sides import the same payload shapes so a stored
 // row round-trips with no re-derivation.
 
+import { formatCount, formatSeconds } from "./format.ts";
+
 export const notificationKinds = ["lost_top", "daily_final"] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
@@ -128,15 +130,19 @@ export const classifyDailyOutcome = (
 // can't shift it across midnight (matching the standings sheet's formatter).
 export const formatNotifDate = (
   [y, m, d]: readonly [number, number, number],
+  locale?: string,
 ): string =>
-  new Date(y, m - 1, d).toLocaleDateString(undefined, {
+  new Date(y, m - 1, d).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
   });
 
 // Notification times read punchier at one decimal ("21.4s") than the board's two
 // — matching the mock — and the comparison is what matters, not the last digit.
-export const formatNotifTime = (t: number): string => `${t.toFixed(1)}s`;
+// `locale` is set when the server renders push copy for a device; omitted in the
+// in-app panel, which renders in the viewer's own locale.
+export const formatNotifTime = (t: number, locale?: string): string =>
+  `${formatSeconds(t, { min: 1, max: 1, locale })}s`;
 
 // The single source of a notification's headline + one-line body, shared by the
 // lock-screen push text and the in-app panel so the two never drift. The panel
@@ -144,27 +150,29 @@ export const formatNotifTime = (t: number): string => `${t.toFixed(1)}s`;
 // the raw data); the push sends these verbatim.
 export const notificationText = (
   n: Pick<Notification, "kind" | "data" | "day">,
+  locale?: string,
 ): { title: string; body: string } => {
-  const date = formatNotifDate(n.day);
+  const date = formatNotifDate(n.day, locale);
   if (n.kind === "lost_top") {
     const d = n.data as LostTopData;
     return {
       title: `You lost #1 on ${date}`,
-      body: `${d.passer} passed you. ${formatNotifTime(d.passerTime)} vs your ${
-        formatNotifTime(d.yourTime)
-      }`,
+      body: `${d.passer} passed you. ${
+        formatNotifTime(d.passerTime, locale)
+      } vs your ${formatNotifTime(d.yourTime, locale)}`,
     };
   }
   const d = n.data as DailyFinalData;
-  const of = `of ${d.players}`;
+  const of = `of ${formatCount(d.players, locale)}`;
+  const rank = formatCount(d.rank, locale);
   const body = d.variant === "supreme"
     ? `You finished #1 ${of}. Supreme, untied`
     : d.variant === "record"
-    ? `You finished #${d.rank} ${of}. A record held`
+    ? `You finished #${rank} ${of}. A record held`
     : d.variant === "first"
     ? `You finished #1 ${of}. Bettered only in free play`
     : d.variant === "t1"
     ? `You tied #1 ${of}. Bettered only in free play`
-    : `You finished #${d.rank} ${of}`;
+    : `You finished #${rank} ${of}`;
   return { title: `${date} daily is final`, body };
 };

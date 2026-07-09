@@ -59,7 +59,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 // RANKED daily run (`daily`/`dailyAt`, the daily sort's value + timestamp /
 // the PB board's secondary — null/0 if they only free-played that day). The
 // route projects this into a FieldEntry per sort, each with its own timestamp.
-type Player = {
+export type Player = {
   user: string;
   name: string;
   hue: number;
@@ -141,11 +141,19 @@ const cachedField = (iteration: number) => {
 // `time` is the sort's value, `at` its timestamp (when that build/run was set),
 // and `secondary` the OTHER board's value (null on the PB board for someone who
 // only free-played — rendered "—").
-const project = (players: Player[], sort: "daily" | "pb"): FieldEntry[] =>
+//
+// Ties on the ranked value break by who reached it FIRST (`at` ascending) — the
+// PB board on `pbAt`, the daily board on `dailyAt` — then by name as a stable
+// final fallback. Both timestamps are the earliest run at that best (the SQL's
+// MIN(created)), so "first to the time" is honoured on both boards.
+export const project = (
+  players: Player[],
+  sort: "daily" | "pb",
+): FieldEntry[] =>
   sort === "pb"
     ? [...players]
       .sort((a, b) =>
-        b.pb - a.pb || (b.daily ?? 0) - (a.daily ?? 0) ||
+        b.pb - a.pb || a.pbAt - b.pbAt ||
         a.name.localeCompare(b.name)
       )
       .map((p) => ({

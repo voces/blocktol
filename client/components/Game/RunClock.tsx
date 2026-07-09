@@ -1,5 +1,6 @@
 import { Fragment, h, JSX } from "preact";
 import { createPortal, useLayoutEffect, useRef, useState } from "preact/compat";
+import { formatSeconds } from "../../../common/format.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import { readableInk } from "../../../common/percentileColor.ts";
 import { climbColor, scorePercent, Verdict } from "./verdict.ts";
@@ -26,7 +27,7 @@ export const RunClock = (
       style={{ background: color, color: readableInk(color) }}
     >
       <span class="mono hud__run-time">
-        {to.toFixed(2)}
+        {formatSeconds(to)}
         <span class="hud__run-s">s</span>
       </span>
       <span class="mono hud__run-pct">{formatPercentile(percent)}%</span>
@@ -68,7 +69,7 @@ export const VerdictPill = ({ verdict }: { verdict: Verdict }) => {
         style={{ background: verdict.color, color: readableInk(verdict.color) }}
       >
         <span class="mono hud__run-time">
-          {verdict.time.toFixed(2)}
+          {formatSeconds(verdict.time)}
           <span class="hud__run-s">s</span>
         </span>
         <span class="mono hud__run-pct">
