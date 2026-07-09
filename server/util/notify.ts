@@ -29,6 +29,8 @@ type Day = [number, number, number];
 
 // The lock-screen payload the service worker renders (see sw.js). `tag` coalesces
 // repeats of the same kind+day into one notification rather than stacking.
+const pad = (n: number) => String(n).padStart(2, "0");
+
 const payloadFor = (
   kind: "lost_top" | "daily_final",
   iteration: number,
@@ -36,9 +38,12 @@ const payloadFor = (
   data: LostTopData | DailyFinalData,
 ) => {
   const { title, body } = notificationText({ kind, day, data });
-  // The deep-link the client consumes on open (see store/notifNav.ts): route to
-  // the day + board this notification is about instead of the default landing.
-  const url = `/?notif=${iteration}&kind=${kind}`;
+  // Deep-link to the day's permalink (see store/notifNav.ts): the `/YYYYMMDD`
+  // path opens that day, and `?board` selects the relevant sort (PB for a lost
+  // top spot, Daily for a finalized daily).
+  const [y, m, d] = day;
+  const board = kind === "lost_top" ? "pb" : "daily";
+  const url = `/${y}${pad(m)}${pad(d)}?board=${board}`;
   return JSON.stringify({ title, body, tag: `${kind}:${iteration}`, url });
 };
 

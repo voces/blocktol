@@ -1,45 +1,64 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
+import { api } from "../api.ts";
 import { showBoard } from "./board.ts";
-import { requestStandings, setStandingsSort } from "./standings.ts";
+import {
+  requestStandings,
+  setStandingsSort,
+  StandingsSort,
+} from "./standings.ts";
 
-// True once the app was opened FROM a push notification this session. The daily
-// result modal reads it and stays hidden so it doesn't cover the day the
-// notification points at (the Today panel and the standings sheet still carry
-// the numbers). Sticky for the session — they arrived via a notification, so the
-// big result card stays out of the way.
-export const arrivedFromNotification = signal(false);
+// True once the app was opened via a day deep-link this session (a notification
+// or a `/YYYYMMDD` permalink). The daily result modal reads it and stays hidden
+// so it doesn't cover the day the link points at (the Today panel and the
+// standings sheet still carry the numbers). Sticky for the session.
+export const arrivedViaDeepLink = signal(false);
 
 // Which board a notification is about: a lost top spot is a PB-board event, a
 // finalized daily a ranked-board one.
-const sortFor = (kind: NotificationKind) =>
+const sortFor = (kind: NotificationKind): StandingsSort =>
   kind === "lost_top" ? "pb" : "daily";
 
-// Go to the day + board a notification is about: select its sort, stage that
-// day's board, and ask the dock to surface the leaderboard once it's there.
-// Shared by the in-app panel tap and the push deep-link below.
-export const navigateToNotification = (
-  iteration: number,
-  kind: NotificationKind,
-) => {
-  setStandingsSort(sortFor(kind));
+// Go to a day + board: select the sort, stage that day's board, and ask the dock
+// to surface the leaderboard once it's there. Shared by the in-app panel tap
+// (which already has the iteration id) and the permalink boot below.
+const goToDay = (iteration: number, sort?: StandingsSort) => {
+  if (sort) setStandingsSort(sort);
   showBoard(iteration);
   requestStandings(iteration);
 };
 
-// On boot, route a push deep-link — `/?notif=<iteration>&kind=<kind>`, set by the
-// server's push payload — then strip it from the URL so a refresh doesn't re-fire.
-// Flags the arrival so the daily result modal steps aside for the destination.
-export const consumeNotificationDeepLink = () => {
-  const params = new URLSearchParams(location.search);
-  const raw = params.get("notif");
-  if (!raw) return;
-  history.replaceState(null, "", location.pathname);
-  const iteration = Number(raw);
-  if (!Number.isFinite(iteration) || iteration <= 0) return;
-  arrivedFromNotification.value = true;
-  const kind: NotificationKind = params.get("kind") === "lost_top"
-    ? "lost_top"
-    : "daily_final";
-  navigateToNotification(iteration, kind);
+// In-app panel tap: navigate to the notification's day + board.
+export const navigateToNotification = (
+  iteration: number,
+  kind: NotificationKind,
+) => goToDay(iteration, sortFor(kind));
+
+// On boot, route a `/YYYYMMDD` day permalink (the format notification pushes
+// use). `?board=pb|daily` selects the sort. The client knows the date, not the
+// iteration id, so it resolves via the standings endpoint (whose response also
+// warms the sheet). Never throws — a bad/unknown day just leaves the app on its
+// default landing.
+export const consumeDeepLink = async () => {
+  const m = location.pathname.match(/^\/(\d{4})(\d{2})(\d{2})$/);
+  if (!m) return;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+
+  const boardParam = new URLSearchParams(location.search).get("board");
+  const sort: StandingsSort | undefined = boardParam === "pb"
+    ? "pb"
+    : boardParam === "daily"
+    ? "daily"
+    : undefined;
+
+  arrivedViaDeepLink.value = true;
+  try {
+    const s = await api.standings({ year, month, day });
+    if (!s || "error" in s) return;
+    goToDay(s.iteration, sort);
+  } catch {
+    // leave the app on its default landing
+  }
 };

@@ -7,7 +7,7 @@ import { useApiListener } from "../../hooks/useApiListener.ts";
 import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
 import { showBoard } from "../../store/board.ts";
-import { arrivedFromNotification } from "../../store/notifNav.ts";
+import { arrivedViaDeepLink } from "../../store/notifNav.ts";
 
 const ShareIcon = () => (
   <svg width={15} height={15} viewBox="0 0 16 16">
@@ -57,9 +57,9 @@ export const Daily = () => {
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
-  // Opened from a notification: stay out of the way of the day/leaderboard it
+  // Opened from a day deep-link: stay out of the way of the day/leaderboard it
   // pointed at (the Today panel + standings still carry the numbers).
-  if (!attempts || hideDailyResult || arrivedFromNotification.value) {
+  if (!attempts || hideDailyResult || arrivedViaDeepLink.value) {
     return null;
   }
 
