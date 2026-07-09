@@ -24,14 +24,13 @@ export const dailyVariants = [
 ] as const;
 export type DailyVariant = (typeof dailyVariants)[number];
 
-// Someone passed (or tied) your best build on a day you led. `tied` splits the
-// two: false = they bettered it (you dropped to #2/T2), true = they matched it
-// (you dropped from a sole #1 to a T1). Times are best-build (PB-board) values.
+// Someone passed your best build on a day you led — you dropped off the top of
+// the PB board. Times are best-build (PB-board) values. (Only a strict pass
+// fires; a tie doesn't cost you the top.)
 export type LostTopData = {
-  passer: string; // the display name of who passed/tied you
+  passer: string; // the display name of who passed you
   passerTime: number; // their best build that day — the new top
-  yourTime: number; // your best build that day — what got passed/tied
-  tied: boolean;
+  yourTime: number; // your best build that day — what got passed
 };
 
 // A daily you played has closed and been ranked.
@@ -151,7 +150,7 @@ export const notificationText = (
     const d = n.data as LostTopData;
     return {
       title: `You lost #1 on ${date}`,
-      body: `${d.passer} ${d.tied ? "tied" : "passed"} you — ${
+      body: `${d.passer} passed you — ${
         formatNotifTime(d.passerTime)
       } vs your ${formatNotifTime(d.yourTime)}`,
     };

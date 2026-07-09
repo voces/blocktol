@@ -17,13 +17,15 @@ export type BestRow = { user: string; name: string; best: number };
 
 export type LostTopDecision = {
   passer: { name: string; time: number } | null;
-  recipients: { user: string; yourTime: number; tied: boolean }[];
+  recipients: { user: string; yourTime: number }[];
 };
 
 const NONE: LostTopDecision = { passer: null, recipients: [] };
 
 /**
  * Decide who just lost the top of the PB board when `actor`'s new build landed.
+ * Only a strict PASS costs a holder the top — a tie doesn't — so a tie fires
+ * nothing.
  *
  * `actorPrevBest` is the actor's best build BEFORE this run (null = none). The
  * guard on it is what stops a player who was already leading from firing a
@@ -49,41 +51,23 @@ export const decideLostTop = (
   // The actor was already strictly ahead → the runners-up never held #1.
   if (othersTop < myPrev) return NONE;
 
+  // A strict pass, or nothing: the actor must exceed the top to displace it (a
+  // tie leaves the holders at the top).
+  if (myNew <= othersTop) return NONE;
+
+  // Passed the leader(s): each holder of the previous top drops off it.
   const holders = others.filter((b) => b.best === othersTop);
-  const passer = { name: me.name, time: myNew };
-
-  if (myNew > othersTop) {
-    // Passed the leader(s): each drops off the top.
-    return {
-      passer,
-      recipients: holders.map((h) => ({
-        user: h.user,
-        yourTime: h.best,
-        tied: false,
-      })),
-    };
-  }
-
-  // Tied the top. Only a SOLE prior leader loses their outright #1 (to a T1); a
-  // group already sharing the top is unchanged, and if the actor was already
-  // tied at the top (myPrev === othersTop) nobody's position changed.
-  if (myNew === othersTop && holders.length === 1 && myPrev < othersTop) {
-    return {
-      passer,
-      recipients: [{
-        user: holders[0].user,
-        yourTime: holders[0].best,
-        tied: true,
-      }],
-    };
-  }
-
-  return NONE;
+  return {
+    passer: { name: me.name, time: myNew },
+    recipients: holders.map((h) => ({ user: h.user, yourTime: h.best })),
+  };
 };
 
 // Load the day's bests + the actor's prior best, decide, and notify. Awaited by
-// the commit route (background work is unsafe on this Deploy). Never throws — a
-// notification failure must not fail the commit.
+// the commit route (free play) and, gated on a build that leads the field, the
+// update route (a ranked attempt's build can pass a PB just the same). Awaited
+// because background work is unsafe on this Deploy. Never throws — a
+// notification failure must not fail the run.
 export const checkLostTop = async (iteration: number, actor: string) => {
   try {
     const [bests, prev, meta] = await Promise.all([
@@ -110,7 +94,6 @@ export const checkLostTop = async (iteration: number, actor: string) => {
           passer: decision.passer!.name,
           passerTime: decision.passer!.time,
           yourTime: r.yourTime,
-          tied: r.tied,
         })
       ),
     );

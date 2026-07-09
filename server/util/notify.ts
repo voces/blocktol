@@ -13,6 +13,7 @@ import {
 import { defaultSettings } from "../../common/settings.ts";
 import {
   deleteSubscription,
+  getLostTop,
   getSubscriptions,
   getSubscriptionsForUsers,
   getUsersSettings,
@@ -65,8 +66,11 @@ const pool = async (tasks: (() => Promise<void>)[], limit: number) => {
   );
 };
 
-// "Someone passed/tied your #1" for a single recipient. Upserts (one card per
-// day — a re-pass refreshes it) and pushes.
+// "Someone passed your #1" for a single recipient. Fires once per passer until
+// read: while the same player keeps building higher (the ranked path can call
+// this on each leading save), an already-unread card from that same passer is
+// left as-is — no DB churn, no repeated push. A different passer, or a re-pass
+// after the recipient has read the last one, resurfaces the card and re-pushes.
 export const notifyLostTop = async (
   user: string,
   iteration: number,
@@ -76,6 +80,9 @@ export const notifyLostTop = async (
   try {
     const settings = await getUserSettings(user);
     if (!settings.notifications.lostTop) return;
+    const existing = await getLostTop(user, iteration);
+    const fresh = !existing || existing.read || existing.passer !== data.passer;
+    if (!fresh) return;
     await upsertLostTop(user, iteration, data);
     if (!pushConfigured()) return;
     const subs = await getSubscriptions(user).catch(() => []);

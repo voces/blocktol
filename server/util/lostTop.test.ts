@@ -8,26 +8,20 @@ Deno.test("decideLostTop: passing the sole leader notifies them", () => {
   // "me" had 30, now builds 55, passing "a" (50).
   const d = decideLostTop(rows(["me", 55], ["a", 50]), "me", 30);
   assertEquals(d.passer, { name: "me", time: 55 });
-  assertEquals(d.recipients, [{ user: "a", yourTime: 50, tied: false }]);
+  assertEquals(d.recipients, [{ user: "a", yourTime: 50 }]);
 });
 
 Deno.test("decideLostTop: passing a tied top notifies every co-leader", () => {
   const d = decideLostTop(rows(["me", 60], ["a", 50], ["b", 50]), "me", 10);
   assertEquals(d.recipients, [
-    { user: "a", yourTime: 50, tied: false },
-    { user: "b", yourTime: 50, tied: false },
+    { user: "a", yourTime: 50 },
+    { user: "b", yourTime: 50 },
   ]);
 });
 
-Deno.test("decideLostTop: tying a sole leader notifies them as a tie", () => {
+Deno.test("decideLostTop: tying a leader notifies no one (passes only)", () => {
+  // "me" only reaches 50, matching "a" — a tie doesn't cost anyone the top.
   const d = decideLostTop(rows(["me", 50], ["a", 50]), "me", 30);
-  assertEquals(d.passer, { name: "me", time: 50 });
-  assertEquals(d.recipients, [{ user: "a", yourTime: 50, tied: true }]);
-});
-
-Deno.test("decideLostTop: tying an already-tied top notifies no one", () => {
-  // "a" and "b" already share 50; "me" joins at 50 — nobody dropped from #1.
-  const d = decideLostTop(rows(["me", 50], ["a", 50], ["b", 50]), "me", 20);
   assertEquals(d, { passer: null, recipients: [] });
 });
 
@@ -52,7 +46,7 @@ Deno.test("decideLostTop: a build below the top notifies no one", () => {
 Deno.test("decideLostTop: co-leader (T1 with actor) passed, drops to #2", () => {
   // "me" and "a" were tied at 50 (myPrev 50); "me" now builds 55, passing "a".
   const d = decideLostTop(rows(["me", 55], ["a", 50]), "me", 50);
-  assertEquals(d.recipients, [{ user: "a", yourTime: 50, tied: false }]);
+  assertEquals(d.recipients, [{ user: "a", yourTime: 50 }]);
 });
 
 Deno.test("decideLostTop: first player of the day notifies no one", () => {

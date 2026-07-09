@@ -2,8 +2,10 @@ import { z } from "zod";
 import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
+  getIterationTopOtherLive,
 } from "../../../db/iteration.ts";
 import { updateCurrentRun } from "../../../db/run.ts";
+import { checkLostTop } from "../../../util/lostTop.ts";
 import { log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
@@ -26,10 +28,14 @@ export const updateRun = method(updateRunBody, true)(
   async ({ iteration: iterationId, blocks, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
     let otherBest: number | null;
+    // The live PB-board top among other players (void excluded) — the mark this
+    // build must beat to pass the field, gating the lost-top check below.
+    let liveTop: number | null;
     try {
-      [iteration, otherBest] = await Promise.all([
+      [iteration, otherBest, liveTop] = await Promise.all([
         getIteration(iterationId),
         getIterationOtherBest(iterationId, userId)(),
+        getIterationTopOtherLive(iterationId, userId),
       ]);
     } catch (err) {
       console.error(err);
@@ -57,6 +63,16 @@ export const updateRun = method(updateRunBody, true)(
     } catch (err) {
       log.error(req, err);
       return { error: "failed to save run", status: 500 };
+    }
+
+    // A ranked attempt's build enters the PB field just like free play. When it
+    // passes the live board top, notify whoever it displaced. Gated on the
+    // (already-computed) live top so it costs nothing on the common save that
+    // isn't leading; checkLostTop re-validates and dedupes the push, so a stream
+    // of leading saves within one attempt notifies the victim only once. Awaited
+    // — background work is unsafe on this Deploy — and it never throws.
+    if (liveTop != null && duration > liveTop) {
+      await checkLostTop(iterationId, userId);
     }
 
     return { path, duration, slows, supreme: duration > (otherBest ?? 0) };

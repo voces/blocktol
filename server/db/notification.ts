@@ -98,6 +98,26 @@ export const markRead = (user: string, ids: number[]) => {
   `;
 };
 
+// The existing "lost top" notification for a day, if any — its passer and
+// whether it's still unread. The generator reads it to fire once per passer
+// until read: while the same player keeps building higher on the same day, the
+// card mustn't re-push on every save (the ranked path can call in a tight loop).
+export const getLostTop = (user: string, iteration: number) =>
+  sql<{ data: string; unread: number }[]>`
+    SELECT data, (read_at IS NULL) unread
+    FROM notification
+    WHERE user = ${user} AND iteration = ${iteration} AND kind = 'lost_top'
+    LIMIT 1;
+  `.then((r) => {
+    if (!r[0]) return null;
+    try {
+      const passer = (JSON.parse(r[0].data) as { passer?: string }).passer;
+      return { passer: passer ?? "", read: !r[0].unread };
+    } catch {
+      return { passer: "", read: !r[0].unread };
+    }
+  });
+
 // Create-or-resurface the "lost top spot" notification for a day. The UNIQUE
 // (user, iteration, kind) means a repeat pass on the same day updates the one
 // row — refreshing the passer/times and bumping it back to unread and to the

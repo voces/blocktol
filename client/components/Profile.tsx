@@ -305,7 +305,7 @@ const ProfileDialog = (
           icon={<Crown />}
           accent="var(--gold)"
           title="Lost the top spot"
-          sub="Someone passes or ties your #1"
+          sub="Someone passes your #1"
           on={settings.notifications.lostTop}
           onChange={(v) => setNotif({ lostTop: v })}
         />
