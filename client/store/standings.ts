@@ -79,9 +79,18 @@ export const refreshStandings = (iteration?: number) => {
   return fetchStandings(iteration);
 };
 
-// Attempt boundaries move your best on TODAY's board: a summary lands at boot
-// and after the final attempt; a startRun begins the next attempt (the previous
-// one's time is now settled). Past days are frozen — nothing to re-rank there.
+// Two moments move a viewer's own standing:
+//   - getDailySummary — a daily attempt settled (dailies commit on build); this
+//     lands at boot and after the final attempt, refreshing today's board.
+//   - commitRun — a FREE-PLAY run just became non-void and entered the field,
+//     which can change the PB board (and your rank on it). It fires while the
+//     run is still void at startRun, so startRun was the wrong signal; commit is
+//     the moment it counts. The response carries its iteration, so a free-played
+//     PAST day refreshes itself, not just today.
 const refreshToday = () => refreshStandings(undefined);
 api.addEventListener("getDailySummary", refreshToday);
-api.addEventListener("startRun", refreshToday);
+api.addEventListener("commitRun", (r) => {
+  refreshStandings(
+    r.iteration === todayIteration.value ? undefined : r.iteration,
+  );
+});

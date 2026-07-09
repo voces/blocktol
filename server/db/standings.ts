@@ -66,9 +66,11 @@ export const getIterationBests = (iteration: number) =>
   `;
 
 // The iteration facts the standings header needs: whether the field is frozen
-// (rated), its calendar day, and the day's start — from which the "until
-// ranked" close is derived. DATE()/YEAR()-style reads keep the day identical
-// to how getDailyIterationId resolves it.
+// (rated), its calendar day, the day's start (from which the "until ranked"
+// close is derived), and the par floor (`min`, the [min, best] range a run's
+// standing is measured in — the PB board colours the viewer's rank by it).
+// DATE()/YEAR()-style reads keep the day identical to how getDailyIterationId
+// resolves it.
 export const getStandingsMeta = (iteration: number) =>
   sql<
     {
@@ -77,12 +79,14 @@ export const getStandingsMeta = (iteration: number) =>
       y: number;
       m: number;
       d: number;
+      min: number | null;
     }[]
   >`
     SELECT
       rated,
       UNIX_TIMESTAMP(DATE(created)) * 1000 dayStart,
-      YEAR(created) y, MONTH(created) m, DAY(created) d
+      YEAR(created) y, MONTH(created) m, DAY(created) d,
+      min
     FROM iteration
     WHERE id = ${iteration};
   `.then((r) => {

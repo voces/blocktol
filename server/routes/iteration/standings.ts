@@ -14,6 +14,7 @@
 
 import { z } from "zod";
 import { avatarHue } from "../../../common/avatar.ts";
+import { standing } from "../../../common/standing.ts";
 import { requireDailyIterationId } from "../../db/iteration.ts";
 import {
   getDailyStandings,
@@ -66,6 +67,7 @@ type Field = {
   rated: boolean;
   day: [number, number, number];
   closesAt: number;
+  min: number; // the par floor, for a run's standing in [min, best]
   players: Player[]; // everyone with a non-void run on the day
 };
 
@@ -87,6 +89,7 @@ const loadField = async (iteration: number): Promise<Field> => {
     rated: !!meta.rated,
     day: [meta.y, meta.m, meta.d],
     closesAt: Number(meta.dayStart) + CLOSE_MS,
+    min: Number(meta.min) || 0,
     // The id stays server-side — buildStandings uses it only to find the viewer
     // and to attach secondaries; rows ship name + hue instead.
     players: bests.map((b) => {
@@ -172,8 +175,23 @@ export const standings = method(standingsBody, true)(
       : rest.iteration;
 
     const field = await cachedField(iteration);
-    const daily = buildStandings(project(field.players, "daily"), userId);
-    const pb = buildStandings(project(field.players, "pb"), userId);
+    const dailyField = project(field.players, "daily");
+    const pbField = project(field.players, "pb");
+    const daily = buildStandings(dailyField, userId);
+    const pb = buildStandings(pbField, userId);
+
+    // The viewer's standing on a board — their best time's position in
+    // [min, fieldBest], the same metric (and colour) the runs panel shows for a
+    // run. The dock colours the PB rank by this (a great build reads green even
+    // at #2 in a small field), while the daily rank stays on its ranked
+    // percentile. Attached to both `me`s; null when the viewer isn't on it.
+    const withPercent = (
+      me: typeof daily.me,
+      top: number | undefined,
+    ) =>
+      me == null
+        ? me
+        : { ...me, percent: standing(me.time, field.min, top ?? me.time) };
 
     // The "until ranked" countdown is a daily-board concept — it tracks when
     // the ranked field freezes, locking once the day is rated (or its close has
@@ -188,8 +206,16 @@ export const standings = method(standingsBody, true)(
       day: field.day,
       final,
       closesAt: final ? null : field.closesAt,
-      daily: { players: daily.players, me: daily.me, rows: daily.rows },
-      pb: { players: pb.players, me: pb.me, rows: pb.rows },
+      daily: {
+        players: daily.players,
+        me: withPercent(daily.me, dailyField[0]?.time),
+        rows: daily.rows,
+      },
+      pb: {
+        players: pb.players,
+        me: withPercent(pb.me, pbField[0]?.time),
+        rows: pb.rows,
+      },
     };
   },
 );
