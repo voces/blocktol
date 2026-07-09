@@ -75,7 +75,6 @@ export const useInit = () => {
     ownBest,
     setOwnBest,
     setVerdict,
-    phase,
   } = useContext(GameStateContext);
 
   // Keep the calendar / today panels in step with the board's attempts by
@@ -86,16 +85,22 @@ export const useInit = () => {
   }, [iteration, viewedAttempts]);
 
   // A notification (lost-top / finalized daily) just moved the field for some
-  // days. If the OPEN board is one of them, refetch it so the runs panel's % /
-  // hue ramp regrades against the new field best. Gated to a passive board
-  // (idle/staged) so an attempt mid-build or mid-run is never disturbed; the
+  // days. If the OPEN board is one of them, regrade the runs panel against the
+  // new field best. Refetch only this board's attempts and swap them in — no
+  // re-stage, so the clock / blocks and any in-progress build or run are
+  // untouched (no phase gate needed). A 403 (today's daily unfinished, so free
+  // play is still locked) just skips — there's nothing to regrade yet. The
   // calendar + standings refresh in the store regardless of what's on screen.
   const regrade = regradedIterations.value;
   useEffect(() => {
-    if (iteration === undefined) return;
-    if (phase !== "idle" && phase !== "staged") return;
-    if (!regrade.iterations.includes(iteration)) return;
-    showBoard(iteration);
+    if (iteration === undefined || !regrade.iterations.includes(iteration)) {
+      return;
+    }
+    api.getBoard({ iteration, timeZone: getTimeZone() }).then((r) => {
+      if (r && !("error" in r) && !("incomplete" in r)) {
+        setViewedAttempts(r.attempts);
+      }
+    }).catch(() => {});
   }, [regrade.nonce]);
 
   // Lay the iteration's fixed pieces onto a fresh grid (a started run and a
