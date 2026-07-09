@@ -1,6 +1,9 @@
 import { Fragment, h } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
-import { percentileColor } from "../../../common/percentileColor.ts";
+import {
+  percentileColor,
+  standingColor,
+} from "../../../common/percentileColor.ts";
 import {
   boardOf,
   fetchStandings,
@@ -57,18 +60,23 @@ export const StandingsDock = () => {
   const me = b?.me ?? null;
 
   // Your rank wears your standing: record states first (gold for an outright
-  // #1, chartreuse for a shared record), then the continuous percentile ramp —
-  // ranked percentiles are uniform by construction, so they colour linearly
-  // (no STANDING_GAMMA; see percentileColor).
+  // #1, chartreuse for a shared record), then the ramp. The two boards measure
+  // "how well" differently, so they colour off different metrics:
+  //   - daily by ranked percentile (position in the field) — uniform by
+  //     construction, so it colours linearly via percentileColor;
+  //   - PB by maze standing (how good your best build is, in [min, best]) — the
+  //     same metric+colour the runs panel gives the run, gamma-boosted toward
+  //     the top via standingColor, so a strong build reads green even at #2 in a
+  //     small field.
   const rankColor = !me
     ? undefined
     : me.record === "beat"
     ? "var(--gold)"
     : me.record === "match"
     ? "var(--peak)"
-    : me.percentile != null
-    ? percentileColor(me.percentile)
-    : undefined;
+    : sort === "pb"
+    ? (me.percent != null ? standingColor(me.percent) : undefined)
+    : (me.percentile != null ? percentileColor(me.percentile) : undefined);
 
   return (
     <>

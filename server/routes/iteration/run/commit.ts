@@ -22,6 +22,8 @@ export const commitRun = method(commitRunBody, true)(
       console.error(err);
       return { error: "failed to commit run", status: 500 };
     }
-    return { kind: "commitRun" as const };
+    // The iteration rides back so the client can refresh that day's standings —
+    // a committed free-play run just entered the field and may move the PB board.
+    return { kind: "commitRun" as const, iteration };
   },
 );

@@ -89,6 +89,10 @@ Deno.test({
         secondary: 60,
         record: null,
         percentile: 0,
+        // Standing on the daily board: (34 - min) / (fieldBest - min) with
+        // min 10, fieldBest 40 → 24/30 = 0.8. (Unused for the daily colour,
+        // which rides `percentile`, but attached for symmetry.)
+        percent: 0.8,
       });
       // Competition ranking off each player's best: 40, T2 38.5, T2 38.5,
       // 4th 36, 5th 34 — a five-player field shows whole (podium ∪ viewer±1).
@@ -147,6 +151,9 @@ Deno.test({
         secondary: 34,
         record: "beat",
         percentile: 1,
+        // Standing on the PB board: the viewer holds the field best (60), so
+        // (60 - 10) / (60 - 10) = 1 — the metric the dock colours the PB rank by.
+        percent: 1,
       });
       // PB order: viewer 60, leader 40, {tiedA,tiedB} 38.5, fourth 36.
       assertEquals(r.pb.rows.map((row) => row.time), [60, 40, 38.5, 38.5, 36]);
@@ -176,9 +183,14 @@ Deno.test({
         secondary: 40,
         record: "beat",
         percentile: 1,
+        // Leader holds the daily field best (40) → standing 1.
+        percent: 1,
       });
       assertEquals(asLeader.daily.rows.map((row) => row.you)[0], true);
       assertEquals(asLeader.pb.me?.rank, 2); // 40 sits behind the viewer's 60
+      // Leader's PB standing: (40 - 10) / (60 - 10) = 30/50 = 0.6 — a strong
+      // build reads well even though they're only #2 on the PB board.
+      assertEquals(asLeader.pb.me?.percent, 0.6);
     } finally {
       // The iteration cascade removes the seeded runs; users their own.
       await sql`DELETE FROM iteration WHERE id = ${iteration};`;
@@ -221,6 +233,8 @@ Deno.test({
       assertEquals(a.pb.players, 1);
       assertEquals(a.pb.me?.time, 20);
       assertEquals(a.pb.me?.secondary, null);
+      // Lone player holds their own field best → standing 1.
+      assertEquals(a.pb.me?.percent, 1);
       assertEquals(a.pb.rows.length, 1);
       assertEquals(a.pb.rows[0].secondary, null);
       assert(a.pb.rows[0].at > 0, "pb row carries the build's timestamp");
