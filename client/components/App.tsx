@@ -14,8 +14,14 @@ import { CalendarButton } from "./CalendarButton.tsx";
 import { IntroBoard } from "./IntroBoard.tsx";
 import { Logo } from "./Logo.tsx";
 import { MoveGate } from "./MoveGate.tsx";
+import { NotificationsBell } from "./Notifications/Bell.tsx";
 import { Profile } from "./Profile.tsx";
 import { Toast } from "./Toast.tsx";
+import {
+  fetchNotifications,
+  startNotificationsPolling,
+} from "../store/notifications.ts";
+import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
 
@@ -88,6 +94,7 @@ const Shell = (
           </div>
           <div class="app-header__actions">
             <CalendarButton />
+            <NotificationsBell />
             <Profile />
           </div>
         </header>
@@ -165,6 +172,18 @@ export const App = () => {
       if (p?.settings) adoptServerSettings(p.settings);
     });
   }, [showOnboarding, linkPending, retry]);
+
+  // Notifications: warm the bell, start the quiet badge poll, and (for users who
+  // already granted permission) re-register their push subscription. One-shot,
+  // once the app is past onboarding / a pending sign-in link.
+  const notificationsBooted = useRef(false);
+  useEffect(() => {
+    if (showOnboarding || linkPending || notificationsBooted.current) return;
+    notificationsBooted.current = true;
+    fetchNotifications();
+    startNotificationsPolling();
+    syncPushSubscription();
+  }, [showOnboarding, linkPending]);
 
   const gameState = useGameState();
 

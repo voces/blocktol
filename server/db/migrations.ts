@@ -123,6 +123,55 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `run` ADD INDEX IF NOT EXISTS `user_void_time_idx` (`user`, `void`, `time`);",
   },
+  {
+    version: 5,
+    name: "notifications",
+    // In-app + push notifications. Two tables:
+    //
+    //  `notification` — one row per delivered notification, its payload fully
+    //   denormalized as JSON at write time (see common/notifications.ts) so a
+    //   later change to the field never rewrites history. `read_at` NULL means
+    //   unread. The UNIQUE (user, iteration, kind) is the dedupe key: at most one
+    //   notification per player per day per kind — a re-pass on the same day
+    //   upserts the existing "lost top" row (bumping it back to unread) rather
+    //   than stacking, and a re-run of the rating cron can't double a
+    //   "daily final". A player can still hold BOTH kinds for one day (different
+    //   kind). FKs cascade so deleting a user/iteration clears their notifications.
+    //
+    //  `push_subscription` — a Web Push endpoint per installed client. The
+    //   endpoint is globally unique but too long to index directly, so its
+    //   SHA-256 hex is the primary key; a device that moves accounts re-upserts
+    //   the same endpoint onto its new user. p256dh/auth are the RFC 8291
+    //   encryption keys (base64url).
+    up: `
+      CREATE TABLE IF NOT EXISTS \`notification\` (
+        \`id\` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        \`user\` char(36) NOT NULL,
+        \`iteration\` int(10) unsigned NOT NULL,
+        \`kind\` varchar(32) NOT NULL,
+        \`data\` text NOT NULL,
+        \`created\` timestamp NOT NULL DEFAULT current_timestamp(),
+        \`read_at\` timestamp NULL DEFAULT NULL,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`user_iteration_kind\` (\`user\`,\`iteration\`,\`kind\`),
+        KEY \`user_created_idx\` (\`user\`,\`created\`),
+        KEY \`FK_notification_iteration\` (\`iteration\`),
+        CONSTRAINT \`FK_notification_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT \`FK_notification_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`push_subscription\` (
+        \`endpoint_hash\` char(64) NOT NULL,
+        \`user\` char(36) NOT NULL,
+        \`endpoint\` text NOT NULL,
+        \`p256dh\` varchar(255) NOT NULL,
+        \`auth\` varchar(255) NOT NULL,
+        \`created\` timestamp NOT NULL DEFAULT current_timestamp(),
+        PRIMARY KEY (\`endpoint_hash\`),
+        KEY \`user_idx\` (\`user\`),
+        CONSTRAINT \`FK_push_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+  },
 ];
 
 // Fails fast on an ill-formed migration list: versions must be unique and form a

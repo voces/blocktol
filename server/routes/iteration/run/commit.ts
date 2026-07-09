@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import { commitRun as dbCommitRun } from "../../../db/run.ts";
+import { checkLostTop } from "../../../util/lostTop.ts";
 import { method } from "../../apiHelpers.ts";
 
 const commitRunBody = z.object({
@@ -22,6 +23,13 @@ export const commitRun = method(commitRunBody, true)(
       console.error(err);
       return { error: "failed to commit run", status: 500 };
     }
+    // The committed run just entered the PB field: if it passed (or tied) another
+    // player's leading build, notify them they lost the top spot. Awaited on
+    // purpose — this Deploy kills work left running after the response — but the
+    // check short-circuits after one (parallel) round trip when nothing changed,
+    // and only touches the notifier when someone was actually displaced.
+    // checkLostTop never throws, so it can't fail the commit.
+    await checkLostTop(iteration, userId);
     // The iteration rides back so the client can refresh that day's standings —
     // a committed free-play run just entered the field and may move the PB board.
     return { kind: "commitRun" as const, iteration };

@@ -173,6 +173,24 @@ export const updateCurrentRun = (
     saved: !!r?.[2]?.[0]?.fresh,
   }));
 
+// The user's best non-void build on an iteration EXCLUDING their most recent run
+// — i.e. their PB *before* the run that just landed. The lost-top check reads it
+// to tell whether the field's leaders were already ahead of this player before
+// their new build, so a player merely extending an existing lead never fires a
+// spurious "you lost #1" at the runners-up. Null when they had no prior build.
+export const getUserPrevBest = (user: string, iteration: number) =>
+  sql<{ prev: number | null }[]>`
+    SELECT MAX(time) prev
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND void = FALSE
+      AND created < (
+        SELECT MAX(created) FROM run
+        WHERE user = ${user} AND iteration = ${iteration}
+      );
+  `.then((r) => r[0]?.prev ?? null);
+
 // `rankedOnly` filters to the daily's three attempts — the resume path uses it
 // to find an in-progress attempt. Filtering on `daily` here would be wrong: an
 // in-progress attempt 2/3 only holds daily = TRUE while it happens to beat the

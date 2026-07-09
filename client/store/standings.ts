@@ -40,6 +40,16 @@ export const boardOf = (
   sort: StandingsSort,
 ) => (sort === "pb" ? data?.pb : data?.daily);
 
+// A request (from a notification) to open the standings sheet for a given day.
+// `iteration` undefined means today; null means no pending request. The dock
+// watches this, opens onto the matching day once its board is shown, and clears
+// it. Kept in the store so a notification click (in the header) can reach the
+// dock (down in the game tree) without prop-drilling.
+export const openStandingsRequest = signal<{ iteration?: number } | null>(null);
+export const requestStandings = (iteration?: number) => {
+  openStandingsRequest.value = { iteration };
+};
+
 api.addEventListener("standings", (s) => {
   const next = new Map(standingsByKey.value);
   next.set(s.iteration, s);

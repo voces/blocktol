@@ -65,6 +65,39 @@ export const getIterationBests = (iteration: number) =>
     GROUP BY best.user, best.t, u.name;
   `;
 
+// The day's field reduced to what the daily-outcome classifier needs (see
+// common/notifications.ts): one row per player with a non-void run, carrying
+// their best RANKED daily time (`daily`, null if they only free-played) and
+// their best build that day (`pb`, free play included). The rating cron reads
+// this once a day closes to decide each participant's notification variant.
+// Same population as getIterationBests (every non-void run); the LEFT JOIN
+// attaches the ranked time where there is one.
+export const getIterationOutcomeField = (iteration: number) =>
+  sql<{ user: string; daily: number | null; pb: number }[]>`
+    SELECT
+      bests.user user,
+      ROUND(bests.t, 2) pb,
+      ROUND(ranked.t, 2) daily
+    FROM (
+      SELECT user, MAX(time) t
+      FROM run
+      WHERE iteration = ${iteration} AND void = FALSE
+      GROUP BY user
+    ) bests
+    LEFT JOIN (
+      SELECT user, MAX(time) t
+      FROM run
+      WHERE iteration = ${iteration} AND daily = TRUE AND void = FALSE
+      GROUP BY user
+    ) ranked ON ranked.user = bests.user;
+  `.then((r) =>
+    r.map((row) => ({
+      user: row.user,
+      pb: Number(row.pb),
+      daily: row.daily == null ? null : Number(row.daily),
+    }))
+  );
+
 // The iteration facts the standings header needs: whether the field is frozen
 // (rated), its calendar day, the day's start (from which the "until ranked"
 // close is derived), and the par floor (`min`, the [min, best] range a run's

@@ -73,3 +73,52 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(handleFetch(event));
 });
+
+// ---- Web Push ----
+
+// A push arrives as the JSON the server encrypted (see server/util/notify.ts):
+// { title, body, tag, url }. `tag` coalesces repeats of the same kind+day into
+// one notification instead of stacking. userVisibleOnly subscriptions MUST show
+// a notification for every push, so fall back to a generic one if the payload is
+// missing or unparseable.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || "Blocktol";
+  const options = {
+    body: data.body || "",
+    tag: data.tag,
+    icon: "/favicon.svg",
+    badge: "/favicon.svg",
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tapping a notification focuses an existing app window (navigating it to the
+// target) or opens a new one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of all) {
+        if ("focus" in client) {
+          if ("navigate" in client && new URL(client.url).pathname !== url) {
+            await client.navigate(url).catch(() => {});
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })(),
+  );
+});

@@ -12,16 +12,49 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 2.5;
 export const ZOOM_DEFAULT = 2;
 
-export type Settings = { theme: Theme; zoom: number };
+// The user-toggleable notification kinds (see common/notifications.ts). Each is
+// opted IN by default — a new player gets both until they turn one off. The keys
+// are the toggle set persisted in settings; the server reads them before writing
+// a notification (or sending a push) so a disabled kind never reaches a user.
+export type NotificationPrefs = { lostTop: boolean; dailyFinal: boolean };
+
+export type Settings = {
+  theme: Theme;
+  zoom: number;
+  notifications: NotificationPrefs;
+};
 export type SettingsPatch = Partial<Settings>;
 
 export const clampZoom = (n: number) =>
   Number.isFinite(n) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n)) : ZOOM_DEFAULT;
 
+export const defaultNotificationPrefs = (): NotificationPrefs => ({
+  lostTop: true,
+  dailyFinal: true,
+});
+
 export const defaultSettings = (): Settings => ({
   theme: "system",
   zoom: ZOOM_DEFAULT,
+  notifications: defaultNotificationPrefs(),
 });
+
+// A boolean field, tolerant of a legacy/absent/garbage value: only a real
+// `false` turns a default-on preference off.
+const bool = (v: unknown, fallback: boolean) =>
+  typeof v === "boolean" ? v : fallback;
+
+const parseNotifications = (raw: unknown): NotificationPrefs => {
+  const src = (raw && typeof raw === "object" ? raw : {}) as Record<
+    string,
+    unknown
+  >;
+  const d = defaultNotificationPrefs();
+  return {
+    lostTop: bool(src.lostTop, d.lostTop),
+    dailyFinal: bool(src.dailyFinal, d.dailyFinal),
+  };
+};
 
 /**
  * Parse a stored settings blob (a JSON string, an object, or null) into full
@@ -46,5 +79,6 @@ export const parseSettings = (raw: unknown): Settings => {
       ? (src.theme as Theme)
       : "system",
     zoom: clampZoom(Number(src.zoom)),
+    notifications: parseNotifications(src.notifications),
   };
 };

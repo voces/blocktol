@@ -23,6 +23,9 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
 import { Modal } from "./Modal.tsx";
 import { MoveDevice } from "./MoveDevice.tsx";
+import { Crown, Flag } from "./Notifications/icons.tsx";
+import { pushPermission, requestPushPermission } from "../util/push.ts";
+import type { NotificationPrefs } from "../../common/settings.ts";
 
 const joinedLabel = (joined: number | null) =>
   joined == null ? null : new Date(joined).toLocaleDateString(undefined, {
@@ -67,6 +70,38 @@ const Stat = (
       {value}
     </div>
     <div class="profile-stat__label">{label}</div>
+  </div>
+);
+
+// One notification preference row: an icon tile, its copy, and an on/off switch.
+const NotifRow = (
+  { icon, accent, title, sub, on, onChange }: {
+    icon: h.JSX.Element;
+    accent: string;
+    title: string;
+    sub: string;
+    on: boolean;
+    onChange: (next: boolean) => void;
+  },
+) => (
+  <div class="notif-pref">
+    <span class="notif-pref__tile" style={{ color: accent }} aria-hidden="true">
+      {icon}
+    </span>
+    <div class="notif-pref__text">
+      <div class="notif-pref__title">{title}</div>
+      <div class="notif-pref__sub">{sub}</div>
+    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={title}
+      class={"switch tapc" + (on ? " switch--on" : "")}
+      onClick={() => onChange(!on)}
+    >
+      <span class="switch__knob" />
+    </button>
   </div>
 );
 
@@ -125,6 +160,15 @@ const ProfileDialog = (
     ]).then(([staged, best]) => {
       if (staged && !("error" in best)) viewMaze(best.maze);
     });
+  };
+
+  // Toggle a notification preference. Turning one ON also nudges the browser for
+  // push permission (and subscribes) — silently a no-op if already granted or
+  // unsupported; in-app delivery works regardless of the answer.
+  const setNotif = (patch: Partial<NotificationPrefs>) => {
+    setSettings({ notifications: { ...settings.notifications, ...patch } });
+    const turnedOn = patch.lostTop === true || patch.dailyFinal === true;
+    if (turnedOn && pushPermission() !== "granted") requestPushPermission();
   };
 
   const name = profile?.name || "Anonymous";
@@ -254,6 +298,26 @@ const ProfileDialog = (
           {profile?.bestBuild != null ? `${profile.bestBuild}s` : "—"}
         </div>
       </button>
+
+      <div class="pref">
+        <div class="section-title">Notifications</div>
+        <NotifRow
+          icon={<Crown />}
+          accent="var(--gold)"
+          title="Lost the top spot"
+          sub="Someone passes or ties your #1"
+          on={settings.notifications.lostTop}
+          onChange={(v) => setNotif({ lostTop: v })}
+        />
+        <NotifRow
+          icon={<Flag />}
+          accent="var(--accent)"
+          title="Daily finalized"
+          sub="A day you played locks its ranks"
+          on={settings.notifications.dailyFinal}
+          onChange={(v) => setNotif({ dailyFinal: v })}
+        />
+      </div>
 
       <div class="pref">
         <div class="section-title">Preferences</div>

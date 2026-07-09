@@ -86,7 +86,12 @@ export const getSettings = () => current;
  * change the user just made on this device mid-flight.
  */
 export const adoptServerSettings = (settings: Settings) => {
-  if (settings.theme === current.theme && settings.zoom === current.zoom) {
+  const n = settings.notifications;
+  const c = current.notifications;
+  if (
+    settings.theme === current.theme && settings.zoom === current.zoom &&
+    n.lostTop === c.lostTop && n.dailyFinal === c.dailyFinal
+  ) {
     return;
   }
   publish(settings);
