@@ -78,13 +78,13 @@ export const notifyLostTop = async (
   data: LostTopData,
 ) => {
   try {
-    const settings = await getUserSettings(user);
-    if (!settings.notifications.lostTop) return;
     const existing = await getLostTop(user, iteration);
     const fresh = !existing || existing.read || existing.passer !== data.passer;
     if (!fresh) return;
+    // In-app is unconditional; the setting gates PUSH only.
     await upsertLostTop(user, iteration, data);
-    if (!pushConfigured()) return;
+    const settings = await getUserSettings(user);
+    if (!settings.notifications.lostTop || !pushConfigured()) return;
     const subs = await getSubscriptions(user).catch(() => []);
     const payload = payloadFor("lost_top", iteration, day, data);
     await pool(subs.map((s) => () => sendOne(s, payload)), PUSH_CONCURRENCY);
@@ -94,8 +94,9 @@ export const notifyLostTop = async (
 };
 
 // "A daily you played is final" for every participant at once (the rating cron).
-// Settings are read in one batched query; only opted-in players get a row (and a
-// push). INSERT IGNORE means a re-run of the sweep is a no-op.
+// Every ranked player gets the in-app row; only players who opted PUSH in (read
+// from one batched settings query) get a push. INSERT IGNORE means a re-run of
+// the sweep is a no-op.
 export const notifyDailyFinals = async (
   iteration: number,
   day: Day,
@@ -103,16 +104,19 @@ export const notifyDailyFinals = async (
 ) => {
   if (outcomes.length === 0) return;
   try {
+    // In-app for everyone who played ranked.
+    await insertDailyFinals(iteration, outcomes);
+
+    if (!pushConfigured()) return;
     const settingsByUser = await getUsersSettings(outcomes.map((o) => o.user));
     const def = defaultSettings();
-    const allowed = outcomes.filter((o) =>
+    const pushable = outcomes.filter((o) =>
       (settingsByUser.get(o.user) ?? def).notifications.dailyFinal
     );
-    await insertDailyFinals(iteration, allowed);
+    if (pushable.length === 0) return;
 
-    if (!pushConfigured() || allowed.length === 0) return;
-    const dataByUser = new Map(allowed.map((o) => [o.user, o.data]));
-    const subs = await getSubscriptionsForUsers(allowed.map((o) => o.user));
+    const dataByUser = new Map(pushable.map((o) => [o.user, o.data]));
+    const subs = await getSubscriptionsForUsers(pushable.map((o) => o.user));
     const tasks = subs.flatMap((s) => {
       const data = dataByUser.get(s.user);
       if (!data) return [];
@@ -123,7 +127,7 @@ export const notifyDailyFinals = async (
     log.info(
       "daily-final notifications",
       iteration,
-      `(${allowed.length} players, ${tasks.length} pushes)`,
+      `(${outcomes.length} in-app, ${tasks.length} pushes)`,
     );
   } catch (err) {
     log.error("notifyDailyFinals failed", err);

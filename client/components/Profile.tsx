@@ -300,7 +300,7 @@ const ProfileDialog = (
       </button>
 
       <div class="pref">
-        <div class="section-title">Notifications</div>
+        <div class="section-title">Push notifications</div>
         <NotifRow
           icon={<Crown />}
           accent="var(--gold)"

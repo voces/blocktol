@@ -12,10 +12,11 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 2.5;
 export const ZOOM_DEFAULT = 2;
 
-// The user-toggleable notification kinds (see common/notifications.ts). Each is
-// opted IN by default — a new player gets both until they turn one off. The keys
-// are the toggle set persisted in settings; the server reads them before writing
-// a notification (or sending a push) so a disabled kind never reaches a user.
+// The user-toggleable PUSH notification kinds (see common/notifications.ts).
+// These gate PUSH delivery ONLY — in-app notifications are always generated
+// regardless. Each is opted OUT by default (explicit opt-in), since turning one
+// on prompts the browser for notification permission. The server reads them
+// before sending a push, never before writing the in-app row.
 export type NotificationPrefs = { lostTop: boolean; dailyFinal: boolean };
 
 export type Settings = {
@@ -29,8 +30,8 @@ export const clampZoom = (n: number) =>
   Number.isFinite(n) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n)) : ZOOM_DEFAULT;
 
 export const defaultNotificationPrefs = (): NotificationPrefs => ({
-  lostTop: true,
-  dailyFinal: true,
+  lostTop: false,
+  dailyFinal: false,
 });
 
 export const defaultSettings = (): Settings => ({

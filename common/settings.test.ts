@@ -51,25 +51,25 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
   });
 });
 
-Deno.test("parseSettings: notification prefs default on; only false opts out", () => {
-  // Absent / garbage → both on.
+Deno.test("parseSettings: push prefs default off; only true opts in", () => {
+  // Absent / garbage → both off (explicit opt-in).
   assertEquals(parseSettings({}).notifications, {
-    lostTop: true,
-    dailyFinal: true,
+    lostTop: false,
+    dailyFinal: false,
   });
   assertEquals(parseSettings({ notifications: "nope" }).notifications, {
-    lostTop: true,
-    dailyFinal: true,
+    lostTop: false,
+    dailyFinal: false,
   });
-  // Each toggle is independent, and only a real `false` turns one off.
+  // Each toggle is independent, and only a real `true` turns one on.
   assertEquals(
-    parseSettings({ notifications: { lostTop: false } }).notifications,
-    { lostTop: false, dailyFinal: true },
+    parseSettings({ notifications: { lostTop: true } }).notifications,
+    { lostTop: true, dailyFinal: false },
   );
   assertEquals(
-    parseSettings({ notifications: { lostTop: 0, dailyFinal: false } })
+    parseSettings({ notifications: { lostTop: 1, dailyFinal: true } })
       .notifications,
-    { lostTop: true, dailyFinal: false },
+    { lostTop: false, dailyFinal: true },
   );
 });
 
