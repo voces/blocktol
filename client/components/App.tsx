@@ -29,7 +29,11 @@ const Shell = (
   // lives here, not App, so a pull only re-renders the Shell — `children` (the
   // board) is an unchanged vnode and Preact skips it.
   const { pull, refreshing, threshold, handlers } = usePullToRefresh();
+  // Opacity ramps to full by the threshold (armed cue); the spin tracks the
+  // UNCAPPED pull so it keeps turning through the rubber-band past the
+  // threshold instead of freezing partway down.
   const progress = Math.min(pull / threshold, 1);
+  const spin = (pull / threshold) * 300;
   return (
     // The provider wraps the header too, so its calendar button can share game
     // state with the (mobile) calendar modal rendered down in the game tree.
@@ -53,7 +57,7 @@ const Shell = (
               viewBox="0 0 24 24"
               style={refreshing
                 ? undefined
-                : { transform: `rotate(${progress * 300}deg)` }}
+                : { transform: `rotate(${spin}deg)` }}
             >
               <circle
                 cx="12"
