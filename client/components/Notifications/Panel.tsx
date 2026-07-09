@@ -14,7 +14,7 @@ import {
   notifications as notifSignal,
   refreshNotifications,
 } from "../../store/notifications.ts";
-import { requestStandings } from "../../store/standings.ts";
+import { requestStandings, setStandingsSort } from "../../store/standings.ts";
 import { formatAgo } from "../Standings/helpers.ts";
 import { Crown, Flag } from "./icons.tsx";
 
@@ -97,6 +97,9 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
 
   const open = (item: NotificationItem) => {
     if (!item.read) markRead([item.id]);
+    // Land on the board that matters for this notification: a lost top spot is a
+    // PB-board event, a finalized daily is a ranked-board one.
+    setStandingsSort(item.kind === "lost_top" ? "pb" : "daily");
     // Navigate the board to that day, then ask the dock to surface its
     // leaderboard once it's there.
     showBoard(item.iteration);
