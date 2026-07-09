@@ -21,6 +21,7 @@ import {
   fetchNotifications,
   startNotificationsPolling,
 } from "../store/notifications.ts";
+import { consumeNotificationDeepLink } from "../store/notifNav.ts";
 import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
@@ -183,6 +184,9 @@ export const App = () => {
     fetchNotifications();
     startNotificationsPolling();
     syncPushSubscription();
+    // If this load came from tapping a push notification, route to the day it
+    // pointed at (runs after the game tree mounts, so the board handlers exist).
+    consumeNotificationDeepLink();
   }, [showOnboarding, linkPending]);
 
   const gameState = useGameState();

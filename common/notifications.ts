@@ -150,21 +150,21 @@ export const notificationText = (
     const d = n.data as LostTopData;
     return {
       title: `You lost #1 on ${date}`,
-      body: `${d.passer} passed you — ${
-        formatNotifTime(d.passerTime)
-      } vs your ${formatNotifTime(d.yourTime)}`,
+      body: `${d.passer} passed you. ${formatNotifTime(d.passerTime)} vs your ${
+        formatNotifTime(d.yourTime)
+      }`,
     };
   }
   const d = n.data as DailyFinalData;
   const of = `of ${d.players}`;
   const body = d.variant === "supreme"
-    ? `You finished #1 ${of} — supreme, untied`
+    ? `You finished #1 ${of}. Supreme, untied`
     : d.variant === "record"
-    ? `You finished #${d.rank} ${of} — a record held`
+    ? `You finished #${d.rank} ${of}. A record held`
     : d.variant === "first"
-    ? `You finished #1 ${of} — bettered only in free play`
+    ? `You finished #1 ${of}. Bettered only in free play`
     : d.variant === "t1"
-    ? `You tied #1 ${of} — bettered only in free play`
+    ? `You tied #1 ${of}. Bettered only in free play`
     : `You finished #${d.rank} ${of}`;
   return { title: `${date} daily is final`, body };
 };

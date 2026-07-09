@@ -36,7 +36,10 @@ const payloadFor = (
   data: LostTopData | DailyFinalData,
 ) => {
   const { title, body } = notificationText({ kind, day, data });
-  return JSON.stringify({ title, body, tag: `${kind}:${iteration}`, url: "/" });
+  // The deep-link the client consumes on open (see store/notifNav.ts): route to
+  // the day + board this notification is about instead of the default landing.
+  const url = `/?notif=${iteration}&kind=${kind}`;
+  return JSON.stringify({ title, body, tag: `${kind}:${iteration}`, url });
 };
 
 // At most this many push requests in flight at once during the daily fan-out.

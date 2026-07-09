@@ -7,14 +7,13 @@ import {
   notificationText,
 } from "../../../common/notifications.ts";
 import { useDragToClose } from "../../hooks/useDragToClose.ts";
-import { showBoard } from "../../store/board.ts";
+import { navigateToNotification } from "../../store/notifNav.ts";
 import {
   markRead,
   NotificationItem,
   notifications as notifSignal,
   refreshNotifications,
 } from "../../store/notifications.ts";
-import { requestStandings, setStandingsSort } from "../../store/standings.ts";
 import { formatAgo } from "../Standings/helpers.ts";
 import { Crown, Flag } from "./icons.tsx";
 
@@ -97,13 +96,9 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
 
   const open = (item: NotificationItem) => {
     if (!item.read) markRead([item.id]);
-    // Land on the board that matters for this notification: a lost top spot is a
-    // PB-board event, a finalized daily is a ranked-board one.
-    setStandingsSort(item.kind === "lost_top" ? "pb" : "daily");
-    // Navigate the board to that day, then ask the dock to surface its
-    // leaderboard once it's there.
-    showBoard(item.iteration);
-    requestStandings(item.iteration);
+    // Navigate to the day + board this notification is about (PB for a lost top
+    // spot, Daily for a finalized daily) and surface its leaderboard.
+    navigateToNotification(item.iteration, item.kind);
     onClose();
   };
 
