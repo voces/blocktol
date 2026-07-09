@@ -11,9 +11,19 @@ export type NotificationItem = NotificationsData["items"][number];
 export const notifications = signal<NotificationItem[]>([]);
 export const unreadCount = signal<number>(0);
 
+// Bumped whenever the unread count RISES after the first load — a notification
+// just arrived while the app was open (via the focused-push channel below or the
+// poll). The bell watches it to give a quick ring; the initial load doesn't
+// bump, so opening the app to existing unread doesn't ring.
+export const bellNudge = signal<number>(0);
+let loaded = false;
+
 const apply = (data: NotificationsData) => {
+  const prevUnread = unreadCount.peek();
   notifications.value = data.items;
   unreadCount.value = data.unread;
+  if (loaded && data.unread > prevUnread) bellNudge.value++;
+  loaded = true;
 };
 
 // Coalesce concurrent asks onto one request per freshness window; a failed fetch
@@ -87,4 +97,17 @@ export const startNotificationsPolling = () => {
   clearInterval(timer);
   timer = setInterval(tick, POLL_MS);
   document.addEventListener("visibilitychange", tick);
+};
+
+// When a push arrives while the app is on screen, the service worker forwards it
+// here (see sw.js) instead of showing a redundant system banner. Refresh the
+// bell right away — the rising unread count nudges its ring — rather than
+// waiting on the poll.
+export const initPushChannel = () => {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if ((e.data as { type?: string } | null)?.type === "notification") {
+      refreshNotifications();
+    }
+  });
 };

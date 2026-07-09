@@ -3395,6 +3395,56 @@ a:hover {
   border: 2px solid var(--background);
 }
 
+/* A quick, silent swing when a notification arrives while the app is open — the
+   bell glyph pivots from its top, the badge gives a small pop. Purely visual. */
+.notif-bell--swing svg {
+  transform-origin: 50% 20%;
+  animation: bell-swing 0.75s ease;
+}
+
+.notif-bell--swing .notif-bell__badge {
+  animation: bell-badge-pop 0.5s ease;
+}
+
+@keyframes bell-swing {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  12% {
+    transform: rotate(15deg);
+  }
+  26% {
+    transform: rotate(-12deg);
+  }
+  40% {
+    transform: rotate(9deg);
+  }
+  54% {
+    transform: rotate(-6deg);
+  }
+  68% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes bell-badge-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notif-bell--swing svg,
+  .notif-bell--swing .notif-bell__badge {
+    animation: none;
+  }
+}
+
 /* Scrim + sheet, mirroring the standings drawer. */
 .notif-modal {
   position: fixed;

@@ -88,15 +88,32 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = data.title || "Blocktol";
-  const options = {
-    body: data.body || "",
-    tag: data.tag,
-    icon: "/favicon.svg",
-    badge: "/favicon.svg",
-    data: { url: data.url || "/" },
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      // If the app is on screen, don't fire a redundant system banner — hand off
+      // to the page instead, which refreshes the bell (and gives it a swing).
+      // userVisibleOnly tolerates this focused-skip; a backgrounded/closed app
+      // still gets the banner below.
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      const visible = clients.filter((c) => c.visibilityState === "visible");
+      if (visible.length > 0) {
+        for (const client of visible) client.postMessage({ type: "notification" });
+        return;
+      }
+      const title = data.title || "Blocktol";
+      const options = {
+        body: data.body || "",
+        tag: data.tag,
+        icon: "/favicon.svg",
+        badge: "/favicon.svg",
+        data: { url: data.url || "/" },
+      };
+      await self.registration.showNotification(title, options);
+    })(),
+  );
 });
 
 // Tapping a notification focuses an existing app window (navigating it to the
