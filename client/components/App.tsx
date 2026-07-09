@@ -1,5 +1,6 @@
 import { ComponentChildren, h } from "preact";
-import { useEffect, useRef, useState } from "preact/compat";
+import { useEffect, useMemo, useRef, useState } from "preact/compat";
+import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";
 import { startBoardRun } from "../store/board.ts";
 import { getTimeZone } from "../util/timeZone.ts";
@@ -15,34 +16,86 @@ import { Logo } from "./Logo.tsx";
 import { MoveGate } from "./MoveGate.tsx";
 import { Profile } from "./Profile.tsx";
 import { Toast } from "./Toast.tsx";
-import { getCleanLink, getPendingLink } from "../util/id.ts";
+import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
+import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
 
 const Shell = (
   { children, gameState }: {
     children: ComponentChildren;
     gameState: ReturnType<typeof useGameState>;
   },
-) => (
-  // The provider wraps the header too, so its calendar button can share game
-  // state with the (mobile) calendar modal rendered down in the game tree.
-  // (Server entities — daily list, profile — live in module stores now, no
-  // provider needed.)
-  <GameStateContext.Provider value={gameState}>
-    <div style={{ textAlign: "center" }}>
-      <header class="app-header">
-        <div class="app-header__brand">
-          <Logo size={24} />
-          <h1>Blocktol</h1>
+) => {
+  // Pull-to-refresh, anchored to the header (the board owns touch below it) —
+  // the app disables the browser's native pull-to-refresh, so this stands in
+  // for it in a tab as well as the installed PWA. Its state lives here, not App,
+  // so a pull only re-renders the Shell — `children` (the board) is an unchanged
+  // vnode and Preact skips it.
+  const { pull, refreshing, dragging, threshold, handlers } =
+    usePullToRefresh();
+  // Opacity ramps to full by the threshold (armed cue); the spin tracks the
+  // UNCAPPED pull so it keeps turning through the rubber-band past the
+  // threshold instead of freezing partway down.
+  const progress = Math.min(pull / threshold, 1);
+  const spin = (pull / threshold) * 300;
+  // A touch of the player's own colour on the spinner (their avatar hue).
+  const youColor = useMemo(() => avatarColor(getId()), []);
+  return (
+    // The provider wraps the header too, so its calendar button can share game
+    // state with the (mobile) calendar modal rendered down in the game tree.
+    // (Server entities — daily list, profile — live in module stores now, no
+    // provider needed.)
+    <GameStateContext.Provider value={gameState}>
+      <div style={{ textAlign: "center" }}>
+        {
+          /* Always mounted (invisible at rest) so the release can EASE back —
+            unmounting would cut the transition. */
+        }
+        <div
+          class={"pull-refresh" +
+            (dragging ? " pull-refresh--dragging" : "") +
+            (refreshing ? " pull-refresh--active" : "")}
+          style={{
+            transform: `translateY(${refreshing ? threshold : pull}px)`,
+            opacity: refreshing ? 1 : progress,
+          }}
+          aria-hidden="true"
+        >
+          <svg
+            class="pull-refresh__spinner"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            style={refreshing
+              ? { color: youColor }
+              : { color: youColor, transform: `rotate(${spin}deg)` }}
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-dasharray="42 14"
+            />
+          </svg>
         </div>
-        <div class="app-header__actions">
-          <CalendarButton />
-          <Profile />
-        </div>
-      </header>
-      {children}
-    </div>
-  </GameStateContext.Provider>
-);
+        <header class="app-header" {...handlers}>
+          <div class="app-header__brand">
+            <Logo size={24} />
+            <h1>Blocktol</h1>
+          </div>
+          <div class="app-header__actions">
+            <CalendarButton />
+            <Profile />
+          </div>
+        </header>
+        {children}
+      </div>
+    </GameStateContext.Provider>
+  );
+};
 
 export const getHasCompletedOnboarding = () =>
   localStorage.getItem("hasCompletedOnboarding") === "true";

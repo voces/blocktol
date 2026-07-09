@@ -159,6 +159,60 @@ body {
      the row, not min-height — the header is border-box, so its padding already
      clears any container min-height. */
   grid-auto-rows: minmax(36px, auto);
+  /* The pull-to-refresh gesture grabs the header (the board owns touch below
+     it — see usePullToRefresh), so claim vertical drags here to keep the
+     gesture from being interrupted by a browser pan/bounce. Nothing scrolls
+     from the header, so this costs no scrolling either way. */
+  touch-action: none;
+}
+
+/* Pull-to-refresh indicator. A spinner chip that descends from behind the top
+   edge as the header is pulled, tracking the pull distance, then spins on its
+   own while the reload fires. Fixed so it floats over the header and board;
+   above the dock/result, below the calendar picker (50) and modals (60). */
+.pull-refresh {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) - 40px);
+  left: 50%;
+  margin-left: -18px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  /* Themed via light-dark() tokens, so the chip matches whichever theme is
+     active; the spinner arc takes a touch of the player's avatar hue (set
+     inline). */
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  /* Weighted ease back to rest on release — the finger phase turns this off
+     (--dragging) so the pull tracks 1:1; letting go plays this spring. */
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
+}
+
+.pull-refresh__spinner {
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* While the finger drives it, no easing — the chip and its spinner follow the
+   pull exactly. */
+.pull-refresh--dragging,
+.pull-refresh--dragging .pull-refresh__spinner {
+  transition: none;
+}
+
+.pull-refresh--active .pull-refresh__spinner {
+  animation: pullSpin 0.7s linear infinite;
+}
+
+@keyframes pullSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .app-header__brand {
@@ -2881,6 +2935,13 @@ a:hover {
   .standings-dock {
     grid-area: standings;
     align-self: start;
+  }
+
+  /* The sheet is a side drawer here (slides in from the right — see
+     .standings-sheet below), not a bottom sheet, so the "expands upward" caret
+     is rotated to point left: an "opens a side panel" affordance instead. */
+  .standings-dock__chevron {
+    transform: rotate(-90deg);
   }
 }
 

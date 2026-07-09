@@ -10,19 +10,14 @@
     name="viewport"
     content="width=device-width, user-scalable=no, viewport-fit=cover"
   />
-  <!-- Match the status/URL bar to the app background per OS theme (the values of
-       the --background light-dark() token). The browser picks by media query, so
-       the PWA's top bar follows light/dark instead of being fixed dark. -->
-  <meta
-    name="theme-color"
-    content="#f4f4f7"
-    media="(prefers-color-scheme: light)"
-  />
-  <meta
-    name="theme-color"
-    content="#0c0c11"
-    media="(prefers-color-scheme: dark)"
-  />
+  <!-- Status/URL/PWA bar colour, matched to the app background (the --background
+       light-dark() token's two ends). A SINGLE meta, kept in sync with the
+       resolved theme by applyTheme (client/hooks/useSettings.ts) — deliberately
+       NOT keyed to the OS via prefers-color-scheme media, because the theme is a
+       user setting that can diverge from the OS (a dark app on a light phone
+       would otherwise get a light bar). Default is the dark brand background; JS
+       corrects it on boot, including following the OS live in "system" mode. -->
+  <meta name="theme-color" content="#0c0c11" id="theme-color" />
   <title>Blocktol</title>
   <meta
     name="description"
