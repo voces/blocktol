@@ -90,19 +90,20 @@ self.addEventListener("push", (event) => {
   }
   event.waitUntil(
     (async () => {
-      // If the app is on screen, don't fire a redundant system banner — hand off
-      // to the page instead, which refreshes the bell (and gives it a swing).
-      // userVisibleOnly tolerates this focused-skip; a backgrounded/closed app
-      // still gets the banner below.
+      // Let EVERY open tab refresh its store, focused or not — it's a data
+      // store, so a backgrounded tab can stay current in the background and be
+      // fresh the instant you return to it (no wait for the refocus poll). A
+      // visible tab also gives its bell a swing off this.
       const clients = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
       });
-      const visible = clients.filter((c) => c.visibilityState === "visible");
-      if (visible.length > 0) {
-        for (const client of visible) client.postMessage({ type: "notification" });
-        return;
+      for (const client of clients) {
+        client.postMessage({ type: "notification" });
       }
+      // Only fire a system banner when nothing is on screen; a visible tab
+      // handles it in-app. userVisibleOnly tolerates this focused-skip.
+      if (clients.some((c) => c.visibilityState === "visible")) return;
       const title = data.title || "Blocktol";
       const options = {
         body: data.body || "",
