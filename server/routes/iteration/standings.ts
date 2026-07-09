@@ -146,7 +146,10 @@ const cachedField = (iteration: number) => {
 // PB board on `pbAt`, the daily board on `dailyAt` — then by name as a stable
 // final fallback. Both timestamps are the earliest run at that best (the SQL's
 // MIN(created)), so "first to the time" is honoured on both boards.
-export const project = (players: Player[], sort: "daily" | "pb"): FieldEntry[] =>
+export const project = (
+  players: Player[],
+  sort: "daily" | "pb",
+): FieldEntry[] =>
   sort === "pb"
     ? [...players]
       .sort((a, b) =>
