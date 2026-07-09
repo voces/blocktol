@@ -1,13 +1,17 @@
 // Pure formatting for the standings dock/sheet, split out for unit tests.
 // Each takes `now` so tests don't race the clock.
 
+import { formatDecimal } from "../../../common/format.ts";
+
 // "T2" when the rank is shared, plain "2" otherwise. Large ranks (the PB
 // board's thousands) collapse to an approximate "~1.9k" — exact digits there
 // are noise, and the tie prefix drops since tie state is fuzzy at that scale.
+// The "~1.9k" decimal localizes (a "." vs "," separator) like every other
+// number; the plain rank is always < 1000, so it never takes a grouping mark.
 export const formatRank = (rank: number, tied: boolean) => {
   if (rank >= 1000) {
     const k = Math.round(rank / 100) / 10;
-    return `~${k}k`;
+    return `~${formatDecimal(k, { min: 0, max: 1 })}k`;
   }
   return `${tied ? "T" : ""}${rank}`;
 };
@@ -42,7 +46,3 @@ export const formatDay = ([y, m, d]: readonly [number, number, number]) =>
     month: "short",
     day: "numeric",
   });
-
-// Board times render with a fixed two decimals ("35.10s") so the column's
-// digits align down the sheet.
-export const formatTime = (time: number) => time.toFixed(2);

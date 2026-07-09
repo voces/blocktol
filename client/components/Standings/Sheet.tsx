@@ -13,12 +13,12 @@ import {
   todayIteration,
 } from "../../store/standings.ts";
 import { Crown } from "./icons.tsx";
+import { formatCount, formatSeconds } from "../../../common/format.ts";
 import {
   formatAgo,
   formatCountdown,
   formatDay,
   formatRank,
-  formatTime,
 } from "./helpers.ts";
 
 type Row = NonNullable<ReturnType<typeof boardOf>>["rows"][number];
@@ -71,12 +71,12 @@ const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
       </span>
       <span class="standings-row__nums">
         <span class="standings-row__time mono">
-          {formatTime(row.time)}
+          {formatSeconds(row.time)}
           <span class="standings-row__unit">s</span>
         </span>
         <span class="standings-row__small mono">
           {smallLabel}{" "}
-          {row.secondary != null ? `${formatTime(row.secondary)}s` : "—"}
+          {row.secondary != null ? `${formatSeconds(row.secondary)}s` : "—"}
         </span>
       </span>
     </div>
@@ -165,7 +165,9 @@ export const StandingsSheet = (
           <div>
             <div class="standings-sheet__title">Standings</div>
             <div class="standings-sheet__date">
-              {s && b ? `${formatDay(s.day)} · ${b.players} players` : ""}
+              {s && b
+                ? `${formatDay(s.day)} · ${formatCount(b.players)} players`
+                : ""}
             </div>
           </div>
           <div class="standings-sheet__side">
@@ -197,7 +199,7 @@ export const StandingsSheet = (
               {row.gapBefore > 0 && (
                 <div class="standings-gap">
                   <span />
-                  <span class="mono">{row.gapBefore} between</span>
+                  <span class="mono">{formatCount(row.gapBefore)} between</span>
                   <span />
                 </div>
               )}

@@ -172,6 +172,19 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_push_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
+  {
+    version: 6,
+    name: "push-subscription-locale",
+    // Server-rendered push copy has no viewer to key formatting off — the text
+    // is built in the rating cron / notifier, far from any request. Record each
+    // subscribing device's BCP-47 locale (passively, on the existing subscribe
+    // call) so a push renders its numbers/date in that device's locale instead
+    // of the server's. NULL until a device re-subscribes (every granted client
+    // re-subscribes on load), and the push path falls back to the runtime locale
+    // then. Short varchar: a canonicalised locale tag is well under 35 chars.
+    up:
+      "ALTER TABLE `push_subscription` ADD COLUMN `locale` varchar(35) NULL DEFAULT NULL;",
+  },
 ];
 
 // Fails fast on an ill-formed migration list: versions must be unique and form a

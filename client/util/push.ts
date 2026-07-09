@@ -4,6 +4,7 @@
 // key just leaves notifications in-app only.
 
 import { api } from "../api.ts";
+import { getLocale } from "./locale.ts";
 
 export const pushSupported = (): boolean =>
   "serviceWorker" in navigator &&
@@ -55,6 +56,8 @@ export const subscribePush = async (): Promise<boolean> => {
     const r = await api.subscribePush({
       endpoint: json.endpoint,
       keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+      // Passively captured so server-rendered push copy matches this device.
+      locale: getLocale(),
     });
     return !!r && !("error" in r);
   } catch {

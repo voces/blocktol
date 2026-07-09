@@ -14,8 +14,9 @@ import {
   todayIteration,
 } from "../../store/standings.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
+import { formatSeconds } from "../../../common/format.ts";
 import { Chevron, Crown } from "./icons.tsx";
-import { formatRank, formatTime } from "./helpers.ts";
+import { formatRank } from "./helpers.ts";
 import { StandingsSheet } from "./Sheet.tsx";
 
 // The collapsed standings sliver: your rank and the current leader on
@@ -144,7 +145,7 @@ export const StandingsDock = () => {
                         ? " standings-dock__lead--lime"
                         : "")}
                   >
-                    {formatTime(leader.time)}s
+                    {formatSeconds(leader.time)}s
                   </span>
                 </>
               )

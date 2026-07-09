@@ -1,5 +1,6 @@
 import { h } from "preact";
 import { useContext } from "preact/compat";
+import { formatCount, formatSeconds } from "../../../common/format.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
   percentileBand,
@@ -113,11 +114,13 @@ export const TodayResult = () => {
         >
           <span class="today-result__head">Ranked result</span>
           <div class="today-result__value mono">
-            {rankedBest ? `${rankedBest.duration}s` : "—"}
+            {rankedBest
+              ? `${formatSeconds(rankedBest.duration, { min: 0 })}s`
+              : "—"}
           </div>
           <div class="today-result__sub">
             {rankedBest
-              ? `best of ${ranked.length}${
+              ? `best of ${formatCount(ranked.length)}${
                 typeof rankedBest.percentile === "number"
                   ? ` · p${formatPercentile(rankedBest.percentile)}`
                   : ""
@@ -137,7 +140,9 @@ export const TodayResult = () => {
         >
           <span class="today-result__head">Personal best</span>
           <div class="today-result__value mono">
-            {personalBest != null ? `${personalBest}s` : "—"}
+            {personalBest != null
+              ? `${formatSeconds(personalBest, { min: 0 })}s`
+              : "—"}
           </div>
           <div class="today-result__sub">
             {personalBest == null

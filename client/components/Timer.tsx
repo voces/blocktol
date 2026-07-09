@@ -1,5 +1,6 @@
 import { Fragment, h } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
+import { formatSeconds } from "../../common/format.ts";
 
 export const Timer = ({ to }: { to: number }) => {
   const now = useRef(Date.now()).current;
@@ -17,5 +18,5 @@ export const Timer = ({ to }: { to: number }) => {
     return () => cancelAnimationFrame(animationFrame);
   }, []);
 
-  return <>{time.toFixed(2)}</>;
+  return <>{formatSeconds(time)}</>;
 };

@@ -36,8 +36,14 @@ const payloadFor = (
   iteration: number,
   day: Day,
   data: LostTopData | DailyFinalData,
+  // The recipient device's locale (null → the server's own): the copy's numbers
+  // and date render in it, since there's no viewer here to key off.
+  locale: string | null,
 ) => {
-  const { title, body } = notificationText({ kind, day, data });
+  const { title, body } = notificationText(
+    { kind, day, data },
+    locale ?? undefined,
+  );
   // Deep-link to the day's permalink (see store/notifNav.ts): the `/YYYYMMDD`
   // path opens that day, and `?board` selects the relevant sort (PB for a lost
   // top spot, Daily for a finalized daily).
@@ -94,8 +100,13 @@ export const notifyLostTop = async (
     const settings = await getUserSettings(user);
     if (!settings.notifications.lostTop || !pushConfigured()) return;
     const subs = await getSubscriptions(user).catch(() => []);
-    const payload = payloadFor("lost_top", iteration, day, data);
-    await pool(subs.map((s) => () => sendOne(s, payload)), PUSH_CONCURRENCY);
+    // Rendered per device so each gets its own locale.
+    await pool(
+      subs.map((s) => () =>
+        sendOne(s, payloadFor("lost_top", iteration, day, data, s.locale))
+      ),
+      PUSH_CONCURRENCY,
+    );
   } catch (err) {
     log.error("notifyLostTop failed", err);
   }
@@ -128,7 +139,7 @@ export const notifyDailyFinals = async (
     const tasks = subs.flatMap((s) => {
       const data = dataByUser.get(s.user);
       if (!data) return [];
-      const payload = payloadFor("daily_final", iteration, day, data);
+      const payload = payloadFor("daily_final", iteration, day, data, s.locale);
       return [() => sendOne(s, payload)];
     });
     await pool(tasks, PUSH_CONCURRENCY);
