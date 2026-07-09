@@ -1,9 +1,9 @@
 // Locale-aware number formatting, shared by the server (push copy) and the
 // client so a value reads identically everywhere. Locale mirrors how
 // formatNotifDate already handles dates: the client passes `undefined` and gets
-// the viewer's own locale, while server-rendered push text passes the recipient
-// device's stored locale (the push_subscription.locale column) — falling back to
-// the runtime's locale when there's none.
+// the viewer's own locale, while server-rendered push text passes the
+// recipient's stored locale (the user.locale column) — falling back to the
+// runtime's locale when there's none.
 
 // Constructing an Intl.NumberFormat isn't free and the board renders a whole
 // column of times, so cache by (locale, options). A malformed stored locale
