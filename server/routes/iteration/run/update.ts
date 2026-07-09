@@ -69,6 +69,19 @@ export const updateRun = method(updateRunBody, true)(
     // isn't leading; checkLostTop re-validates and dedupes the push, so a stream
     // of leading saves within one attempt notifies the victim only once. Awaited
     // — background work is unsafe on this Deploy — and it never throws.
+    //
+    // Accepted edge case: because this fires per build save (not at
+    // finalization), a build can momentarily pass the field top — firing the
+    // card — then be trimmed back below it before the 60s window freezes the
+    // attempt, leaving the recipient a "lost #1" while the passer is no longer
+    // ahead. It's rare (you must lead mid-build, then worsen the maze in the same
+    // window) and low-harm: the upsert keeps it to one card, which deep-links to
+    // live standings, so it reads as stale rather than wrong. Deferring until the
+    // attempt finalizes would be the clean fix, but this Deploy has no cheap
+    // cancelable one-off scheduler (a `setTimeout` past the response dies with
+    // the isolate; `Deno.cron` is hourly, not per-run), so real-time with rare
+    // staleness is the deliberate trade. Free play doesn't have this — its
+    // `commitRun` hook fires once at execution, when the build is already locked.
     if (otherBest != null && duration > otherBest) {
       await checkLostTop(iterationId, userId);
     }
