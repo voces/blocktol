@@ -174,16 +174,16 @@ export const migrations: Migration[] = [
   },
   {
     version: 6,
-    name: "push-subscription-locale",
-    // Server-rendered push copy has no viewer to key formatting off — the text
-    // is built in the rating cron / notifier, far from any request. Record each
-    // subscribing device's BCP-47 locale (passively, on the existing subscribe
-    // call) so a push renders its numbers/date in that device's locale instead
-    // of the server's. NULL until a device re-subscribes (every granted client
-    // re-subscribes on load), and the push path falls back to the runtime locale
-    // then. Short varchar: a canonicalised locale tag is well under 35 chars.
-    up:
-      "ALTER TABLE `push_subscription` ADD COLUMN `locale` varchar(35) NULL DEFAULT NULL;",
+    name: "user-locale",
+    // Server-rendered copy (push text, built in the rating cron / notifier) has
+    // no viewer to key formatting off. Record each user's BCP-47 locale —
+    // captured passively when a device subscribes to push — so a push renders
+    // its numbers/date in the user's locale instead of the server's, and so any
+    // later server-rendered surface can reuse it. It's a property of the user,
+    // not a device, so it lives here rather than on push_subscription. NULL
+    // until we've seen a locale for the user; the push path falls back to the
+    // runtime locale then. Short varchar: a canonicalised tag is well under 35.
+    up: "ALTER TABLE `user` ADD COLUMN `locale` varchar(35) NULL DEFAULT NULL;",
   },
 ];
 

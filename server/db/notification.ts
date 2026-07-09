@@ -7,9 +7,10 @@ import {
 import { parseSettings, Settings } from "../../common/settings.ts";
 import { sql } from "./query.ts";
 
-// A stored subscription's push-relevant fields (the encryption keys + endpoint,
-// plus the device's BCP-47 locale for rendering the push copy — null until the
-// device re-subscribes, then the push path falls back to the runtime locale).
+// A stored subscription's push-relevant fields (the encryption keys + endpoint),
+// joined to its owner's BCP-47 `locale` for rendering the push copy — null until
+// we've captured a locale for the user, then the push path falls back to the
+// runtime locale.
 export type PushSubscriptionRow = {
   endpoint: string;
   p256dh: string;
@@ -194,17 +195,15 @@ export const upsertSubscription = (
   endpoint: string,
   p256dh: string,
   auth: string,
-  locale: string | null,
 ) =>
   sql`
-    INSERT INTO push_subscription (endpoint_hash, user, endpoint, p256dh, auth, locale)
-    VALUES (${endpointHash}, ${user}, ${endpoint}, ${p256dh}, ${auth}, ${locale})
+    INSERT INTO push_subscription (endpoint_hash, user, endpoint, p256dh, auth)
+    VALUES (${endpointHash}, ${user}, ${endpoint}, ${p256dh}, ${auth})
     ON DUPLICATE KEY UPDATE
       user = VALUES(user),
       endpoint = VALUES(endpoint),
       p256dh = VALUES(p256dh),
-      auth = VALUES(auth),
-      locale = VALUES(locale);
+      auth = VALUES(auth);
   `;
 
 export const deleteSubscription = (endpointHash: string) =>
@@ -212,8 +211,10 @@ export const deleteSubscription = (endpointHash: string) =>
 
 export const getSubscriptions = (user: string) =>
   sql<PushSubscriptionRow[]>`
-    SELECT endpoint, p256dh, auth, locale
-    FROM push_subscription WHERE user = ${user};
+    SELECT ps.endpoint, ps.p256dh, ps.auth, u.locale
+    FROM push_subscription ps
+    JOIN user u ON u.id = ps.user
+    WHERE ps.user = ${user};
   `;
 
 // Subscriptions for many users at once (the daily-final push fan-out), tagged
@@ -224,8 +225,9 @@ export const getSubscriptionsForUsers = (users: string[]) => {
     return Promise.resolve([] as (PushSubscriptionRow & { user: string })[]);
   }
   return sql<(PushSubscriptionRow & { user: string })[]>`
-    SELECT user, endpoint, p256dh, auth, locale
-    FROM push_subscription
-    WHERE user IN (${users});
+    SELECT ps.user, ps.endpoint, ps.p256dh, ps.auth, u.locale
+    FROM push_subscription ps
+    JOIN user u ON u.id = ps.user
+    WHERE ps.user IN (${users});
   `;
 };
