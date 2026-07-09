@@ -406,12 +406,16 @@ export const listDailies = async (
   return { items, oldest };
 };
 
+// The user's own best build on an iteration, void (abandoned) runs excluded —
+// consistent with every board/standings query, so an abandoned free-play maze
+// doesn't count as your best or inflate the board target.
 export const getOwnBest = (user: string, iteration: number) =>
   sql<{ ownBest: number }[] | null>`
     SELECT max(time) ownBest
     FROM run
     WHERE user = ${user}
-      AND iteration = ${iteration};`.then((r) => r?.[0].ownBest ?? null);
+      AND iteration = ${iteration}
+      AND void = FALSE;`.then((r) => r?.[0].ownBest ?? null);
 
 export const getOwnBestMaze = (user: string, iteration: number) =>
   sql<({ data: string | null } | null)[] | null>`

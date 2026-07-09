@@ -26,11 +26,17 @@ import { LRUMap } from "../../util/LRUMap.ts";
 import { buildStandings, FieldEntry } from "../../util/standings.ts";
 import { method } from "../apiHelpers.ts";
 
-// Either "today" (resolved from the caller's timezone) or a specific past day.
-// No sort — the response carries both boards.
+// "today" (resolved from the caller's timezone), a specific iteration, or a
+// calendar day (the `/YYYYMMDD` permalink / notification deep-link, which knows
+// the date but not the id). No sort — the response carries both boards.
 const standingsBody = z.union([
   z.object({ timeZone: z.string() }),
   z.object({ iteration: z.number().min(1) }),
+  z.object({
+    year: z.number().int(),
+    month: z.number().int().min(1).max(12),
+    day: z.number().int().min(1).max(31),
+  }),
 ]);
 
 // How long a cached day's field is served before a refetch. Applies to every
@@ -172,7 +178,9 @@ export const standings = method(standingsBody, true)(
         const { year, month, day } = dailyParts(rest.timeZone);
         return requireDailyIterationId(year, month, day);
       })()
-      : rest.iteration;
+      : "iteration" in rest
+      ? rest.iteration
+      : await requireDailyIterationId(rest.year, rest.month, rest.day);
 
     const field = await cachedField(iteration);
     const dailyField = project(field.players, "daily");

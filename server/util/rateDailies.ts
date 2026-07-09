@@ -1,11 +1,38 @@
+import { classifyDailyOutcome } from "../../common/notifications.ts";
 import {
   getIterationDailyTimeCounts,
   getUnratedClosedIterations,
 } from "../db/iteration.ts";
+import { getIterationOutcomeField, getStandingsMeta } from "../db/standings.ts";
 import { applyRatings, getRatingParticipants } from "../db/user.ts";
 import { log } from "./logging.ts";
 import { selfExcludedPercentiles } from "./math.ts";
+import { notifyDailyFinals } from "./notify.ts";
 import { computeRatingChange } from "./rating.ts";
+
+// Once a day is rated (its ranks locked), tell every player who made a ranked
+// attempt how they finished — the five-way outcome from common/notifications.ts.
+// Kept off the rating write's critical path and self-contained (notifyDailyFinals
+// swallows its own errors), so a notification hiccup never blocks the sweep.
+const notifyIterationFinal = async (iteration: number) => {
+  try {
+    const [players, meta] = await Promise.all([
+      getIterationOutcomeField(iteration),
+      getStandingsMeta(iteration),
+    ]);
+    const outcomes: {
+      user: string;
+      data: NonNullable<ReturnType<typeof classifyDailyOutcome>>;
+    }[] = [];
+    for (const p of players) {
+      const data = classifyDailyOutcome(players, p.user);
+      if (data) outcomes.push({ user: p.user, data });
+    }
+    await notifyDailyFinals(iteration, [meta.y, meta.m, meta.d], outcomes);
+  } catch (err) {
+    log.error("failed to notify daily final", iteration, err);
+  }
+};
 
 const rateIteration = async (iteration: number) => {
   const [field, participants] = await Promise.all([
@@ -32,6 +59,10 @@ const rateIteration = async (iteration: number) => {
   // Marks the iteration rated even when `updates` is empty, so it isn't rechecked.
   await applyRatings(iteration, updates);
   log.info("rated daily iteration", iteration, `(${updates.length} players)`);
+
+  // The day is now final — notify its ranked players. After applyRatings so the
+  // rating write is never held up by (or rolled back with) the notifications.
+  await notifyIterationFinal(iteration);
 };
 
 const rateDailies = async () => {

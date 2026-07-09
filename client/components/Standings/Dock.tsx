@@ -7,6 +7,7 @@ import {
 import {
   boardOf,
   fetchStandings,
+  openStandingsRequest,
   refreshStandings,
   standingsByKey,
   standingsSort,
@@ -54,6 +55,23 @@ export const StandingsDock = () => {
   }, [revealed]);
 
   const key = isToday ? todayIteration.value : iteration;
+
+  // A notification asked to open the leaderboard for a day. Open once the board
+  // is showing that day (a notification click navigates there in parallel), then
+  // clear the request. Respects the reveal gate — a live daily still in progress
+  // won't pop its field open.
+  const request = openStandingsRequest.value;
+  useEffect(() => {
+    if (!request || !revealed) return;
+    const wantsThisDay = request.iteration === undefined
+      ? isToday
+      : request.iteration === key;
+    if (!wantsThisDay) return;
+    setOpen(true);
+    refreshStandings(isToday ? undefined : iteration);
+    openStandingsRequest.value = null;
+  }, [request, revealed, key, isToday]);
+
   const s = key === undefined ? undefined : standingsByKey.value.get(key);
   const b = boardOf(s, sort);
   const leader = b?.rows[0];

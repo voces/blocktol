@@ -11,7 +11,12 @@ import { updateRun } from "./iteration/run/update.ts";
 import { standings } from "./iteration/standings.ts";
 import { merge } from "./merge.ts";
 import { moveInfo } from "./moveInfo.ts";
+import { getNotifications } from "./notifications/list.ts";
+import { markNotificationsRead } from "./notifications/markRead.ts";
 import { getProfile } from "./profile.ts";
+import { pushConfig } from "./push/config.ts";
+import { subscribePush } from "./push/subscribe.ts";
+import { unsubscribePush } from "./push/unsubscribe.ts";
 import { rename } from "./rename.ts";
 import { reportClientError } from "./reportClientError.ts";
 import { setSettings } from "./setSettings.ts";
@@ -32,6 +37,11 @@ const handlers = {
   moveInfo,
   reportClientError,
   setSettings,
+  getNotifications,
+  markNotificationsRead,
+  pushConfig,
+  subscribePush,
+  unsubscribePush,
 };
 
 export type BlocktolApi = {
