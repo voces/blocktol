@@ -54,6 +54,27 @@ export const markRead = async (ids?: number[]) => {
   }
 };
 
+// Mark a day's notification of a kind read — tapping its push deep-link counts
+// as reading it, but the link carries the day + board, not the id, so the server
+// resolves the match. Optimistic locally; reconcile the count from the response.
+export const markReadForDay = async (
+  iteration: number,
+  kind: NotificationItem["kind"],
+) => {
+  notifications.value = notifications.value.map((n) =>
+    !n.read && n.iteration === iteration && n.kind === kind
+      ? { ...n, read: true }
+      : n
+  );
+  unreadCount.value = notifications.value.filter((n) => !n.read).length;
+  try {
+    const r = await api.markNotificationsRead({ iteration, kind });
+    if (r && !("error" in r)) unreadCount.value = r.unread;
+  } catch {
+    // Leave the optimistic state; the next fetch reconciles.
+  }
+};
+
 // A daily's ranks lock ~37h after it starts and free-play passes happen live, so
 // the bell can go stale on a long-open tab. A quiet poll keeps the badge honest
 // without any push. Paused while the tab is hidden.

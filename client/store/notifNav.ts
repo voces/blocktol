@@ -2,6 +2,7 @@ import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
 import { api } from "../api.ts";
 import { showBoard } from "./board.ts";
+import { markReadForDay } from "./notifications.ts";
 import {
   requestStandings,
   setStandingsSort,
@@ -52,12 +53,22 @@ export const consumeDeepLink = async () => {
     : boardParam === "daily"
     ? "daily"
     : undefined;
+  // The board selects the sort AND identifies the notification kind that linked
+  // here (pb → lost_top, daily → daily_final); a plain permalink has no board
+  // and marks nothing read.
+  const kind: NotificationKind | null = boardParam === "pb"
+    ? "lost_top"
+    : boardParam === "daily"
+    ? "daily_final"
+    : null;
 
   arrivedViaDeepLink.value = true;
   try {
     const s = await api.standings({ year, month, day });
     if (!s || "error" in s) return;
     goToDay(s.iteration, sort);
+    // Tapping the push counts as reading its notification.
+    if (kind) markReadForDay(s.iteration, kind);
   } catch {
     // leave the app on its default landing
   }

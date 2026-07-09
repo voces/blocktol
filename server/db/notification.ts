@@ -98,6 +98,23 @@ export const markRead = (user: string, ids: number[]) => {
   `;
 };
 
+// Mark a day's notification of a given kind read — tapping a push deep-link
+// (`/YYYYMMDD?board=...`) counts as reading the notification it opened, but the
+// link carries the day + board, not the notification id, so this resolves it.
+export const markReadByDay = (
+  user: string,
+  iteration: number,
+  kind: NotificationKind,
+) =>
+  sql`
+    UPDATE notification
+    SET read_at = current_timestamp()
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND kind = ${kind}
+      AND read_at IS NULL;
+  `;
+
 // The existing "lost top" notification for a day, if any — its passer and
 // whether it's still unread. The generator reads it to fire once per passer
 // until read: while the same player keeps building higher on the same day, the
