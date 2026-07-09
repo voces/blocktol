@@ -1,6 +1,10 @@
 import { Fragment, h } from "preact";
-import { useContext, useState } from "preact/compat";
-import { fetchNotifications, unreadCount } from "../../store/notifications.ts";
+import { useContext, useEffect, useRef, useState } from "preact/compat";
+import {
+  bellNudge,
+  fetchNotifications,
+  unreadCount,
+} from "../../store/notifications.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
 import { Bell as BellIcon } from "./icons.tsx";
 import { NotificationsPanel } from "./Panel.tsx";
@@ -13,6 +17,23 @@ export const NotificationsBell = () => {
   const [open, setOpen] = useState(false);
   const count = unreadCount.value;
 
+  // A quick, silent visual swing when the unread count rises while the app is
+  // open (a notification just arrived). Guarded by a ref so re-mounting the bell
+  // — e.g. after a daily finishes — doesn't replay it, and so the initial load
+  // never swings.
+  const nudge = bellNudge.value;
+  const seen = useRef(nudge);
+  const [swing, setSwing] = useState(false);
+  useEffect(() => {
+    if (nudge > seen.current) {
+      seen.current = nudge;
+      setSwing(true);
+      const t = setTimeout(() => setSwing(false), 750);
+      return () => clearTimeout(t);
+    }
+    seen.current = nudge;
+  }, [nudge]);
+
   // Hidden while a daily is in progress — mirrors the calendar/profile buttons,
   // and keeps a notification tap from navigating the board away mid-run.
   if (attemptsRemaining !== 0) return null;
@@ -21,7 +42,8 @@ export const NotificationsBell = () => {
     <>
       <button
         type="button"
-        class="icon-button notif-bell tapc"
+        class={"icon-button notif-bell tapc" +
+          (swing ? " notif-bell--swing" : "")}
         onClick={() => setOpen(true)}
         onPointerEnter={() => fetchNotifications()}
         onFocus={() => fetchNotifications()}

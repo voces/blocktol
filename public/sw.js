@@ -88,15 +88,33 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = data.title || "Blocktol";
-  const options = {
-    body: data.body || "",
-    tag: data.tag,
-    icon: "/favicon.svg",
-    badge: "/favicon.svg",
-    data: { url: data.url || "/" },
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      // Let EVERY open tab refresh its store, focused or not — it's a data
+      // store, so a backgrounded tab can stay current in the background and be
+      // fresh the instant you return to it (no wait for the refocus poll). A
+      // visible tab also gives its bell a swing off this.
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        client.postMessage({ type: "notification" });
+      }
+      // Only fire a system banner when nothing is on screen; a visible tab
+      // handles it in-app. userVisibleOnly tolerates this focused-skip.
+      if (clients.some((c) => c.visibilityState === "visible")) return;
+      const title = data.title || "Blocktol";
+      const options = {
+        body: data.body || "",
+        tag: data.tag,
+        icon: "/favicon.svg",
+        badge: "/favicon.svg",
+        data: { url: data.url || "/" },
+      };
+      await self.registration.showNotification(title, options);
+    })(),
+  );
 });
 
 // Tapping a notification focuses an existing app window (navigating it to the

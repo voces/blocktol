@@ -19,6 +19,7 @@ import { Profile } from "./Profile.tsx";
 import { Toast } from "./Toast.tsx";
 import {
   fetchNotifications,
+  initPushChannel,
   startNotificationsPolling,
 } from "../store/notifications.ts";
 import { consumeDeepLink } from "../store/notifNav.ts";
@@ -183,6 +184,7 @@ export const App = () => {
     notificationsBooted.current = true;
     fetchNotifications();
     startNotificationsPolling();
+    initPushChannel();
     syncPushSubscription();
     // If this load came from a day permalink / push notification, route to the
     // day it points at (runs after the game tree mounts, so board handlers exist).

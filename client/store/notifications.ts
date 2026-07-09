@@ -1,6 +1,8 @@
 import { signal } from "@preact/signals";
 import { api, MessageMap } from "../api.ts";
+import { refreshMonth } from "./dailyItems.ts";
 import { keyedQuery } from "./query.ts";
+import { refreshStandings, todayIteration } from "./standings.ts";
 
 export type NotificationsData = MessageMap["getNotifications"];
 export type NotificationItem = NotificationsData["items"][number];
@@ -11,9 +13,65 @@ export type NotificationItem = NotificationsData["items"][number];
 export const notifications = signal<NotificationItem[]>([]);
 export const unreadCount = signal<number>(0);
 
+// Bumped whenever the unread count RISES after the first load — a notification
+// just arrived while the app was open (via the focused-push channel below or the
+// poll). The bell watches it to give a quick swing; the initial load doesn't
+// bump, so opening the app to existing unread doesn't swing.
+export const bellNudge = signal<number>(0);
+
+// The iterations a just-arrived notification touched, with a monotonic nonce so
+// the open board can regrade its runs (a lost-top / finalized daily moved the
+// field, so the % / hue ramp needs recomputing). The calendar and standings are
+// refreshed here directly; the runs live in game state, so a component watches
+// this signal.
+export const regradedIterations = signal<
+  { nonce: number; iterations: number[] }
+>({ nonce: 0, iterations: [] });
+
+let loaded = false;
+// Last-seen createdAt per notification id — so a re-surfaced one is detected,
+// not just a brand-new id (a lost-top re-pass upserts the SAME row, bumping
+// createdAt + clearing read).
+const seenAt = new Map<number, number>();
+
+const monthIdxOf = (day: readonly [number, number, number]) =>
+  day[0] * 12 + (day[1] - 1);
+
 const apply = (data: NotificationsData) => {
+  const prevUnread = unreadCount.peek();
   notifications.value = data.items;
   unreadCount.value = data.unread;
+
+  // A notification "arrived" if it's new OR re-surfaced (createdAt bumped).
+  // Keying off createdAt (not just the id) catches a lost-top re-pass too, so
+  // the calendar / standings / runs refresh whenever the bell does.
+  const arrived = data.items.filter((n) =>
+    (seenAt.get(n.id) ?? 0) < n.createdAt
+  );
+  for (const n of data.items) seenAt.set(n.id, n.createdAt);
+
+  if (!loaded) {
+    // Baseline the first load — existing notifications don't swing or regrade.
+    loaded = true;
+    return;
+  }
+
+  if (data.unread > prevUnread) bellNudge.value++;
+  if (arrived.length === 0) return;
+
+  // Each arrival moved its day's field, so refresh everything that shows it: the
+  // calendar month, that day's standings, and — via the signal — the open
+  // board's runs.
+  for (const n of arrived) refreshMonth(monthIdxOf(n.day));
+  const affected = [...new Set(arrived.map((n) => n.iteration))];
+  for (const it of affected) {
+    // Today's standings are cached under "today", past days under the id.
+    refreshStandings(it === todayIteration.peek() ? undefined : it);
+  }
+  regradedIterations.value = {
+    nonce: regradedIterations.peek().nonce + 1,
+    iterations: affected,
+  };
 };
 
 // Coalesce concurrent asks onto one request per freshness window; a failed fetch
@@ -87,4 +145,17 @@ export const startNotificationsPolling = () => {
   clearInterval(timer);
   timer = setInterval(tick, POLL_MS);
   document.addEventListener("visibilitychange", tick);
+};
+
+// When a push arrives while the app is on screen, the service worker forwards it
+// here (see sw.js) instead of showing a redundant system banner. Refresh the
+// bell right away — the rising unread count nudges its ring — rather than
+// waiting on the poll.
+export const initPushChannel = () => {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if ((e.data as { type?: string } | null)?.type === "notification") {
+      refreshNotifications();
+    }
+  });
 };

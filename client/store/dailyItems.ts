@@ -16,13 +16,25 @@ export const oldestDaily = signal<[number, number, number] | undefined>(
   undefined,
 );
 
-// Every list response folds in, whoever requested it.
-api.addEventListener("list", (d) => {
-  if (d.oldest) oldestDaily.value = d.oldest;
+// Application-order guard (same rationale as the standings store): refreshMonth
+// busts + refetches, so overlapping `list` responses could fold in LAND order
+// and a slow stale one clobber a fresh month's cells, with nothing to
+// re-correct it. Each write — a fetch OR an applyRun patch — takes a monotonic
+// seq; a day only updates if no newer write for it already landed.
+let fetchSeq = 0;
+const appliedSeq = new Map<number, number>();
+
+const foldMonth = (items: readonly DailyItem[], seq: number) => {
   const next = new Map(dailyItems.value);
-  for (const item of d.items) next.set(item.iteration, item);
-  dailyItems.value = next;
-});
+  let changed = false;
+  for (const item of items) {
+    if ((appliedSeq.get(item.iteration) ?? 0) > seq) continue;
+    appliedSeq.set(item.iteration, seq);
+    next.set(item.iteration, item);
+    changed = true;
+  }
+  if (changed) dailyItems.value = next;
+};
 
 // Patch a day's item in place from a run's fresh attempts — so finishing a run
 // updates the calendar/today panels without a round trip to refetch the list.
@@ -43,6 +55,10 @@ export const applyRun = (iteration: number, attempts: readonly Attempt[]) => {
     : null;
   const best = attempts.reduce((a, b) => (b.duration > a.duration ? b : a));
 
+  // A local patch is the freshest word on this day at this moment — take the
+  // newest seq so a stale in-flight `list` response can't overwrite it (and a
+  // later authoritative fetch still wins).
+  appliedSeq.set(iteration, ++fetchSeq);
   const next = new Map(dailyItems.value);
   next.set(iteration, {
     ...existing,
@@ -67,6 +83,7 @@ export const applyRun = (iteration: number, attempts: readonly Attempt[]) => {
 // free — via the range API. A failed fetch frees the month and retries
 // shortly (e.g. after a brief disconnect on cold load).
 const monthOnce = keyedQuery(async (idx: number) => {
+  const seq = ++fetchSeq;
   const y = Math.floor(idx / 12);
   const m0 = idx % 12;
   const next = idx + 1;
@@ -75,6 +92,8 @@ const monthOnce = keyedQuery(async (idx: number) => {
     end: [Math.floor(next / 12), (next % 12) + 1, 1],
   });
   if ("error" in r) throw new Error("failed to list month");
+  if (r.oldest) oldestDaily.value = r.oldest;
+  foldMonth(r.items, seq);
   return r;
 });
 
