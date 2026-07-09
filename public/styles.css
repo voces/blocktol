@@ -2882,6 +2882,13 @@ a:hover {
     grid-area: standings;
     align-self: start;
   }
+
+  /* The sheet is a side drawer here (slides in from the right — see
+     .standings-sheet below), not a bottom sheet, so the "expands upward" caret
+     is rotated to point left: an "opens a side panel" affordance instead. */
+  .standings-dock__chevron {
+    transform: rotate(-90deg);
+  }
 }
 
 /* Mobile: pinned to the viewport bottom — the panel scrolls out from under it
