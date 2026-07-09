@@ -187,6 +187,27 @@ export const migrations: Migration[] = [
   },
 ];
 
+// ── Editing an already-applied migration (read before you change one above) ──
+//
+// The runner keys off `version` alone: once a version is recorded in
+// `schema_migration` it NEVER runs again, even if you edit its `up`. So editing
+// a migration only reaches databases that haven't applied it yet — a database
+// that already ran the OLD `up` keeps the old schema and never picks up the new,
+// an awkward split. (This bit us once: v6 first added `push_subscription.locale`,
+// was rewritten to `user.locale`, and the dev DB — which had already applied the
+// original — ended up with the stray column and none of the new one.)
+//
+// The strictly-correct rule is APPEND-ONLY: never modify a shipped migration,
+// only add a later one that fixes it forward. Every database stays convergent —
+// at the cost of leaving pre-merge scratch work (an add, then a drop) in the
+// permanent history.
+//
+// Pragmatic exception, while a migration has only ever reached DEV (not merged
+// to prod): edit it in place and directly restore dev to match — hand-run the
+// drop/add DDL against the dev DB and realign its `schema_migration` name — so a
+// fresh migrate and dev agree with no scratch work. Once a migration has shipped
+// to PROD, it's set in stone: append only.
+
 // Fails fast on an ill-formed migration list: versions must be unique and form a
 // contiguous run starting at 1, so "apply everything above the current version"
 // can never silently skip a gap.
