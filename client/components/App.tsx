@@ -24,10 +24,11 @@ const Shell = (
     gameState: ReturnType<typeof useGameState>;
   },
 ) => {
-  // Installed-PWA pull-to-refresh, anchored to the header (the board owns touch
-  // below it). Inert in a browser tab, which keeps its own reload. Its state
-  // lives here, not App, so a pull only re-renders the Shell — `children` (the
-  // board) is an unchanged vnode and Preact skips it.
+  // Pull-to-refresh, anchored to the header (the board owns touch below it) —
+  // the app disables the browser's native pull-to-refresh, so this stands in
+  // for it in a tab as well as the installed PWA. Its state lives here, not App,
+  // so a pull only re-renders the Shell — `children` (the board) is an unchanged
+  // vnode and Preact skips it.
   const { pull, refreshing, threshold, handlers } = usePullToRefresh();
   // Opacity ramps to full by the threshold (armed cue); the spin tracks the
   // UNCAPPED pull so it keeps turning through the rubber-band past the

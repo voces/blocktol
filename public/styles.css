@@ -159,19 +159,17 @@ body {
      the row, not min-height — the header is border-box, so its padding already
      clears any container min-height. */
   grid-auto-rows: minmax(36px, auto);
-  /* The installed-PWA pull-to-refresh grabs the header (the board owns touch
-     below it — see usePullToRefresh), so claim vertical drags here to keep the
-     gesture from being interrupted by a browser pan/bounce. Harmless in a
-     browser tab: nothing scrolls from the header. */
+  /* The pull-to-refresh gesture grabs the header (the board owns touch below
+     it — see usePullToRefresh), so claim vertical drags here to keep the
+     gesture from being interrupted by a browser pan/bounce. Nothing scrolls
+     from the header, so this costs no scrolling either way. */
   touch-action: none;
 }
 
-/* Pull-to-refresh indicator — installed PWA only (the hook is inert otherwise,
-   so this never renders in a browser tab). A spinner chip that descends from
-   behind the top edge as the header is pulled, tracking the pull distance, then
-   spins on its own while the reload fires. Fixed so it floats over the header
-   and board; above the dock/result, below the calendar picker (50) and modals
-   (60). */
+/* Pull-to-refresh indicator. A spinner chip that descends from behind the top
+   edge as the header is pulled, tracking the pull distance, then spins on its
+   own while the reload fires. Fixed so it floats over the header and board;
+   above the dock/result, below the calendar picker (50) and modals (60). */
 .pull-refresh {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) - 40px);

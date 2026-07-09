@@ -1,13 +1,6 @@
 import { h } from "preact";
 import { useRef, useState } from "preact/compat";
 
-// True when running as an installed app (Android/desktop PWA or an iOS
-// home-screen app), where there's no browser reload button or URL bar.
-const isStandalone = () =>
-  globalThis.matchMedia?.("(display-mode: standalone)").matches === true ||
-  // iOS Safari's home-screen flag (not covered by display-mode there).
-  (navigator as unknown as { standalone?: boolean }).standalone === true;
-
 // The distance (px) a pull must pass to fire, and how far the indicator travels.
 const THRESHOLD = 70;
 const MAX = 110;
@@ -15,16 +8,18 @@ const MAX = 110;
 // rather than being claimed as a pull.
 const SLOP = 6;
 
-// Pull-to-refresh for the installed PWA. Spread `handlers` onto a top grab
-// strip — the header, since the board owns touch below it — and render an
-// indicator driven by `pull` (0..MAX damped px) and `refreshing`. Releasing
-// past the threshold reloads the app: location.reload() re-runs boot and the
-// service worker refetches the shell network-first, so every store comes back
-// fresh — the standalone equivalent of the browser's reload.
+// Pull-to-refresh, spread onto a top grab strip — the header, since the board
+// owns touch below it. Drive an indicator with `pull` (0..MAX damped px) and
+// `refreshing`; releasing past the threshold reloads (location.reload() re-runs
+// boot and the service worker refetches the shell network-first, so every store
+// comes back fresh).
 //
-// Touch only (a desktop PWA has a window menu with reload), and completely
-// inert outside standalone, so a normal browser tab — which still has its own
-// reload — sees no behaviour change and the indicator never appears.
+// Runs in a browser tab too, not just the installed PWA: the app disables the
+// browser's NATIVE pull-to-refresh app-wide (html/body overflow:hidden makes
+// `.game` a nested scroller, plus overscroll-behavior:none), so without this
+// there's no pull-to-refresh anywhere and a tab is stuck on the reload button.
+// Touch only — a mouse (desktop) has a keyboard/menu reload, and mouse-drag-to-
+// reload would be surprising.
 export const usePullToRefresh = () => {
   const startY = useRef<number | null>(null);
   const active = useRef(false);
@@ -41,7 +36,7 @@ export const usePullToRefresh = () => {
 
   const handlers = {
     onPointerDown: (e: h.JSX.TargetedPointerEvent<HTMLElement>) => {
-      if (e.pointerType === "mouse" || refreshing || !isStandalone()) return;
+      if (e.pointerType === "mouse" || refreshing) return;
       startY.current = e.clientY;
       active.current = false;
     },
