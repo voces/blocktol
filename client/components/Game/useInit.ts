@@ -6,6 +6,7 @@ import { Point } from "../../../common/types.ts";
 import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
+import { regradedIterations } from "../../store/notifications.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
@@ -74,6 +75,7 @@ export const useInit = () => {
     ownBest,
     setOwnBest,
     setVerdict,
+    phase,
   } = useContext(GameStateContext);
 
   // Keep the calendar / today panels in step with the board's attempts by
@@ -82,6 +84,19 @@ export const useInit = () => {
   useEffect(() => {
     if (iteration !== undefined) applyRun(iteration, viewedAttempts);
   }, [iteration, viewedAttempts]);
+
+  // A notification (lost-top / finalized daily) just moved the field for some
+  // days. If the OPEN board is one of them, refetch it so the runs panel's % /
+  // hue ramp regrades against the new field best. Gated to a passive board
+  // (idle/staged) so an attempt mid-build or mid-run is never disturbed; the
+  // calendar + standings refresh in the store regardless of what's on screen.
+  const regrade = regradedIterations.value;
+  useEffect(() => {
+    if (iteration === undefined) return;
+    if (phase !== "idle" && phase !== "staged") return;
+    if (!regrade.iterations.includes(iteration)) return;
+    showBoard(iteration);
+  }, [regrade.nonce]);
 
   // Lay the iteration's fixed pieces onto a fresh grid (a started run and a
   // staged free-play board share this reset).

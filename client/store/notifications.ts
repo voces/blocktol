@@ -1,6 +1,8 @@
 import { signal } from "@preact/signals";
 import { api, MessageMap } from "../api.ts";
+import { refreshMonth } from "./dailyItems.ts";
 import { keyedQuery } from "./query.ts";
+import { refreshStandings, todayIteration } from "./standings.ts";
 
 export type NotificationsData = MessageMap["getNotifications"];
 export type NotificationItem = NotificationsData["items"][number];
@@ -13,17 +15,57 @@ export const unreadCount = signal<number>(0);
 
 // Bumped whenever the unread count RISES after the first load — a notification
 // just arrived while the app was open (via the focused-push channel below or the
-// poll). The bell watches it to give a quick ring; the initial load doesn't
-// bump, so opening the app to existing unread doesn't ring.
+// poll). The bell watches it to give a quick swing; the initial load doesn't
+// bump, so opening the app to existing unread doesn't swing.
 export const bellNudge = signal<number>(0);
+
+// The iterations a just-arrived notification touched, with a monotonic nonce so
+// the open board can regrade its runs (a lost-top / finalized daily moved the
+// field, so the % / hue ramp needs recomputing). The calendar and standings are
+// refreshed here directly; the runs live in game state, so a component watches
+// this signal.
+export const regradedIterations = signal<
+  { nonce: number; iterations: number[] }
+>({ nonce: 0, iterations: [] });
+
 let loaded = false;
+let lastSeenId = 0;
+
+const monthIdxOf = (day: readonly [number, number, number]) =>
+  day[0] * 12 + (day[1] - 1);
 
 const apply = (data: NotificationsData) => {
   const prevUnread = unreadCount.peek();
   notifications.value = data.items;
   unreadCount.value = data.unread;
-  if (loaded && data.unread > prevUnread) bellNudge.value++;
-  loaded = true;
+
+  const maxId = data.items.reduce((m, n) => Math.max(m, n.id), 0);
+  if (!loaded) {
+    // Baseline the first load — existing notifications don't swing or regrade.
+    lastSeenId = maxId;
+    loaded = true;
+    return;
+  }
+
+  if (data.unread > prevUnread) bellNudge.value++;
+
+  // Notifications that arrived since we last looked (a push, or a poll after
+  // being away). Each moved its day's field, so regrade what shows it: the
+  // calendar month, that day's standings, and — via the signal — the open
+  // board's runs.
+  const fresh = data.items.filter((n) => n.id > lastSeenId);
+  if (fresh.length === 0) return;
+  lastSeenId = maxId;
+  for (const n of fresh) refreshMonth(monthIdxOf(n.day));
+  const affected = [...new Set(fresh.map((n) => n.iteration))];
+  for (const it of affected) {
+    // Today's standings are cached under "today", past days under the id.
+    refreshStandings(it === todayIteration.peek() ? undefined : it);
+  }
+  regradedIterations.value = {
+    nonce: regradedIterations.peek().nonce + 1,
+    iterations: affected,
+  };
 };
 
 // Coalesce concurrent asks onto one request per freshness window; a failed fetch
