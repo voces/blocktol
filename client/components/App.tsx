@@ -1,5 +1,6 @@
 import { ComponentChildren, h } from "preact";
-import { useEffect, useRef, useState } from "preact/compat";
+import { useEffect, useMemo, useRef, useState } from "preact/compat";
+import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";
 import { startBoardRun } from "../store/board.ts";
 import { getTimeZone } from "../util/timeZone.ts";
@@ -15,7 +16,7 @@ import { Logo } from "./Logo.tsx";
 import { MoveGate } from "./MoveGate.tsx";
 import { Profile } from "./Profile.tsx";
 import { Toast } from "./Toast.tsx";
-import { getCleanLink, getPendingLink } from "../util/id.ts";
+import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
 
 const Shell = (
@@ -29,12 +30,15 @@ const Shell = (
   // for it in a tab as well as the installed PWA. Its state lives here, not App,
   // so a pull only re-renders the Shell — `children` (the board) is an unchanged
   // vnode and Preact skips it.
-  const { pull, refreshing, threshold, handlers } = usePullToRefresh();
+  const { pull, refreshing, dragging, threshold, handlers } =
+    usePullToRefresh();
   // Opacity ramps to full by the threshold (armed cue); the spin tracks the
   // UNCAPPED pull so it keeps turning through the rubber-band past the
   // threshold instead of freezing partway down.
   const progress = Math.min(pull / threshold, 1);
   const spin = (pull / threshold) * 300;
+  // A touch of the player's own colour on the spinner (their avatar hue).
+  const youColor = useMemo(() => avatarColor(getId()), []);
   return (
     // The provider wraps the header too, so its calendar button can share game
     // state with the (mobile) calendar modal rendered down in the game tree.
@@ -42,37 +46,41 @@ const Shell = (
     // provider needed.)
     <GameStateContext.Provider value={gameState}>
       <div style={{ textAlign: "center" }}>
-        {(pull > 0 || refreshing) && (
-          <div
-            class={"pull-refresh" + (refreshing ? " pull-refresh--active" : "")}
-            style={{
-              transform: `translateY(${refreshing ? threshold : pull}px)`,
-              opacity: refreshing ? 1 : progress,
-            }}
-            aria-hidden="true"
+        {
+          /* Always mounted (invisible at rest) so the release can EASE back —
+            unmounting would cut the transition. */
+        }
+        <div
+          class={"pull-refresh" +
+            (dragging ? " pull-refresh--dragging" : "") +
+            (refreshing ? " pull-refresh--active" : "")}
+          style={{
+            transform: `translateY(${refreshing ? threshold : pull}px)`,
+            opacity: refreshing ? 1 : progress,
+          }}
+          aria-hidden="true"
+        >
+          <svg
+            class="pull-refresh__spinner"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            style={refreshing
+              ? { color: youColor }
+              : { color: youColor, transform: `rotate(${spin}deg)` }}
           >
-            <svg
-              class="pull-refresh__spinner"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              style={refreshing
-                ? undefined
-                : { transform: `rotate(${spin}deg)` }}
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.6"
-                stroke-linecap="round"
-                stroke-dasharray="42 14"
-              />
-            </svg>
-          </div>
-        )}
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-dasharray="42 14"
+            />
+          </svg>
+        </div>
         <header class="app-header" {...handlers}>
           <div class="app-header__brand">
             <Logo size={24} />

@@ -26,11 +26,20 @@ export const usePullToRefresh = () => {
   const pullRef = useRef(0);
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  // While a finger drives the pull the indicator tracks it 1:1 (no transition);
+  // dropping this on release lets it EASE back to rest with weight (the CSS
+  // transition on .pull-refresh, disabled by --dragging). It also lets the chip
+  // stay mounted through the retract — the element renders whenever dragging,
+  // pulled, or refreshing.
+  const [dragging, setDragging] = useState(false);
 
-  const reset = () => {
+  // Ease back to rest (transition now live). Leaves `dragging` false so the
+  // spring plays; the chip fades out as pull → 0.
+  const settle = () => {
     startY.current = null;
     active.current = false;
     pullRef.current = 0;
+    setDragging(false);
     setPull(0);
   };
 
@@ -48,6 +57,7 @@ export const usePullToRefresh = () => {
         // moves are left to the header's buttons.
         if (dy < SLOP) return;
         active.current = true;
+        setDragging(true);
         e.currentTarget.setPointerCapture?.(e.pointerId);
       }
       e.preventDefault();
@@ -57,17 +67,21 @@ export const usePullToRefresh = () => {
       setPull(pullRef.current);
     },
     onPointerUp: () => {
-      if (!active.current) return reset();
+      if (!active.current) return settle();
       const trigger = pullRef.current >= THRESHOLD;
-      reset();
       if (trigger) {
+        active.current = false;
+        startY.current = null;
+        setDragging(false);
         setRefreshing(true);
         // Let the spinner paint one frame before the reload replaces the page.
         requestAnimationFrame(() => location.reload());
+      } else {
+        settle();
       }
     },
-    onPointerCancel: () => reset(),
+    onPointerCancel: () => settle(),
   };
 
-  return { pull, refreshing, threshold: THRESHOLD, handlers };
+  return { pull, refreshing, dragging, threshold: THRESHOLD, handlers };
 };

@@ -182,18 +182,30 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  /* Themed via light-dark() tokens, so the chip matches whichever theme is
+     active; the spinner arc takes a touch of the player's avatar hue (set
+     inline). */
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
   pointer-events: none;
+  /* Weighted ease back to rest on release — the finger phase turns this off
+     (--dragging) so the pull tracks 1:1; letting go plays this spring. */
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
 }
 
 .pull-refresh__spinner {
-  color: var(--text-mute);
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* While the finger drives it, no easing — the chip and its spinner follow the
+   pull exactly. */
+.pull-refresh--dragging,
+.pull-refresh--dragging .pull-refresh__spinner {
+  transition: none;
 }
 
 .pull-refresh--active .pull-refresh__spinner {
-  color: var(--color);
   animation: pullSpin 0.7s linear infinite;
 }
 
