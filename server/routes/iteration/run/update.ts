@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
-  getIterationTopOtherLive,
 } from "../../../db/iteration.ts";
 import { updateCurrentRun } from "../../../db/run.ts";
 import { checkLostTop } from "../../../util/lostTop.ts";
@@ -27,15 +26,14 @@ const getIterationOtherBest = trailer(getIterationOtherBestRaw);
 export const updateRun = method(updateRunBody, true)(
   async ({ iteration: iterationId, blocks, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
+    // The best build among other players (void excluded) — the mark this build
+    // must beat to lead the field, used for both the supreme flag and the
+    // lost-top gate below.
     let otherBest: number | null;
-    // The live PB-board top among other players (void excluded) — the mark this
-    // build must beat to pass the field, gating the lost-top check below.
-    let liveTop: number | null;
     try {
-      [iteration, otherBest, liveTop] = await Promise.all([
+      [iteration, otherBest] = await Promise.all([
         getIteration(iterationId),
         getIterationOtherBest(iterationId, userId)(),
-        getIterationTopOtherLive(iterationId, userId),
       ]);
     } catch (err) {
       console.error(err);
@@ -66,12 +64,12 @@ export const updateRun = method(updateRunBody, true)(
     }
 
     // A ranked attempt's build enters the PB field just like free play. When it
-    // passes the live board top, notify whoever it displaced. Gated on the
-    // (already-computed) live top so it costs nothing on the common save that
+    // passes the field top, notify whoever it displaced. Gated on the
+    // (already-computed) otherBest so it costs nothing on the common save that
     // isn't leading; checkLostTop re-validates and dedupes the push, so a stream
     // of leading saves within one attempt notifies the victim only once. Awaited
     // — background work is unsafe on this Deploy — and it never throws.
-    if (liveTop != null && duration > liveTop) {
+    if (otherBest != null && duration > otherBest) {
       await checkLostTop(iterationId, userId);
     }
 
