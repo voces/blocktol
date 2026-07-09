@@ -29,7 +29,10 @@ export const regradedIterations = signal<
 >({ nonce: 0, iterations: [] });
 
 let loaded = false;
-let lastSeenId = 0;
+// Last-seen createdAt per notification id — so a re-surfaced one is detected,
+// not just a brand-new id (a lost-top re-pass upserts the SAME row, bumping
+// createdAt + clearing read).
+const seenAt = new Map<number, number>();
 
 const monthIdxOf = (day: readonly [number, number, number]) =>
   day[0] * 12 + (day[1] - 1);
@@ -39,25 +42,28 @@ const apply = (data: NotificationsData) => {
   notifications.value = data.items;
   unreadCount.value = data.unread;
 
-  const maxId = data.items.reduce((m, n) => Math.max(m, n.id), 0);
+  // A notification "arrived" if it's new OR re-surfaced (createdAt bumped).
+  // Keying off createdAt (not just the id) catches a lost-top re-pass too, so
+  // the calendar / standings / runs refresh whenever the bell does.
+  const arrived = data.items.filter((n) =>
+    (seenAt.get(n.id) ?? 0) < n.createdAt
+  );
+  for (const n of data.items) seenAt.set(n.id, n.createdAt);
+
   if (!loaded) {
     // Baseline the first load — existing notifications don't swing or regrade.
-    lastSeenId = maxId;
     loaded = true;
     return;
   }
 
   if (data.unread > prevUnread) bellNudge.value++;
+  if (arrived.length === 0) return;
 
-  // Notifications that arrived since we last looked (a push, or a poll after
-  // being away). Each moved its day's field, so regrade what shows it: the
+  // Each arrival moved its day's field, so refresh everything that shows it: the
   // calendar month, that day's standings, and — via the signal — the open
   // board's runs.
-  const fresh = data.items.filter((n) => n.id > lastSeenId);
-  if (fresh.length === 0) return;
-  lastSeenId = maxId;
-  for (const n of fresh) refreshMonth(monthIdxOf(n.day));
-  const affected = [...new Set(fresh.map((n) => n.iteration))];
+  for (const n of arrived) refreshMonth(monthIdxOf(n.day));
+  const affected = [...new Set(arrived.map((n) => n.iteration))];
   for (const it of affected) {
     // Today's standings are cached under "today", past days under the id.
     refreshStandings(it === todayIteration.peek() ? undefined : it);
