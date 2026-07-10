@@ -3,6 +3,7 @@ import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
 import { getBoard } from "./iteration/board.ts";
 import { getDailySummary } from "./iteration/daily.ts";
+import { discordInfo } from "./discord.ts";
 import { listIterations } from "./iteration/list.ts";
 import { abandonRun } from "./iteration/run/abandon.ts";
 import { commitRun } from "./iteration/run/commit.ts";
@@ -39,6 +40,7 @@ const handlers = {
   setSettings,
   getNotifications,
   markNotificationsRead,
+  discordInfo,
   pushConfig,
   subscribePush,
   unsubscribePush,

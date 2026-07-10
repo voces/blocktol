@@ -19,6 +19,7 @@ import {
   ZOOM_MIN,
 } from "../../common/settings.ts";
 import { avatarColor, avatarInitial } from "../../common/avatar.ts";
+import { DISCORD_INVITE } from "../../common/constants.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
@@ -56,6 +57,35 @@ const LinkIcon = () => (
         stroke-linejoin="round"
       />
     </g>
+  </svg>
+);
+
+const DiscordIcon = () => (
+  <svg
+    width={22}
+    height={22}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M20.317 4.369A19.79 19.79 0 0 0 15.885 3c-.196.348-.42.82-.577 1.19a18.27 18.27 0 0 0-5.487 0A12.6 12.6 0 0 0 9.243 3a19.74 19.74 0 0 0-4.435 1.37C1.64 9.046.789 13.605 1.207 18.1a19.9 19.9 0 0 0 6.073 3.058c.492-.669.93-1.38 1.307-2.127a12.9 12.9 0 0 1-2.06-.99c.173-.126.342-.259.505-.395a14.2 14.2 0 0 0 12.036 0c.165.14.334.271.505.395-.658.389-1.35.72-2.063.991.377.746.814 1.457 1.307 2.126a19.85 19.85 0 0 0 6.075-3.058c.5-5.21-.838-9.73-3.605-13.732ZM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.42 2.157-2.42 1.21 0 2.176 1.096 2.157 2.42 0 1.334-.955 2.419-2.157 2.419Zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.42 2.157-2.42 1.21 0 2.176 1.096 2.157 2.42 0 1.334-.947 2.419-2.157 2.419Z" />
+  </svg>
+);
+
+const ExternalIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width={1.5}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M5 11 11 5" />
+    <path d="M6.5 5H11v4.5" />
   </svg>
 );
 
@@ -119,11 +149,17 @@ const ProfileDialog = (
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
+  // Live Discord presence for the Community card; null until it lands (or if the
+  // lookup fails), in which case the count is simply hidden.
+  const [discordOnline, setDiscordOnline] = useState<number | null>(null);
 
   // Refresh on open so the (cached) figures are current; the dialog stays
   // populated from the cache in the meantime.
   useEffect(() => {
     fetchProfile();
+    api.discordInfo({}).then((r) => {
+      if (r && !("error" in r)) setDiscordOnline(r.online);
+    }).catch(() => {});
   }, []);
 
   const startEdit = () => {
@@ -369,6 +405,35 @@ const ProfileDialog = (
             />
           </div>
         )}
+      </div>
+
+      <div class="pref">
+        <div class="section-title">Community</div>
+        <a
+          class="community-card tapc"
+          href={`https://discord.gg/${DISCORD_INVITE}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="community-card__tile" aria-hidden="true">
+            <DiscordIcon />
+          </span>
+          <div class="community-card__text">
+            <div class="community-card__title">Join the Discord</div>
+            <div class="community-card__sub">
+              Chat about the daily maze, report bugs, and share ideas.
+            </div>
+            {discordOnline != null && (
+              <div class="community-card__online mono">
+                <span class="community-card__dot" aria-hidden="true" />
+                {discordOnline} online
+              </div>
+            )}
+          </div>
+          <span class="community-card__ext" aria-hidden="true">
+            <ExternalIcon />
+          </span>
+        </a>
       </div>
 
       <div class="pref">

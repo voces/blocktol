@@ -2077,6 +2077,74 @@ a:hover {
   color: var(--text-mute);
 }
 
+/* Community: Discord join card — an external link styled like a pref row. */
+.community-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+
+.community-card:hover {
+  background: var(--surface-3);
+}
+
+.community-card__tile {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: #fff;
+  /* Discord blurple, fixed across themes to keep the mark on-brand. */
+  background: #5865f2;
+}
+
+.community-card__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.community-card__title {
+  font: 600 15px var(--font);
+  color: var(--color);
+}
+
+.community-card__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+
+.community-card__online {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.community-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--win);
+}
+
+.community-card__ext {
+  flex: none;
+  display: flex;
+  color: var(--text-mute);
+}
+
 /* Preferences: appearance segmented control + zoom slider. */
 .pref {
   margin-bottom: 14px;
