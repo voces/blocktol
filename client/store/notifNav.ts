@@ -62,6 +62,12 @@ export const consumeDeepLink = async () => {
     ? "daily_final"
     : null;
 
+  // A day link is a one-shot: strip it back to root now that we've read it, so a
+  // later reload lands on the normal home (your daily) instead of re-running the
+  // deep link — which would re-open the sheet and keep the daily-result modal
+  // hidden until the PWA is fully relaunched. Params are already captured above.
+  history.replaceState(null, "", "/");
+
   arrivedViaDeepLink.value = true;
   try {
     const s = await fetchStandingsForDate(year, month, day);
