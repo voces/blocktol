@@ -4,6 +4,7 @@ import { avatarColorFromHue, avatarInitial } from "../../../common/avatar.ts";
 import { useDragToClose } from "../../hooks/useDragToClose.ts";
 import {
   boardOf,
+  effectiveSort,
   fetchStandings,
   setStandingsSort,
   standingsByKey,
@@ -96,8 +97,10 @@ export const StandingsSheet = (
   },
 ) => {
   // The sort is shared with the dock and persisted across visits. Both boards
-  // ride the same response, so switching it never fetches.
-  const sort = standingsSort.value;
+  // ride the same response, so switching it never fetches. The effective sort
+  // (resolved once the board is in hand, below) falls back to PB when the day
+  // has no ranked daily runs.
+  const persistedSort = standingsSort.value;
 
   useEffect(() => {
     fetchStandings(isToday ? undefined : iteration);
@@ -126,6 +129,7 @@ export const StandingsSheet = (
     if (live) setShown(live);
   }, [live]);
   const s = live ?? shown;
+  const sort = effectiveSort(s, persistedSort);
   const b = boardOf(s, sort);
 
   // A bare text button per the design — the active sort is accent-underlined
