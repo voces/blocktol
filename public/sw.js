@@ -184,8 +184,7 @@ self.addEventListener("notificationclick", (event) => {
         if (!("focus" in client)) continue;
         // Reuse an existing app window. On Android Chrome, navigate() hands back
         // a FRESH client handle; focusing the stale pre-navigation reference is
-        // a silent no-op — the window navigates in the background but never
-        // comes forward (the reported "tap dismisses, PWA doesn't open"). Focus
+        // a silent no-op — the window navigates but never comes forward. Focus
         // whatever navigate() returns, falling back to the original handle.
         if ("navigate" in client && new URL(client.url).pathname !== url) {
           const navigated = await client.navigate(url).catch(() => null);
@@ -193,7 +192,15 @@ self.addEventListener("notificationclick", (event) => {
         }
         return client.focus();
       }
-      if (self.clients.openWindow) return self.clients.openWindow(url);
+      // App fully closed (no window client): launch it. On Android Chrome
+      // openWindow can open the PWA at the right URL WITHOUT bringing it to the
+      // foreground — the tap looks like it did nothing, the window sits in the
+      // background on the target day, and only a manual open reveals it (the
+      // reported "tap dismisses, PWA doesn't open"). Focus the opened window so
+      // it actually comes forward.
+      if (!self.clients.openWindow) return;
+      const opened = await self.clients.openWindow(url).catch(() => null);
+      if (opened && "focus" in opened) await opened.focus().catch(() => {});
     })(),
   );
 });
