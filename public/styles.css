@@ -2147,9 +2147,10 @@ a:hover {
   background: var(--win);
 }
 
-/* Before the first count lands: keep the row's footprint but mute the dot so a
-   stale-looking "live" indicator doesn't flash. */
-.community-card__online--pending .community-card__dot {
+/* Grey the dot when there's no live presence to show — before the first count
+   lands, and when it's a genuine zero — so the green "live" dot only appears
+   when someone is actually on. */
+.community-card__dot--idle {
   background: var(--text-faint);
 }
 

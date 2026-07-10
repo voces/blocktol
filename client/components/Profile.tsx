@@ -425,13 +425,16 @@ const ProfileDialog = (
             </div>
             {
               /* Always rendered so the card's height is stable whether or not
-                the count is known yet; muted until the first value lands. */
+                 the count is known yet. The dot greys out while the count is
+                 unknown and when it's a genuine zero — a live-green dot only
+                 reads right when someone's actually on. */
             }
-            <div
-              class={"community-card__online mono" +
-                (online == null ? " community-card__online--pending" : "")}
-            >
-              <span class="community-card__dot" aria-hidden="true" />
+            <div class="community-card__online mono">
+              <span
+                class={"community-card__dot" +
+                  (online ? "" : " community-card__dot--idle")}
+                aria-hidden="true"
+              />
               {online == null ? " " : `${online} online`}
             </div>
           </div>
