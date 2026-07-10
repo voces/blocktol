@@ -14,6 +14,7 @@ import {
   standingsSort,
   todayIteration,
 } from "../../store/standings.ts";
+import { syncViewUrl } from "../../store/notifNav.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
 import { formatSeconds } from "../../../common/format.ts";
 import { Chevron, Crown } from "./icons.tsx";
@@ -78,6 +79,23 @@ export const StandingsDock = () => {
 
   const s = key === undefined ? undefined : standingsByKey.value.get(key);
   const sort = effectiveSort(s, persistedSort);
+
+  // Reflect the viewed day + open sheet in the URL (see syncViewUrl): today is
+  // "/", a past day is "/YYYYMMDD", and an open sheet adds "?board=<sort>". A
+  // refresh restores what's on screen and web links stay meaningful. `?board`
+  // carries the PERSISTED sort, not the effective one — restoring it re-runs
+  // setStandingsSort, so writing the PB fallback of a ranked-less day would
+  // silently flip your global preference; effectiveSort re-derives the display
+  // on restore just as it does live. The day comes from the standings response
+  // (server-consistent), so hold off until it's resolved rather than clobber the
+  // URL with a half-known view.
+  const day = isToday ? undefined : s?.day;
+  const dayKey = day ? day.join("-") : "";
+  useEffect(() => {
+    if (!isToday && !day) return;
+    syncViewUrl(day, open, persistedSort);
+  }, [isToday, dayKey, open, persistedSort]);
+
   const b = boardOf(s, sort);
   const leader = b?.rows[0];
   const me = b?.me ?? null;
