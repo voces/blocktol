@@ -122,11 +122,25 @@ const reclaimedIterations = (user: string, iterations: number[]) =>
     )
   );
 
+// The bell badge count: unread notifications, EXCLUDING reclaimed lost-tops. One
+// you've since reclaimed (you hold or tie the day's top build again) is no longer
+// relevant, so it doesn't nag the badge even if never opened — matching how the
+// panel greys it out. The correlated check mirrors reclaimedIterations: the row
+// counts only while the viewer's best build is still short of the field's best.
 export const unreadCount = (user: string) =>
   sql<{ count: number }[]>`
     SELECT COUNT(1) count
-    FROM notification
-    WHERE user = ${user} AND read_at IS NULL;
+    FROM notification n
+    WHERE n.user = ${user}
+      AND n.read_at IS NULL
+      AND (
+        n.kind <> 'lost_top'
+        OR (
+          SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) < MAX(r.time)
+          FROM run r
+          WHERE r.iteration = n.iteration AND r.void = FALSE
+        )
+      );
   `.then((r) => Number(r[0]?.count ?? 0));
 
 // Mark every unread notification read (the "Mark all read" action). Scoped to

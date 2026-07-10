@@ -127,7 +127,8 @@ export const markRead = async (ids?: number[]) => {
   notifications.value = notifications.value.map((n) =>
     !n.read && (!idSet || idSet.has(n.id)) ? { ...n, read: true } : n
   );
-  unreadCount.value = notifications.value.filter((n) => !n.read).length;
+  unreadCount.value =
+    notifications.value.filter((n) => !n.read && !n.reclaimed).length;
   try {
     const r = await api.markNotificationsRead(ids ? { ids } : {});
     if (r && !("error" in r)) unreadCount.value = r.unread;
@@ -148,7 +149,8 @@ export const markReadForDay = async (
       ? { ...n, read: true }
       : n
   );
-  unreadCount.value = notifications.value.filter((n) => !n.read).length;
+  unreadCount.value =
+    notifications.value.filter((n) => !n.read && !n.reclaimed).length;
   try {
     const r = await api.markNotificationsRead({ iteration, kind });
     if (r && !("error" in r)) unreadCount.value = r.unread;

@@ -70,10 +70,14 @@ const Item = (
     ? `Opens ${formatNotifDate(item.day)}`
     : "Opens the leaderboard";
 
+  // A reclaimed card reads as read even if never opened — it's no longer a live
+  // nudge — so it loses the unread accent and dot.
+  const unread = !item.read && !reclaimed;
+
   return (
     <button
       type="button"
-      class={"notif-card tapc" + (item.read ? "" : " notif-card--unread") +
+      class={"notif-card tapc" + (unread ? " notif-card--unread" : "") +
         (reclaimed ? " notif-card--reclaimed" : "")}
       onClick={onOpen}
     >
@@ -99,7 +103,7 @@ const Item = (
           <span class="notif-card__ago mono">{formatAgo(item.createdAt)}</span>
         </span>
       </span>
-      {!item.read && <span class="notif-card__dot" aria-hidden="true" />}
+      {unread && <span class="notif-card__dot" aria-hidden="true" />}
     </button>
   );
 };
@@ -136,10 +140,12 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
   const countFor = (f: NotifFilter) =>
     f === "all" ? visible.length : visible.filter((n) => n.kind === f).length;
 
+  // Reclaimed cards read as read (they don't nag), so they group under Earlier
+  // and never gate "Mark all read".
   const shown = visible.filter((n) => filter === "all" || n.kind === filter);
-  const unread = shown.filter((n) => !n.read);
-  const read = shown.filter((n) => n.read);
-  const anyUnread = items.some((n) => !n.read);
+  const unread = shown.filter((n) => !n.read && !n.reclaimed);
+  const read = shown.filter((n) => n.read || n.reclaimed);
+  const anyUnread = items.some((n) => !n.read && !n.reclaimed);
 
   const emptyMsg = items.length === 0
     ? "No notifications yet"
