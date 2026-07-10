@@ -59,6 +59,19 @@ export const boardOf = (
   sort: StandingsSort,
 ) => (sort === "pb" ? data?.pb : data?.daily);
 
+// The sort to actually DISPLAY. When the persisted sort is "daily" but the day
+// has no ranked daily runs (an empty daily board — a day nobody has posted a
+// ranked time on yet), fall back to the PB board, which counts free play and so
+// still has a field to show. Purely a display override: it never writes back to
+// standingsSort/localStorage, so the persisted preference is preserved and the
+// view flips back to daily on its own the moment a ranked run lands. A load that
+// hasn't arrived yet (data undefined) keeps the persisted sort.
+export const effectiveSort = (
+  data: StandingsData | undefined,
+  sort: StandingsSort,
+): StandingsSort =>
+  sort === "daily" && data?.daily.rows.length === 0 ? "pb" : sort;
+
 // A request (from a notification) to open the standings sheet for a given day.
 // `iteration` undefined means today; null means no pending request. The dock
 // watches this, opens onto the matching day once its board is shown, and clears

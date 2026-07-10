@@ -6,6 +6,7 @@ import {
 } from "../../../common/percentileColor.ts";
 import {
   boardOf,
+  effectiveSort,
   fetchStandings,
   openStandingsRequest,
   refreshStandings,
@@ -42,8 +43,10 @@ export const StandingsDock = () => {
   const [open, setOpen] = useState(false);
   // The dock reflects whichever sort is active (persisted, shared with the
   // sheet) — its rank and leader switch between the daily and PB boards, both
-  // of which ride the one response, so the switch never fetches.
-  const sort = standingsSort.value;
+  // of which ride the one response, so the switch never fetches. The effective
+  // sort (resolved once the board is in hand, below) falls back to PB when the
+  // day has no ranked daily runs.
+  const persistedSort = standingsSort.value;
   // Fetch the viewed day (boot consumes the primed today fetch); re-fires as
   // the calendar swaps days or the today entry first resolves.
   useEffect(() => {
@@ -74,6 +77,7 @@ export const StandingsDock = () => {
   }, [request, revealed, key, isToday]);
 
   const s = key === undefined ? undefined : standingsByKey.value.get(key);
+  const sort = effectiveSort(s, persistedSort);
   const b = boardOf(s, sort);
   const leader = b?.rows[0];
   const me = b?.me ?? null;
