@@ -15,6 +15,30 @@ import {
 // standings sheet still carry the numbers). Sticky for the session.
 export const arrivedViaDeepLink = signal(false);
 
+// Snapshot the entry URL at import — before the view can rewrite it via
+// syncViewUrl on first mount — so the boot deep-link reads where we actually
+// landed, not wherever the sync has since moved the bar.
+const entryPath = location.pathname;
+const entrySearch = location.search;
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// Reflect the current view in the URL (replaceState — no history entry, so Back
+// isn't hijacked): the viewed day in the path (`/` for today), the open board in
+// `?board`. So a refresh restores exactly what's on screen — the PWA included,
+// where the bar is invisible — and web links stay meaningful and shareable.
+export const syncViewUrl = (
+  day: readonly [number, number, number] | undefined, // undefined = today
+  sheetOpen: boolean,
+  sort: StandingsSort,
+) => {
+  const path = day ? `/${day[0]}${pad(day[1])}${pad(day[2])}` : "/";
+  const url = path + (sheetOpen ? `?board=${sort}` : "");
+  if (location.pathname + location.search !== url) {
+    history.replaceState(null, "", url);
+  }
+};
+
 // Which board a notification is about: a lost top spot is a PB-board event, a
 // finalized daily a ranked-board one.
 const sortFor = (kind: NotificationKind): StandingsSort =>
@@ -35,27 +59,36 @@ export const navigateToNotification = (
   kind: NotificationKind,
 ) => goToDay(iteration, sortFor(kind));
 
-// On boot, route a `/YYYYMMDD` day permalink (the format notification pushes
-// use). `?board=pb|daily` selects the sort. The client knows the date, not the
-// iteration id, so it resolves via the standings endpoint (whose response also
-// warms the sheet). Never throws — a bad/unknown day just leaves the app on its
-// default landing.
+// On boot, restore the view the entry URL points at. `/YYYYMMDD` (the format
+// notification pushes use) opens that day's board; `?board=pb|daily` reopens the
+// leaderboard sheet on that sort AND names the notification kind (pb → lost_top,
+// daily → daily_final) whose read state a push tap settles. A bare `/YYYYMMDD`
+// (no board) restores the board with the sheet CLOSED, so refreshing after you
+// closed it doesn't re-pop it. The client knows the date, not the iteration id,
+// so it resolves via the standings endpoint (whose response also warms the
+// sheet). Never throws — a bad/unknown day just leaves the app on its default
+// landing. Reads the entry snapshot, not the live URL (the view sync may have
+// already moved the bar by the time this runs).
 export const consumeDeepLink = async () => {
-  const m = location.pathname.match(/^\/(\d{4})(\d{2})(\d{2})$/);
-  if (!m) return;
-  const year = Number(m[1]);
-  const month = Number(m[2]);
-  const day = Number(m[3]);
-
-  const boardParam = new URLSearchParams(location.search).get("board");
+  const boardParam = new URLSearchParams(entrySearch).get("board");
   const sort: StandingsSort | undefined = boardParam === "pb"
     ? "pb"
     : boardParam === "daily"
     ? "daily"
     : undefined;
-  // The board selects the sort AND identifies the notification kind that linked
-  // here (pb → lost_top, daily → daily_final); a plain permalink has no board
-  // and marks nothing read.
+
+  const m = entryPath.match(/^\/(\d{4})(\d{2})(\d{2})$/);
+  if (!m) {
+    // No day in the path — a bare `?board` restores today's open sheet + sort.
+    if (sort) {
+      setStandingsSort(sort);
+      requestStandings(undefined);
+    }
+    return;
+  }
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
   const kind: NotificationKind | null = boardParam === "pb"
     ? "lost_top"
     : boardParam === "daily"
@@ -66,9 +99,15 @@ export const consumeDeepLink = async () => {
   try {
     const s = await fetchStandingsForDate(year, month, day);
     if (!s) return;
-    goToDay(s.iteration, sort);
-    // Tapping the push counts as reading its notification.
-    if (kind) markReadForDay(s.iteration, kind);
+    if (sort) setStandingsSort(sort);
+    // Always stage the day's board; only reopen the sheet when the link says it
+    // was open (the view sync then keeps the URL honest as you interact).
+    showBoard(s.iteration);
+    if (boardParam) {
+      requestStandings(s.iteration);
+      // Tapping the push counts as reading its notification.
+      if (kind) markReadForDay(s.iteration, kind);
+    }
   } catch {
     // leave the app on its default landing
   }
