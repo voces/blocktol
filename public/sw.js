@@ -139,15 +139,34 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = data.title || "Blocktol";
-  const options = {
-    body: data.body || "",
-    tag: data.tag,
-    icon: ICON,
-    badge: ICON,
-    data: { url: data.url || "/" },
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    (async () => {
+      // Let EVERY open tab refresh its store, focused or not — it's a data
+      // store, so a backgrounded tab stays current in the background and is
+      // fresh the instant you return to it. A visible tab also gives its bell a
+      // quick, silent swing off this hand-off.
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        client.postMessage({ type: "notification" });
+      }
+      // Only fire a system banner when nothing is on screen; a visible tab
+      // handles it in-app. userVisibleOnly tolerates this focused-skip.
+      if (clients.some((c) => c.visibilityState === "visible")) return;
+
+      const title = data.title || "Blocktol";
+      const options = {
+        body: data.body || "",
+        tag: data.tag,
+        icon: ICON,
+        badge: ICON,
+        data: { url: data.url || "/" },
+      };
+      await self.registration.showNotification(title, options);
+    })(),
+  );
 });
 
 // Tapping a notification focuses an existing app window (navigating it to the
@@ -162,12 +181,17 @@ self.addEventListener("notificationclick", (event) => {
         includeUncontrolled: true,
       });
       for (const client of all) {
-        if ("focus" in client) {
-          if ("navigate" in client && new URL(client.url).pathname !== url) {
-            await client.navigate(url).catch(() => {});
-          }
-          return client.focus();
+        if (!("focus" in client)) continue;
+        // Reuse an existing app window. On Android Chrome, navigate() hands back
+        // a FRESH client handle; focusing the stale pre-navigation reference is
+        // a silent no-op — the window navigates in the background but never
+        // comes forward (the reported "tap dismisses, PWA doesn't open"). Focus
+        // whatever navigate() returns, falling back to the original handle.
+        if ("navigate" in client && new URL(client.url).pathname !== url) {
+          const navigated = await client.navigate(url).catch(() => null);
+          return (navigated || client).focus();
         }
+        return client.focus();
       }
       if (self.clients.openWindow) return self.clients.openWindow(url);
     })(),
