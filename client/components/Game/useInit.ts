@@ -7,6 +7,7 @@ import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
 import { regradedIterations } from "../../store/notifications.ts";
+import { arrivedViaDeepLink } from "../../store/notifNav.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
@@ -254,7 +255,10 @@ export const useInit = () => {
         // spending the getBoard round trip at the close — and a boot onto a
         // finished daily doesn't sit on an empty board under the card.
         // (`iteration` is set post-attempt; undefined on boot = today.)
-        showBoard(iteration);
+        // Skip when we arrived via a day deep-link: today's card is hidden and
+        // staging today here would race consumeDeepLink's showBoard and steal
+        // the board (and the URL) back from the linked day.
+        if (!arrivedViaDeepLink.value) showBoard(iteration);
         return;
       }
 
