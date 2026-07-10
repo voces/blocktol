@@ -219,6 +219,12 @@ export const findPath = (
   end = { x: 10, y: 0 },
 ) => {
   const checkpointCell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
+  // The checkpoint lives on a fractional grid row that its owner allocates when
+  // the iteration loads (see `findPathFromData` / `rebuildGrid`). Before that
+  // data arrives the board still holds the off-board sentinel checkpoint, so a
+  // hover can call in here targeting a row the grid never created — treat that
+  // as "no path" rather than writing into an undefined row and throwing.
+  if (!grid[checkpointCell.y]) return;
   grid[checkpointCell.y][checkpointCell.x] = false;
 
   const pathA = _findPath(start, checkpointCell, grid);
