@@ -94,7 +94,7 @@ const Item = (
         {detail && <span class="notif-card__detail mono">{detail}</span>}
         {reclaimed && (
           <span class={"notif-card__tag notif-card__tag--" + reclaimed}>
-            <Check />
+            {reclaimed === "solo" ? <Crown /> : <Check />}
             Reclaimed
           </span>
         )}

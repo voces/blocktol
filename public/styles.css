@@ -3815,6 +3815,12 @@ a:hover {
   text-transform: uppercase;
 }
 
+/* Normalise the icon size — the solo crown is authored larger than the check. */
+.notif-card__tag svg {
+  width: 12px;
+  height: 12px;
+}
+
 .notif-card__tag--solo {
   color: var(--gold);
 }
