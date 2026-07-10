@@ -15,6 +15,7 @@ import { moveInfo } from "./moveInfo.ts";
 import { getNotifications } from "./notifications/list.ts";
 import { markNotificationsRead } from "./notifications/markRead.ts";
 import { getProfile } from "./profile.ts";
+import { getPublicProfile } from "./publicProfile.ts";
 import { pushConfig } from "./push/config.ts";
 import { subscribePush } from "./push/subscribe.ts";
 import { unsubscribePush } from "./push/unsubscribe.ts";
@@ -33,6 +34,7 @@ const handlers = {
   best,
   standings,
   getProfile,
+  getPublicProfile,
   rename,
   merge,
   moveInfo,

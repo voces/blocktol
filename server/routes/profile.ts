@@ -1,8 +1,13 @@
 import { z } from "zod";
-import { createOrUpdateUser, getUserStats } from "../db/user.ts";
+import {
+  createOrUpdateUser,
+  ensurePublicId,
+  getUserStats,
+} from "../db/user.ts";
 import { method } from "./apiHelpers.ts";
 
-// The signed-in user's own profile stats (see getUserStats). No input beyond
+// The signed-in user's own profile stats (see getUserStats), plus their public
+// slug so the client can build the shareable `/u/<slug>` link. No input beyond
 // the auth header, but the body must still validate — an absent body parses to
 // undefined.
 export const getProfile = method(z.object({}).optional(), true)(
@@ -12,6 +17,10 @@ export const getProfile = method(z.object({}).optional(), true)(
     // summary's createOrUpdateUser and must not read a missing row (a blank
     // name). Idempotent upsert; a chosen name is never overwritten.
     await createOrUpdateUser(userId);
-    return getUserStats(userId);
+    // Assign the public slug on first profile load (the row now exists), so the
+    // share affordance always has one; idempotent thereafter.
+    const publicId = await ensurePublicId(userId);
+    const stats = await getUserStats(userId);
+    return { ...stats, publicId };
   },
 );

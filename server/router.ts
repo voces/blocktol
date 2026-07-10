@@ -18,5 +18,10 @@ router.post("/api/:method", api);
 // routed: serve the SPA shell for it. Ahead of staticServe, which passes the
 // response through.
 router.get("/:date(\\d{8})", serveApp("public"));
+// A public profile permalink `/u/<slug>` is client routed: serve the SPA shell,
+// which fetches the profile by slug and renders it (see PublicProfile.tsx). The
+// constraint keeps it to slug-shaped paths; anything else falls through to
+// static serving / 404.
+router.get("/u/:slug([0-9a-z]+)", serveApp("public"));
 router.use(staticServe("public"));
 router.use(endLogger);

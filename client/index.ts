@@ -2,19 +2,31 @@ import { h, render } from "preact";
 import { prime } from "./api.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
+import { PublicProfile } from "./components/PublicProfile.tsx";
 import { initSettings } from "./hooks/useSettings.ts";
-import { getCleanLink, getPendingLink } from "./util/id.ts";
+import {
+  getCleanLink,
+  getPendingLink,
+  getPublicProfileSlug,
+} from "./util/id.ts";
 import { getTimeZone } from "./util/timeZone.ts";
 
 // Apply the cached theme before first paint (the server value reconciles later).
 initSettings();
+
+// A `/u/<slug>` public profile is a standalone read-only page: it renders on its
+// own, skipping the game boot (no priming of authed calls, no sign-in gate).
+const publicProfileSlug = getPublicProfileSlug();
 
 // Head start on the boot round trips: fire them during module evaluation,
 // before the first render; App's calls consume these primed responses (see
 // api.prime). Skipped mid-onboarding (the app defers its fetch then anyway)
 // and while a sign-in link is pending (the gate must resolve identity first —
 // priming would bake in the wrong user).
-if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
+if (
+  !publicProfileSlug && !getPendingLink() && !getCleanLink() &&
+  getHasCompletedOnboarding()
+) {
   prime("getDailySummary", { timeZone: getTimeZone() });
   prime("getProfile", {});
   prime("standings", { timeZone: getTimeZone() });
@@ -26,7 +38,16 @@ if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   prime("getBoard", { timeZone: getTimeZone(), soft: true });
 }
 
-render(h(ErrorBoundary, null, h(App, {})), document.body);
+render(
+  h(
+    ErrorBoundary,
+    null,
+    publicProfileSlug
+      ? h(PublicProfile, { slug: publicProfileSlug })
+      : h(App, {}),
+  ),
+  document.body,
+);
 
 globalThis.addEventListener("contextmenu", (e) => e.preventDefault());
 

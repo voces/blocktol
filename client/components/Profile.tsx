@@ -61,6 +61,23 @@ const LinkIcon = () => (
   </svg>
 );
 
+const ShareIcon = () => (
+  <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-width={1.5}
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <circle cx={12} cy={3.5} r={1.8} />
+      <circle cx={4} cy={8} r={1.8} />
+      <circle cx={12} cy={12.5} r={1.8} />
+      <path d="M10.4 4.4 5.6 7.1M5.6 8.9l4.8 2.7" />
+    </g>
+  </svg>
+);
+
 const DiscordIcon = () => (
   <svg
     width={22}
@@ -150,6 +167,7 @@ const ProfileDialog = (
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [shared, setShared] = useState(false);
   // Live Discord presence for the Community card (see store/discord.ts): seeded
   // from the last-known value so the card doesn't grow a line when the count
   // lands, refreshed on open.
@@ -178,6 +196,18 @@ const ProfileDialog = (
         setEditing(false);
       }
     }).catch(() => setSaving(false));
+  };
+
+  // Copy the shareable public profile link (`/u/<slug>`) — a read-only page,
+  // distinct from the secret "move to device" login link below it.
+  const shareProfile = () => {
+    const publicId = profile?.publicId;
+    if (!publicId) return;
+    navigator.clipboard?.writeText(
+      new URL(`/u/${publicId}`, location.origin).href,
+    );
+    setShared(true);
+    setTimeout(() => setShared(false), 1500);
   };
 
   // Best build opens on the board (a static review), same route the today-result
@@ -443,6 +473,30 @@ const ProfileDialog = (
           </span>
         </a>
       </div>
+
+      {profile?.publicId && (
+        <div class="pref">
+          <div class="section-title">Public profile</div>
+          <button
+            type="button"
+            class="profile-action profile-action--row tapc"
+            onClick={shareProfile}
+          >
+            <ShareIcon />
+            <div class="profile-action__text">
+              <div class="profile-action__title">Share your profile</div>
+              <div class="profile-action__sub">
+                {shared
+                  ? "Link copied to clipboard"
+                  : "A public page anyone can view — no sign-in"}
+              </div>
+            </div>
+            <span class="profile-action__chev" aria-hidden="true">
+              {shared ? "✓" : "›"}
+            </span>
+          </button>
+        </div>
+      )}
 
       <div class="pref">
         <div class="section-title">Account</div>

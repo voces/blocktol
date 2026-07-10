@@ -33,6 +33,15 @@ const linkIdFromPath = () => {
   return null;
 };
 
+// The slug of the public profile being viewed, if the URL is a `/u/<slug>`
+// permalink. Null otherwise. Unlike a sign-in link this carries no identity —
+// it just names whose public profile to render, so it's read directly rather
+// than routed through the adopt/merge gate.
+export const getPublicProfileSlug = () =>
+  location.pathname.startsWith("/u/")
+    ? location.pathname.slice(3).split("/")[0] || null
+    : null;
+
 export const getId = () => {
   const link = linkIdFromPath();
   const storedId = localStorage.getItem("id");

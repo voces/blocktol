@@ -185,6 +185,25 @@ export const migrations: Migration[] = [
     // runtime locale then. Short varchar: a canonicalised tag is well under 35.
     up: "ALTER TABLE `user` ADD COLUMN `locale` varchar(35) NULL DEFAULT NULL;",
   },
+  {
+    version: 7,
+    name: "user-public-id",
+    // The public, non-secret profile identifier — the slug in a shareable
+    // `/u/<slug>` URL (see server/util/slug.ts). It splits the two jobs the
+    // user id currently conflates: `id` stays the private key/credential (never
+    // published — the bearer of the id IS the user), while `public_id` is the
+    // safe-to-share handle a profile page hangs off. Nothing about auth changes.
+    //
+    // NULL + UNIQUE (a UNIQUE index permits many NULLs in MariaDB) so the column
+    // fills lazily: a user is assigned a slug the first time they load their own
+    // profile (db/user.ts ensurePublicId), mirroring how `name` is seeded on
+    // demand rather than backfilled en masse. A user who never opens their
+    // profile — and so never shares — simply stays NULL until they do. IF NOT
+    // EXISTS keeps both statements safe if either was ever applied out of band.
+    up: `
+      ALTER TABLE \`user\` ADD COLUMN IF NOT EXISTS \`public_id\` varchar(16) DEFAULT NULL;
+      ALTER TABLE \`user\` ADD UNIQUE KEY IF NOT EXISTS \`public_id\` (\`public_id\`);`,
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

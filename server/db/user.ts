@@ -1,6 +1,7 @@
 import { randomName } from "../../common/random/name.ts";
 import { parseSettings } from "../../common/settings.ts";
 import { deserializeRun } from "../util/run.ts";
+import { randomSlug } from "../util/slug.ts";
 import { format, raw, sql } from "./query.ts";
 
 type User = {
@@ -42,6 +43,46 @@ export const updateUserName = (id: string, name: string) =>
     INSERT INTO user (id, name) VALUES (${id}, ${name}) ON DUPLICATE KEY UPDATE name = ${name};
     SELECT id, name, rating FROM user WHERE id = ${id};
   `.then((r) => r[1][0]);
+
+// The user's public profile slug, or null if one hasn't been assigned yet.
+export const getPublicId = (id: string) =>
+  sql<{ public_id: string | null }[]>`
+    SELECT public_id FROM user WHERE id = ${id};
+  `.then((r) => r[0]?.public_id ?? null);
+
+// Resolve a public slug back to the internal user id. Null for an unknown slug.
+// The id it returns is the bearer credential, so it stays server-side — callers
+// (getPublicProfile) use it to read stats and ship a hue, never the id itself.
+export const getUserIdByPublicId = (publicId: string) =>
+  sql<{ id: string }[]>`
+    SELECT id FROM user WHERE public_id = ${publicId};
+  `.then((r) => r[0]?.id ?? null);
+
+// Lazily assign a public slug the first time one is needed (the user's own
+// profile load), returning the existing one if already set. The row must exist
+// — callers seed it via createOrUpdateUser first.
+//
+// The UPDATE only touches a still-null slug, so a concurrent request that won
+// the race leaves this a no-op and the re-read returns whichever slug landed. A
+// UNIQUE collision on the generated slug is astronomically unlikely at 60 bits,
+// but if it happens the insert throws and we simply retry with a fresh one.
+export const ensurePublicId = async (id: string): Promise<string> => {
+  const existing = await getPublicId(id);
+  if (existing) return existing;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await sql`
+        UPDATE user SET public_id = ${randomSlug()}
+        WHERE id = ${id} AND public_id IS NULL;`;
+    } catch {
+      // Duplicate-slug (or transient) failure — fall through and re-read; a
+      // genuine collision just means the next attempt picks a new slug.
+    }
+    const now = await getPublicId(id);
+    if (now) return now;
+  }
+  throw new Error(`could not assign a public_id for ${id}`);
+};
 
 // The user's persisted preferences, tolerant of legacy/absent blobs.
 export const getUserSettings = (id: string) =>
