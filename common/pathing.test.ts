@@ -263,6 +263,15 @@ Deno.test("findPath — any-angle optimality", async (t) => {
   });
 });
 
+Deno.test("findPath returns undefined for an off-board checkpoint", () => {
+  // On page load the board holds the off-board sentinel checkpoint {-2,-2} on a
+  // fresh grid whose fractional checkpoint row was never allocated. A hover can
+  // call findPath in that state; it must return undefined, not throw
+  // "Cannot set properties of undefined" writing into the missing row.
+  const grid = newGrid();
+  assertEquals(findPath(grid, { x: -2, y: -2 }), undefined);
+});
+
 Deno.test("findPathFromData rejects overlapping placements", () => {
   // Two blocks sharing a cell is invalid data and must throw, not path.
   let threw = false;
