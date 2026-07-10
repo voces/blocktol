@@ -20,6 +20,7 @@ import {
 } from "../../common/settings.ts";
 import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import { DISCORD_INVITE } from "../../common/constants.ts";
+import { discordOnline, fetchDiscordOnline } from "../store/discord.ts";
 import { getId } from "../util/id.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
@@ -149,17 +150,16 @@ const ProfileDialog = (
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
-  // Live Discord presence for the Community card; null until it lands (or if the
-  // lookup fails), in which case the count is simply hidden.
-  const [discordOnline, setDiscordOnline] = useState<number | null>(null);
+  // Live Discord presence for the Community card (see store/discord.ts): seeded
+  // from the last-known value so the card doesn't grow a line when the count
+  // lands, refreshed on open.
+  const online = discordOnline.value;
 
   // Refresh on open so the (cached) figures are current; the dialog stays
   // populated from the cache in the meantime.
   useEffect(() => {
     fetchProfile();
-    api.discordInfo({}).then((r) => {
-      if (r && !("error" in r)) setDiscordOnline(r.online);
-    }).catch(() => {});
+    fetchDiscordOnline();
   }, []);
 
   const startEdit = () => {
@@ -423,12 +423,17 @@ const ProfileDialog = (
             <div class="community-card__sub">
               Chat about the daily maze, report bugs, and share ideas.
             </div>
-            {discordOnline != null && (
-              <div class="community-card__online mono">
-                <span class="community-card__dot" aria-hidden="true" />
-                {discordOnline} online
-              </div>
-            )}
+            {
+              /* Always rendered so the card's height is stable whether or not
+                the count is known yet; muted until the first value lands. */
+            }
+            <div
+              class={"community-card__online mono" +
+                (online == null ? " community-card__online--pending" : "")}
+            >
+              <span class="community-card__dot" aria-hidden="true" />
+              {online == null ? " " : `${online} online`}
+            </div>
           </div>
           <span class="community-card__ext" aria-hidden="true">
             <ExternalIcon />
@@ -485,8 +490,14 @@ export const Profile = () => {
         // Warm the profile the moment intent shows — pointerenter covers mouse
         // hover and the first touch, onFocus covers keyboard. fetchProfile
         // coalesces/rate-limits, so repeated events don't spam requests.
-        onPointerEnter={() => fetchProfile()}
-        onFocus={() => fetchProfile()}
+        onPointerEnter={() => {
+          fetchProfile();
+          fetchDiscordOnline();
+        }}
+        onFocus={() => {
+          fetchProfile();
+          fetchDiscordOnline();
+        }}
         title="Profile"
         aria-label="Open profile"
       >

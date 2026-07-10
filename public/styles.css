@@ -2128,7 +2128,11 @@ a:hover {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
+  /* Fixed line box so the row occupies the same height before and after the
+     count lands — the card never grows on open. */
+  min-height: 14px;
   font-size: 12px;
+  line-height: 14px;
   color: var(--text-dim);
 }
 
@@ -2137,6 +2141,12 @@ a:hover {
   height: 8px;
   border-radius: 50%;
   background: var(--win);
+}
+
+/* Before the first count lands: keep the row's footprint but mute the dot so a
+   stale-looking "live" indicator doesn't flash. */
+.community-card__online--pending .community-card__dot {
+  background: var(--text-faint);
 }
 
 .community-card__ext {
