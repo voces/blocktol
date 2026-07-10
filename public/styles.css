@@ -1734,7 +1734,11 @@ a:hover {
      min-content (which would push the sheet wider than a phone screen). */
   min-width: 0;
   max-width: 480px;
-  max-height: 94vh;
+  /* Cap so a tall sheet never eats the whole screen: always leave a backdrop
+     gap at the top (the board stays visible behind it) — at least 100px on
+     short screens, 15vh on tall ones — and scroll the body internally past
+     that. Desktop drops the cap (centred card, see below). */
+  max-height: min(85vh, calc(100vh - 100px));
   overflow-y: auto;
   text-align: left;
   background: var(--surface);
