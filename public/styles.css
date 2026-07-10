@@ -1734,7 +1734,11 @@ a:hover {
      min-content (which would push the sheet wider than a phone screen). */
   min-width: 0;
   max-width: 480px;
-  max-height: 94vh;
+  /* Cap so a tall sheet never eats the whole screen: always leave a backdrop
+     gap at the top (the board stays visible behind it) — at least 100px on
+     short screens, 15vh on tall ones — and scroll the body internally past
+     that. Desktop drops the cap (centred card, see below). */
+  max-height: min(85vh, calc(100vh - 100px));
   overflow-y: auto;
   text-align: left;
   background: var(--surface);
@@ -2074,6 +2078,85 @@ a:hover {
 .profile-action__chev {
   flex: none;
   font-size: 20px;
+  color: var(--text-mute);
+}
+
+/* Community: Discord join card — an external link styled like a pref row. */
+.community-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+
+.community-card:hover {
+  background: var(--surface-3);
+}
+
+.community-card__tile {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: #fff;
+  /* Discord blurple, fixed across themes to keep the mark on-brand. */
+  background: #5865f2;
+}
+
+.community-card__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.community-card__title {
+  font: 600 15px var(--font);
+  color: var(--color);
+}
+
+.community-card__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+
+.community-card__online {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  /* Fixed line box so the row occupies the same height before and after the
+     count lands — the card never grows on open. */
+  min-height: 14px;
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--text-dim);
+}
+
+.community-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--win);
+}
+
+/* Grey the dot when there's no live presence to show — before the first count
+   lands, and when it's a genuine zero — so the green "live" dot only appears
+   when someone is actually on. */
+.community-card__dot--idle {
+  background: var(--text-faint);
+}
+
+.community-card__ext {
+  flex: none;
+  display: flex;
   color: var(--text-mute);
 }
 
