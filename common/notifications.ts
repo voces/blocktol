@@ -58,6 +58,10 @@ export type NotificationOf<K extends NotificationKind> = {
   day: [number, number, number]; // the daily's [year, month, day]
   createdAt: number; // ms epoch
   read: boolean;
+  // Computed live at read time, never stored: a "lost top" the viewer has since
+  // reclaimed (they hold or tie the top of that day's PB board again), so the
+  // card is struck through but kept. Always false for a daily_final.
+  superseded: boolean;
   data: NotificationDataOf<K>;
 };
 

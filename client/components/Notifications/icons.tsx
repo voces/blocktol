@@ -30,6 +30,23 @@ export const Crown = () => (
   </svg>
 );
 
+// The check on a "Reclaimed" tag — a superseded lost-top the viewer took back.
+export const Check = () => (
+  <svg
+    width={12}
+    height={12}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width={2.6}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
 // The flag that fronts a "daily finalized" card.
 export const Flag = () => (
   <svg
