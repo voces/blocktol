@@ -1,4 +1,5 @@
 import { signal } from "@preact/signals";
+import type { NotificationKind } from "../../common/notifications.ts";
 import { api, MessageMap } from "../api.ts";
 import { refreshMonth } from "./dailyItems.ts";
 import { keyedQuery } from "./query.ts";
@@ -6,6 +7,29 @@ import { refreshStandings, todayIteration } from "./standings.ts";
 
 export type NotificationsData = MessageMap["getNotifications"];
 export type NotificationItem = NotificationsData["items"][number];
+
+// The panel's view preferences, persisted like the standings sort so a choice
+// sticks across visits. `notifFilter` scopes the list to one kind; `all` shows
+// both. `hideReclaimed` drops superseded "lost top" cards from view.
+export type NotifFilter = "all" | NotificationKind;
+const FILTER_KEY = "notifFilter";
+const HIDE_KEY = "notifHideReclaimed";
+const readFilter = (): NotifFilter => {
+  const v = localStorage.getItem(FILTER_KEY);
+  return v === "lost_top" || v === "daily_final" ? v : "all";
+};
+export const notifFilter = signal<NotifFilter>(readFilter());
+export const setNotifFilter = (f: NotifFilter) => {
+  localStorage.setItem(FILTER_KEY, f);
+  notifFilter.value = f;
+};
+export const hideReclaimed = signal<boolean>(
+  localStorage.getItem(HIDE_KEY) === "1",
+);
+export const setHideReclaimed = (v: boolean) => {
+  localStorage.setItem(HIDE_KEY, v ? "1" : "0");
+  hideReclaimed.value = v;
+};
 
 // The signed-in user's notifications and unread count, behind the header bell.
 // Warmed on boot and refreshed when the panel opens; components reading these
@@ -103,7 +127,8 @@ export const markRead = async (ids?: number[]) => {
   notifications.value = notifications.value.map((n) =>
     !n.read && (!idSet || idSet.has(n.id)) ? { ...n, read: true } : n
   );
-  unreadCount.value = notifications.value.filter((n) => !n.read).length;
+  unreadCount.value =
+    notifications.value.filter((n) => !n.read && !n.reclaimed).length;
   try {
     const r = await api.markNotificationsRead(ids ? { ids } : {});
     if (r && !("error" in r)) unreadCount.value = r.unread;
@@ -124,7 +149,8 @@ export const markReadForDay = async (
       ? { ...n, read: true }
       : n
   );
-  unreadCount.value = notifications.value.filter((n) => !n.read).length;
+  unreadCount.value =
+    notifications.value.filter((n) => !n.read && !n.reclaimed).length;
   try {
     const r = await api.markNotificationsRead({ iteration, kind });
     if (r && !("error" in r)) unreadCount.value = r.unread;

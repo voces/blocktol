@@ -3517,6 +3517,63 @@ a:hover {
   cursor: default;
 }
 
+/* Filter chips: scope the list by kind; a right-aligned toggle hides reclaimed
+   lost-tops. Echoes the unread card's accent treatment when active. */
+.notif-sheet__filters {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px 12px;
+}
+
+.notif-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 99px;
+  padding: 6px 12px;
+  background: transparent;
+  cursor: pointer;
+  font: 600 13px var(--font);
+  color: var(--text-mute);
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.notif-chip[aria-pressed="true"] {
+  color: var(--accent-bright);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.notif-chip__count {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.notif-chip[aria-pressed="true"] .notif-chip__count {
+  color: var(--accent-bright);
+}
+
+.notif-hide {
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 99px;
+  padding: 6px 12px;
+  background: transparent;
+  cursor: pointer;
+  font: 600 12px var(--font);
+  color: var(--text-mute);
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.notif-hide[aria-pressed="true"] {
+  color: var(--accent-bright);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .notif-sheet__list {
   flex: 1;
   min-height: 0;
@@ -3634,6 +3691,44 @@ a:hover {
   height: 8px;
   border-radius: 50%;
   background: var(--accent);
+}
+
+/* A reclaimed lost-top: kept but struck through and dimmed, with a tag saying
+   why. The whole card is de-emphasised — it's history now, not a live nudge. */
+.notif-card--reclaimed {
+  opacity: 0.62;
+}
+
+.notif-card--reclaimed .notif-card__title {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: color-mix(in srgb, var(--text-faint) 80%, transparent);
+  color: var(--text-mute);
+}
+
+/* The tag hue follows the standings record palette: gold for an outright top,
+   chartreuse (--peak) for a shared one. `currentColor` carries into the check. */
+.notif-card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font: 700 10px var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.notif-card__tag--solo {
+  color: var(--gold);
+}
+
+.notif-card__tag--tied {
+  color: var(--peak);
 }
 
 @media (min-width: 1200px) {

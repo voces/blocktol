@@ -58,8 +58,18 @@ export type NotificationOf<K extends NotificationKind> = {
   day: [number, number, number]; // the daily's [year, month, day]
   createdAt: number; // ms epoch
   read: boolean;
+  // Computed live at read time, never stored: whether a "lost top" has been
+  // reclaimed (the viewer holds the day's top build again) and how — "solo" for
+  // an outright top (gold), "tied" for a shared top (chartreuse), null when not
+  // reclaimed. The card is struck through but kept. Always null for a daily_final.
+  reclaimed: Reclaimed;
   data: NotificationDataOf<K>;
 };
+
+// How a reclaimed lost-top holds the top: "solo" = sole best build (outright #1,
+// gold), "tied" = shares the best build with someone (a held record, chartreuse).
+// null = not reclaimed. Mirrors the standings record palette (outright vs shared).
+export type Reclaimed = "solo" | "tied" | null;
 
 export type Notification =
   | NotificationOf<"lost_top">

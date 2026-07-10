@@ -22,8 +22,11 @@ export type PushSubscriptionRow = {
 // so the client can render "Jul 6" / open that board without a second lookup.
 // Capped — the panel pages the recent slice; older rows age out of view, not the
 // table. `data` is the denormalized JSON written at creation.
-export const listNotifications = (user: string, limit = 50) =>
-  sql<
+export const listNotifications = async (
+  user: string,
+  limit = 50,
+): Promise<Notification[]> => {
+  const rows = await sql<
     {
       id: number;
       kind: NotificationKind;
@@ -49,37 +52,95 @@ export const listNotifications = (user: string, limit = 50) =>
     WHERE n.user = ${user}
     ORDER BY n.created DESC, n.id DESC
     LIMIT ${limit};
+  `;
+
+  const notifs = rows.flatMap((r): Notification[] => {
+    let data: unknown;
+    try {
+      data = JSON.parse(r.data);
+    } catch {
+      return []; // a corrupt payload drops the row rather than crashing the list
+    }
+    // The kind determines the payload type; the columns are shared.
+    const base = {
+      id: Number(r.id),
+      iteration: r.iteration,
+      day: [r.y, r.m, r.d] as [number, number, number],
+      createdAt: Number(r.created),
+      read: !!r.read,
+      reclaimed: null, // filled in below for reclaimed lost-tops
+    };
+    if (r.kind === "lost_top") {
+      return [{ ...base, kind: "lost_top", data: data as LostTopData }];
+    }
+    if (r.kind === "daily_final") {
+      return [{ ...base, kind: "daily_final", data: data as DailyFinalData }];
+    }
+    return []; // unknown kind (forward-compat): skip
+  });
+
+  // A "lost top" is reclaimed once the viewer holds (or ties) the top of that
+  // day's PB board again — computed live from the current field, so a re-pass
+  // un-strikes it without any stored flag to keep in sync. Only lost-tops can be.
+  const lostIterations = [
+    ...new Set(
+      notifs.filter((n) => n.kind === "lost_top").map((n) => n.iteration),
+    ),
+  ];
+  if (lostIterations.length === 0) return notifs;
+  const reclaimed = await reclaimedIterations(user, lostIterations);
+  return notifs.map((n) =>
+    n.kind === "lost_top" && reclaimed.has(n.iteration)
+      ? { ...n, reclaimed: reclaimed.get(n.iteration)! }
+      : n
+  );
+};
+
+// Of the given iterations, those where `user` currently holds or ties the top of
+// the PB board — their best build equals the iteration's best build — tagged
+// "solo" (outright top) or "tied" (shares the top with someone). (Best build =
+// MAX(time) over non-void runs, matching getIterationBests, the same field the
+// lost-top decision reads.) A tie counts as reclaimed: a strict pass is what
+// cost the top, so getting back level restores it.
+const reclaimedIterations = (user: string, iterations: number[]) =>
+  sql<{ iteration: number; tied: number }[]>`
+    SELECT
+      b.iteration iteration,
+      (MAX(CASE WHEN b.user <> ${user} THEN b.t END) >=
+        MAX(CASE WHEN b.user = ${user} THEN b.t END)) tied
+    FROM (
+      SELECT iteration, user, MAX(time) t
+      FROM run
+      WHERE iteration IN (${iterations}) AND void = FALSE
+      GROUP BY iteration, user
+    ) b
+    GROUP BY b.iteration
+    HAVING MAX(CASE WHEN b.user = ${user} THEN b.t END) >= MAX(b.t);
   `.then((rows) =>
-    rows.flatMap((r): Notification[] => {
-      let data: unknown;
-      try {
-        data = JSON.parse(r.data);
-      } catch {
-        return []; // a corrupt payload drops the row rather than crashing the list
-      }
-      // The kind determines the payload type; the columns are shared.
-      const base = {
-        id: Number(r.id),
-        iteration: r.iteration,
-        day: [r.y, r.m, r.d] as [number, number, number],
-        createdAt: Number(r.created),
-        read: !!r.read,
-      };
-      if (r.kind === "lost_top") {
-        return [{ ...base, kind: "lost_top", data: data as LostTopData }];
-      }
-      if (r.kind === "daily_final") {
-        return [{ ...base, kind: "daily_final", data: data as DailyFinalData }];
-      }
-      return []; // unknown kind (forward-compat): skip
-    })
+    new Map(
+      rows.map((r) => [r.iteration, r.tied ? "tied" : "solo"] as const),
+    )
   );
 
+// The bell badge count: unread notifications, EXCLUDING reclaimed lost-tops. One
+// you've since reclaimed (you hold or tie the day's top build again) is no longer
+// relevant, so it doesn't nag the badge even if never opened — matching how the
+// panel greys it out. The correlated check mirrors reclaimedIterations: the row
+// counts only while the viewer's best build is still short of the field's best.
 export const unreadCount = (user: string) =>
   sql<{ count: number }[]>`
     SELECT COUNT(1) count
-    FROM notification
-    WHERE user = ${user} AND read_at IS NULL;
+    FROM notification n
+    WHERE n.user = ${user}
+      AND n.read_at IS NULL
+      AND (
+        n.kind <> 'lost_top'
+        OR (
+          SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) < MAX(r.time)
+          FROM run r
+          WHERE r.iteration = n.iteration AND r.void = FALSE
+        )
+      );
   `.then((r) => Number(r[0]?.count ?? 0));
 
 // Mark every unread notification read (the "Mark all read" action). Scoped to
