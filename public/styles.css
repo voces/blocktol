@@ -2091,11 +2091,20 @@ a:hover {
   border-radius: 14px;
   background: var(--surface-2);
   text-decoration: none;
+  /* Opt out of the global link styling (accent colour, bold, hover
+     brightness) so this reads as a surface row like the Account button, not a
+     text link — children set their own colour/weight. */
+  color: var(--color);
+  font-weight: normal;
   transition: background 0.12s ease;
 }
 
 .community-card:hover {
   background: var(--surface-3);
+  /* Override the global `a:hover` brightness filter, which otherwise dims the
+     whole card on top of the surface change (the Account button, a <button>,
+     never gets it). */
+  filter: none;
 }
 
 .community-card__tile {
