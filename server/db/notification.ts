@@ -68,7 +68,7 @@ export const listNotifications = async (
       day: [r.y, r.m, r.d] as [number, number, number],
       createdAt: Number(r.created),
       read: !!r.read,
-      superseded: false, // filled in below for reclaimed lost-tops
+      reclaimed: null, // filled in below for reclaimed lost-tops
     };
     if (r.kind === "lost_top") {
       return [{ ...base, kind: "lost_top", data: data as LostTopData }];
@@ -79,7 +79,7 @@ export const listNotifications = async (
     return []; // unknown kind (forward-compat): skip
   });
 
-  // A "lost top" is superseded once the viewer holds (or ties) the top of that
+  // A "lost top" is reclaimed once the viewer holds (or ties) the top of that
   // day's PB board again — computed live from the current field, so a re-pass
   // un-strikes it without any stored flag to keep in sync. Only lost-tops can be.
   const lostIterations = [
@@ -88,22 +88,26 @@ export const listNotifications = async (
     ),
   ];
   if (lostIterations.length === 0) return notifs;
-  const held = await heldTopIterations(user, lostIterations);
+  const reclaimed = await reclaimedIterations(user, lostIterations);
   return notifs.map((n) =>
-    n.kind === "lost_top" && held.has(n.iteration)
-      ? { ...n, superseded: true }
+    n.kind === "lost_top" && reclaimed.has(n.iteration)
+      ? { ...n, reclaimed: reclaimed.get(n.iteration)! }
       : n
   );
 };
 
-// Of the given iterations, the subset where `user` currently holds or ties the
-// top of the PB board — their best build equals the iteration's best build.
-// (Best build = MAX(time) over non-void runs, matching getIterationBests, the
-// same field the lost-top decision reads.) A tie counts as reclaimed: a strict
-// pass is what cost the top, so getting back level restores it.
-const heldTopIterations = (user: string, iterations: number[]) =>
-  sql<{ iteration: number }[]>`
-    SELECT b.iteration iteration
+// Of the given iterations, those where `user` currently holds or ties the top of
+// the PB board — their best build equals the iteration's best build — tagged
+// "solo" (outright top) or "tied" (shares the top with someone). (Best build =
+// MAX(time) over non-void runs, matching getIterationBests, the same field the
+// lost-top decision reads.) A tie counts as reclaimed: a strict pass is what
+// cost the top, so getting back level restores it.
+const reclaimedIterations = (user: string, iterations: number[]) =>
+  sql<{ iteration: number; tied: number }[]>`
+    SELECT
+      b.iteration iteration,
+      (MAX(CASE WHEN b.user <> ${user} THEN b.t END) >=
+        MAX(CASE WHEN b.user = ${user} THEN b.t END)) tied
     FROM (
       SELECT iteration, user, MAX(time) t
       FROM run
@@ -112,7 +116,11 @@ const heldTopIterations = (user: string, iterations: number[]) =>
     ) b
     GROUP BY b.iteration
     HAVING MAX(CASE WHEN b.user = ${user} THEN b.t END) >= MAX(b.t);
-  `.then((r) => new Set(r.map((x) => x.iteration)));
+  `.then((rows) =>
+    new Map(
+      rows.map((r) => [r.iteration, r.tied ? "tied" : "solo"] as const),
+    )
+  );
 
 export const unreadCount = (user: string) =>
   sql<{ count: number }[]>`

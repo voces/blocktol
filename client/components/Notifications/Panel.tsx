@@ -47,8 +47,8 @@ const Item = (
   { item, onOpen }: { item: NotificationItem; onOpen: () => void },
 ) => {
   const { title, body } = notificationText(item);
-  const superseded = item.superseded;
-  const accent = superseded
+  const reclaimed = item.reclaimed;
+  const accent = reclaimed
     ? null
     : item.kind === "lost_top"
     ? "var(--gold)"
@@ -74,7 +74,7 @@ const Item = (
     <button
       type="button"
       class={"notif-card tapc" + (item.read ? "" : " notif-card--unread") +
-        (superseded ? " notif-card--superseded" : "")}
+        (reclaimed ? " notif-card--reclaimed" : "")}
       onClick={onOpen}
     >
       <span
@@ -88,8 +88,8 @@ const Item = (
         <span class="notif-card__title">{title}</span>
         <span class="notif-card__text">{body}</span>
         {detail && <span class="notif-card__detail mono">{detail}</span>}
-        {superseded && (
-          <span class="notif-card__tag">
+        {reclaimed && (
+          <span class={"notif-card__tag notif-card__tag--" + reclaimed}>
             <Check />
             Reclaimed
           </span>
@@ -129,10 +129,10 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
     onClose();
   };
 
-  // "Hide reclaimed" drops superseded cards; the chips then scope by kind. Counts
+  // "Hide reclaimed" drops reclaimed cards; the chips then scope by kind. Counts
   // reflect what each chip would show (so they match the hide toggle).
-  const anyReclaimed = items.some((n) => n.superseded);
-  const visible = hideR ? items.filter((n) => !n.superseded) : items;
+  const anyReclaimed = items.some((n) => n.reclaimed);
+  const visible = hideR ? items.filter((n) => !n.reclaimed) : items;
   const countFor = (f: NotifFilter) =>
     f === "all" ? visible.length : visible.filter((n) => n.kind === f).length;
 
