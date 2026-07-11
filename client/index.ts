@@ -14,16 +14,24 @@ initSettings();
 // api.prime). Skipped mid-onboarding (the app defers its fetch then anyway)
 // and while a sign-in link is pending (the gate must resolve identity first —
 // priming would bake in the wrong user).
+// A `/YYYYMMDD` boot restores that day, not today (see store/notifNav.ts). The
+// primed pool is keyed by method name only, so the day-link's own first
+// getBoard / standings call would otherwise consume TODAY's primed response and
+// stage today instead — so skip those two today-primes on a day-link boot and
+// let the deep-link fetch the day for real.
+const dayLinkBoot = /^\/\d{8}$/.test(location.pathname);
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   prime("getDailySummary", { timeZone: getTimeZone() });
   prime("getProfile", {});
-  prime("standings", { timeZone: getTimeZone() });
-  // Today's free-play board, so a boot onto a finished daily stages behind the
-  // result card with no round trip at "keep playing". `soft` makes an unfinished
-  // daily a quiet { incomplete } rather than a 403 (see getBoard); showBoard
-  // discards that and fetches for real, so priming can never wedge a later
-  // stage.
-  prime("getBoard", { timeZone: getTimeZone(), soft: true });
+  if (!dayLinkBoot) {
+    prime("standings", { timeZone: getTimeZone() });
+    // Today's free-play board, so a boot onto a finished daily stages behind the
+    // result card with no round trip at "keep playing". `soft` makes an
+    // unfinished daily a quiet { incomplete } rather than a 403 (see getBoard);
+    // showBoard discards that and fetches for real, so priming can never wedge a
+    // later stage.
+    prime("getBoard", { timeZone: getTimeZone(), soft: true });
+  }
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);

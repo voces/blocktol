@@ -22,7 +22,7 @@ import {
   initPushChannel,
   startNotificationsPolling,
 } from "../store/notifications.ts";
-import { consumeDeepLink } from "../store/notifNav.ts";
+import { consumeDeepLink, entryIsDayLink } from "../store/notifNav.ts";
 import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
@@ -160,8 +160,10 @@ export const App = () => {
       if (ret.currentRun) return;
       // The summary auto-starts the daily server-side and returns it as
       // currentRun; this explicit start is only the fallback for when that
-      // insert failed.
-      if (ret.ranked.length < 3) startBoardRun("daily");
+      // insert failed. Skip it when we booted onto a day link — staging today
+      // here would steal the board from the linked day (the run still exists
+      // server-side; navigating home stages it).
+      if (!entryIsDayLink && ret.ranked.length < 3) startBoardRun("daily");
     }).catch(() => {
       setDisconnected(true);
       setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);

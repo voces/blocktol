@@ -27,6 +27,13 @@ export const viewReady = signal(false);
 const entryPath = location.pathname;
 const entrySearch = location.search;
 
+// Whether we booted onto a `/YYYYMMDD` day link — known synchronously at import,
+// so boot-time today-staging (the daily auto-start / resume / finished-board
+// prime) can bow out and let consumeDeepLink stage the linked day without a
+// race. A plain constant, not the effect-set `arrivedViaDeepLink`, so the gate
+// is reliable no matter when each boot path runs.
+export const entryIsDayLink = /^\/(\d{4})(\d{2})(\d{2})$/.test(entryPath);
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
 // Reflect the current view in the URL (replaceState — no history entry, so Back
@@ -105,7 +112,12 @@ export const consumeDeepLink = async () => {
   arrivedViaDeepLink.value = true;
   try {
     const s = await fetchStandingsForDate(year, month, day);
-    if (!s) return;
+    // The link didn't resolve to a day — fall back to today (boot's own
+    // today-staging stepped aside for the link, so nothing else will).
+    if (!s) {
+      showBoard();
+      return;
+    }
     if (sort) setStandingsSort(sort);
     // Always stage the day's board; only reopen the sheet when the link says it
     // was open (the view sync then keeps the URL honest as you interact). Awaited
@@ -117,7 +129,7 @@ export const consumeDeepLink = async () => {
       if (kind) markReadForDay(s.iteration, kind);
     }
   } catch {
-    // leave the app on its default landing
+    showBoard(); // same fallback to today on error
   } finally {
     viewReady.value = true;
   }
