@@ -173,8 +173,12 @@ Other invariants:
   (`getBoard` gates on it), and since "today" is the latest day, that also
   unlocks every past day for replay.
 - `standing(time, min, best)` (`common/standing.ts`) is the one shared
-  position-in-field formula used by every surface; `min` is the unobstructed
-  floor, stored on the iteration.
+  position-in-field formula used by every surface; `min` is the time of the base
+  board's unobstructed shortest path, stored on the iteration. It's a
+  _practical_ floor, not a strict one: `findPath` minimizes distance, not time,
+  so a maze that reroutes the runner clear of a fixed thunder's slow can in
+  principle come in under it (see `scripts/comparePathing.ts`) — `standing`
+  clamps a below-`min` time to 0.
 - **Identity / move / merge:** the UUID in the `authorization` header _is_ the
   credential; ids are not secrets. "Move to device" issues a `/login/:id` (or
   `/l/:id`) link/QR; possessing two ids authorizes folding them
