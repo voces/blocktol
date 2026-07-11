@@ -28,8 +28,8 @@ const formatter = (
 };
 
 export type FormatOptions = {
-  // Fraction-digit bounds, kept per-call rather than baked in: notifications
-  // show one decimal, the board two.
+  // Fraction-digit bounds, kept per-call rather than baked in: the board and
+  // notifications show two decimals, share/inline text a variable count.
   min?: number;
   max?: number;
   // A specific locale for server-rendered copy; omit on the client so the
@@ -53,8 +53,8 @@ export const formatDecimal = (
 // ("35.10" / "35,10") — the "s" stays in the caller's markup so the board keeps
 // it a separately styled span. Grouping is off: times sit in mono-aligned
 // columns a thousands separator would break (and never reach thousands anyway).
-// Two decimals by default; notifications pass { min: 1, max: 1 }, share/inline
-// text passes { min: 0 } to keep its variable-precision look.
+// Two decimals by default (the board and notifications); share/inline text
+// passes { min: 0 } to keep its variable-precision look.
 export const formatSeconds = (
   value: number,
   options: FormatOptions = {},
