@@ -1,7 +1,40 @@
 import { is } from "../../../common/typeguards.ts";
 import { offsets } from "../../../common/constants.ts";
-import { findPath, newGrid } from "../../../common/pathing.ts";
+import {
+  findPath,
+  newGrid,
+  pathDuration,
+  Slow,
+} from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
+
+export type LocalRun = { path: Point[]; duration: number; slows: Slow[] };
+
+/**
+ * Compute the runner's path and time from the current grid, client-side, with
+ * the same engine (`findPath` + `pathDuration`) the server runs — so the preview
+ * equals exactly what the server would accept and time. This is what lets a
+ * build update the board with no round trip: free play never contacts the server
+ * mid-build at all, and a ranked build shows its path instantly while its save
+ * is debounced. `thunders` is every thunder on the board (fixed + player), the
+ * same set the server passes. Returns undefined for a momentarily path-less
+ * state (mid-drag illegal placement); the caller keeps the prior run then.
+ */
+export const localRun = (
+  grid: boolean[][],
+  checkpoint: Point,
+  thunders: ReadonlyArray<Point>,
+): LocalRun | undefined => {
+  let path: ReturnType<typeof findPath>;
+  try {
+    path = findPath(grid, checkpoint);
+  } catch {
+    return undefined;
+  }
+  if (!path) return undefined;
+  const [duration, slows] = pathDuration(path, thunders);
+  return { path, duration, slows };
+};
 
 export const isTouchSource = is.object({
   sourceCapabilities: is.object({ firesTouchEvents: is.const(true) }),

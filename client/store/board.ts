@@ -92,6 +92,23 @@ export const setBoardHandlers = (h: Handlers) => {
 let seq = 0;
 
 /**
+ * Claim the board token without issuing a request. Free play's first placement
+ * opens a purely-local run (no startRun), so it must still take the token or an
+ * in-flight re-stage fired just before the placement would land and clobber the
+ * fresh build.
+ */
+export const claimBoard = () => {
+  ++seq;
+};
+
+/**
+ * The current board token. A deferred re-stage (free play awaiting its commit
+ * before showing the next board) captures this and bails if it advanced — i.e.
+ * the player navigated away while the commit was still landing.
+ */
+export const boardSeq = () => seq;
+
+/**
  * Stage a board for free play (today's when `iteration` is omitted). A cached
  * iteration stages instantly; the response re-stages with fresh
  * bests/attempts. Resolves true if this request staged the board, false if a

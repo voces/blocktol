@@ -2,6 +2,7 @@ import { h, JSX } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { showBoard, startBoardRun } from "../../store/board.ts";
 import { Timer } from "../Timer.tsx";
+import { clearFreePlay } from "./freePlay.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { RunClock, VerdictPill } from "./RunClock.tsx";
 
@@ -89,11 +90,13 @@ export const Hud = () => {
   };
 
   // Free-play only: re-stage a fresh board, discarding the in-progress build.
-  // A free-play run is void until it executes (see commitRun), so simply
-  // re-staging abandons it — no explicit void call needed. The board is
-  // cached, so the reset is instant.
+  // Free play never persists to the server until it executes, so abandoning is
+  // just dropping the client-side record and re-staging — but that record must
+  // go FIRST, or the re-stage would resume the very build we're discarding. The
+  // board is cached, so the reset is instant.
   const onReset = () => {
     if (iteration === undefined) return;
+    clearFreePlay();
     showBoard(iteration);
   };
   // Shown mid-round for free play only: after the first placement opens the run

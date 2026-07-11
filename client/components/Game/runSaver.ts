@@ -44,6 +44,11 @@ let latest: Save | null = null;
 let inFlight = false;
 let attempt = 0;
 let retryTimer = -1;
+// Trailing-debounce timer: a burst of placements collapses to one save instead
+// of one-per-placement. Only ranked builds use this saver now (free play persists
+// locally), and the endgame stays per-placement — see saveRun's `immediate`.
+let debounceTimer = -1;
+const DEBOUNCE_MS = 2_000;
 // Bumped by reset/finalize; an in-flight response from a previous generation
 // is ignored so a late verdict can't mutate a board it no longer describes.
 let gen = 0;
@@ -103,12 +108,17 @@ const flush = () => {
 
 // Queue the build's current maze for persistence (replacing any older
 // unconfirmed save). A fresh user action also supersedes a pending retry
-// backoff — send now.
-export const saveRun = (save: Save) => {
+// backoff. Normally the send is debounced so a burst of placements collapses to
+// one save; `immediate` (passed when the clock is low) sends now, so the maze the
+// run will execute is server-confirmed before the 60s window closes — the
+// debounce never widens the existing window-edge race.
+export const saveRun = (save: Save, immediate = false) => {
   latest = save;
   clearTimeout(retryTimer);
+  clearTimeout(debounceTimer);
   attempt = 0;
-  flush();
+  if (immediate) flush();
+  else debounceTimer = setTimeout(flush, DEBOUNCE_MS);
 };
 
 // Drop all pending work and ignore any in-flight response. For board changes
@@ -120,14 +130,20 @@ export const resetRunSaver = () => {
   inFlight = false;
   attempt = 0;
   clearTimeout(retryTimer);
+  clearTimeout(debounceTimer);
 };
 
-// The run is starting: nothing unconfirmed can make it in anymore. Cancels
-// everything and reports whether an unconfirmed save existed — if so, the
-// caller snaps the board back to the accepted maze so what animates matches
-// what the server executes.
-export const finalizeRunSaver = () => {
-  const unconfirmed = latest !== null || inFlight;
-  resetRunSaver();
-  return unconfirmed;
+// The run is starting: send the pending maze immediately (bypassing the
+// debounce) so the server's row matches what is about to execute. It does NOT
+// cancel — canceling would drop a debounced edit the player hasn't waited out
+// (tapping "Ready?" mid-build), snapping the board back to the last confirmed
+// maze. The in-flight generation is deliberately kept: the flush's response
+// still reconciles the revert target, or — if the 60s window has already closed
+// — comes back expired so the caller's onExpired snaps the board to the last
+// accepted maze. resetRunSaver at runFinish then abandons anything still pending.
+export const flushRunSaver = () => {
+  clearTimeout(debounceTimer);
+  clearTimeout(retryTimer);
+  attempt = 0;
+  flush();
 };

@@ -192,6 +192,81 @@ Deno.test({
 });
 
 Deno.test({
+  name: "commit-only free play inserts one non-void run with the server's time",
+  ignore: !live,
+  fn: async () => {
+    const user = await testUser();
+    const req = authed(user);
+    try {
+      const iteration = await pastIteration();
+      const data = await getIteration(iteration);
+      const cells = freeCells(data, 2);
+      const expected = validateRun(data, cells);
+      assert(expected.ok);
+
+      // The current client: no startRun/updateRun — the whole maze arrives at
+      // commit with a client-generated id.
+      const committed = await commitRun.handler(
+        { iteration, blocks: cells, clientId: crypto.randomUUID() },
+        req,
+      );
+      assert(!("error" in committed), "commit-only free play should succeed");
+
+      const rows = await runRows(user);
+      assertEquals(rows.length, 1, "one row, inserted at commit");
+      assertEquals(Number(rows[0].void), 0, "inserted already non-void");
+      assertEquals(Number(rows[0].ranked), 0, "free play is never ranked");
+      assertEquals(Number(rows[0].daily), 0, "free play never counts as daily");
+      assertEquals(
+        rows[0].time,
+        expected.duration,
+        "the server recomputes the time from the maze",
+      );
+      assertEquals(deserializeRun(rows[0].data).length, cells.length);
+    } finally {
+      await cleanup(user);
+    }
+  },
+});
+
+Deno.test({
+  name: "a free-play commit is idempotent on client_id (deploy-retry safe)",
+  ignore: !live,
+  fn: async () => {
+    const user = await testUser();
+    const req = authed(user);
+    try {
+      const iteration = await pastIteration();
+      const data = await getIteration(iteration);
+      const [cell] = freeCells(data, 1);
+      const clientId = crypto.randomUUID();
+
+      // The same commit twice — as a retry across a dropped connection would —
+      // must leave exactly one row; a fresh id makes a genuinely new run.
+      await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
+      await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
+      assertEquals(
+        (await runRows(user)).length,
+        1,
+        "a retried commit with the same id inserts nothing new",
+      );
+
+      await commitRun.handler(
+        { iteration, blocks: [cell], clientId: crypto.randomUUID() },
+        req,
+      );
+      assertEquals(
+        (await runRows(user)).length,
+        2,
+        "a different id is a new run",
+      );
+    } finally {
+      await cleanup(user);
+    }
+  },
+});
+
+Deno.test({
   name: "a save after the window reports expired and persists nothing (1c)",
   ignore: !live,
   fn: async () => {

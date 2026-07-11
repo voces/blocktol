@@ -201,6 +201,25 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `pinned` tinyint(1) NOT NULL DEFAULT 0;",
   },
+  {
+    version: 8,
+    name: "run-client-id",
+    // Free play now commits in a single INSERT. It no longer calls startRun /
+    // updateRun — the client builds and times the 60s window locally and only
+    // touches the server once, at execution (see db/run.ts insertFreePlayRun and
+    // the client run loop). With no prior row to flip non-void, a lost-response
+    // retry of that commit could duplicate the run, so the commit carries a
+    // client-generated per-attempt id and the INSERT is guarded on it
+    // (NOT EXISTS) — making a retried free-play commit idempotent, the same
+    // safety startRun/updateRun get from their own dedupes.
+    //
+    // NULL for every legacy row, for ranked runs (which still commit on build),
+    // and for free-play runs written by old cached clients through the legacy
+    // flip-void path. IF NOT EXISTS keeps it safe if added out of band. A UUID is
+    // 36 chars; 64 leaves room. MariaDB dialect.
+    up:
+      "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `client_id` varchar(64) NULL DEFAULT NULL;",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──
