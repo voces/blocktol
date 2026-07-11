@@ -1,4 +1,5 @@
 import { is } from "../../common/typeguards.ts";
+import { reportError } from "../util/newrelic.ts";
 import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
 import { getBoard } from "./iteration/board.ts";
@@ -55,6 +56,7 @@ export type BlocktolApi = {
 };
 
 const isStatusObj = is.object({ status: is.number });
+const isErrorObj = is.object({ error: is.unknown });
 
 export const api: Handler<"method"> = async (req, { method }) => {
   if (!(method in handlers)) {
@@ -75,5 +77,20 @@ export const api: Handler<"method"> = async (req, { method }) => {
   const output = await handler.handler(result.data as any, req);
   let status = 200;
   if (isStatusObj(output)) status = output.status;
+  // A handler that returns a 5xx (e.g. a DB write that failed) surfaces a real
+  // server fault without throwing — the Router catch never sees it — so report
+  // it here. 4xxs are expected client faults (bad input, auth, expired window)
+  // and stay unreported.
+  if (status >= 500) {
+    reportError({
+      source: "server",
+      message: `handler ${method} failed`,
+      attributes: {
+        method,
+        status,
+        error: isErrorObj(output) ? output.error : undefined,
+      },
+    });
+  }
   return Response.json(output, { status });
 };

@@ -81,10 +81,22 @@ const flush = () => {
     if (g !== gen) return;
     inFlight = false;
     // Network failure: retry the latest maze with backoff. After the schedule
-    // runs dry, give up silently — the board stays optimistic and finalize()
-    // reconciles it at run start.
+    // runs dry, give up — the board stays optimistic and finalize() reconciles
+    // it at run start (the visible "blocks reverted"). Report that abandonment
+    // so these recovery failures are no longer invisible: this is exactly the
+    // block-revert incident we otherwise had no signal for.
     const delay = BACKOFF_MS[attempt++];
-    if (delay === undefined) return;
+    if (delay === undefined) {
+      api.reportClientError({
+        message: "run save abandoned after retries",
+        data: {
+          iteration: save.iteration,
+          blocks: save.blocks.length,
+          attempt,
+        },
+      }).catch(() => {});
+      return;
+    }
     retryTimer = setTimeout(flush, delay);
   });
 };

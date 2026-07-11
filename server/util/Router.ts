@@ -1,3 +1,4 @@
+import { reportError } from "./newrelic.ts";
 import { UserError } from "./UserError.ts";
 
 type Method =
@@ -120,9 +121,16 @@ export class Router implements AbstractRouter {
       return new Response("Not found", { status: 404 });
     } catch (err: unknown) {
       console.error(err);
+      // A UserError is an expected 400 (bad input) — not something to page on.
       if (typeof err === "object" && err instanceof UserError) {
         return Response.json({ error: err }, { status: 400 });
       }
+      reportError({
+        source: "server",
+        message: "unhandled exception",
+        error: err,
+        attributes: { method: request.method, url: request.url },
+      });
       return Response.json({ error: "unhandled exception" }, { status: 500 });
     }
   }

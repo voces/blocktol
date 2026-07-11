@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { log } from "../util/logging.ts";
+import { reportError } from "../util/newrelic.ts";
+import { getUserIdMaybe } from "../middleware/userid.ts";
 import { method } from "./apiHelpers.ts";
 
 const reportClientErrorBody = z.object({
@@ -10,6 +12,15 @@ const reportClientErrorBody = z.object({
 export const reportClientError = method(reportClientErrorBody)(
   ({ message, data }, req) => {
     log.error(req, `client error: ${message}`, data);
+    // Relay to NewRelic so client crashes are visible alongside server errors
+    // rather than only in this request's Deploy log. `data.error` (a stack or
+    // message the client lifted from the caught value) feeds the Errors Inbox.
+    reportError({
+      source: "client",
+      message,
+      error: data?.error,
+      attributes: { ...data, userId: getUserIdMaybe(req) },
+    });
     return {};
   },
 );
