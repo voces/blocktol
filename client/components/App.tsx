@@ -157,14 +157,6 @@ export const App = () => {
         setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
         return;
       }
-      console.log(
-        "DL: App boot summary ranked=",
-        ret.ranked.length,
-        "currentRun=",
-        !!ret.currentRun,
-        "entryIsDayLink=",
-        entryIsDayLink,
-      );
       if (ret.currentRun) return;
       // The summary auto-starts the daily server-side and returns it as
       // currentRun; this explicit start is only the fallback for when that

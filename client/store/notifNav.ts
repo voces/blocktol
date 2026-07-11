@@ -91,16 +91,6 @@ export const consumeDeepLink = async () => {
     : undefined;
 
   const m = entryPath.match(/^\/(\d{4})(\d{2})(\d{2})$/);
-  console.log(
-    "DL: consumeDeepLink entryPath=",
-    entryPath,
-    "entryIsDayLink=",
-    entryIsDayLink,
-    "match=",
-    !!m,
-    "board=",
-    boardParam,
-  );
   if (!m) {
     // No day in the path — a bare `?board` restores today's open sheet + sort.
     if (sort) {
@@ -122,7 +112,6 @@ export const consumeDeepLink = async () => {
   arrivedViaDeepLink.value = true;
   try {
     const s = await fetchStandingsForDate(year, month, day);
-    console.log("DL: standings resolved=", !!s, "iteration=", s && s.iteration);
     // The link didn't resolve to a day — fall back to today (boot's own
     // today-staging stepped aside for the link, so nothing else will).
     if (!s) {
@@ -133,18 +122,15 @@ export const consumeDeepLink = async () => {
     // Always stage the day's board; only reopen the sheet when the link says it
     // was open (the view sync then keeps the URL honest as you interact). Awaited
     // so the sync gate opens only once the day is actually staged.
-    const staged = await showBoard(s.iteration);
-    console.log("DL: showBoard(", s.iteration, ") staged=", staged);
+    await showBoard(s.iteration);
     if (boardParam) {
       requestStandings(s.iteration);
       // Tapping the push counts as reading its notification.
       if (kind) markReadForDay(s.iteration, kind);
     }
-  } catch (e) {
-    console.log("DL: consumeDeepLink error", e);
+  } catch {
     showBoard(); // same fallback to today on error
   } finally {
     viewReady.value = true;
-    console.log("DL: viewReady=true");
   }
 };

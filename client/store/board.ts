@@ -100,15 +100,6 @@ let seq = 0;
  */
 export const showBoard = (iteration?: number) => {
   const s = ++seq;
-  console.log(
-    "DL: showBoard called iteration=",
-    iteration,
-    "seq=",
-    s,
-    "cached=",
-    iteration !== undefined && boards.has(iteration),
-    new Error().stack?.split("\n").slice(2, 5).join(" <- "),
-  );
   const cached = iteration !== undefined ? boards.get(iteration) : undefined;
   if (cached) handlers.onStaged(cached);
   const req = () =>
@@ -145,13 +136,6 @@ export const startBoardRun = (
   block?: { x: number; y: number },
 ) => {
   const s = ++seq;
-  console.log(
-    "DL: startBoardRun iteration=",
-    iteration,
-    "seq=",
-    s,
-    new Error().stack?.split("\n").slice(2, 5).join(" <- "),
-  );
   return api.startRun({
     iteration,
     timeZone: getTimeZone(),
