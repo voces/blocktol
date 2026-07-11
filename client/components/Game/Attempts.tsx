@@ -222,31 +222,33 @@ export const Attempts = () => {
         <div class="section-title">Runs</div>
         {groups.length > 1 && (
           <div class="attempts__sort" role="group" aria-label="Sort runs">
-            {(["recent", "best"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                class={"attempts__sort-btn tapc" +
-                  (sort === mode ? " attempts__sort-btn--active" : "")}
-                aria-pressed={sort === mode}
-                title={sort === mode ? "Tap to reverse order" : undefined}
-                onClick={() => pickSort(mode)}
-              >
-                {mode === "recent" ? "Recent" : "Best"}
-                {sort === mode && (
-                  // The active tab spells out its direction in words rather than
-                  // an arrow: Recent shows relative "Xh ago" times, so the ago
-                  // count rises as recency falls — a bare ↓/↑ would be ambiguous.
-                  // Tapping the active tab flips it. Defaults are newest/longest.
-                  <span class="attempts__sort-dir">
-                    {" · "}
-                    {mode === "recent"
-                      ? (reversed ? "oldest" : "newest")
-                      : (reversed ? "shortest" : "longest")}
-                  </span>
-                )}
-              </button>
-            ))}
+            {(["recent", "best"] as const).map((mode) => {
+              const active = sort === mode;
+              // Each tab IS its direction: the word alone says what's on top and
+              // by which measure (newest/oldest = recency, longest/shortest =
+              // duration), so no arrow or "Best ·" prefix is needed. Recent shows
+              // relative "Xh ago" times where a ↓/↑ would be ambiguous anyway. The
+              // active tab reflects the live reversed state and flips on re-tap;
+              // an inactive tab shows its default (reversal only rides the active
+              // sort), so tapping it starts fresh from that default.
+              const rev = active && reversed;
+              const label = mode === "recent"
+                ? (rev ? "Oldest" : "Newest")
+                : (rev ? "Shortest" : "Longest");
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  class={"attempts__sort-btn tapc" +
+                    (active ? " attempts__sort-btn--active" : "")}
+                  aria-pressed={active}
+                  title={active ? "Tap to reverse order" : undefined}
+                  onClick={() => pickSort(mode)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
