@@ -28,10 +28,15 @@ const PinIcon = ({ filled }: { filled: boolean }) => (
 type Sort = "best" | "recent";
 
 // Persist the runs sort across visits. Defaults to best for anything unset or
-// unrecognized.
+// unrecognized. `reversed` flips whichever sort is active — tapping the active
+// tab again inverts it, so Best can show shortest-first and Recent oldest-first;
+// it applies to the CURRENT sort, so switching tabs resets to that sort's
+// default direction.
 const SORT_KEY = "runsSort";
+const DIR_KEY = "runsSortReversed";
 const storedSort = (): Sort =>
   localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
+const storedReversed = (): boolean => localStorage.getItem(DIR_KEY) === "1";
 
 // Order-independent key for a maze, so the row whose maze is currently on the
 // board can be matched however its blocks happen to be ordered.
@@ -81,11 +86,17 @@ export const Attempts = () => {
   } = useContext(GameStateContext);
   // Local-only ordering, remembered across visits. Defaults to best (longest)
   // first; "recent" orders by when each maze last ran. Sorting only — the merged
-  // rows are the same.
+  // rows are the same. Tapping the active tab flips its direction (`reversed`).
   const [sort, setSort] = useState<Sort>(storedSort);
+  const [reversed, setReversed] = useState<boolean>(storedReversed);
   const pickSort = (mode: Sort) => {
+    // Re-tapping the active sort inverts it; picking a different sort starts
+    // from that sort's default direction.
+    const nextReversed = mode === sort ? !reversed : false;
     localStorage.setItem(SORT_KEY, mode);
+    localStorage.setItem(DIR_KEY, nextReversed ? "1" : "0");
     setSort(mode);
+    setReversed(nextReversed);
   };
   const attempts = viewedAttempts ?? [];
 
@@ -156,10 +167,17 @@ export const Attempts = () => {
   );
   // The best time itself, so EVERY row that ties it is badged BEST — not just
   // the first one (these rows are distinct mazes that happen to share a time).
+  // Derived off the always-descending byDuration, so the BEST badge is unaffected
+  // by the chosen direction.
   const bestDuration = byDuration[0]?.attempt.duration;
-  const ordered = sort === "recent"
-    ? [...byMaze.values()].sort((a, b) => b.latest - a.latest)
-    : byDuration;
+  // Apply the chosen sort, then flip the whole order when reversed — Best goes
+  // shortest-first, Recent oldest-first.
+  const dir = reversed ? -1 : 1;
+  const ordered = [...byMaze.values()].sort((a, b) =>
+    sort === "recent"
+      ? dir * (b.latest - a.latest)
+      : dir * (b.attempt.duration - a.attempt.duration)
+  );
   // Pinned runs float to the top as the primary sort, keeping the chosen
   // best/recent order within each partition (Array.sort is stable). Only when
   // the full field is shown — mid-daily (simplified) the panel is inert and
@@ -211,9 +229,17 @@ export const Attempts = () => {
                 class={"attempts__sort-btn tapc" +
                   (sort === mode ? " attempts__sort-btn--active" : "")}
                 aria-pressed={sort === mode}
+                title={sort === mode ? "Tap to reverse order" : undefined}
                 onClick={() => pickSort(mode)}
               >
                 {mode === "recent" ? "Recent" : "Best"}
+                {sort === mode && (
+                  // The active tab shows its direction; tapping it again flips
+                  // the arrow. ↓ is the default (longest / newest first).
+                  <span class="attempts__sort-dir" aria-hidden="true">
+                    {reversed ? " ↑" : " ↓"}
+                  </span>
+                )}
               </button>
             ))}
           </div>

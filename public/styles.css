@@ -1040,6 +1040,11 @@ a:hover {
   color: var(--color);
 }
 
+.attempts__sort-dir {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
 .attempts__list {
   display: flex;
   flex-direction: column;
