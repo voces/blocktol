@@ -248,14 +248,16 @@ placement. Every placement recomputes the runner locally (`localRun` in
 by run type** (see the run lifecycle above). **Ranked** goes through
 `runSaver.ts` — a **trailing-edge queue of depth 1** (every save sends the full
 maze, newer saves coalesce, failures retry with backoff), now **debounced**
-except in the final seconds, and `finalize` at run start snaps the board to the
-last server-accepted maze so what animates equals what the server timed. **Free
-play** bypasses the saver entirely: `freePlay.ts` mints the per-attempt
-`client_id`, mirrors the maze to `localStorage` for reload-resume, and
-`commitRun` fires once at execution; `useInit` awaits that commit before
-re-staging so a slow (retrying) commit can't let the re-stage drop the run from
-recents. `useClock`/`RunClock` run the 60s/animation timing; `verdict.ts`
-computes the result.
+except in the final seconds. At run start `flushRunSaver` **sends** the pending
+maze immediately (rather than reverting to the last confirmed one — that would
+drop a debounced edit the player hasn't waited out, e.g. tapping "Ready?"
+mid-build); if the window has already closed the flush comes back expired and
+`onExpired` snaps the board back. **Free play** bypasses the saver entirely:
+`freePlay.ts` mints the per-attempt `client_id`, mirrors the maze to
+`localStorage` for reload-resume, and `commitRun` fires once at execution;
+`useInit` awaits that commit before re-staging so a slow (retrying) commit can't
+let the re-stage drop the run from recents. `useClock`/`RunClock` run the
+60s/animation timing; `verdict.ts` computes the result.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy

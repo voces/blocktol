@@ -33,7 +33,7 @@ import {
   transitionBlock,
 } from "./interaction.ts";
 import {
-  finalizeRunSaver,
+  flushRunSaver,
   resetRunSaver,
   setRunSaverHandlers,
 } from "./runSaver.ts";
@@ -341,20 +341,22 @@ export const useInit = () => {
   useEffect(() => {
     if (time !== 0 || !run) return;
 
-    // The run is now executing: nothing unconfirmed can make it in anymore.
-    // Cancel pending saves/retries, and if an edit never confirmed, snap back
-    // to the accepted maze (its blocks implode) so what animates — and what
-    // free play commits below — matches what the server executes.
-    const reverted = finalizeRunSaver();
-    if (reverted) revertToSaved();
-    const localBlocks = reverted
-      ? savedBlocksRef.current
-      : blocks.filter((b) => b.local);
+    // The run is now executing (the clock hit 0, or the player tapped Ready / R).
+    // The maze on the board is what animates and what the server must record.
+    const localBlocks = blocks.filter((b) => b.local);
 
-    // The run is now executing (the clock hit 0, or the player tapped start / R).
+    // Ranked: flush any debounced/pending save NOW so the server's run row
+    // matches what's about to execute. Crucially we do NOT revert to the last
+    // confirmed maze — that would drop edits still sitting in the debounce, which
+    // is exactly what tapping "Ready?" mid-build triggers. If the 60s window has
+    // already closed the flush comes back expired and onExpired snaps the board
+    // to the last accepted maze (async). Free play persists locally and commits
+    // just below instead.
+    if (!freePlay) flushRunSaver();
+
     // A free-play run counts only from this point — commit it non-void so it
-    // lands in the panel and best; leaving before now kept it void (abandoned).
-    // A daily attempt is already committed on build, so it's left alone.
+    // lands in the panel and best; leaving before now kept it uncommitted
+    // (abandoned). A daily attempt is already committed on build.
     if (freePlay && iteration !== undefined) {
       const maze = localBlocks.map((b) =>
         b.thunder ? { x: b.x, y: b.y, thunder: true } : { x: b.x, y: b.y }
