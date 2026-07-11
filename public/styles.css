@@ -1190,14 +1190,17 @@ a:hover {
 }
 
 .attempts__pin:hover {
-  background: color-mix(in srgb, var(--band) 14%, transparent);
+  background: color-mix(in srgb, var(--color) 12%, transparent);
   color: var(--color);
 }
 
-/* A pinned row: the pin fills and takes the accent, so it reads as active
-   without hunting for it. */
+/* Pinned state is carried by the icon's FILL (solid vs outline) plus full-
+   strength neutral foreground — deliberately no accent hue. The row is already
+   saturated with meaning-bearing colour (the standing band, the Daily chip, the
+   supreme/record badges), so the pin stays monochrome and doesn't add a colour
+   that competes — or, at --accent-bright, reads as kin to the Daily chip. */
 .attempts__pin--active {
-  color: var(--accent-bright);
+  color: var(--color);
 }
 
 /* Where a pointer can hover, keep the affordance quiet until the row is engaged
