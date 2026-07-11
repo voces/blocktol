@@ -2,7 +2,7 @@ import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { findPath } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
-import { startBoardRun } from "../../store/board.ts";
+import { claimBoard } from "../../store/board.ts";
 import {
   placingBlock,
   thunderHover,
@@ -10,13 +10,21 @@ import {
   transitionBlock,
 } from "./interaction.ts";
 import { saveRun } from "./runSaver.ts";
+import { beginFreePlay, persistFreePlay } from "./freePlay.ts";
 import {
   isBorderPoint,
   isInvalidMove,
   isTouchSource,
+  localRun,
   rebuildGrid,
 } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
+
+// Below this many seconds left, ranked saves go out immediately rather than
+// debounced (see saveRun) — the endgame stays per-placement so the executed maze
+// is server-confirmed before the window closes. Comfortably above DEBOUNCE_MS, so
+// a debounced save from earlier has always flushed by the time we cross it.
+const IMMEDIATE_SAVE_SECONDS = 3;
 
 export const useInputEnd = (svg: SVGSVGElement | null) => {
   const {
@@ -25,6 +33,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     grid,
     blocks,
     setBlocks,
+    setRun,
     power,
     setPower,
     setBricks,
@@ -34,22 +43,39 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     iteration,
     staged,
     setStaged,
+    setTime,
+    freePlay,
+    deadlineRef,
   } = useContext(GameStateContext);
 
   useEffect(() => {
-    // Apply a new block list: persist via the run saver (serialized, retried,
-    // reconciled by useInit's handlers), rebuild the pathing grid, and set
-    // state. Effectful work stays OUT of the setBlocks updater — updaters are
+    // Apply a new block list: update the board from the shared engine locally (so
+    // the runner path moves the instant a block lands — no round trip), then
+    // persist. Effectful work stays OUT of the setBlocks updater — updaters are
     // contractually pure, and a double-invoked updater would double-fire the
-    // save. `blocks` from the render closure is fresh: the effect re-registers
-    // on it, and each gesture applies at most one edit.
+    // save. `blocks` from the render closure is fresh: the effect re-registers on
+    // it, and each gesture applies at most one edit.
     const apply = (newBlocks: typeof blocks) => {
-      saveRun({
-        iteration: iteration ?? -1,
-        blocks: newBlocks.filter((b) => b.local),
-      });
       rebuildGrid(grid, checkpoint, newBlocks);
+      const localBlocks = newBlocks.filter((b) => b.local);
+      const r = localRun(grid, checkpoint, newBlocks.filter((b) => b.thunder));
+      if (r) setRun(r);
       setBlocks(newBlocks);
+      // Persistence diverges by mode. Free play keeps its state on the client
+      // (localStorage) until commit — no network mid-build. Ranked saves to the
+      // server, debounced, but immediately in the final seconds.
+      if (freePlay) {
+        persistFreePlay(
+          iteration ?? -1,
+          deadlineRef.current ?? Date.now(),
+          localBlocks,
+        );
+      } else {
+        saveRun(
+          { iteration: iteration ?? -1, blocks: localBlocks },
+          timeRef.current <= IMMEDIATE_SAVE_SECONDS,
+        );
+      }
     };
 
     // Remove a local block, refunding its brick (and power, if it was a
@@ -138,24 +164,21 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       } catch { /* do nothing */ }
 
       const newBlocks = [...blocks, { x, y, local: true }];
-      // Free play opens the run on this first placement: the block rides along
-      // with startRun rather than a separate updateRun. Every later placement
-      // (staged is now false) is a plain save.
+      // Free play opens the run on this first placement — locally, with no
+      // startRun. The client owns the 60s window (deadline) and mints the
+      // attempt's idempotency id; the server hears nothing until commit. Claim
+      // the board token so an in-flight re-stage fired just before this placement
+      // can't land and clobber the fresh build. `apply` then computes the path
+      // and persists locally, exactly like every later placement.
       if (staged) {
-        if (iteration !== undefined) {
-          // Routed through the board loader so this run takes the board
-          // token: an in-flight re-stage from just before the placement
-          // can't clobber the freshly opened run. Its response re-seeds
-          // the revert target via handleRun.
-          startBoardRun(iteration, { x, y });
-        }
-        rebuildGrid(grid, checkpoint, newBlocks);
-        setBlocks(newBlocks);
-      } else {
-        apply(newBlocks);
+        claimBoard();
+        beginFreePlay();
+        deadlineRef.current = Date.now() + 60_000;
+        setTime(60);
+        setStaged(false);
       }
+      apply(newBlocks);
       setBricks((bricks) => bricks - 1);
-      if (staged) setStaged(false);
 
       placingBlock.value = { ...placingBlock.peek(), placing: false };
     };
@@ -192,5 +215,6 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     blocks,
     iteration,
     staged,
+    freePlay,
   ]);
 };

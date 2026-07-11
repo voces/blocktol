@@ -91,6 +91,37 @@ export const commitRun = (user: string, iteration: number) =>
     LIMIT 1;
   `;
 
+// Free play's single-request commit: insert the executed run directly, non-void,
+// with the server-computed time. Free play no longer calls startRun/updateRun —
+// the client builds the maze and enforces the 60s window locally (see the client
+// run loop), so this is the only row a free-play attempt ever writes. void = FALSE
+// (it's committing because it executed), ranked = FALSE and daily = FALSE (free
+// play never counts as one of the day's three ranked attempts).
+//
+// sqlOnce + a NOT EXISTS guard on client_id makes the write idempotent: commitRun
+// is retryable now, so a retry after a lost response re-runs this exact INSERT and
+// the guard drops the duplicate. clientId is the client's per-attempt id.
+export const insertFreePlayRun = (
+  user: string,
+  iteration: number,
+  time: number,
+  blocks: (Point & { thunder?: boolean })[],
+  clientId: string,
+) =>
+  sqlOnce`
+    INSERT INTO run (user, iteration, time, data, void, daily, ranked, client_id)
+    SELECT ${user}, ${iteration}, ${time}, ${
+    serializeRun(blocks.map((b) => ({ ...b, player: true })))
+  }, FALSE, FALSE, FALSE, ${clientId}
+    FROM DUAL
+    WHERE NOT EXISTS (
+      SELECT 1 FROM run
+      WHERE user = ${user}
+        AND iteration = ${iteration}
+        AND client_id = ${clientId}
+    );
+  `;
+
 // Save the caller's in-progress build (latest run, within the 60s window).
 // Whether the save also commits comes off the run row itself: `ranked` was
 // recorded at start (see startRun), the only moment the timezone-aware daily

@@ -158,17 +158,37 @@ get these right, they encode the whole competitive model:
   else.
 - **`daily`** — the single _counted_ result among a user's ranked runs (the best
   one). Re-pointed as builds save (`updateCurrentRun`).
-- **`void`** — abandoned/not-yet-counted. Runs start void. A ranked attempt
-  clears void on build; a free-play run clears it only when it actually executes
-  (`commitRun`). Navigating away leaves a run void, so no explicit abandon is
-  needed for free play. Void runs are invisible to every board/standings/best
-  query.
+- **`void`** — abandoned/not-yet-counted. A **ranked** attempt is inserted at
+  `startRun` (void) and clears void on build (`updateCurrentRun`); navigating
+  away leaves it void. **Free play** is different: it makes _no server write
+  until it executes_ — the build is entirely client-side (see the run-type split
+  below), so there is no void free-play row to abandon; `commitRun` **inserts**
+  the run already non-void (`insertFreePlayRun`). Void runs are invisible to
+  every board/standings/best query.
 - **`pinned`** — a player's bookmark that floats a run to the top of their own
   Attempts panel. The panel merges runs that built the identical maze into one
   row, so pinning toggles the whole maze-group together.
 
 Other invariants:
 
+- **The run lifecycle splits by type, to keep request volume down and survive
+  deploys.** A **ranked** attempt keeps the server bookends: `startRun` (stamps
+  `ranked`, opens the authoritative 60s window) and per-build `updateRun`s — now
+  **debounced** in `runSaver.ts` (a burst of placements collapses to one save),
+  except the final seconds save immediately so the executed maze is confirmed
+  before the window closes. **Free play** makes _no_ server round trips during
+  the build: the client computes the path locally (`localRun`, the same engine
+  the server runs), enforces the 60s window itself, mirrors the in-progress maze
+  to `localStorage` (resume across reload — `freePlay.ts`), and touches the
+  server exactly once, at execution, via `commitRun`. That commit is a single
+  idempotent `INSERT` keyed by a client-generated `client_id` (migration v8), so
+  it is **retryable**: a connection dropped by a deploy retries onto a fresh
+  isolate and lands rather than losing the run. `commitRun` stays backwards
+  compatible — a legacy cached client that still
+  `startRun`+`updateRun`+bare-committed hits the old flip-void path (no
+  `blocks`). Trusting the client on free play is deliberate: it's post-ranked,
+  never feeds ELO, and the server still recomputes the time from the submitted
+  maze — only the 60s budget is client-enforced.
 - **Free play unlocks only after the day's three ranked attempts are spent**
   (`getBoard` gates on it), and since "today" is the latest day, that also
   unlocks every past day for replay.
@@ -203,9 +223,11 @@ successful response dispatches an event keyed by method; `error` is its own
 channel), which `hooks/useApiListener.ts` and the stores subscribe to. `prime()`
 stashes an in-flight boot response for the next call of that method to consume.
 Retries (transport failures only, never HTTP errors) are gated by a `RETRYABLE`
-allowlist — non-idempotent lifecycle writes
-(`startRun`/`commitRun`/`abandonRun`/`merge`, and `updateRun`, which has its own
-saver) are deliberately excluded.
+allowlist — non-idempotent lifecycle writes (`startRun`/`abandonRun`/`merge`,
+and `updateRun`, which has its own saver) are deliberately excluded. `commitRun`
+**is** retryable: its free-play `INSERT` is `client_id`-guarded (idempotent) and
+the legacy path is an idempotent flip-to-non-void, so a deploy-dropped commit
+can safely retry.
 
 **State — `@preact/signals`, not context** (writes bypass the render path):
 
@@ -221,12 +243,19 @@ saver) are deliberately excluded.
 
 **The game loop (`client/components/Game/`):** `useGameState` + `useInit` wire
 the board handlers; `interaction.ts`/`useInputStart`/`useInputEnd` handle
-placement; `runSaver.ts` persists the in-progress maze (a **trailing-edge queue
-of depth 1**: every save sends the full maze, newer saves coalesce, network
-failures retry with backoff, and `finalize` at run start tells the board to snap
-to the accepted maze so what animates equals what the server timed);
-`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
-result.
+placement. Every placement recomputes the runner locally (`localRun` in
+`helpers.ts`) so the board updates with no round trip; **persistence then splits
+by run type** (see the run lifecycle above). **Ranked** goes through
+`runSaver.ts` — a **trailing-edge queue of depth 1** (every save sends the full
+maze, newer saves coalesce, failures retry with backoff), now **debounced**
+except in the final seconds, and `finalize` at run start snaps the board to the
+last server-accepted maze so what animates equals what the server timed. **Free
+play** bypasses the saver entirely: `freePlay.ts` mints the per-attempt
+`client_id`, mirrors the maze to `localStorage` for reload-resume, and
+`commitRun` fires once at execution; `useInit` awaits that commit before
+re-staging so a slow (retrying) commit can't let the re-stage drop the run from
+recents. `useClock`/`RunClock` run the 60s/animation timing; `verdict.ts`
+computes the result.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy

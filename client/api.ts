@@ -42,10 +42,13 @@ const doFetch = (method: string, input: unknown) =>
 // and idempotent/last-write-wins writes. Deliberately EXCLUDED:
 //   - updateRun   — runSaver.ts owns its own coalescing retry+backoff; a second
 //                   layer here would fight it.
-//   - startRun / commitRun / abandonRun — run-lifecycle transitions; a lost
-//                   response after the server acted must not be silently redone.
+//   - startRun / abandonRun — run-lifecycle transitions; a lost response after
+//                   the server acted must not be silently redone.
 //   - merge       — destructive, one-shot.
 //   - reportClientError — retrying error reports risks amplifying a bad loop.
+// commitRun IS retryable: free play's commit carries a per-attempt clientId and
+// the server INSERT is guarded on it (NOT EXISTS), so a repeat is a no-op. Old
+// clients' bare commit is an idempotent flip-to-non-void, also safe to repeat.
 const RETRYABLE = new Set<keyof BlocktolApi>([
   "list",
   "getBoard",
@@ -63,6 +66,7 @@ const RETRYABLE = new Set<keyof BlocktolApi>([
   "subscribePush",
   "unsubscribePush",
   "setRunPinned",
+  "commitRun",
 ]);
 
 // Backoff before each retry (ms); its length is the retry count. Jitter is added

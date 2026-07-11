@@ -12,12 +12,20 @@ import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
   BoardData,
+  boardSeq,
   ingestBoard,
   setBoardHandlers,
   showBoard,
   startBoardRun,
 } from "../../store/board.ts";
-import { rebuildGrid } from "./helpers.ts";
+import { localRun, rebuildGrid } from "./helpers.ts";
+import {
+  awaitPendingCommit,
+  clearFreePlay,
+  freePlayClientId,
+  resumableFreePlay,
+  setPendingCommit,
+} from "./freePlay.ts";
 import {
   placingBlock,
   thunderHover,
@@ -202,6 +210,34 @@ export const useInit = () => {
       setOwnBest(data.ownBest);
 
       layout(data);
+
+      // Resume a free-play build left in progress on this exact board — same day,
+      // its local 60s window still open — from the client-side record (free play
+      // keeps no server state until commit, so a reload has nothing to fetch).
+      // Re-lay the saved blocks, restore the clock from the stored deadline, and
+      // drop `staged` so the run is live again. Nothing resumable (committed,
+      // expired, or a different day) leaves the fresh staged board untouched. The
+      // record mirrors every edit, so a mid-build re-stage just restores the same
+      // build.
+      const resume = resumableFreePlay(data.iteration, Date.now());
+      if (resume) {
+        const restored = resume.blocks.map((b) => ({ ...b, local: true }));
+        const merged = [...data.blocks.map((b) => ({ ...b })), ...restored];
+        setBlocks(merged);
+        savedBlocksRef.current = [];
+        setBricks(data.bricks - restored.length);
+        setPower(data.power - restored.filter((b) => b.thunder).length);
+        rebuildGrid(grid, data.checkpoint, merged);
+        const r = localRun(
+          grid,
+          data.checkpoint,
+          merged.filter((b) => b.thunder),
+        );
+        if (r) setRun(r);
+        setStaged(false);
+        deadlineRef.current = resume.deadline;
+        setTime(Math.max(0, Math.ceil((resume.deadline - Date.now()) / 1_000)));
+      }
     },
     [],
   );
@@ -284,7 +320,15 @@ export const useInit = () => {
       // as the board re-stages.
       if (freePlay) {
         setVerdict(undefined);
-        showBoard(iteration);
+        // Wait for this attempt's commit before re-staging, so getBoard's recents
+        // include the just-finished run rather than racing a slow (retrying)
+        // commit and dropping it from the panel. Normally the commit is already
+        // done, so this resolves immediately. Bail if the player navigated away
+        // while it was still landing (only possible when the commit is slow).
+        const token = boardSeq();
+        awaitPendingCommit().then(() => {
+          if (boardSeq() === token) showBoard(iteration);
+        });
         return;
       }
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
@@ -320,7 +364,28 @@ export const useInit = () => {
       // (free play only shows committed runs), and skip the panel row and any
       // celebration. It just runs out and re-stages.
       if (maze.length > 0) {
-        api.commitRun({ iteration });
+        // Commit-only: free play never started or updated a run on the server, so
+        // the entire executed maze goes in one idempotent write, keyed by the
+        // attempt's client id. The server recomputes the authoritative time from
+        // it (only the 60s budget was client-enforced). It's retryable — a
+        // connection dropped by a deploy retries onto a fresh isolate and lands —
+        // so the run can't silently vanish the way a one-shot commit could. Hold
+        // the promise so the re-stage below waits for it (see runFinish).
+        const commit = api.commitRun({
+          iteration,
+          blocks: maze,
+          clientId: freePlayClientId(),
+        });
+        // A commit that exhausts its retries is a real loss (a sustained outage):
+        // surface it rather than letting the run disappear silently, mirroring the
+        // run saver's abandonment report.
+        commit.catch(() =>
+          api.reportClientError({
+            message: "free-play commit failed after retries",
+            data: { iteration, blocks: maze.length },
+          }).catch(() => {})
+        );
+        setPendingCommit(commit);
         // Show the run in the Runs panel the instant it starts executing, rather
         // than waiting for the runner to finish and the board to re-stage.
         // Mirrors the server's mapAttempts shaping (your best run re-normalises
@@ -358,6 +423,9 @@ export const useInit = () => {
         const verdict = computeVerdict(run.duration, min, best, ownBest);
         if (verdict) setVerdict(verdict);
       }
+      // The attempt has executed — drop its local resume record either way (an
+      // empty maze committed nothing, but its in-progress state must not resume).
+      clearFreePlay();
     }
 
     game.dispatchEvent("runStart", run);
@@ -411,11 +479,13 @@ export const useInit = () => {
   // serializes saves and only reports verdicts for the current board
   // generation (see runSaver.ts), so these can act without re-checking.
   setRunSaverHandlers({
-    onAccepted: (blocks, r) => {
-      // The confirmed maze becomes the revert target; its recomputed path
-      // drives the board.
+    onAccepted: (blocks) => {
+      // The confirmed maze becomes the revert target. The DISPLAYED run is owned
+      // by apply()'s local compute (the same engine the server runs), not by this
+      // response: a debounced save can be a step behind the board, so echoing its
+      // older path here would snap the runner backwards. Update only the revert
+      // target — what a later expired/rejected save falls back to.
       savedBlocksRef.current = blocks;
-      setRun({ path: r.path, duration: r.duration, slows: r.slows });
     },
     onExpired: () => {
       // The server's 60s window closed before the save landed. Undo the edit
