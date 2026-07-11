@@ -234,10 +234,15 @@ export const Attempts = () => {
               >
                 {mode === "recent" ? "Recent" : "Best"}
                 {sort === mode && (
-                  // The active tab shows its direction; tapping it again flips
-                  // the arrow. ↓ is the default (longest / newest first).
-                  <span class="attempts__sort-dir" aria-hidden="true">
-                    {reversed ? " ↑" : " ↓"}
+                  // The active tab spells out its direction in words rather than
+                  // an arrow: Recent shows relative "Xh ago" times, so the ago
+                  // count rises as recency falls — a bare ↓/↑ would be ambiguous.
+                  // Tapping the active tab flips it. Defaults are newest/longest.
+                  <span class="attempts__sort-dir">
+                    {" · "}
+                    {mode === "recent"
+                      ? (reversed ? "oldest" : "newest")
+                      : (reversed ? "shortest" : "longest")}
                   </span>
                 )}
               </button>
