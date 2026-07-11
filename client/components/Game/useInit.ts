@@ -7,7 +7,7 @@ import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
 import { regradedIterations } from "../../store/notifications.ts";
-import { arrivedViaDeepLink } from "../../store/notifNav.ts";
+import { entryIsDayLink } from "../../store/notifNav.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import {
@@ -244,7 +244,11 @@ export const useInit = () => {
         // The resumed board seeds the cache too, so post-daily navigation
         // back to today stages instantly.
         ingestBoard({ ...currentRun, attempts });
-        return handleRun(currentRun);
+        // On a day-link boot, keep the bookkeeping but don't STAGE today's run —
+        // that would steal the board from the linked day. The cache seeded above
+        // lets navigating home resume it instantly.
+        if (!entryIsDayLink) return handleRun(currentRun);
+        return;
       }
 
       if (ranked.length === 3) {
@@ -255,10 +259,10 @@ export const useInit = () => {
         // spending the getBoard round trip at the close — and a boot onto a
         // finished daily doesn't sit on an empty board under the card.
         // (`iteration` is set post-attempt; undefined on boot = today.)
-        // Skip when we arrived via a day deep-link: today's card is hidden and
+        // Skip when we booted onto a day link: today's card is hidden and
         // staging today here would race consumeDeepLink's showBoard and steal
         // the board (and the URL) back from the linked day.
-        if (!arrivedViaDeepLink.value) showBoard(iteration);
+        if (!entryIsDayLink) showBoard(iteration);
         return;
       }
 
