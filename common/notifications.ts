@@ -147,12 +147,14 @@ export const formatNotifDate = (
     day: "numeric",
   });
 
-// Notification times read punchier at one decimal ("21.4s") than the board's two
-// — matching the mock — and the comparison is what matters, not the last digit.
+// Notification times render at two decimals ("21.43s"), matching the board and
+// every other time surface. One decimal read punchier but hid the very thing a
+// "passed you" line is about: a pass decided in the hundredths ("30.34s vs your
+// 30.30s") collapsed to two identical-looking values ("30.3s vs your 30.3s").
 // `locale` is set when the server renders push copy for a device; omitted in the
 // in-app panel, which renders in the viewer's own locale.
 export const formatNotifTime = (t: number, locale?: string): string =>
-  `${formatSeconds(t, { min: 1, max: 1, locale })}s`;
+  `${formatSeconds(t, { locale })}s`;
 
 // The single source of a notification's headline + one-line body, shared by the
 // lock-screen push text and the in-app panel so the two never drift. The panel

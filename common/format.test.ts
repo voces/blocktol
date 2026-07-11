@@ -13,7 +13,7 @@ Deno.test("formatSeconds pins two decimals by default", () => {
 
 Deno.test("formatSeconds localizes the decimal separator", () => {
   assertEquals(formatSeconds(35.1, { locale: "de-DE" }), "35,10");
-  // One decimal (the notifications surface) still localizes.
+  // A one-decimal bound still localizes the separator.
   assertEquals(
     formatSeconds(21.4, { min: 1, max: 1, locale: "de-DE" }),
     "21,4",
