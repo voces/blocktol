@@ -14,7 +14,8 @@ import {
   standingsSort,
   todayIteration,
 } from "../../store/standings.ts";
-import { syncViewUrl } from "../../store/notifNav.ts";
+import { dailyItems } from "../../store/dailyItems.ts";
+import { syncViewUrl, viewReady } from "../../store/notifNav.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
 import { formatSeconds } from "../../../common/format.ts";
 import { Chevron, Crown } from "./icons.tsx";
@@ -86,15 +87,24 @@ export const StandingsDock = () => {
   // carries the PERSISTED sort, not the effective one — restoring it re-runs
   // setStandingsSort, so writing the PB fallback of a ranked-less day would
   // silently flip your global preference; effectiveSort re-derives the display
-  // on restore just as it does live. The day comes from the standings response
-  // (server-consistent), so hold off until it's resolved rather than clobber the
-  // URL with a half-known view.
-  const day = isToday ? undefined : s?.day;
+  // on restore just as it does live.
+  //
+  // The day is read from the already-loaded calendar (dailyItems, keyed by
+  // iteration) so a click updates the bar SYNCHRONOUSLY, not after the standings
+  // fetch; the standings response is a fallback for a day the calendar hasn't
+  // paged in. Gated on viewReady so the boot mount doesn't clobber a deep link's
+  // entry URL before consumeDeepLink restores it.
+  const day = isToday
+    ? undefined
+    : (iteration !== undefined
+      ? dailyItems.value.get(iteration)?.daily
+      : undefined) ?? s?.day;
   const dayKey = day ? day.join("-") : "";
   useEffect(() => {
+    if (!viewReady.value) return;
     if (!isToday && !day) return;
     syncViewUrl(day, open, persistedSort);
-  }, [isToday, dayKey, open, persistedSort]);
+  }, [viewReady.value, isToday, dayKey, open, persistedSort]);
 
   const b = boardOf(s, sort);
   const leader = b?.rows[0];

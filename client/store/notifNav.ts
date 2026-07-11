@@ -15,6 +15,12 @@ import {
 // standings sheet still carry the numbers). Sticky for the session.
 export const arrivedViaDeepLink = signal(false);
 
+// Gate the view→URL sync until boot has settled the initial view (consumeDeepLink
+// has run and staged any deep-linked day). Without it the dock writes "/" on
+// first mount — before the deep link is restored — clobbering the entry URL and
+// flashing the bar back to root. Flipped true at every exit of consumeDeepLink.
+export const viewReady = signal(false);
+
 // Snapshot the entry URL at import — before the view can rewrite it via
 // syncViewUrl on first mount — so the boot deep-link reads where we actually
 // landed, not wherever the sync has since moved the bar.
@@ -84,6 +90,7 @@ export const consumeDeepLink = async () => {
       setStandingsSort(sort);
       requestStandings(undefined);
     }
+    viewReady.value = true;
     return;
   }
   const year = Number(m[1]);
@@ -101,8 +108,9 @@ export const consumeDeepLink = async () => {
     if (!s) return;
     if (sort) setStandingsSort(sort);
     // Always stage the day's board; only reopen the sheet when the link says it
-    // was open (the view sync then keeps the URL honest as you interact).
-    showBoard(s.iteration);
+    // was open (the view sync then keeps the URL honest as you interact). Awaited
+    // so the sync gate opens only once the day is actually staged.
+    await showBoard(s.iteration);
     if (boardParam) {
       requestStandings(s.iteration);
       // Tapping the push counts as reading its notification.
@@ -110,5 +118,7 @@ export const consumeDeepLink = async () => {
     }
   } catch {
     // leave the app on its default landing
+  } finally {
+    viewReady.value = true;
   }
 };
