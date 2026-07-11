@@ -1164,6 +1164,63 @@ a:hover {
   padding: 8px 2px;
 }
 
+/* Per-row pin toggle (pushes a run to the top of the panel). Sits at the row's
+   trailing edge; negative margins let its 30px tap target hang into the row's
+   padding without adding height. */
+.attempts__pin {
+  flex: none;
+  margin: -6px -5px -6px 2px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease, opacity 0.12s ease;
+}
+
+.attempts__pin svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.attempts__pin:hover {
+  background: color-mix(in srgb, var(--band) 14%, transparent);
+  color: var(--color);
+}
+
+/* A pinned row: the pin fills and takes the accent, so it reads as active
+   without hunting for it. */
+.attempts__pin--active {
+  color: var(--accent-bright);
+}
+
+/* Where a pointer can hover, keep the affordance quiet until the row is engaged
+   (or the run is already pinned / the button focused) — so it's present but not
+   loud. Touch has no hover, so there it stays visible at all times (the default
+   rule above). */
+@media (hover: hover) {
+  .attempts__pin:not(.attempts__pin--active) {
+    opacity: 0.32;
+  }
+
+  .attempts__row:hover .attempts__pin,
+  .attempts__pin:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* A pinned row lifts its own band edge a touch so the floated-to-top rows read
+   as a set, without a second accent colour fighting the band. */
+.attempts__row--pinned {
+  --band-card-edge: 46%;
+}
+
 /* Build-phase HUD strip above the board (see Hud.tsx). */
 .hud {
   display: flex;

@@ -8,6 +8,7 @@ import { discordInfo } from "./discord.ts";
 import { listIterations } from "./iteration/list.ts";
 import { abandonRun } from "./iteration/run/abandon.ts";
 import { commitRun } from "./iteration/run/commit.ts";
+import { setRunPinned } from "./iteration/run/pin.ts";
 import { startRun } from "./iteration/run/start.ts";
 import { updateRun } from "./iteration/run/update.ts";
 import { standings } from "./iteration/standings.ts";
@@ -31,6 +32,7 @@ const handlers = {
   updateRun,
   abandonRun,
   commitRun,
+  setRunPinned,
   best,
   standings,
   getProfile,
