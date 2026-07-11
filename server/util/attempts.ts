@@ -16,6 +16,9 @@ type AttemptRun = {
   // Absent for the ranked-three list (attemptRunsByIteration), which is ranked
   // by construction — falls back to position there.
   ranked?: boolean;
+  // Whether the player pinned this run (set by allRunsByIteration). Absent for
+  // the ranked-three list, which the panel never renders — defaults to false.
+  pinned?: boolean;
 };
 
 // Shape each attempt run into the client's attempt row: field percentile, the
@@ -51,6 +54,8 @@ export const mapAttempts = (
     // vs free play. Positional fallback for the ranked-three list, which carries
     // no flag but is ranked by construction.
     ranked: run.ranked ?? i < 3,
+    // The player's pin, floating this run to the top of their runs panel.
+    pinned: run.pinned ?? false,
     maze: run.maze,
     created: run.created,
   }));

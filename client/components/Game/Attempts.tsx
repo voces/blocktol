@@ -6,10 +6,24 @@ import {
   percentileBand,
   standingColor,
 } from "../../../common/percentileColor.ts";
-import { MessageMap } from "../../api.ts";
+import { api, MessageMap } from "../../api.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Attempt = MessageMap["getDailySummary"]["attempts"][number];
+
+// A filled (pinned) or outline (unpinned) pushpin — the per-row pin toggle. The
+// same glyph both states so only its fill changes, reading as one control.
+const PinIcon = ({ filled }: { filled: boolean }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      d="M9 3h6a1 1 0 0 1 .3 1.95L15 5v5l2.4 2.4a1 1 0 0 1 .3.7V14a1 1 0 0 1-1 1h-4v5a1 1 0 0 1-2 0v-5H7a1 1 0 0 1-1-1v-.9a1 1 0 0 1 .3-.7L9 10V5l-.3-.05A1 1 0 0 1 9 3Z"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      stroke-width={filled ? 0 : 1.6}
+      stroke-linejoin="round"
+    />
+  </svg>
+);
 
 type Sort = "best" | "recent";
 
@@ -56,8 +70,15 @@ const formatWhen = (created: number) => {
 // first, labelled by when they last ran. The best run carries the BEST — or
 // SUPREME, when it tops the field — badge. Clicking a row re-renders that maze.
 export const Attempts = () => {
-  const { viewedAttempts, viewMaze, attemptsRemaining, blocks, viewing } =
-    useContext(GameStateContext);
+  const {
+    viewedAttempts,
+    setViewedAttempts,
+    viewMaze,
+    attemptsRemaining,
+    blocks,
+    viewing,
+    iteration,
+  } = useContext(GameStateContext);
   // Local-only ordering, remembered across visits. Defaults to best (longest)
   // first; "recent" orders by when each maze last ran. Sorting only — the merged
   // rows are the same.
@@ -86,6 +107,11 @@ export const Attempts = () => {
       latest: number;
       supreme: boolean;
       ranked: boolean;
+      // Pinned if ANY run in the maze-group is pinned; `createds` collects every
+      // member's run time so a toggle flips them together (keeping the group's
+      // pinned state consistent however the merge later picks its representative).
+      pinned: boolean;
+      createds: number[];
     }
   >();
   for (const attempt of attempts) {
@@ -99,6 +125,8 @@ export const Attempts = () => {
       group.count++;
       group.supreme = group.supreme || attempt.supreme;
       group.ranked = group.ranked || attempt.ranked;
+      group.pinned = group.pinned || attempt.pinned;
+      group.createds.push(attempt.created);
       if (attempt.created > group.latest) {
         group.latest = attempt.created;
         group.attempt = attempt;
@@ -110,6 +138,8 @@ export const Attempts = () => {
         latest: attempt.created,
         supreme: attempt.supreme,
         ranked: attempt.ranked,
+        pinned: attempt.pinned,
+        createds: [attempt.created],
       });
     }
   }
@@ -122,9 +152,34 @@ export const Attempts = () => {
   // The best time itself, so EVERY row that ties it is badged BEST — not just
   // the first one (these rows are distinct mazes that happen to share a time).
   const bestDuration = byDuration[0]?.attempt.duration;
-  const groups = sort === "recent"
+  const ordered = sort === "recent"
     ? [...byMaze.values()].sort((a, b) => b.latest - a.latest)
     : byDuration;
+  // Pinned runs float to the top as the primary sort, keeping the chosen
+  // best/recent order within each partition (Array.sort is stable). Only when
+  // the full field is shown — mid-daily (simplified) the panel is inert and
+  // pinning is hidden, so nothing reorders under an in-progress run.
+  const groups = simplified
+    ? ordered
+    : [...ordered].sort((a, b) => Number(b.pinned) - Number(a.pinned));
+
+  // Toggle a maze-group's pin: optimistically flip every member locally (so the
+  // row jumps to/from the top at once), then persist. On failure, flip back.
+  // The panel's `iteration` is always set once runs are shown; guard anyway.
+  const togglePin = (createds: number[], next: boolean) => {
+    if (iteration === undefined) return;
+    const inGroup = new Set(createds);
+    const flip = (value: boolean) =>
+      setViewedAttempts((prev) =>
+        prev.map((a) => inGroup.has(a.created) ? { ...a, pinned: value } : a)
+      );
+    flip(next);
+    api.setRunPinned({ iteration, created: createds, pinned: next })
+      .then((r) => {
+        if (r && "error" in r) flip(!next);
+      })
+      .catch(() => flip(!next));
+  };
 
   // The maze currently on the board when reviewing a past run (viewMaze makes it
   // the local blocks) — used to flag its row as being viewed.
@@ -192,7 +247,8 @@ export const Attempts = () => {
                   class={"attempts__row band-card" +
                     (clickable ? " attempts__row--clickable tapc" : "") +
                     (supreme ? " attempts__row--glow" : "") +
-                    (isViewing ? " attempts__row--viewing" : "")}
+                    (isViewing ? " attempts__row--viewing" : "") +
+                    (group.pinned ? " attempts__row--pinned" : "")}
                   key={i}
                   style={{ "--band": band }}
                   title={clickable ? "View this maze" : undefined}
@@ -251,6 +307,24 @@ export const Attempts = () => {
                     )}
                   </div>
                   {isViewing && <span class="attempts__viewing">viewing</span>}
+                  {clickable && (
+                    <button
+                      type="button"
+                      class={"attempts__pin tapc" +
+                        (group.pinned ? " attempts__pin--active" : "")}
+                      aria-pressed={group.pinned}
+                      title={group.pinned ? "Unpin run" : "Pin run to top"}
+                      aria-label={group.pinned ? "Unpin run" : "Pin run to top"}
+                      onClick={(e) => {
+                        // Don't let the pin toggle also trigger the row's
+                        // view-this-maze click.
+                        e.stopPropagation();
+                        togglePin(group.createds, !group.pinned);
+                      }}
+                    >
+                      <PinIcon filled={group.pinned} />
+                    </button>
+                  )}
                 </div>
               );
             })}

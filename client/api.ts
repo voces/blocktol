@@ -62,6 +62,7 @@ const RETRYABLE = new Set<keyof BlocktolApi>([
   "markNotificationsRead",
   "subscribePush",
   "unsubscribePush",
+  "setRunPinned",
 ]);
 
 // Backoff before each retry (ms); its length is the retry count. Jitter is added

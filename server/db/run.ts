@@ -173,6 +173,34 @@ export const updateCurrentRun = (
     saved: !!r?.[2]?.[0]?.fresh,
   }));
 
+// Pin (or unpin) the caller's runs on an iteration. The runs panel merges runs
+// that built the identical maze into one row, so a pin toggles the whole
+// maze-group at once: the caller passes every member run's creation time
+// (`createds`, ms epoch) and they flip together, keeping the group's pinned
+// state consistent however the merge later picks its representative row.
+//
+// Matched on UNIX_TIMESTAMP(created) * 1000 — the same ms the client renders and
+// sends back (getUserStats reads `joined` the same way) — because the run table
+// has no primary key. `created` is second-precision, so this is an exact integer
+// match; a rare equal-second tie flips both, which is harmless (they'd merge into
+// one row anyway, or are indistinguishable to the player). Idempotent (sets an
+// absolute value), so the api layer may safely retry it.
+export const setRunPinned = (
+  user: string,
+  iteration: number,
+  createds: number[],
+  pinned: boolean,
+) => {
+  if (createds.length === 0) return Promise.resolve();
+  return sql`
+    UPDATE run
+    SET pinned = ${pinned}
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND UNIX_TIMESTAMP(created) * 1000 IN (${createds});
+  `;
+};
+
 // The user's best non-void build on an iteration EXCLUDING their most recent run
 // — i.e. their PB *before* the run that just landed. The lost-top check reads it
 // to tell whether the field's leaders were already ahead of this player before

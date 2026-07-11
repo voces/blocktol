@@ -347,6 +347,7 @@ export const useInit = () => {
             percent: scored(run.duration),
             supreme,
             ranked: false,
+            pinned: false,
             maze,
             created: Date.now(),
           },

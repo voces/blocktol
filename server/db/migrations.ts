@@ -185,6 +185,22 @@ export const migrations: Migration[] = [
     // runtime locale then. Short varchar: a canonicalised tag is well under 35.
     up: "ALTER TABLE `user` ADD COLUMN `locale` varchar(35) NULL DEFAULT NULL;",
   },
+  {
+    version: 7,
+    name: "run-pinned",
+    // Player-pinned runs. A pinned run floats to the top of the player's OWN
+    // runs panel (the Attempts list), ahead of the best/recent sort — it's a
+    // per-player bookmark of their runs, not a leaderboard concept. A single
+    // boolean per run row, default 0 (unpinned).
+    //
+    // The panel merges runs that built the identical maze into one ×N row, so a
+    // pin toggles every run in that maze-group together (see db/run.ts
+    // setRunPinned) — the flag stays consistent across the group however the
+    // merge later picks its representative. IF NOT EXISTS keeps it safe if the
+    // column was ever added out of band. MariaDB dialect.
+    up:
+      "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `pinned` tinyint(1) NOT NULL DEFAULT 0;",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

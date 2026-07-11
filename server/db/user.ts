@@ -205,8 +205,16 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
 // play — abandoned, incl. a never-run build — stays hidden so the panel isn't
 // padded with empty rows.
 export const allRunsByIteration = (user: string, iteration: number) =>
-  sql<{ time: number; data: string; created: string; ranked: number }[]>`
-    SELECT time, data, created, ranked
+  sql<
+    {
+      time: number;
+      data: string;
+      created: string;
+      ranked: number;
+      pinned: number;
+    }[]
+  >`
+    SELECT time, data, created, ranked, pinned
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
@@ -219,6 +227,7 @@ export const allRunsByIteration = (user: string, iteration: number) =>
       maze: deserializeRun(run.data),
       created: new Date(run.created).getTime(),
       ranked: !!run.ranked,
+      pinned: !!run.pinned,
     }))
   );
 
