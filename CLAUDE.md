@@ -78,9 +78,12 @@ diverge — the server's accepted time must equal what the client previewed.
 - `findPath` computes an **exact any-angle shortest path** via a visibility
   graph over obstacle corners (`cornerNodes`) with Dijkstra — deliberately _not_
   Theta*, which can settle for slightly-longer routes. `lineOfSight` is a
-  swept-square (Liang–Barsky) test for a 1×1 runner: grazing a corner is allowed
-  (rounds corners), but a diagonal gap between two blocks is zero-width and
-  impassable.
+  swept-square (Liang–Barsky) test for the 1×1 runner against blocked cells: a
+  segment may _touch_ an obstacle boundary (so a taut path can round a corner)
+  but must never cross a blocked cell's interior. Because two
+  diagonally-touching blocks leave only a zero-width gap, the runner cannot
+  squeeze between them — asserted by the "refuses to squeeze a unit runner
+  through a diagonal gap" test in `common/pathing.test.ts`.
 - `pathDuration` turns a path + thunders into `[time, slows]`. Thunders within
   radius 4 apply a temporary slow; the runner steps at `SPEED`. This is where
   "time" comes from.
