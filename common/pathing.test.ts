@@ -6,6 +6,7 @@ import {
   lineOfSight,
   newGrid,
   pathDuration,
+  PathSolver,
   Slow,
 } from "./pathing.ts";
 import { offsets } from "./constants.ts";
@@ -281,4 +282,115 @@ Deno.test("findPathFromData rejects overlapping placements", () => {
     threw = true;
   }
   assert(threw);
+});
+
+Deno.test("PathSolver matches findPathFromData", async (t) => {
+  // findPathFromData is the brute-verified reference (see the optimality test
+  // above), so parity here transitively covers the solver's optimality.
+  // Deterministic LCG so failures are reproducible.
+  let s = 24681357 >>> 0;
+  const rng = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+
+  // Attempt random non-overlapping 2x2 anchors on `grid`, mutating it, and
+  // return the ones that fit — the same shape newIteration/players produce.
+  const placeRandom = (grid: boolean[][], count: number) => {
+    const anchors: Point[] = [];
+    for (let i = 0; i < count; i++) {
+      const x = 2 + Math.floor(rng() * 16);
+      const y = 2 + Math.floor(rng() * 16);
+      if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
+      offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+      anchors.push({ x, y });
+    }
+    return anchors;
+  };
+
+  await t.step(
+    "solvability and length parity, with solver reuse across solves",
+    () => {
+      let checkedPaths = 0;
+      for (let seed = 0; seed < 120; seed++) {
+        const checkpoint = {
+          x: 1.5 + Math.floor(rng() * 17),
+          y: 1.5 + Math.floor(rng() * 17),
+        };
+        // Scratch grid only to generate non-overlapping placements; the
+        // engines under test rebuild their own boards from the anchor lists.
+        const scratch = newGrid();
+        scratch[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+        const base = placeRandom(scratch, 2 + Math.floor(rng() * 7));
+
+        const solver = new PathSolver(base, checkpoint);
+
+        // Several placements against ONE solver instance: any grid-restore
+        // bug in solve() poisons the later rounds.
+        for (let round = 0; round < 3; round++) {
+          const roundScratch = structuredClone(scratch);
+          const pieces = placeRandom(roundScratch, Math.floor(rng() * 22));
+
+          const expected = findPathFromData([...base, ...pieces], checkpoint);
+          const actual = solver.solve(pieces);
+
+          assertEquals(
+            !!actual,
+            !!expected,
+            `seed ${seed} round ${round}: solvability diverged`,
+          );
+          if (!expected || !actual) continue;
+          checkedPaths++;
+          assert(
+            Math.abs(length(actual) - length(expected)) < 1e-9,
+            `seed ${seed} round ${round}: solver ${length(actual)} != ` +
+              `reference ${length(expected)}`,
+          );
+        }
+      }
+      assert(
+        checkedPaths > 200,
+        `expected many solved rounds, got ${checkedPaths}`,
+      );
+    },
+  );
+
+  await t.step(
+    "rejects bad placements and survives a half-placed throw",
+    () => {
+      const checkpoint = { x: 9.5, y: 9.5 };
+      const solver = new PathSolver([{ x: 4, y: 4 }], checkpoint);
+      const good = solver.solve([{ x: 12, y: 12 }])!;
+      assert(good);
+
+      // Overlapping the base block, the checkpoint cell, and a second piece that
+      // overlaps the first: all must throw like findPathFromData — and the last
+      // one only after the first piece was already placed, exercising the
+      // mid-throw grid restore.
+      for (
+        const bad of [
+          [{ x: 5, y: 5 }],
+          [{ x: 9, y: 9 }],
+          [{ x: 12, y: 12 }, { x: 13, y: 13 }],
+        ]
+      ) {
+        let threw = false;
+        try {
+          solver.solve(bad);
+        } catch {
+          threw = true;
+        }
+        assert(threw, `expected throw for ${JSON.stringify(bad)}`);
+      }
+
+      // The shared grid must be back to base: the original solve still returns
+      // the identical path.
+      assertEquals(solver.solve([{ x: 12, y: 12 }]), good);
+    },
+  );
+
+  await t.step("covering an endpoint yields no path, not a crash", () => {
+    const checkpoint = { x: 9.5, y: 9.5 };
+    const solver = new PathSolver([], checkpoint);
+    // (9,18) covers the start cell (9,19); the runner has nowhere to stand.
+    assertEquals(solver.solve([{ x: 9, y: 18 }]), undefined);
+    assertEquals(findPathFromData([{ x: 9, y: 18 }], checkpoint), undefined);
+  });
 });
