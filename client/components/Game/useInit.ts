@@ -239,6 +239,16 @@ export const useInit = () => {
       ].sort((a, b) => a.created - b.created);
       setViewedAttempts(panel);
 
+      console.log(
+        "DL: summary listener ranked=",
+        ranked.length,
+        "currentRun=",
+        !!currentRun,
+        "entryIsDayLink=",
+        entryIsDayLink,
+        "iteration=",
+        iteration,
+      );
       if (currentRun && time === -2) {
         setAttemptsRemaining(3 - ranked.length + 1);
         // The resumed board seeds the cache too, so post-daily navigation

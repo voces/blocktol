@@ -101,9 +101,30 @@ export const StandingsDock = () => {
       : undefined) ?? s?.day;
   const dayKey = day ? day.join("-") : "";
   useEffect(() => {
+    console.log(
+      "DL: dock sync viewReady=",
+      viewReady.value,
+      "isToday=",
+      isToday,
+      "iteration=",
+      iteration,
+      "todayIt=",
+      todayIteration.value,
+      "day=",
+      JSON.stringify(day),
+      "open=",
+      open,
+    );
     if (!viewReady.value) return;
     if (!isToday && !day) return;
+    const before = location.pathname + location.search;
     syncViewUrl(day, open, persistedSort);
+    console.log(
+      "DL: dock synced",
+      before,
+      "->",
+      location.pathname + location.search,
+    );
   }, [viewReady.value, isToday, dayKey, open, persistedSort]);
 
   const b = boardOf(s, sort);
