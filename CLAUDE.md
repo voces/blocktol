@@ -87,9 +87,17 @@ diverge — the server's accepted time must equal what the client previewed.
 - `pathDuration` turns a path + thunders into `[time, slows]`. Thunders within
   radius 4 apply a temporary slow; the runner steps at `SPEED`. This is where
   "time" comes from.
+- `PathSolver` is the same exact search restructured for surfaces that solve
+  many placements against one base board: it precomputes the base corners and
+  their pairwise visibility once, then each `solve(pieces)` pays only for what
+  the pieces change, with a single Dijkstra rooted at the checkpoint settling
+  both legs (~3–5× faster; parity with `findPathFromData` is test-asserted).
+  Equal-length ties can break differently from `findPath`, and with thunders
+  duration depends on geometry — so migrating a surface that _persists_ times
+  onto it calls for a `scripts/comparePathing.ts` audit/retime.
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
-  reuses the same engine, so what the audit script accepts is exactly what the
-  write path accepts.
+  reuses the same engine (via `PathSolver`, cached per iteration shape), so what
+  the audit script accepts is exactly what the write path accepts.
 
 ## Server architecture
 
