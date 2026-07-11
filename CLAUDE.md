@@ -180,10 +180,14 @@ Other invariants:
   principle come in under it (see `scripts/comparePathing.ts`) — `standing`
   clamps a below-`min` time to 0.
 - **Identity / move / merge:** the UUID in the `authorization` header _is_ the
-  credential; ids are not secrets. "Move to device" issues a `/login/:id` (or
-  `/l/:id`) link/QR; possessing two ids authorizes folding them
-  (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the loser row in
-  one transaction). The client-side gate is `MoveGate`/`MoveDevice`.
+  bearer credential — there's no password, so possession alone _is_ the whole
+  authorization. That's a sensitive credential: anyone who obtains it can act as
+  (or merge away) that user, so it must be protected like one. But possession is
+  deliberately made _sufficient_ — that's exactly what powers "move to device":
+  it issues a `/login/:id` (or `/l/:id`) link/QR, and holding two ids authorizes
+  folding them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the
+  loser row in one transaction). The client-side gate is
+  `MoveGate`/`MoveDevice`.
 
 ## Client architecture
 
