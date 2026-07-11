@@ -102,6 +102,10 @@ export const Attempts = () => {
   const byMaze = new Map<
     string,
     {
+      // Stable per-group identity (the maze key) used as the render key, so a
+      // row keeps its DOM node when the list re-sorts — a pin toggle floats its
+      // row to the top without focus staying pinned to the old array index.
+      id: string;
       attempt: Attempt;
       count: number;
       latest: number;
@@ -133,6 +137,7 @@ export const Attempts = () => {
       }
     } else {
       byMaze.set(key, {
+        id: key,
         attempt,
         count: 1,
         latest: attempt.created,
@@ -217,7 +222,7 @@ export const Attempts = () => {
       {groups.length
         ? (
           <div class="attempts__list">
-            {groups.map((group, i) => {
+            {groups.map((group) => {
               const { attempt } = group;
               // Full: continuous ramp colour, with two standings lifted off it —
               // supreme gold (took the record) and, one step below, peak green-
@@ -249,7 +254,7 @@ export const Attempts = () => {
                     (supreme ? " attempts__row--glow" : "") +
                     (isViewing ? " attempts__row--viewing" : "") +
                     (group.pinned ? " attempts__row--pinned" : "")}
-                  key={i}
+                  key={group.id}
                   style={{ "--band": band }}
                   title={clickable ? "View this maze" : undefined}
                   onClick={clickable
