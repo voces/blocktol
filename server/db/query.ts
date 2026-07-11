@@ -10,12 +10,20 @@ const isSqlError = is.object({
 
 class SQLError extends Error {}
 
+// The SQL proxy endpoint. Defaults to the public proxy over the internet; on a
+// host co-located with the proxy (the EC2 cohost) set SQL_PROXY_URL to its
+// localhost address to drop the internet round-trip — the single biggest DB
+// latency win of the move. The proxy contract (headers, multi-statement
+// batching, session variables) is identical either way; this only changes where
+// the request is sent.
+const SQL_PROXY_URL = Deno.env.get("SQL_PROXY_URL") ?? "https://w3x.io/sql";
+
 const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
   const makeFetch = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
 
-    const ret = await fetch("https://w3x.io/sql", {
+    const ret = await fetch(SQL_PROXY_URL, {
       headers: {
         "x-dbproxy-user": `blocktol-${env}`,
         "x-dbproxy-password": Deno.env.get("SQL_PASSWORD")!,
