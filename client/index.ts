@@ -3,8 +3,14 @@ import { prime } from "./api.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { initSettings } from "./hooks/useSettings.ts";
+import { installErrorReporting } from "./util/errorReport.ts";
 import { getCleanLink, getPendingLink } from "./util/id.ts";
 import { getTimeZone } from "./util/timeZone.ts";
+
+// Catch uncaught errors / rejections app-wide and forward them to NewRelic
+// (via the reportClientError endpoint). Installed first so a crash during boot
+// is still reported.
+installErrorReporting();
 
 // Apply the cached theme before first paint (the server value reconciles later).
 initSettings();

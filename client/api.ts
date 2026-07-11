@@ -29,15 +29,74 @@ const em = emitter<typeof host, MessageMap>(host);
 // concern, and the boot call repeats the same input.
 const primed = new Map<string, Promise<Response>>();
 
-export const prime = <Method extends keyof BlocktolApi>(
-  method: Method,
-  input: Parameters<BlocktolApi[Method]>[0],
-) => {
-  const p = fetch(`/api/${method}`, {
+const doFetch = (method: string, input: unknown) =>
+  fetch(`/api/${method}`, {
     method: "POST",
     body: JSON.stringify(input),
     headers: { authorization: getId() },
   });
+
+// Methods safe to auto-retry on a transport failure (fetch rejected — the
+// server never sent a response, so the request most likely never landed).
+// Retrying is only sound when a repeat can't double-apply: reads (idempotent)
+// and idempotent/last-write-wins writes. Deliberately EXCLUDED:
+//   - updateRun   — runSaver.ts owns its own coalescing retry+backoff; a second
+//                   layer here would fight it.
+//   - startRun / commitRun / abandonRun — run-lifecycle transitions; a lost
+//                   response after the server acted must not be silently redone.
+//   - merge       — destructive, one-shot.
+//   - reportClientError — retrying error reports risks amplifying a bad loop.
+const RETRYABLE = new Set<keyof BlocktolApi>([
+  "list",
+  "getBoard",
+  "getDailySummary",
+  "best",
+  "standings",
+  "getProfile",
+  "moveInfo",
+  "getNotifications",
+  "discordInfo",
+  "pushConfig",
+  "setSettings",
+  "rename",
+  "markNotificationsRead",
+  "subscribePush",
+  "unsubscribePush",
+]);
+
+// Backoff before each retry (ms); its length is the retry count. Jitter is added
+// per attempt so a fleet reconnecting together doesn't synchronize its retries.
+const RETRY_BACKOFF_MS = [400, 1_200, 3_000];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Resolve the Response for a call, retrying transport failures for methods that
+// are safe to repeat. A retry fires ONLY when fetch itself rejects (no response
+// at all); an HTTP error status is a real, deterministic server answer and is
+// returned as-is for the caller to handle. Non-retryable methods throw on the
+// first transport failure, exactly as before.
+const fetchResponse = async (
+  method: string,
+  input: unknown,
+): Promise<Response> => {
+  const retries = RETRYABLE.has(method as keyof BlocktolApi)
+    ? RETRY_BACKOFF_MS.length
+    : 0;
+  for (let attempt = 0;; attempt++) {
+    try {
+      return await doFetch(method, input);
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      await sleep(RETRY_BACKOFF_MS[attempt] + Math.random() * 250);
+    }
+  }
+};
+
+export const prime = <Method extends keyof BlocktolApi>(
+  method: Method,
+  input: Parameters<BlocktolApi[Method]>[0],
+) => {
+  const p = doFetch(method, input);
   // Observed so an early failure can't surface as an unhandled rejection;
   // the consuming call still sees it (and handles it like its own fetch).
   p.catch(() => {});
@@ -63,15 +122,22 @@ export const api = new Proxy({}, {
       if (preloaded) primed.delete(method);
       let resp: Response;
       try {
-        resp = await (preloaded ?? fetch(`/api/${method}`, {
-          method: "POST",
-          body: JSON.stringify(input),
-          headers: { authorization: getId() },
-        }));
+        // Consume the primed response if there is one; if that primed fetch
+        // failed at the transport level, fall through to a fresh, retried fetch
+        // rather than letting a boot-time network blip surface as a hard error.
+        if (preloaded) {
+          try {
+            resp = await preloaded;
+          } catch {
+            resp = await fetchResponse(method, input);
+          }
+        } else {
+          resp = await fetchResponse(method, input);
+        }
       } catch (err) {
-        // Transport-level failure (the server never responded): feed the
-        // connection tracker, which surfaces the Disconnected overlay once
-        // failures persist.
+        // Transport-level failure that survived any retries (the server never
+        // responded): feed the connection tracker, which surfaces the
+        // Disconnected overlay once failures persist.
         noteFailure();
         throw err;
       }
