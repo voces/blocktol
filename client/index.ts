@@ -1,5 +1,6 @@
 import { h, render } from "preact";
-import { prime } from "./api.ts";
+import { prime, primeBoot } from "./api.ts";
+import { currentMonthIdx, monthListInput } from "./store/dailyItems.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { initSettings } from "./hooks/useSettings.ts";
@@ -27,16 +28,25 @@ initSettings();
 // let the deep-link fetch the day for real.
 const dayLinkBoot = /^\/\d{8}$/.test(location.pathname);
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
-  prime("getDailySummary", { timeZone: getTimeZone() });
-  prime("getProfile", {});
-  if (!dayLinkBoot) {
-    prime("standings", { timeZone: getTimeZone() });
-    // Today's free-play board, so a boot onto a finished daily stages behind the
-    // result card with no round trip at "keep playing". `soft` makes an
-    // unfinished daily a quiet { incomplete } rather than a 403 (see getBoard);
-    // showBoard discards that and fetches for real, so priming can never wedge a
-    // later stage.
-    prime("getBoard", { timeZone: getTimeZone(), soft: true });
+  if (dayLinkBoot) {
+    // A day-link boot stages the LINKED day, not today, so it deliberately skips
+    // priming today's board/standings (the deep link fetches the day for real).
+    // Only the day-independent slices are worth priming here.
+    prime("getDailySummary", { timeZone: getTimeZone() });
+    prime("getProfile", {});
+  } else {
+    // Normal boot: one request feeds the whole thing. Each method boot bundles —
+    // getDailySummary, getProfile, standings, getBoard (soft), getNotifications,
+    // and the current month's list — consumes its slice off this single fetch,
+    // collapsing the old two-wave fan-out. list is content-keyed by its month
+    // range so only the current-month calendar fetch consumes it (the prev month
+    // keys separately). (getBoard is soft, so an unfinished daily comes back
+    // { incomplete }; showBoard discards that and fetches for real, so priming
+    // can never wedge a later stage.)
+    primeBoot(
+      { timeZone: getTimeZone() },
+      monthListInput(currentMonthIdx()),
+    );
   }
 }
 

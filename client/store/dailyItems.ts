@@ -79,18 +79,34 @@ export const applyRun = (iteration: number, attempts: readonly Attempt[]) => {
   dailyItems.value = next;
 };
 
+// The `list` range for a month index (idx = year*12 + month0). Shared so the boot
+// prime can key `list` under the exact input the current-month fetch sends (see
+// client `primeBoot`).
+export const monthListInput = (
+  idx: number,
+): Parameters<typeof api.list>[0] => {
+  const y = Math.floor(idx / 12);
+  const m0 = idx % 12;
+  const next = idx + 1;
+  return {
+    start: [y, m0 + 1, 1],
+    end: [Math.floor(next / 12), (next % 12) + 1, 1],
+  };
+};
+
+// The current local month's index — the calendar's default month, and the one
+// boot primes `list` for.
+export const currentMonthIdx = () => {
+  const d = new Date();
+  return d.getFullYear() * 12 + d.getMonth();
+};
+
 // Fetch a month of dailies (idx = year*12 + month0) once — repeat calls are
 // free — via the range API. A failed fetch frees the month and retries
 // shortly (e.g. after a brief disconnect on cold load).
 const monthOnce = keyedQuery(async (idx: number) => {
   const seq = ++fetchSeq;
-  const y = Math.floor(idx / 12);
-  const m0 = idx % 12;
-  const next = idx + 1;
-  const r = await api.list({
-    start: [y, m0 + 1, 1],
-    end: [Math.floor(next / 12), (next % 12) + 1, 1],
-  });
+  const r = await api.list(monthListInput(idx));
   if ("error" in r) throw new Error("failed to list month");
   if (r.oldest) oldestDaily.value = r.oldest;
   foldMonth(r.items, seq);

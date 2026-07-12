@@ -28,5 +28,13 @@ export const keyedQuery = <K, T>(
     entries.delete(key);
   };
 
+  // Milliseconds since the key's entry was fetched, or Infinity if absent — lets
+  // a caller skip a bust when the entry is still very fresh (e.g. boot just
+  // seeded it).
+  get.age = (key: K) => {
+    const entry = entries.get(key);
+    return entry ? Date.now() - entry.at : Infinity;
+  };
+
   return get;
 };

@@ -21,13 +21,18 @@ export type MessageMap =
 const host = {};
 const em = emitter<typeof host, MessageMap>(host);
 
-// Primed fetches: fired before the app renders (see index.ts) so the boot
-// round trips overlap module evaluation and the first render. The next call
-// of the same method consumes the in-flight response and continues through
-// the normal handling below — by then listeners are subscribed, so the
-// dispatched event isn't dropped. Keyed by method only: priming is a boot
-// concern, and the boot call repeats the same input.
+// Primed fetches: fired before the app renders (see index.ts) so the boot round
+// trips overlap module evaluation and the first render. The next call with the
+// SAME method + input consumes the in-flight response and continues through the
+// normal handling below — by then listeners are subscribed, so the dispatched
+// event isn't dropped. **Content-addressed** (method + serialized input), so a
+// single bundled `boot` fetch can prime a parameterized method — e.g. `list` for
+// a specific month — and only the call with matching input consumes that slice
+// (the calendar's other months key separately and fetch on their own).
 const primed = new Map<string, Promise<Response>>();
+
+const primeKey = (method: string, input: unknown) =>
+  `${method}:${JSON.stringify(input ?? null)}`;
 
 const doFetch = (method: string, input: unknown) =>
   fetch(`/api/${method}`, {
@@ -105,7 +110,49 @@ export const prime = <Method extends keyof BlocktolApi>(
   // Observed so an early failure can't surface as an unhandled rejection;
   // the consuming call still sees it (and handles it like its own fetch).
   p.catch(() => {});
-  primed.set(method, p);
+  primed.set(primeKey(method, input), p);
+};
+
+// Prime the whole cold boot from ONE request. `boot` composes the handlers
+// server-side; here each is primed with a promise that awaits that single fetch
+// and hands back its slice as a synthetic Response — **content-keyed by the exact
+// input the consumer sends** (see the table below), so every existing call site
+// (App, the Dock, the Calendar, the stores) resolves off the one boot request
+// with no change to those call sites.
+//
+// `listInput` is the calendar's current-month range, passed in from index.ts
+// (the dailyItems store owns that range shape; taking it as a param avoids an
+// api<->store import cycle). boot returns that same month, so the calendar's
+// current-month fetch consumes it while the prev month keys separately and
+// fetches on its own.
+//
+// If boot fails at transport (or returns a top-level auth error) each slice
+// rejects, and the consumer's existing fall-through fetches that one method for
+// real — a boot hiccup degrades to the old per-call path, not a broken boot.
+export const primeBoot = (
+  input: Parameters<BlocktolApi["boot"]>[0],
+  listInput: Parameters<BlocktolApi["list"]>[0],
+) => {
+  const bootData = doFetch("boot", input).then((r) => r.json());
+  bootData.catch(() => {});
+  const tz = input.timeZone;
+  // [method, the input its boot-time consumer sends, slice key on boot's response]
+  const slices: [string, unknown, string][] = [
+    ["getDailySummary", { timeZone: tz }, "summary"],
+    ["getProfile", {}, "profile"],
+    ["standings", { timeZone: tz }, "standings"],
+    ["getNotifications", {}, "notifications"],
+    ["getBoard", { timeZone: tz }, "board"],
+    ["list", listInput, "list"],
+  ];
+  for (const [method, consumerInput, key] of slices) {
+    const slice = bootData.then((b) => {
+      if (b && "error" in b) throw new Error("boot failed");
+      return new Response(JSON.stringify(b[key]));
+    });
+    slice.catch(() => {});
+    primed.set(primeKey(method, consumerInput), slice);
+  }
 };
 
 export const api = new Proxy({}, {
@@ -123,8 +170,9 @@ export const api = new Proxy({}, {
     if (method === "removeEventListener") return em.removeEventListener;
 
     return async (input: Parameters<BlocktolApi[keyof BlocktolApi]>) => {
-      const preloaded = primed.get(method);
-      if (preloaded) primed.delete(method);
+      const key = primeKey(method, input);
+      const preloaded = primed.get(key);
+      if (preloaded) primed.delete(key);
       let resp: Response;
       try {
         // Consume the primed response if there is one; if that primed fetch

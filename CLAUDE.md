@@ -137,13 +137,23 @@ typed `api.<method>()` appears automatically. A handler returning
 client faults.
 
 **`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
-that `Promise.all`s the existing handlers (`getDailySummary`, `getProfile`,
-`standings`, `getNotifications`, `list`, soft `getBoard`) and bundles their
-results, so the client hydrates the whole cold boot from a single request
-instead of an ~8-call, two-wave waterfall (the second wave was stores refetching
-in reaction to the first). Each sub-handler re-derives `userId` from the
+that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
+`standings`, `getNotifications`, soft `getBoard`, and the current month's
+`list`) and bundles their results. Each sub-handler re-derives `userId` from the
 request, so their exact semantics — including `getDailySummary`'s server-side
 auto-start of the next ranked attempt — carry through unchanged.
+
+The client's `primeBoot` (`client/api.ts`) fires it once and primes each method
+with its slice, so every existing call site consumes off the single fetch —
+collapsing the old ~8-call, two-wave boot (the second wave was stores refetching
+in reaction to the first; the boot standings double-fire is separately guarded
+by a freshness check in `store/standings.ts`). The prime is
+**content-addressed** (method + serialized input), which is what lets a
+parameterized method be bundled: `list` is keyed by its month range so only the
+current-month calendar fetch consumes boot's slice while the prev month keys
+separately (boot derives that month from the caller's timezone to match
+`dailyItems.monthListInput`). On a boot failure each slice rejects and the
+consumer falls through to its own fetch.
 
 **Database (`server/db/`):** MariaDB reached over HTTP through a SQL proxy at
 `w3x.io/sql` (`db/query.ts`) — there is no local DB driver. Two tagged-template

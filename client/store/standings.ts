@@ -126,10 +126,18 @@ export const fetchStandingsForDate = async (
 export const fetchStandings = (iteration?: number) =>
   fetchOnce(qkey(iteration)).catch(() => undefined);
 
+// The boot path seeds today's standings, and getDailySummary's post-boot event
+// fires refreshStandings right after — a redundant refetch. Skip the bust while
+// the cache is this fresh; a genuine mid-session refresh (an attempt landed
+// seconds+ later) is well outside the window and still busts + refetches.
+const FRESH_REFRESH_MS = 4_000;
+
 // Force-refresh at moments the board likely moved (your attempt just landed,
 // the sheet is opening onto possibly-stale ranks).
 export const refreshStandings = (iteration?: number) => {
-  fetchOnce.bust(qkey(iteration));
+  if (fetchOnce.age(qkey(iteration)) > FRESH_REFRESH_MS) {
+    fetchOnce.bust(qkey(iteration));
+  }
   return fetchStandings(iteration);
 };
 
