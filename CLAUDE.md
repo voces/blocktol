@@ -158,7 +158,9 @@ So the rule is **append-only once a migration has reached prod**: fix forward
 with a new migration. (Editing in place is allowed only while a migration has
 _only_ reached dev — see the long note at the bottom of that file.)
 
-**Crons (`Deno.cron`, single non-overlapping writer):**
+**Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
+`DISABLE_CRONS` is set, so a second instance sharing the DB doesn't
+double-write):**
 
 - `ensure-iterations` (hourly) — generates each day's puzzle through _tomorrow_
   UTC (`util/newIteration.ts` builds a random solvable board; idempotent, heals
@@ -294,7 +296,9 @@ delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys set.
 selects the proxy database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL`
 (the SQL proxy endpoint; defaults to `https://w3x.io/sql` — set to the proxy's
 localhost address when the server is co-located with it, e.g. the EC2 cohost, to
-drop the internet round-trip), `NEW_RELIC_API_KEY`, and
+drop the internet round-trip), `DISABLE_CRONS` (any non-empty value skips
+registering the `ensure-iterations`/`rate-dailies` crons — for a second instance
+on the shared DB), `NEW_RELIC_API_KEY`, and
 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
 `deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app). The
 task definitions enumerate the exact `--allow-env` grants.

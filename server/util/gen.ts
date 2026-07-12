@@ -45,4 +45,11 @@ const ensureIterations = async (offsetDays: number) => {
 // race. Hourly is enough: the window reaches tomorrow, so each day is generated
 // ~a day before any timezone needs it (this also seeds new envs / heals gaps).
 // Idempotent; must be registered before `Deno.serve`.
-Deno.cron("ensure-iterations", "0 * * * *", () => ensureIterations(31));
+//
+// DISABLE_CRONS gates registration so a second instance sharing this DB (a
+// staging box, or the EC2 cohost while Deno Deploy still runs the crons) doesn't
+// double-generate. The write path is already race-safe, but skipping the
+// duplicate work is cleaner.
+if (!Deno.env.get("DISABLE_CRONS")) {
+  Deno.cron("ensure-iterations", "0 * * * *", () => ensureIterations(31));
+}
