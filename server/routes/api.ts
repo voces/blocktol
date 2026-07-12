@@ -2,6 +2,7 @@ import { is } from "../../common/typeguards.ts";
 import { reportError } from "../util/newrelic.ts";
 import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
+import { boot } from "./boot.ts";
 import { getBoard } from "./iteration/board.ts";
 import { getDailySummary } from "./iteration/daily.ts";
 import { discordInfo } from "./discord.ts";
@@ -25,6 +26,7 @@ import { reportClientError } from "./reportClientError.ts";
 import { setSettings } from "./setSettings.ts";
 
 const handlers = {
+  boot,
   list: listIterations,
   getBoard,
   getDailySummary,

@@ -136,6 +136,15 @@ typed `api.<method>()` appears automatically. A handler returning
 `{ status: >=500 }` (or throwing) is reported; 4xx are treated as expected
 client faults.
 
+**`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
+that `Promise.all`s the existing handlers (`getDailySummary`, `getProfile`,
+`standings`, `getNotifications`, `list`, soft `getBoard`) and bundles their
+results, so the client hydrates the whole cold boot from a single request
+instead of an ~8-call, two-wave waterfall (the second wave was stores refetching
+in reaction to the first). Each sub-handler re-derives `userId` from the
+request, so their exact semantics — including `getDailySummary`'s server-side
+auto-start of the next ranked attempt — carry through unchanged.
+
 **Database (`server/db/`):** MariaDB reached over HTTP through a SQL proxy at
 `w3x.io/sql` (`db/query.ts`) — there is no local DB driver. Two tagged-template
 helpers, and the choice is a correctness concern:
