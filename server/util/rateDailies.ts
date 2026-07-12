@@ -86,4 +86,9 @@ const rateDailies = async () => {
 // Runs at :30 each hour (offset from the generation cron). `Deno.cron` is a
 // single, non-overlapping writer, so no two isolates can double-rate. Each
 // daily is rated once its date is fully closed across all timezones.
-Deno.cron("rate-dailies", "30 * * * *", rateDailies);
+//
+// DISABLE_CRONS gates registration (see gen.ts) so a second instance sharing
+// this DB doesn't double-rate.
+if (!Deno.env.get("DISABLE_CRONS")) {
+  Deno.cron("rate-dailies", "30 * * * *", rateDailies);
+}
