@@ -45,6 +45,11 @@ Deno.test({
       );
       assertEquals(r.notifications, { items: [], unread: 0 });
       assert("daily" in r.standings && "pb" in r.standings);
+      // list carries the calendar's two mount months: [current, prev].
+      assert(
+        Array.isArray(r.list) && r.list.length === 2,
+        "list is [cur, prev]",
+      );
     } finally {
       await sql`DELETE FROM user WHERE id = ${id};`;
     }

@@ -28,31 +28,46 @@ import { method } from "./apiHelpers.ts";
 // present and only falls back to this board once the daily is done, exactly as
 // the old soft-primed getBoard did.
 //
-// `list` is the calendar's CURRENT month, derived from the caller's timezone so
-// it matches the client's local-month key (the client content-keys the prime by
-// the same [year, month, 1]..[next] range — see dailyItems.monthListInput). Only
-// the current-month calendar fetch consumes it; the prev month keys separately.
+// `list` is the calendar's two mount months — CURRENT and PREV — derived from
+// the caller's timezone so they match the client's local-month keys (the client
+// content-keys each prime by the same [year, month, 1]..[next] range — see
+// dailyItems.monthListInput). Returned as `[current, prev]`; the client primes
+// each month under its own key, so both the current- and prev-month calendar
+// fetches consume boot's slices. (When the calendar shows only the current month
+// — mobile / late in the month — the prev prime simply goes unconsumed.)
 const bootBody = z.object({ timeZone: z.string() });
+
+type YMD = [number, number, number];
+// The [start, end) range for a month (month 1-12), matching monthListInput.
+const monthRange = (year: number, month: number): { start: YMD; end: YMD } => {
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return { start: [year, month, 1], end: [nextYear, nextMonth, 1] };
+};
 
 export const boot = method(bootBody, true)(
   async ({ timeZone }, req) => {
     const { year, month } = dailyParts(timeZone); // month is 1-12
-    const nextYear = month === 12 ? year + 1 : year;
-    const nextMonth = month === 12 ? 1 : month + 1;
-    const listInput = {
-      start: [year, month, 1] as [number, number, number],
-      end: [nextYear, nextMonth, 1] as [number, number, number],
-    };
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevMonth = month === 1 ? 12 : month - 1;
 
-    const [summary, profile, standingsField, notifications, board, list] =
-      await Promise.all([
-        getDailySummary.handler({ timeZone }, req),
-        getProfile.handler({}, req),
-        standings.handler({ timeZone }, req),
-        getNotifications.handler({}, req),
-        getBoard.handler({ timeZone, soft: true }, req),
-        listIterations.handler(listInput, req),
-      ]);
+    const [
+      summary,
+      profile,
+      standingsField,
+      notifications,
+      board,
+      listCurrent,
+      listPrev,
+    ] = await Promise.all([
+      getDailySummary.handler({ timeZone }, req),
+      getProfile.handler({}, req),
+      standings.handler({ timeZone }, req),
+      getNotifications.handler({}, req),
+      getBoard.handler({ timeZone, soft: true }, req),
+      listIterations.handler(monthRange(year, month), req),
+      listIterations.handler(monthRange(prevYear, prevMonth), req),
+    ]);
 
     return {
       summary,
@@ -60,7 +75,8 @@ export const boot = method(bootBody, true)(
       standings: standingsField,
       notifications,
       board,
-      list,
+      // [current, prev] — the client primes each under its month key.
+      list: [listCurrent, listPrev],
     };
   },
 );

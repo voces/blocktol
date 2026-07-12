@@ -120,39 +120,48 @@ export const prime = <Method extends keyof BlocktolApi>(
 // (App, the Dock, the Calendar, the stores) resolves off the one boot request
 // with no change to those call sites.
 //
-// `listInput` is the calendar's current-month range, passed in from index.ts
-// (the dailyItems store owns that range shape; taking it as a param avoids an
-// api<->store import cycle). boot returns that same month, so the calendar's
-// current-month fetch consumes it while the prev month keys separately and
-// fetches on its own.
+// `listInputs` are the calendar's mount-month ranges, in the SAME order boot
+// returns them ([current, prev]) — passed in from index.ts (the dailyItems store
+// owns that range shape; taking it as a param avoids an api<->store import
+// cycle). Each is primed under its own month key against boot's matching slice,
+// so both calendar month fetches consume off the one request.
 //
 // If boot fails at transport (or returns a top-level auth error) each slice
 // rejects, and the consumer's existing fall-through fetches that one method for
 // real — a boot hiccup degrades to the old per-call path, not a broken boot.
 export const primeBoot = (
   input: Parameters<BlocktolApi["boot"]>[0],
-  listInput: Parameters<BlocktolApi["list"]>[0],
+  listInputs: Parameters<BlocktolApi["list"]>[0][],
 ) => {
   const bootData = doFetch("boot", input).then((r) => r.json());
   bootData.catch(() => {});
   const tz = input.timeZone;
-  // [method, the input its boot-time consumer sends, slice key on boot's response]
-  const slices: [string, unknown, string][] = [
-    ["getDailySummary", { timeZone: tz }, "summary"],
-    ["getProfile", {}, "profile"],
-    ["standings", { timeZone: tz }, "standings"],
-    ["getNotifications", {}, "notifications"],
-    ["getBoard", { timeZone: tz }, "board"],
-    ["list", listInput, "list"],
-  ];
-  for (const [method, consumerInput, key] of slices) {
-    const slice = bootData.then((b) => {
+  // A synthetic Response for one slice of the boot bundle, chosen by `pick`.
+  const slice = (pick: (b: MessageMap["boot"]) => unknown) => {
+    const s = bootData.then((b) => {
       if (b && "error" in b) throw new Error("boot failed");
-      return new Response(JSON.stringify(b[key]));
+      return new Response(JSON.stringify(pick(b)));
     });
-    slice.catch(() => {});
-    primed.set(primeKey(method, consumerInput), slice);
+    s.catch(() => {});
+    return s;
+  };
+
+  // [method, the input its boot-time consumer sends, slice picker]
+  const single: [string, unknown, (b: MessageMap["boot"]) => unknown][] = [
+    ["getDailySummary", { timeZone: tz }, (b) => b.summary],
+    ["getProfile", {}, (b) => b.profile],
+    ["standings", { timeZone: tz }, (b) => b.standings],
+    ["getNotifications", {}, (b) => b.notifications],
+    ["getBoard", { timeZone: tz }, (b) => b.board],
+  ];
+  for (const [method, consumerInput, pick] of single) {
+    primed.set(primeKey(method, consumerInput), slice(pick));
   }
+  // Each calendar month, keyed by its range, against boot.list[i].
+  listInputs.forEach((li, i) => {
+    primed.set(primeKey("list", li), slice((b) => b.list[i]));
+  });
+
   // Returned so the caller can seed today's iteration id from the response (see
   // index.ts) — the standings dock needs it to recognize the staged board as
   // today and consume the primed { timeZone } slice rather than fetching by id.

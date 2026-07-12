@@ -38,15 +38,16 @@ if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   } else {
     // Normal boot: one request feeds the whole thing. Each method boot bundles —
     // getDailySummary, getProfile, standings, getBoard (soft), getNotifications,
-    // and the current month's list — consumes its slice off this single fetch,
-    // collapsing the old two-wave fan-out. list is content-keyed by its month
-    // range so only the current-month calendar fetch consumes it (the prev month
-    // keys separately). (getBoard is soft, so an unfinished daily comes back
-    // { incomplete }; showBoard discards that and fetches for real, so priming
-    // can never wedge a later stage.)
+    // and the calendar's two mount months (current + prev) — consumes its slice
+    // off this single fetch, collapsing the old two-wave fan-out. Each list month
+    // is content-keyed by its range; the [current, prev] order matches boot's.
+    // (getBoard is soft, so an unfinished daily comes back { incomplete };
+    // showBoard discards that and fetches for real, so priming can never wedge a
+    // later stage.)
+    const idx = currentMonthIdx();
     primeBoot(
       { timeZone: getTimeZone() },
-      monthListInput(currentMonthIdx()),
+      [monthListInput(idx), monthListInput(idx - 1)],
     ).then((b) => {
       // Seed today's iteration id from boot BEFORE the board stages, so the
       // standings dock recognizes the staged board as today (isToday) and fetches

@@ -149,11 +149,13 @@ collapsing the old ~8-call, two-wave boot (the second wave was stores refetching
 in reaction to the first; the boot standings double-fire is separately guarded
 by a freshness check in `store/standings.ts`). The prime is
 **content-addressed** (method + serialized input), which is what lets a
-parameterized method be bundled: `list` is keyed by its month range so only the
-current-month calendar fetch consumes boot's slice while the prev month keys
-separately (boot derives that month from the caller's timezone to match
-`dailyItems.monthListInput`). On a boot failure each slice rejects and the
-consumer falls through to its own fetch.
+parameterized method be bundled: the calendar's two mount months (`list` returns
+`[current, prev]`) are each keyed by their month range, so both month fetches
+consume off boot (boot derives the two months from the caller's timezone to
+match `dailyItems.monthListInput`). `primeBoot` also seeds `todayIteration` from
+boot's standings slice so the dock recognizes the staged board as today and
+consumes the primed `standings` rather than refetching by id. On a boot failure
+each slice rejects and the consumer falls through to its own fetch.
 
 **Database (`server/db/`):** MariaDB reached over HTTP through a SQL proxy at
 `w3x.io/sql` (`db/query.ts`) — there is no local DB driver. Two tagged-template
