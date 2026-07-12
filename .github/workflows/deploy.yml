@@ -24,7 +24,7 @@ jobs:
         if: env.DEPLOY_WEBHOOK_URL
         env:
           # A secret URL that embeds the deploy token, e.g.
-          # https://w3x.io/deploy?token=<DEPLOY_SECRET>
+          # https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
         run: |
           curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \

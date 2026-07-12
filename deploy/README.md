@@ -103,8 +103,8 @@ templates** — nothing reads them live. The authoritative files are
    `DEPLOY_SECRET` is reused.
 
 8. **GitHub secret.** Set the blocktol repo's `DEPLOY_WEBHOOK_URL` secret to
-   `https://w3x.io/deploy?token=<DEPLOY_SECRET>` — merges to `prod` then deploy
-   automatically. (The DNS repoint is the Cutover step.)
+   `https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>` — merges to `prod` then
+   deploy automatically. (The DNS repoint is the Cutover step.)
 
 ## Cutover
 
