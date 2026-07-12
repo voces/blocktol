@@ -153,6 +153,10 @@ export const primeBoot = (
     slice.catch(() => {});
     primed.set(primeKey(method, consumerInput), slice);
   }
+  // Returned so the caller can seed today's iteration id from the response (see
+  // index.ts) — the standings dock needs it to recognize the staged board as
+  // today and consume the primed { timeZone } slice rather than fetching by id.
+  return bootData as Promise<MessageMap["boot"]>;
 };
 
 export const api = new Proxy({}, {

@@ -1,6 +1,7 @@
 import { h, render } from "preact";
 import { prime, primeBoot } from "./api.ts";
 import { currentMonthIdx, monthListInput } from "./store/dailyItems.ts";
+import { todayIteration } from "./store/standings.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { initSettings } from "./hooks/useSettings.ts";
@@ -46,7 +47,17 @@ if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
     primeBoot(
       { timeZone: getTimeZone() },
       monthListInput(currentMonthIdx()),
-    );
+    ).then((b) => {
+      // Seed today's iteration id from boot BEFORE the board stages, so the
+      // standings dock recognizes the staged board as today (isToday) and fetches
+      // standings for today (undefined → { timeZone }) — consuming boot's primed
+      // slice — rather than fetching by id and missing it. Runs in the same
+      // microtask batch as the primed slices, ahead of App's consume→stage chain.
+      const s = b?.standings;
+      if (s && !("error" in s) && typeof s.iteration === "number") {
+        todayIteration.value = s.iteration;
+      }
+    }).catch(() => {});
   }
 }
 
