@@ -1,7 +1,11 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
-import { findPath } from "../../../common/pathing.ts";
-import { isBorderPoint, isInvalidMove, isTouchSource } from "./helpers.ts";
+import {
+  isBorderPoint,
+  isInvalidMove,
+  isTouchSource,
+  solvable,
+} from "./helpers.ts";
 import {
   dragMoved,
   invalid as invalidSignal,
@@ -121,7 +125,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         thunderHover.value = undefined;
         placingBlock.value = { placing: true, x: tx, y: ty };
         invalidSignal.value = !atOrigin &&
-          isInvalidMove(grid, checkpoint, drag.origin, tx, ty);
+          isInvalidMove(grid, blocks, checkpoint, drag.origin, tx, ty);
         return;
       }
 
@@ -145,13 +149,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         !invalid && !overlap &&
         (offsets.every(([xd, yd]) => !grid[y + yd][x + xd]))
       ) {
-        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-        try {
-          if (!findPath(grid, checkpoint)) invalid = true;
-        } catch (err) {
-          console.error(err);
-        }
-        offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
+        invalid = !solvable(blocks, checkpoint, { x, y });
       }
 
       invalidSignal.value = invalid;

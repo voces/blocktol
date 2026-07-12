@@ -1,3 +1,8 @@
+// No live code imports this since the legacy grid pathfinder was removed, but
+// it stays: scripts/comparePathViz.ts drops a HISTORICAL common/pathing.ts
+// (from a git ref) next to its sibling modules and imports it directly, and
+// those baselines import ./MMap.ts. Deleting this breaks comparing against any
+// pre-PathSolver ref.
 type NestedMap<K, V> = Map<K, V | NestedMap<K, V>>;
 
 export class MMap<K extends unknown[], V> {

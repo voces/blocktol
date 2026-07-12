@@ -1,7 +1,6 @@
 import type { Point } from "../common/types.ts";
 import { BinaryHeap } from "./BinaryHeap.ts";
 import { offsets } from "./constants.ts";
-import { MMap } from "./MMap.ts";
 
 export const newGrid = () => {
   const grid = Array.from(Array(20), () => Array<boolean>(20).fill(false));
@@ -17,13 +16,6 @@ export const newGrid = () => {
     grid[18 - i][19] = true;
   }
   return grid;
-};
-
-type Node = {
-  x: number;
-  y: number;
-  gScore: number;
-  parent: Node | undefined;
 };
 
 // Grazing tolerance: rounding a corner or sliding along a wall touches an
@@ -188,126 +180,17 @@ const cornerNodes = (grid: boolean[][]): Point[] => {
   return corners;
 };
 
-const reconstructPath = (s: Node) => {
-  const path: Point[] = [];
-  let cur: Node | undefined = s;
-  while (cur) {
-    path.push({ x: cur.x, y: cur.y });
-    if (cur === cur.parent) break;
-    cur = cur.parent;
-  }
-  return path.reverse();
-};
-
-// Exact any-angle shortest path via a visibility graph. The candidate turn
-// points are start, end and every obstacle corner (`cornerNodes`); an edge joins
-// two of them when the runner can travel straight between them (`lineOfSight`),
-// weighted by Euclidean distance. Because a shortest taut path only ever bends
-// at those corners, Dijkstra over this graph returns a provably optimal path —
-// unlike Theta*, which relaxes against a single ancestor and can settle for a
-// slightly longer route that no amount of post-smoothing recovers.
-const _findPath = (start: Point, end: Point, grid: boolean[][]) => {
-  const byCoord = new MMap<[x: number, y: number], Node>();
-  const nodes: Node[] = [];
-  const addNode = (x: number, y: number) => {
-    let node = byCoord.get(x, y);
-    if (!node) {
-      node = { x, y, gScore: Infinity, parent: undefined };
-      byCoord.set(node, x, y);
-      nodes.push(node);
-    }
-    return node;
-  };
-
-  const startNode = addNode(start.x, start.y);
-  const endNode = addNode(end.x, end.y);
-  for (const { x, y } of cornerNodes(grid)) addNode(x, y);
-
-  startNode.gScore = 0;
-
-  const open = new BinaryHeap((node: Node) => node.gScore);
-  open.push(startNode);
-  const closed = new Set<Node>();
-
-  while (open.length) {
-    const cur = open.pop();
-    if (cur === endNode) return reconstructPath(cur);
-    if (closed.has(cur)) continue;
-    closed.add(cur);
-
-    for (const next of nodes) {
-      if (next === cur || closed.has(next)) continue;
-
-      // Distance is two float ops; `lineOfSight` is a grid sweep. Testing the
-      // relaxation first skips the sweep whenever `next` already has a route
-      // at least this good — the surviving relaxations are the same ones in
-      // the same order, so the resulting path is bit-identical, just cheaper.
-      const gScore = cur.gScore + euclideanDistance(cur, next);
-      if (gScore >= next.gScore) continue;
-      if (!lineOfSight(cur, next, grid)) continue;
-
-      next.gScore = gScore;
-      next.parent = cur;
-      open.remove(next);
-      open.push(next);
-    }
-  }
-};
-
-export const findPath = (
-  grid: boolean[][],
-  checkpoint: Point,
-  start = { x: 9, y: 19 },
-  end = { x: 10, y: 0 },
-) => {
-  const checkpointCell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
-  // The checkpoint lives on a fractional grid row that its owner allocates when
-  // the iteration loads (see `findPathFromData` / `rebuildGrid`). Before that
-  // data arrives the board still holds the off-board sentinel checkpoint, so a
-  // hover can call in here targeting a row the grid never created — treat that
-  // as "no path" rather than writing into an undefined row and throwing.
-  if (!grid[checkpointCell.y]) return;
-  grid[checkpointCell.y][checkpointCell.x] = false;
-
-  const pathA = _findPath(start, checkpointCell, grid);
-  if (!pathA) {
-    grid[checkpointCell.y][checkpointCell.x] = true;
-    return;
-  }
-
-  const pathB = _findPath(checkpointCell, end, grid);
-  if (!pathB) {
-    grid[checkpointCell.y][checkpointCell.x] = true;
-    return;
-  }
-
-  grid[checkpointCell.y][checkpointCell.x] = true;
-
-  return [...pathA, ...pathB.slice(1)];
-};
-
-export const findPathFromData = (blocks: Point[], checkpoint: Point) => {
-  const grid = newGrid();
-  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
-  for (const { x, y } of blocks) {
-    if (
-      offsets.some(([xd, yd]) => {
-        if (grid[y + yd][x + xd]) return true;
-        grid[y + yd][x + xd] = true;
-        return false;
-      })
-    ) throw new Error("invalid data");
-  }
-
-  return findPath(grid, checkpoint);
-};
-
-// A reusable exact solver for surfaces that repeatedly solve placements on the
-// SAME base board (an iteration's fixed pieces): precompute the base board's
-// structure once, then each `solve` only pays for what the player's pieces
-// change. It returns exactly the shortest paths `findPathFromData` would
-// (parity is test-asserted, and both reuse the `lineOfSight` oracle verbatim);
-// it just gets there cheaper, three ways:
+// THE pathing engine: an exact any-angle shortest-path solver via a
+// visibility graph over obstacle corners — deliberately not Theta*, which
+// relaxes against a single ancestor and can settle for a slightly longer
+// route no post-smoothing recovers. Optimality is test-asserted against a
+// brute-force visibility graph over EVERY free cell, sharing the same
+// `lineOfSight` oracle.
+//
+// Built for surfaces that repeatedly solve placements on the SAME base board
+// (an iteration's fixed pieces): the base board's structure is precomputed
+// once, then each `solve` only pays for what the player's pieces change,
+// three ways:
 //
 // - Base-pair visibility is precomputed. Adding blocks never *creates*
 //   visibility, so a base node pair invisible on the base board stays
@@ -325,12 +208,10 @@ export const findPathFromData = (blocks: Point[], checkpoint: Point) => {
 //   search at all (see `solve` for the exact rules and their determinism
 //   contract).
 //
-// Equal-length shortest paths can tie-break differently from `findPath`'s
-// search order, and with thunders duration depends on geometry, not just
-// length — so adopting this on a surface that persists times requires a
-// scripts/comparePathing.ts audit/retime (see that file's header). Measured on
-// every stored prod run: identical lengths throughout, ~3x faster on final
-// mazes and ~4-5x on live build streams.
+// Any change that can shift equal-length tie-breaking (and with thunders,
+// duration depends on geometry, not just length) or timing itself requires a
+// scripts/comparePathing.ts audit/retime before it ships (see that file's
+// header).
 export class PathSolver {
   private grid: boolean[][];
   private checkpointCell: Point;
@@ -342,8 +223,8 @@ export class PathSolver {
   // equal-length path comes back, so only a fresh search is duration-exact.
   private baseHasThunder: boolean;
 
-  // Mirrors findPathFromData's construction: throws "invalid data" when a
-  // base block is out of bounds or overlaps (including the checkpoint cell).
+  // Throws "invalid data" when a base block is out of bounds or overlaps
+  // another (or the checkpoint cell) — bad data must never path.
   constructor(
     baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
     checkpoint: Point,
@@ -363,8 +244,8 @@ export class PathSolver {
         })
       ) throw new Error("invalid data");
     }
-    // The search sees the checkpoint cell free, exactly like findPath, which
-    // unblocks it for the duration of its two searches.
+    // The checkpoint cell blocks placements (it holds the checkpoint) but not
+    // the runner: the search sees it free.
     grid[checkpointCell.y][checkpointCell.x] = false;
 
     this.grid = grid;
@@ -411,15 +292,18 @@ export class PathSolver {
 
   private remember(key: string, path: Point[] | undefined) {
     this.results.set(key, { path });
-    if (this.results.size > 32) {
+    // Sized for hover: pointer-move validity probes flow through solve() too
+    // (a candidate piece per hovered cell), and they must not evict the save
+    // stream's recent states that the one-added shortcut keys off.
+    if (this.results.size > 128) {
       this.results.delete(this.results.keys().next().value!);
     }
   }
 
-  // Solve one player placement against the precomputed base. Same contract as
-  // findPathFromData: throws "invalid data" on an out-of-bounds/overlapping
-  // piece, returns undefined when no route exists, otherwise the exact
-  // shortest start -> checkpoint -> end path.
+  // Solve one player placement against the precomputed base: throws "invalid
+  // data" on an out-of-bounds/overlapping piece, returns undefined when no
+  // route exists, otherwise the exact shortest start -> checkpoint -> end
+  // path.
   //
   // Determinism contract: the returned DURATION (via pathDuration) is always
   // exactly what a cold solver would produce for this state, so an audit
@@ -449,9 +333,8 @@ export class PathSolver {
 
     const { grid, checkpointCell } = this;
 
-    // Place the pieces with findPathFromData's exact overlap semantics: the
-    // checkpoint cell counts as occupied for overlap, then is freed for the
-    // search. The base grid is shared across solves, so `placed` tracks every
+    // Place the pieces: the checkpoint cell counts as occupied for overlap,
+    // then is freed for the search. The base grid is shared across solves, so `placed` tracks every
     // cell to restore — exactly, even when a piece throws half-placed.
     grid[checkpointCell.y][checkpointCell.x] = true;
     const placed: Point[] = [];
@@ -594,8 +477,7 @@ export class PathSolver {
     const endIdx = baseIdx.indexOf(1);
     const checkpointIdx = baseIdx.indexOf(2);
     // A piece covering start or end (the checkpoint cell can't be covered —
-    // overlap throws) leaves the runner nowhere to go: no path, like
-    // findPath's searches failing to escape a blocked endpoint.
+    // overlap throws) leaves the runner nowhere to go: no path.
     if (startIdx < 0 || endIdx < 0 || checkpointIdx < 0) return undefined;
 
     const n = nodes.length;
@@ -623,8 +505,7 @@ export class PathSolver {
       const cy = nodes[cur].y;
       for (let j = 0; j < n; j++) {
         if (j === cur || closed[j]) continue;
-        // Same ordering as _findPath: the cheap relaxation test gates the
-        // expensive visibility test.
+        // The cheap relaxation test gates the expensive visibility test.
         const score = g +
           ((nodes[j].x - cx) ** 2 + (nodes[j].y - cy) ** 2) ** 0.5;
         if (score >= gScore[j]) continue;

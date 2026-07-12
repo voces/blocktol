@@ -2,8 +2,6 @@ import { assert, assertEquals } from "@std/assert";
 
 import {
   cachedSolver,
-  findPath,
-  findPathFromData,
   lineOfSight,
   newGrid,
   pathDuration,
@@ -202,10 +200,10 @@ const length = (path: ReadonlyArray<Point>) => {
   return total;
 };
 
-// Independent optimum: a visibility graph over *every* free cell (a superset of
-// the corner nodes findPath uses), sharing the exact same `lineOfSight` oracle.
-// If findPath's corner-restricted search were ever suboptimal, this denser graph
-// would find something strictly shorter.
+// Independent optimum: a visibility graph over *every* free cell (a superset
+// of the corner nodes PathSolver uses), sharing the exact same `lineOfSight`
+// oracle. If the solver's corner-restricted search were ever suboptimal, this
+// denser graph would find something strictly shorter.
 const bruteOptimalLength = (
   start: Point,
   end: Point,
@@ -242,10 +240,9 @@ const bruteOptimalLength = (
   return dist[1];
 };
 
-Deno.test("findPath — any-angle optimality", async (t) => {
+Deno.test("PathSolver — any-angle optimality", async (t) => {
   await t.step("unobstructed run is a single straight segment", () => {
-    const grid = newGrid();
-    const path = findPath(grid, { x: 9.5, y: 18.5 })!;
+    const path = new PathSolver([], { x: 9.5, y: 18.5 }).solve([])!;
     // start -> checkpoint cell (10,19) -> end, both straight.
     assertEquals(path.length, 3);
     assert(
@@ -283,19 +280,26 @@ Deno.test("findPath — any-angle optimality", async (t) => {
         y: 1.5 + Math.floor(rng() * 17),
       };
       grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      const anchors: Point[] = [];
       const blockCount = 3 + Math.floor(rng() * 28);
       for (let b = 0; b < blockCount; b++) {
         const x = 2 + Math.floor(rng() * 17);
         const y = 2 + Math.floor(rng() * 17);
         if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
         offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+        anchors.push({ x, y });
       }
 
-      const path = findPath(structuredClone(grid), checkpoint);
+      // Split the anchors between the precomputed base and solve-time pieces
+      // so the brute check also covers the augmented-board machinery (base
+      // visibility invalidation, ring corners), not just base solves.
+      const split = Math.floor(rng() * (anchors.length + 1));
+      const path = new PathSolver(anchors.slice(0, split), checkpoint)
+        .solve(anchors.slice(split));
       if (!path) continue;
       checked++;
 
-      // Reproduce findPath's internal grid (checkpoint cell walkable) for brute.
+      // Reproduce the search's internal grid (checkpoint cell walkable).
       const g = structuredClone(grid);
       g[checkpoint.y + 0.5][checkpoint.x + 0.5] = false;
       const cell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
@@ -304,36 +308,43 @@ Deno.test("findPath — any-angle optimality", async (t) => {
 
       assert(
         length(path) <= optimum + 1e-6,
-        `seed ${seed}: findPath ${length(path)} > optimum ${optimum}`,
+        `seed ${seed}: solver ${length(path)} > optimum ${optimum}`,
       );
     }
     assert(checked > 40, `expected many solvable boards, got ${checked}`);
   });
 });
 
-Deno.test("findPath returns undefined for an off-board checkpoint", () => {
-  // On page load the board holds the off-board sentinel checkpoint {-2,-2} on a
-  // fresh grid whose fractional checkpoint row was never allocated. A hover can
-  // call findPath in that state; it must return undefined, not throw
-  // "Cannot set properties of undefined" writing into the missing row.
-  const grid = newGrid();
-  assertEquals(findPath(grid, { x: -2, y: -2 }), undefined);
-});
-
-Deno.test("findPathFromData rejects overlapping placements", () => {
-  // Two blocks sharing a cell is invalid data and must throw, not path.
+Deno.test("PathSolver throws for an off-board checkpoint", () => {
+  // On page load the board holds the off-board sentinel checkpoint {-2,-2},
+  // whose fractional grid row was never allocated. Construction throws (there
+  // is nothing to precompute); the client's localRun/solvable helpers catch it
+  // and read the board as path-less rather than crashing a hover.
   let threw = false;
   try {
-    findPathFromData([{ x: 5, y: 5 }, { x: 6, y: 5 }], { x: 9.5, y: 9.5 });
+    new PathSolver([], { x: -2, y: -2 });
   } catch {
     threw = true;
   }
   assert(threw);
 });
 
-Deno.test("PathSolver matches findPathFromData", async (t) => {
-  // findPathFromData is the brute-verified reference (see the optimality test
-  // above), so parity here transitively covers the solver's optimality.
+Deno.test("PathSolver rejects overlapping placements", () => {
+  // Two blocks sharing a cell is invalid data and must throw, not path —
+  // whether they collide in the base board or at solve time.
+  let threw = false;
+  try {
+    new PathSolver([{ x: 5, y: 5 }, { x: 6, y: 5 }], { x: 9.5, y: 9.5 });
+  } catch {
+    threw = true;
+  }
+  assert(threw);
+});
+
+Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
+  // The optimality test above anchors correctness against the brute oracle;
+  // these steps pin the SHARED-INSTANCE behaviours — grid restoration between
+  // solves, the result memo, the one-added shortcut — to a cold solver.
   // Deterministic LCG so failures are reproducible.
   let s = 24681357 >>> 0;
   const rng = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
@@ -375,7 +386,7 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
           const roundScratch = structuredClone(scratch);
           const pieces = placeRandom(roundScratch, Math.floor(rng() * 22));
 
-          const expected = findPathFromData([...base, ...pieces], checkpoint);
+          const expected = new PathSolver(base, checkpoint).solve(pieces);
           const actual = solver.solve(pieces);
 
           assertEquals(
@@ -408,7 +419,7 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
       assert(good);
 
       // Overlapping the base block, the checkpoint cell, and a second piece that
-      // overlaps the first: all must throw like findPathFromData — and the last
+      // overlaps the first: all must throw — and the last
       // one only after the first piece was already placed, exercising the
       // mid-throw grid restore.
       for (
@@ -539,6 +550,5 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
     const solver = new PathSolver([], checkpoint);
     // (9,18) covers the start cell (9,19); the runner has nowhere to stand.
     assertEquals(solver.solve([{ x: 9, y: 18 }]), undefined);
-    assertEquals(findPathFromData([{ x: 9, y: 18 }], checkpoint), undefined);
   });
 });

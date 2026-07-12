@@ -4,8 +4,8 @@
 // any-angle visibility-graph search — before it ships: how many runs shift, by
 // how much, and whether any run gets *slower* under the new code. On a
 // thunder-free maze that should essentially never happen (a shorter distance is
-// a shorter time); WITH thunders it legitimately can, because findPath minimises
-// distance, not time — the new shorter path can pass nearer a thunder and eat
+// a shorter time); WITH thunders it legitimately can, because the solver
+// minimises distance, not time — the new shorter path can pass nearer a thunder and eat
 // more slow penalty. So only a regression on a maze with NO fixed or player
 // thunder is a red flag worth inspecting.
 //
@@ -148,7 +148,7 @@ const runRows = await sql<Run[]>`
 
 // Regression = the new path is genuinely LONGER, which for an optimal solver
 // should never happen. We can only judge that by path length, and a maze's time
-// only tracks its length when there are no thunders (findPath minimises
+// only tracks its length when there are no thunders (the solver minimises
 // distance; slows are added after, so a shorter path can score a longer time by
 // passing nearer a thunder). So we length-classify only thunder-free mazes —
 // where duration IS the length in time — and bucket thunder mazes on their own:
