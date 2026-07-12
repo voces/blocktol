@@ -276,11 +276,13 @@ delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys set.
 ## Environment variables
 
 `PORT` (local only; the platform manages it in prod), `APP_ENV` (`dev`/`prod` —
-selects the proxy database `blocktol-<env>`), `SQL_PASSWORD`,
-`NEW_RELIC_API_KEY`, and `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`
-(Web Push; generate with `deno run scripts/genVapidKeys.ts`; until set,
-notifications stay in-app). The task definitions enumerate the exact
-`--allow-env` grants.
+selects the proxy database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL`
+(the SQL proxy endpoint; defaults to `https://w3x.io/sql` — set to the proxy's
+localhost address when the server is co-located with it, e.g. the EC2 cohost, to
+drop the internet round-trip), `NEW_RELIC_API_KEY`, and
+`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
+`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app). The
+task definitions enumerate the exact `--allow-env` grants.
 
 ## Operational scripts (`scripts/`)
 

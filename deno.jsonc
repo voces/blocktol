@@ -21,14 +21,14 @@
     "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
     "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
     "build": "deno task bundle && deno task bundle:pathing",
-    "start": "deno run --no-check=remote --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT --allow-read server/index.ts",
-    "dev": "deno task bundle --watch & deno run --no-check=remote --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT --allow-read --watch server/index.ts",
+    "start": "deno run --no-check=remote --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT --allow-read server/index.ts",
+    "dev": "deno task bundle --watch & deno run --no-check=remote --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
-    "migrate": "deno run --no-check=remote --allow-net --allow-env=APP_ENV,SQL_PASSWORD server/db/migrate.ts",
+    "migrate": "deno run --no-check=remote --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit
     // the (dev) database through the SQL proxy; they self-skip when
     // SQL_PASSWORD isn't set, and the pure tests need no permissions.
-    "test": "deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD"
+    "test": "deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL"
   },
   "deploy": {
     "build": "deno task build",
