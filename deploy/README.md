@@ -62,11 +62,11 @@ the webhook secret exists, and Deno Deploy keeps serving until you cut DNS over.
 5. **nginx + TLS.** Install `deploy/blocktol.nginx.conf` (adjust `server_name` +
    port), then:
    ```bash
-   sudo certbot --nginx -d blocktol.w3x.io
+   sudo certbot --nginx -d blocktol.com
    sudo nginx -t && sudo systemctl reload nginx
    ```
 
-6. **DNS.** Point the chosen hostname (e.g. `blocktol.w3x.io`) at the EC2's IP.
+6. **DNS.** Point `blocktol.com` at the EC2's IP.
 
 7. **w3xio config.** If blocktol's checkout isn't at the default
    `/home/verit/blocktol`, set `BLOCKTOL_DIR` in w3xio's environment. The
