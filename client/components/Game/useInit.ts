@@ -228,11 +228,7 @@ export const useInit = () => {
         setBricks(data.bricks - restored.length);
         setPower(data.power - restored.filter((b) => b.thunder).length);
         rebuildGrid(grid, data.checkpoint, merged);
-        const r = localRun(
-          grid,
-          data.checkpoint,
-          merged.filter((b) => b.thunder),
-        );
+        const r = localRun(merged, data.checkpoint);
         if (r) setRun(r);
         setStaged(false);
         deadlineRef.current = resume.deadline;

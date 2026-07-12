@@ -92,9 +92,14 @@ diverge — the server's accepted time must equal what the client previewed.
   their pairwise visibility once, then each `solve(pieces)` pays only for what
   the pieces change, with a single Dijkstra rooted at the checkpoint settling
   both legs (~3–5× faster; parity with `findPathFromData` is test-asserted).
-  Equal-length ties can break differently from `findPath`, and with thunders
-  duration depends on geometry — so migrating a surface that _persists_ times
-  onto it calls for a `scripts/comparePathing.ts` audit/retime.
+  `cachedSolver` content-addresses one solver per base board (LRU); **every
+  timing surface** — `validateRun`, board/daily/start staging, and the client's
+  `localRun` preview — goes through it, so previewed and persisted times share
+  one engine _and one tie-breaking_ (equal-length ties can break differently
+  from `findPath`, and with thunders duration depends on geometry — which is why
+  the `findPath`→`PathSolver` migration called for a `scripts/comparePathing.ts`
+  audit/retime). `findPath` remains for grid-shaped callers that only consume
+  booleans (hover/drag validity, generation), where tie-breaking can't matter.
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `PathSolver`, cached per iteration shape), so what
   the audit script accepts is exactly what the write path accepts.
@@ -252,20 +257,21 @@ can safely retry.
 **The game loop (`client/components/Game/`):** `useGameState` + `useInit` wire
 the board handlers; `interaction.ts`/`useInputStart`/`useInputEnd` handle
 placement. Every placement recomputes the runner locally (`localRun` in
-`helpers.ts`) so the board updates with no round trip; **persistence then splits
-by run type** (see the run lifecycle above). **Ranked** goes through
-`runSaver.ts` — a **trailing-edge queue of depth 1** (every save sends the full
-maze, newer saves coalesce, failures retry with backoff), now **debounced**
-except in the final seconds. At run start `flushRunSaver` **sends** the pending
-maze immediately (rather than reverting to the last confirmed one — that would
-drop a debounced edit the player hasn't waited out, e.g. tapping "Ready?"
-mid-build); if the window has already closed the flush comes back expired and
-`onExpired` snaps the board back. **Free play** bypasses the saver entirely:
-`freePlay.ts` mints the per-attempt `client_id`, mirrors the maze to
-`localStorage` for reload-resume, and `commitRun` fires once at execution;
-`useInit` awaits that commit before re-staging so a slow (retrying) commit can't
-let the re-stage drop the run from recents. `useClock`/`RunClock` run the
-60s/animation timing; `verdict.ts` computes the result.
+`helpers.ts`, on the same shared `cachedSolver` the server validates with) so
+the board updates with no round trip; **persistence then splits by run type**
+(see the run lifecycle above). **Ranked** goes through `runSaver.ts` — a
+**trailing-edge queue of depth 1** (every save sends the full maze, newer saves
+coalesce, failures retry with backoff), now **debounced** except in the final
+seconds. At run start `flushRunSaver` **sends** the pending maze immediately
+(rather than reverting to the last confirmed one — that would drop a debounced
+edit the player hasn't waited out, e.g. tapping "Ready?" mid-build); if the
+window has already closed the flush comes back expired and `onExpired` snaps the
+board back. **Free play** bypasses the saver entirely: `freePlay.ts` mints the
+per-attempt `client_id`, mirrors the maze to `localStorage` for reload-resume,
+and `commitRun` fires once at execution; `useInit` awaits that commit before
+re-staging so a slow (retrying) commit can't let the re-stage drop the run from
+recents. `useClock`/`RunClock` run the 60s/animation timing; `verdict.ts`
+computes the result.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy

@@ -16,7 +16,8 @@ import { dailyParts } from "../../../util/dailyParts.ts";
 import { method } from "../../apiHelpers.ts";
 import { startRun as dbStartRun, updateCurrentRun } from "../../../db/run.ts";
 import { getOwnBest } from "../../../db/user.ts";
-import { findPathFromData, pathDuration } from "../../../../common/pathing.ts";
+import { cachedSolver, pathDuration } from "../../../../common/pathing.ts";
+import type { Point } from "../../../../common/types.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { iterationAttempts } from "../../../util/attempts.ts";
 
@@ -95,9 +96,11 @@ export const startRun = method(startRunBody, true)(
       };
     }
 
-    let path: ReturnType<typeof findPathFromData>;
+    let path: Point[] | undefined;
     try {
-      path = findPathFromData(data.blocks, data.checkpoint);
+      // The base board's path, from the shared per-iteration solver — after
+      // the first start on a board this is a cached copy, not a search.
+      path = cachedSolver(data.blocks, data.checkpoint).solve([]);
     } catch (err) {
       console.error(err);
       return { error: "invalid path", status: 400 };

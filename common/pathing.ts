@@ -348,11 +348,21 @@ export class PathSolver {
     }
   }
 
+  // The empty placement's result — the base board itself — asked for by every
+  // board stage/view, so it's searched once and copied out thereafter.
+  private baseResult?: { path: Point[] | undefined };
+
   // Solve one player placement against the precomputed base. Same contract as
   // findPathFromData: throws "invalid data" on an out-of-bounds/overlapping
   // piece, returns undefined when no route exists, otherwise the exact
   // shortest start -> checkpoint -> end path.
   solve(pieces: ReadonlyArray<Readonly<Point>>): Point[] | undefined {
+    if (pieces.length === 0) {
+      // No pieces to place or restore — the grid already IS the base board.
+      this.baseResult ??= { path: this.search(pieces) };
+      return this.baseResult.path?.map((p) => ({ ...p }));
+    }
+
     const { grid, checkpointCell } = this;
 
     // Place the pieces with findPathFromData's exact overlap semantics: the
@@ -517,6 +527,38 @@ export class PathSolver {
     return path;
   }
 }
+
+// One PathSolver per base board, content-addressed and LRU-bounded, so every
+// surface that solves against the same iteration — server validation, board
+// staging, the client's live preview — shares a single precompute AND a single
+// tie-breaking: two surfaces asking about the same placement get the same
+// geometry, which is what keeps previewed and persisted times equal on thunder
+// mazes. Keyed by geometry only (a thunder is a block that also slows; the
+// flag doesn't move it). A constructor throw (bad base data) is never cached
+// and propagates to the caller.
+const solverCache = new Map<string, PathSolver>();
+const MAX_CACHED_SOLVERS = 32;
+
+export const cachedSolver = (
+  baseBlocks: ReadonlyArray<Readonly<Point>>,
+  checkpoint: Point,
+): PathSolver => {
+  const key = `${checkpoint.x},${checkpoint.y}|` +
+    baseBlocks.map((b) => `${b.x},${b.y}`).sort().join(";");
+  const cached = solverCache.get(key);
+  if (cached) {
+    // Re-insert so hot boards (today's daily) stay ahead of eviction.
+    solverCache.delete(key);
+    solverCache.set(key, cached);
+    return cached;
+  }
+  const solver = new PathSolver(baseBlocks, checkpoint);
+  solverCache.set(key, solver);
+  if (solverCache.size > MAX_CACHED_SOLVERS) {
+    solverCache.delete(solverCache.keys().next().value!);
+  }
+  return solver;
+};
 
 export const SPEED = 5;
 

@@ -58,7 +58,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     const apply = (newBlocks: typeof blocks) => {
       rebuildGrid(grid, checkpoint, newBlocks);
       const localBlocks = newBlocks.filter((b) => b.local);
-      const r = localRun(grid, checkpoint, newBlocks.filter((b) => b.thunder));
+      const r = localRun(newBlocks, checkpoint);
       if (r) setRun(r);
       setBlocks(newBlocks);
       // Persistence diverges by mode. Free play keeps its state on the client
