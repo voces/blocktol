@@ -689,78 +689,154 @@ export const cachedSolver = (
 
 export const SPEED = 5;
 
+// Thunder mechanics, in seconds/units. The retired tick engine expressed these
+// as step counts (6*SPEED of slow, 32*SPEED of cooldown at 0.02s a step); the
+// wall-clock values are unchanged.
+const THUNDER_RADIUS = 4;
+// Seconds of half speed per trigger. A re-trigger RESETS this timer — slows
+// never stack, so overlapping triggers waste the interrupted slow's tail.
+const SLOW_DURATION = 6;
+// Minimum seconds between one thunder's triggers, so a runner passing in a
+// straight line isn't hit twice by the same thunder.
+const TRIGGER_COOLDOWN = 3.2;
+
 export type Slow = {
   time: number;
   thunder: Point;
 };
 
+// The runner's travel time along `path`, exactly and continuously — an
+// event-driven computation, not a stepped simulation, so duration is a smooth
+// function of the maze rather than being quantized to 0.1-distance ticks
+// (which displayed genuinely different mazes as the same time whenever their
+// optimal lengths fell in one tick bucket).
+//
+// Model: the runner moves at SPEED, halved while slowed. A thunder triggers
+// when the runner is strictly within THUNDER_RADIUS of its centre (the anchor
+// cell + 0.5, in the path's raw node coordinates — the frame the tick engine
+// used) and its own TRIGGER_COOLDOWN has passed; triggers happen at the
+// earliest such instant (range entry, or cooldown expiry while still inside).
+// Every trigger resets the shared slow to SLOW_DURATION. Thunders whose
+// earliest instants coincide exactly all fire together — one shared slow, all
+// cooldowns consumed, all recorded (the tick engine instead swallowed the
+// runners-up's triggers entirely).
+//
+// Where the runner is in range is pure geometry: per thunder, a short list of
+// intervals in DISTANCE along the path (circle/segment intersections). Only
+// the mapping distance<->time depends on the slow schedule, and between events
+// it is linear, so the walk below advances event to event in closed form.
+// Times are rounded to the same two decimals the game stores and displays.
 export const pathDuration = (
   path: ReadonlyArray<Readonly<Point>> = [],
   thunders: ReadonlyArray<Readonly<Point>> = [],
 ): [duration: number, slows: Slow[]] => {
   if (path.length < 2) return [0, []];
 
-  let distance = 0;
-  let consumedDistance = 0;
-  let index = 0;
-  let distanceToNext = euclideanDistance(path[index], path[index + 1]);
-  const thunderUsage = Array<number>(thunders.length).fill(-Infinity);
-  const runner = { ...path[0] };
-  let slowed = 0;
+  const cum: number[] = [0];
+  for (let i = 1; i < path.length; i++) {
+    cum.push(cum[i - 1] + euclideanDistance(path[i - 1], path[i]));
+  }
+  const total = cum[cum.length - 1];
+
+  // Per-thunder in-range windows as [start, end] distance intervals, merged
+  // where the polyline leaves one segment inside the circle and enters the
+  // next (the same crossing point, up to float noise).
+  const windows = thunders.map((thunder) => {
+    const cx = thunder.x + 0.5;
+    const cy = thunder.y + 0.5;
+    const list: [number, number][] = [];
+    for (let i = 1; i < path.length; i++) {
+      const segment = cum[i] - cum[i - 1];
+      if (segment === 0) continue;
+      const dx = path[i].x - path[i - 1].x;
+      const dy = path[i].y - path[i - 1].y;
+      const fx = path[i - 1].x - cx;
+      const fy = path[i - 1].y - cy;
+      const a = dx * dx + dy * dy;
+      const b = 2 * (fx * dx + fy * dy);
+      const c = fx * fx + fy * fy - THUNDER_RADIUS * THUNDER_RADIUS;
+      const disc = b * b - 4 * a * c;
+      // A tangent graze has no interior crossing — "in range" is strict,
+      // mirroring lineOfSight's treatment of boundaries.
+      if (disc <= 0) continue;
+      const sq = disc ** 0.5;
+      const u1 = Math.max(0, (-b - sq) / (2 * a));
+      const u2 = Math.min(1, (-b + sq) / (2 * a));
+      if (u2 <= u1) continue;
+      const start = cum[i - 1] + u1 * segment;
+      const end = cum[i - 1] + u2 * segment;
+      const previous = list[list.length - 1];
+      if (previous && start <= previous[1] + 1e-9) {
+        previous[1] = Math.max(previous[1], end);
+      } else list.push([start, end]);
+    }
+    return list;
+  });
+
+  let t = 0;
+  let d = 0;
+  let slowEnd = -Infinity;
+  const lastFire = thunders.map(() => -Infinity);
   const slows: Slow[] = [];
-  let steps = 0;
 
-  while (index < path.length - 1) {
-    steps++;
+  // When the runner reaches `target` distance, from the current state. Two
+  // linear pieces at most: half speed until the slow expires, full after.
+  const timeToReach = (target: number) => {
+    if (t < slowEnd) {
+      const coveredSlowed = d + (slowEnd - t) * (SPEED / 2);
+      if (target <= coveredSlowed) return t + (target - d) / (SPEED / 2);
+      return slowEnd + (target - coveredSlowed) / SPEED;
+    }
+    return t + (target - d) / SPEED;
+  };
 
-    let slowedThisStep = false;
+  while (true) {
+    // The earliest feasible trigger across all thunders. A trigger in a
+    // window fires at max(window entry, cooldown ready) and must land
+    // STRICTLY before the runner exits the window — firing at the exit point
+    // itself is a graze, not a hit. Windows behind the runner are spent, but
+    // a window that is merely cooldown-infeasible now must be reconsidered
+    // later: another thunder's slow can dilate time enough to make it
+    // reachable again, so nothing ahead of the runner is ever discarded.
+    let best = Infinity;
+    let firing: number[] = [];
     for (let i = 0; i < thunders.length; i++) {
-      if (
-        euclideanDistance(runner, {
-            x: thunders[i].x + 0.5,
-            y: thunders[i].y + 0.5,
-          }) > 4 ||
-        // Timed so that runner passing by in
-        // a straight line won't trigger twice
-        thunderUsage[i] + 32 * SPEED >= steps
-      ) {
-        continue;
-      }
-      thunderUsage[i] = steps;
-
-      if (!slowedThisStep) {
-        slowedThisStep = true;
-        slowed = 6 * SPEED;
-        slows.push(
-          { time: steps, thunder: { x: thunders[i].x, y: thunders[i].y } },
-        );
+      for (const [start, end] of windows[i]) {
+        if (end <= d) continue;
+        const entry = start <= d ? t : timeToReach(start);
+        const fire = Math.max(entry, lastFire[i] + TRIGGER_COOLDOWN);
+        if (fire >= timeToReach(end)) continue;
+        if (fire < best) {
+          best = fire;
+          firing = [i];
+        } else if (fire === best) firing.push(i);
+        break;
       }
     }
+    if (best === Infinity) break;
 
-    distance += slowed < 1e-8 ? 0.1 : 0.05;
-    slowed -= 0.1;
-    while (
-      (distance - consumedDistance) + 1e-8 >= distanceToNext &&
-      index < path.length
-    ) {
-      index++;
-      consumedDistance += distanceToNext;
-      if (index < path.length - 1) {
-        distanceToNext = euclideanDistance(path[index], path[index + 1]);
-      }
+    // Advance the runner to the trigger instant, then fire everything due at
+    // exactly that instant: one shared slow reset, every cooldown consumed.
+    if (t < slowEnd) {
+      const boundary = Math.min(slowEnd, best);
+      d += (boundary - t) * (SPEED / 2);
+      t = boundary;
     }
-
-    if (index < path.length - 1) {
-      const p = (distance - consumedDistance) / distanceToNext;
-      runner.x = path[index].x * (1 - p) + path[index + 1].x * p;
-      runner.y = path[index].y * (1 - p) + path[index + 1].y * p;
+    if (t < best) {
+      d += (best - t) * SPEED;
+      t = best;
+    }
+    slowEnd = t + SLOW_DURATION;
+    for (const i of firing) {
+      lastFire[i] = t;
+      slows.push({ time: t, thunder: { x: thunders[i].x, y: thunders[i].y } });
     }
   }
 
   return [
-    Math.round(steps * 10 / SPEED) / 100,
+    Math.round(timeToReach(total) * 100) / 100,
     slows.map(({ time, thunder }) => ({
-      time: Math.round(time * 10 / SPEED) / 100,
+      time: Math.round(time * 100) / 100,
       thunder,
     })),
   ];

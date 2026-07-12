@@ -84,7 +84,7 @@ Deno.test("pathDuration", async (t) => {
             { x: 1, y: 1 },
           ],
           [],
-          0.30, // 0.20*√2 = ~0.283, round up 0.02 seconds
+          0.28, // √2/5 = ~0.2828, rounded — no tick to round up to anymore
         ),
     );
 
@@ -98,7 +98,7 @@ Deno.test("pathDuration", async (t) => {
             { x: 0, y: 1 },
           ],
           [],
-          0.5, // 0.20*√2 + 0.2 = ~0.483, round up
+          0.48, // (√2 + 1)/5 = ~0.4828, rounded
         ),
     );
 
@@ -141,9 +141,55 @@ Deno.test("pathDuration", async (t) => {
           // but easier math
           { x: 4.5, y: -0.5 },
         ],
-        23, // slowed for six seconds by half
-        [{ thunder: { x: 4.5, y: -0.5 }, time: 0.22 }], // 1 tile + step into next
+        23, // slowed for six seconds by half: 100/5 + 6/2
+        // Centre (5,0), radius 4: range entry at distance 1 exactly = 0.2s.
+        // No re-trigger: the cooldown expires (3.4s) at the very instant the
+        // slowed runner reaches the range EXIT (distance 9) — a graze, and
+        // "in range" is strict.
+        [{ thunder: { x: 4.5, y: -0.5 }, time: 0.2 }],
       ));
+
+    await t.step("simultaneous triggers share one slow", () => {
+      // Two thunders mirrored across the path: identical in-range windows, so
+      // both fire at the exact same instant. Both are recorded and both
+      // cooldowns burn, but the slow is shared — the duration is identical to
+      // the single-thunder run.
+      const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+      const pair = [{ x: 4.5, y: 2.5 }, { x: 4.5, y: -3.5 }]; // centres (5,±3)
+      const entry = (5 - Math.sqrt(7)) / 5; // |x-5| < √(16-9) from x=0, at SPEED
+      assertPathDuration(path, pair, 23, [
+        { thunder: pair[0], time: Math.round(entry * 100) / 100 },
+        { thunder: pair[1], time: Math.round(entry * 100) / 100 },
+      ]);
+      assertPathDuration(path, [pair[0]], 23, [
+        { thunder: pair[0], time: Math.round(entry * 100) / 100 },
+      ]);
+    });
+
+    await t.step("a re-trigger resets the slow, never stacks", () => {
+      // Second thunder 10 units downstream: the slowed runner (2.5/s) reaches
+      // its window 4s after the first trigger, mid-slow. The slow RESETS to
+      // 6s there, so total slowed wall-time is 4 + 6 = 10s — the first slow's
+      // last 2s are wasted, not banked: 100/5 + 10/2 = 25.
+      const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+      const thunders = [{ x: 4.5, y: 2.5 }, { x: 14.5, y: 2.5 }];
+      const t1 = (5 - Math.sqrt(7)) / 5;
+      assertPathDuration(path, thunders, 25, [
+        { thunder: thunders[0], time: Math.round(t1 * 100) / 100 },
+        { thunder: thunders[1], time: Math.round((t1 + 4) * 100) / 100 },
+      ]);
+    });
+
+    await t.step("a window thinner than the old tick still triggers", () => {
+      // Centre 3.9997 off the path: in-range for only ~0.05 distance — the
+      // retired tick engine sampled every 0.1 and could step clean over it;
+      // the continuous engine cannot. Intentional behaviour change.
+      const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+      const thunder = { x: 4.5, y: 3.4997 };
+      const [duration, slows] = pathDuration(path, [thunder]);
+      assert(Math.abs(duration - 23) < 1e-9, `expected 23, got ${duration}`);
+      assertEquals(slows.length, 1);
+    });
   });
 });
 
