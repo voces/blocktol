@@ -1,7 +1,8 @@
-# systemd unit for the Deno server on the EC2 cohost. Install to
-# /etc/systemd/system/blocktol.service (see deploy/README.md), then
-# `systemctl enable --now blocktol`. The w3xio /deploy webhook restarts this unit
-# after each merge (it rebuilds the client bundle first).
+# Reference template for the systemd unit on the EC2 cohost. Nothing reads this
+# file live — the authoritative copy is /etc/systemd/system/blocktol.service,
+# copied from here. Keep the two in sync (see deploy/README.md). The w3xio
+# /deploy webhook restarts this unit after each merge (rebuilding the client
+# bundle first).
 [Unit]
 Description=Blocktol (Deno server)
 After=network-online.target
@@ -9,19 +10,25 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=verit
-WorkingDirectory=/home/verit/blocktol
+User=ubuntu
+WorkingDirectory=/home/ubuntu/blocktol
+
+# systemd doesn't set HOME; deno needs it for ~/.cache/deno.
+Environment=HOME=/home/ubuntu
 
 # All runtime config lives here (chmod 600): PORT, APP_ENV=prod, SQL_PASSWORD,
 # SQL_PROXY_URL, NEW_RELIC_API_KEY, VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT.
-# SQL_PROXY_URL should point at the LOCAL /sql proxy to drop the internet hop,
-# e.g. SQL_PROXY_URL=http://127.0.0.1:<proxy-port>/sql
-EnvironmentFile=/home/verit/blocktol/.env
+# SQL_PROXY_URL points at the LOCAL /sql proxy (http://127.0.0.1:3626/sql) to
+# drop the internet hop.
+EnvironmentFile=/home/ubuntu/blocktol/.env
 
-# Absolute path required by systemd — set to `which deno` on the box. The client
-# bundle is rebuilt by the deploy webhook, not here, so start is fast; a fresh
-# checkout must `deno task build` once during setup.
-ExecStart=/home/verit/.deno/bin/deno task start
+# The client bundle is rebuilt by the deploy webhook, not here, so start is fast;
+# a fresh checkout must `deno task build` once during setup.
+ExecStart=/home/ubuntu/.deno/bin/deno task start
+
+# Deno exits 143 (128+SIGTERM) on a clean stop; without this every restart/stop
+# would be logged as a failure.
+SuccessExitStatus=143 SIGTERM
 
 Restart=always
 RestartSec=2
