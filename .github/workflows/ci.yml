@@ -4,8 +4,12 @@ on:
     branches: [prod]
   pull_request:
 
-# Deployment is handled by the Deno Deploy GitHub integration (app.deno.com),
-# not by this workflow. This job only checks the code.
+# This job only checks the code. Deployment: during the EC2 cohost migration two
+# paths coexist — the Deno Deploy GitHub integration (app.deno.com), and
+# deploy.yml, which fires after this workflow succeeds on `prod` and notifies the
+# EC2 via w3xio's /deploy webhook. deploy.yml no-ops until DEPLOY_WEBHOOK_URL is
+# set, and the Deno Deploy integration is disconnected at cutover. See
+# deploy/README.md.
 jobs:
   check:
     name: Check

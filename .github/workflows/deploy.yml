@@ -1,0 +1,32 @@
+name: Deploy
+
+# Self-hosted deploy for the EC2 cohost. Fires after CI passes on `prod` (i.e. a
+# merge), then tells the box to pull + rebuild + restart via w3xio's /deploy
+# webhook. Two safety properties make it safe to land before the box is ready:
+#   - It only runs when the CI run it keys off concluded `success`.
+#   - The notify step no-ops unless the DEPLOY_WEBHOOK_URL secret is set, so
+#     until you configure it (and cut DNS over) the Deno Deploy integration keeps
+#     serving untouched.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [prod]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify deploy webhook
+        # env context is available to a step's own `if`; skips cleanly when the
+        # secret is unset.
+        if: env.DEPLOY_WEBHOOK_URL
+        env:
+          # A secret URL that embeds the deploy token, e.g.
+          # https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+        run: |
+          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{"app": "blocktol", "version": "${{ github.event.workflow_run.head_sha }}"}'
