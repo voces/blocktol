@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { findPathFromData, pathDuration } from "../../../common/pathing.ts";
+import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
+import type { Point } from "../../../common/types.ts";
 import {
   getIteration,
   getIterationOtherBest,
@@ -97,9 +98,12 @@ export const getDailySummary = method(getDailySummaryBody, true)(
           ...latestRun.maze.map((b) => ({ ...b, player: true })),
         ] as { x: number; y: number; player?: boolean; thunder?: boolean }[];
 
-        let path: ReturnType<typeof findPathFromData>;
+        let path: Point[] | undefined;
         try {
-          path = findPathFromData(blocks, iteration.checkpoint);
+          // The in-progress maze against the shared per-iteration solver —
+          // the same engine (and tie-breaking) that timed its saves.
+          path = cachedSolver(iteration.blocks, iteration.checkpoint)
+            .solve(latestRun.maze);
         } catch (err) {
           console.error(err);
           return { error: "invalid path", status: 400 };

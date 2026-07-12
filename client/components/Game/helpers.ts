@@ -1,6 +1,7 @@
 import { is } from "../../../common/typeguards.ts";
 import { offsets } from "../../../common/constants.ts";
 import {
+  cachedSolver,
   findPath,
   newGrid,
   pathDuration,
@@ -11,28 +12,33 @@ import { Point } from "../../../common/types.ts";
 export type LocalRun = { path: Point[]; duration: number; slows: Slow[] };
 
 /**
- * Compute the runner's path and time from the current grid, client-side, with
- * the same engine (`findPath` + `pathDuration`) the server runs — so the preview
- * equals exactly what the server would accept and time. This is what lets a
- * build update the board with no round trip: free play never contacts the server
- * mid-build at all, and a ranked build shows its path instantly while its save
- * is debounced. `thunders` is every thunder on the board (fixed + player), the
- * same set the server passes. Returns undefined for a momentarily path-less
+ * Compute the runner's path and time client-side with the same engine — the
+ * shared `cachedSolver`/`PathSolver` — the server validates and times with, so
+ * the preview equals exactly what the server would accept, down to how
+ * equal-length ties break (which matters near thunders, where duration depends
+ * on geometry). This is what lets a build update the board with no round trip:
+ * free play never contacts the server mid-build at all, and a ranked build
+ * shows its path instantly while its save is debounced. `blocks` is the whole
+ * board — the iteration's fixed pieces plus the player's, `local` marking the
+ * player's, thunders flagged. Returns undefined for a momentarily path-less
  * state (mid-drag illegal placement); the caller keeps the prior run then.
  */
 export const localRun = (
-  grid: boolean[][],
+  blocks: ReadonlyArray<Point & { thunder?: boolean; local?: boolean }>,
   checkpoint: Point,
-  thunders: ReadonlyArray<Point>,
 ): LocalRun | undefined => {
-  let path: ReturnType<typeof findPath>;
+  let path: Point[] | undefined;
   try {
-    path = findPath(grid, checkpoint);
+    path = cachedSolver(blocks.filter((b) => !b.local), checkpoint)
+      .solve(blocks.filter((b) => b.local));
   } catch {
     return undefined;
   }
   if (!path) return undefined;
-  const [duration, slows] = pathDuration(path, thunders);
+  const [duration, slows] = pathDuration(
+    path,
+    blocks.filter((b) => b.thunder),
+  );
   return { path, duration, slows };
 };
 

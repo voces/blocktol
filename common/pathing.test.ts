@@ -1,6 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 
 import {
+  cachedSolver,
   findPath,
   findPathFromData,
   lineOfSight,
@@ -385,6 +386,22 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
       assertEquals(solver.solve([{ x: 12, y: 12 }]), good);
     },
   );
+
+  await t.step("cachedSolver shares one solver per base board", () => {
+    const checkpoint = { x: 9.5, y: 9.5 };
+    const a = cachedSolver([{ x: 5, y: 5 }, { x: 12, y: 3 }], checkpoint);
+    // Same content, different order — the key is content-addressed.
+    const b = cachedSolver([{ x: 12, y: 3 }, { x: 5, y: 5 }], checkpoint);
+    assert(a === b);
+
+    // The memoized base result returns equal paths but fresh arrays, so a
+    // caller mutating its copy can't poison the cache.
+    const p1 = a.solve([])!;
+    const p2 = a.solve([])!;
+    assertEquals(p1, p2);
+    assert(p1 !== p2);
+    assert(p1[0] !== p2[0]);
+  });
 
   await t.step("covering an endpoint yields no path, not a crash", () => {
     const checkpoint = { x: 9.5, y: 9.5 };

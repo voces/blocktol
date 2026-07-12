@@ -5,7 +5,8 @@
 // three attempts on today's daily (the latest day) to unlock free play.
 
 import { z } from "zod";
-import { findPathFromData, pathDuration } from "../../../common/pathing.ts";
+import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
+import type { Point } from "../../../common/types.ts";
 import {
   getIteration,
   getIterationOtherBest,
@@ -48,9 +49,11 @@ export const getBoard = method(getBoardBody, true)(
       iterationAttempts(userId, iteration),
     ]);
 
-    let path: ReturnType<typeof findPathFromData>;
+    let path: Point[] | undefined;
     try {
-      path = findPathFromData(data.blocks, data.checkpoint);
+      // The base board's path, from the shared per-iteration solver — after
+      // the first stage of a board this is a cached copy, not a search.
+      path = cachedSolver(data.blocks, data.checkpoint).solve([]);
     } catch (err) {
       console.error(err);
       return { error: "invalid path", status: 400 };
