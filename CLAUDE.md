@@ -91,15 +91,24 @@ diverge — the server's accepted time must equal what the client previewed.
   many placements against one base board: it precomputes the base corners and
   their pairwise visibility once, then each `solve(pieces)` pays only for what
   the pieces change, with a single Dijkstra rooted at the checkpoint settling
-  both legs (~3–5× faster; parity with `findPathFromData` is test-asserted).
-  `cachedSolver` content-addresses one solver per base board (LRU); **every
-  timing surface** — `validateRun`, board/daily/start staging, and the client's
-  `localRun` preview — goes through it, so previewed and persisted times share
-  one engine _and one tie-breaking_ (equal-length ties can break differently
-  from `findPath`, and with thunders duration depends on geometry — which is why
-  the `findPath`→`PathSolver` migration called for a `scripts/comparePathing.ts`
-  audit/retime). `findPath` remains for grid-shaped callers that only consume
-  booleans (hover/drag validity, generation), where tie-breaking can't matter.
+  both legs (~3–5× faster; parity with `findPathFromData` is test-asserted). On
+  top sits an edit-stream layer exploiting that a build is the same maze ± one
+  piece per save: recent results are memoized (sorted geometry + thunder flags)
+  and a one-piece addition skips the search when the predecessor was unsolvable
+  (always sound) or its path is untouched by the new piece (thunder-free boards
+  only — the reuse can return a different equal-length path, and near thunders
+  geometry is duration-visible). The engine is placement-order-independent by
+  construction (ring corners sort row-major), and the layer's contract — a cold
+  solver reproduces every warm duration exactly — is fuzz-asserted by the "edit
+  stream" test. `cachedSolver` content-addresses one solver per base board
+  (LRU); **every timing surface** — `validateRun`, board/daily/start staging,
+  and the client's `localRun` preview — goes through it, so previewed and
+  persisted times share one engine _and one tie-breaking_ (equal-length ties can
+  break differently from `findPath`, and with thunders duration depends on
+  geometry — which is why the `findPath`→`PathSolver` migration called for a
+  `scripts/comparePathing.ts` audit/retime). `findPath` remains for grid-shaped
+  callers that only consume booleans (hover/drag validity, generation), where
+  tie-breaking can't matter.
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `PathSolver`, cached per iteration shape), so what
   the audit script accepts is exactly what the write path accepts.

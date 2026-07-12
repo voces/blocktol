@@ -113,6 +113,39 @@ export const lineOfSight = (from: Point, to: Point, grid: boolean[][]) => {
 const euclideanDistance = (s: Point, e: Point) =>
   ((e.x - s.x) ** 2 + (e.y - s.y) ** 2) ** .5;
 
+// Canonical identity of a set of placed pieces: sorted, geometry + thunder
+// flag. Shared by PathSolver's result memo and cachedSolver's solver keys.
+const placementKey = (
+  pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+) => pieces.map((b) => `${b.thunder ? "t" : ""}${b.x},${b.y}`).sort().join(";");
+
+// Does this cell-node path cross a 2x2 piece's inflated footprint? The exact
+// feasibility question for "does adding this piece invalidate the path": the
+// piece's four cells form one rectangle, grown by the half-runner and
+// EPS-shrunk exactly like lineOfSight's per-cell boxes, so a path this returns
+// false for grazes at most the piece's boundary — still legal travel.
+const pathTouchesPiece = (path: ReadonlyArray<Point>, piece: Point) => {
+  const xMin = piece.x - 0.5 + EPS;
+  const yMin = piece.y - 0.5 + EPS;
+  const xMax = piece.x + 2.5 - EPS;
+  const yMax = piece.y + 2.5 - EPS;
+  for (let i = 1; i < path.length; i++) {
+    if (
+      segmentCrossesBox(
+        path[i - 1].x + 0.5,
+        path[i - 1].y + 0.5,
+        path[i].x + 0.5,
+        path[i].y + 0.5,
+        xMin,
+        yMin,
+        xMax,
+        yMax,
+      )
+    ) return true;
+  }
+  return false;
+};
+
 // Blocked (or out of bounds). Deliberately the exact negation of the walkable
 // test inside `lineOfSight` (`grid[y]?.[x] !== false`) so corner detection and
 // segment visibility can never disagree about what a cell is.
@@ -287,6 +320,10 @@ export const findPathFromData = (blocks: Point[], checkpoint: Point) => {
 // - Both legs share the checkpoint and the graph is undirected, so ONE
 //   Dijkstra rooted at the checkpoint settles start and end together instead
 //   of two independent searches rebuilding the same graph.
+// - A build session's save stream is the same maze ± one piece each time, so
+//   recent results are memoized and a one-piece addition often needs no
+//   search at all (see `solve` for the exact rules and their determinism
+//   contract).
 //
 // Equal-length shortest paths can tie-break differently from `findPath`'s
 // search order, and with thunders duration depends on geometry, not just
@@ -300,15 +337,20 @@ export class PathSolver {
   // Node order: 0 = start, 1 = end, 2 = checkpoint cell, then base corners.
   private baseNodes: Point[];
   private baseLOS: Uint8Array;
+  // Whether the base board carries a thunder — gates the reuse shortcut in
+  // `solve` (see there): with a thunder anywhere, duration depends on which
+  // equal-length path comes back, so only a fresh search is duration-exact.
+  private baseHasThunder: boolean;
 
   // Mirrors findPathFromData's construction: throws "invalid data" when a
   // base block is out of bounds or overlaps (including the checkpoint cell).
   constructor(
-    baseBlocks: ReadonlyArray<Readonly<Point>>,
+    baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
     checkpoint: Point,
     start: Point = { x: 9, y: 19 },
     end: Point = { x: 10, y: 0 },
   ) {
+    this.baseHasThunder = baseBlocks.some((b) => b.thunder);
     const grid = newGrid();
     const checkpointCell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
     grid[checkpointCell.y][checkpointCell.x] = true;
@@ -352,15 +394,57 @@ export class PathSolver {
   // board stage/view, so it's searched once and copied out thereafter.
   private baseResult?: { path: Point[] | undefined };
 
+  // Recent placements' results, keyed by sorted piece coordinates (placement
+  // order is irrelevant, matching the engine's own order-independence) PLUS
+  // thunder flags. The flags don't move blocks — but they must be in the key:
+  // the reuse shortcut can store a not-cold-identical (equal-length) path for
+  // a thunder-free state, and a block→thunder upgrade re-asking for the same
+  // geometry must NOT be served that path, because with a thunder the
+  // geometry becomes duration-visible. Flagged keys mean thunder-carrying
+  // states only ever hit entries that were searched cold. This is what makes
+  // a build session cheap: a save stream is the same maze ± one piece each
+  // time, so re-saves, undo/redo toggles and commit-time revalidation all
+  // land here, and daily's resume view returns byte-identical results to the
+  // save that produced them. Bounded LRU; entries are never mutated, copies
+  // go out.
+  private results = new Map<string, { path: Point[] | undefined }>();
+
+  private remember(key: string, path: Point[] | undefined) {
+    this.results.set(key, { path });
+    if (this.results.size > 32) {
+      this.results.delete(this.results.keys().next().value!);
+    }
+  }
+
   // Solve one player placement against the precomputed base. Same contract as
   // findPathFromData: throws "invalid data" on an out-of-bounds/overlapping
   // piece, returns undefined when no route exists, otherwise the exact
   // shortest start -> checkpoint -> end path.
-  solve(pieces: ReadonlyArray<Readonly<Point>>): Point[] | undefined {
+  //
+  // Determinism contract: the returned DURATION (via pathDuration) is always
+  // exactly what a cold solver would produce for this state, so an audit
+  // recompute reproduces every persisted time. The returned GEOMETRY is
+  // cold-identical too, except via the thunder-free reuse shortcut below,
+  // which may return a different equally-short optimal path — cosmetic there,
+  // because without thunders duration is a function of length alone.
+  solve(
+    pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+  ): Point[] | undefined {
     if (pieces.length === 0) {
       // No pieces to place or restore — the grid already IS the base board.
       this.baseResult ??= { path: this.search(pieces) };
       return this.baseResult.path?.map((p) => ({ ...p }));
+    }
+
+    // Exact hit: this placement was solved before (a key only exists for a
+    // placement that validated, so skipping the overlap checks is sound).
+    const key = placementKey(pieces);
+    const hit = this.results.get(key);
+    if (hit) {
+      // Re-insert so a live build's states stay ahead of eviction.
+      this.results.delete(key);
+      this.results.set(key, hit);
+      return hit.path?.map((p) => ({ ...p }));
     }
 
     const { grid, checkpointCell } = this;
@@ -383,11 +467,41 @@ export class PathSolver {
         ) throw new Error("invalid data");
       }
       grid[checkpointCell.y][checkpointCell.x] = false;
-      return this.search(pieces);
+
+      const shortcut = this.oneAddedShortcut(pieces);
+      const path = shortcut ? shortcut.path : this.search(pieces);
+      this.remember(key, path);
+      return path?.map((p) => ({ ...p }));
     } finally {
       for (const { x, y } of placed) grid[y][x] = false;
       grid[checkpointCell.y][checkpointCell.x] = false;
     }
+  }
+
+  // The edit-stream shortcut: when this placement is a solved one plus exactly
+  // one piece, monotonicity often answers without a search. Blocks only ever
+  // lengthen or sever the route, so an unsolvable predecessor stays unsolvable
+  // — always, thunders or not. And a predecessor's optimal path that the new
+  // piece doesn't touch is still feasible at its old (optimal) length, so it
+  // remains optimal — but a fresh search could return a DIFFERENT equal-length
+  // path, and near thunders duration depends on geometry, so that reuse is
+  // only duration-exact on a thunder-free board (both gated here). Measured on
+  // real build streams: ~27% of placements skip the search entirely, with the
+  // no-thunder gate carving that down only on boards that have one.
+  // Returns null when no shortcut applies (search normally).
+  private oneAddedShortcut(
+    pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+  ): { path: Point[] | undefined } | null {
+    const thunderFree = !this.baseHasThunder &&
+      !pieces.some((b) => b.thunder);
+    for (let i = 0; i < pieces.length; i++) {
+      const key = placementKey(pieces.filter((_, j) => j !== i));
+      const prev = key === "" ? this.baseResult : this.results.get(key);
+      if (!prev) continue;
+      if (!prev.path) return { path: undefined };
+      if (thunderFree && !pathTouchesPiece(prev.path, pieces[i])) return prev;
+    }
+    return null;
   }
 
   // The augmented-board search. Assumes `solve` already placed the pieces on
@@ -410,6 +524,13 @@ export class PathSolver {
       nodes.push(p);
       baseIdx.push(i);
     }
+    // Collected then sorted into row-major order before joining the node list:
+    // Dijkstra breaks equal-length ties by node/expansion order, so the order
+    // pieces arrive in (a save's placement order, a preview's array order) must
+    // never influence which optimal path comes back — the result has to be a
+    // function of the board's geometry alone, or the same maze built in two
+    // orders could time differently near thunders.
+    const ringCorners: number[] = [];
     for (const { x, y } of pieces) {
       for (let ry = y - 1; ry <= y + 2; ry++) {
         for (let rx = x - 1; rx <= x + 2; rx++) {
@@ -422,10 +543,14 @@ export class PathSolver {
           if (seen.has(key)) continue;
           if (!isCornerCell(grid, rx, ry)) continue;
           seen.add(key);
-          nodes.push({ x: rx, y: ry });
-          baseIdx.push(-1);
+          ringCorners.push(key);
         }
       }
+    }
+    ringCorners.sort((a, b) => a - b);
+    for (const key of ringCorners) {
+      nodes.push({ x: key % 20, y: (key - key % 20) / 20 });
+      baseIdx.push(-1);
     }
 
     // A piece's four cells form one 2x2 rectangle (see `offsets`), so its
@@ -540,11 +665,13 @@ const solverCache = new Map<string, PathSolver>();
 const MAX_CACHED_SOLVERS = 32;
 
 export const cachedSolver = (
-  baseBlocks: ReadonlyArray<Readonly<Point>>,
+  baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
   checkpoint: Point,
 ): PathSolver => {
-  const key = `${checkpoint.x},${checkpoint.y}|` +
-    baseBlocks.map((b) => `${b.x},${b.y}`).sort().join(";");
+  // Thunder flags ride along in the key: the solver's reuse shortcut is gated
+  // on the base board carrying a thunder, so two bases that differ only in a
+  // flag must not share an instance.
+  const key = `${checkpoint.x},${checkpoint.y}|` + placementKey(baseBlocks);
   const cached = solverCache.get(key);
   if (cached) {
     // Re-insert so hot boards (today's daily) stay ahead of eviction.

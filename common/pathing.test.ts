@@ -387,6 +387,91 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
     },
   );
 
+  await t.step("piece order never changes the returned path", () => {
+    // Dijkstra tie-breaks by node order, and piece-created corner nodes are
+    // sorted into row-major order before joining the graph — so the same maze
+    // handed over in save-placement order and in reversed order must return
+    // the IDENTICAL path (not merely an equal-length one). Duration exactness
+    // near thunders depends on this.
+    for (let seed = 0; seed < 40; seed++) {
+      const checkpoint = {
+        x: 1.5 + Math.floor(rng() * 17),
+        y: 1.5 + Math.floor(rng() * 17),
+      };
+      const scratch = newGrid();
+      scratch[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      const base = placeRandom(scratch, 2 + Math.floor(rng() * 6));
+      const pieces = placeRandom(scratch, 4 + Math.floor(rng() * 14));
+      // Fresh solvers on purpose: a shared one would trivially agree through
+      // its result memo; this asserts the ENGINE is order-independent.
+      const a = new PathSolver(base, checkpoint).solve(pieces);
+      const b = new PathSolver(base, checkpoint)
+        .solve([...pieces].reverse());
+      assertEquals(a, b, `seed ${seed}: piece order changed the path`);
+    }
+  });
+
+  await t.step("an edit stream stays exactly equal to cold solves", () => {
+    // Replays what a build session does to one long-lived solver — add a
+    // block, remove one, upgrade one to a thunder — and asserts after every
+    // edit that the warm solver (memo + reuse shortcut) matches a cold
+    // solver exactly where it counts: same solvability, same length, and the
+    // same duration to the digit, thunders included. This is the audit
+    // invariant: a cold recompute must reproduce every persisted time.
+    for (let seed = 0; seed < 25; seed++) {
+      const checkpoint = {
+        x: 1.5 + Math.floor(rng() * 17),
+        y: 1.5 + Math.floor(rng() * 17),
+      };
+      const occupied = newGrid();
+      occupied[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      const base: (Point & { thunder?: boolean })[] = placeRandom(
+        occupied,
+        2 + Math.floor(rng() * 6),
+      ).map((b) => (rng() < 0.25 ? { ...b, thunder: true } : b));
+      const solver = new PathSolver(base, checkpoint);
+
+      const pieces: (Point & { thunder?: boolean })[] = [];
+      for (let edit = 0; edit < 14; edit++) {
+        const op = rng();
+        if (op < 0.55 || pieces.length === 0) {
+          const added = placeRandom(occupied, 1);
+          if (!added.length) continue;
+          pieces.push(added[0]);
+        } else if (op < 0.8) {
+          const [gone] = pieces.splice(Math.floor(rng() * pieces.length), 1);
+          offsets.forEach((
+            [xd, yd],
+          ) => (occupied[gone.y + yd][gone.x + xd] = false));
+        } else {
+          const i = Math.floor(rng() * pieces.length);
+          pieces[i] = { ...pieces[i], thunder: !pieces[i].thunder };
+        }
+
+        const warm = solver.solve(pieces);
+        const cold = new PathSolver(base, checkpoint).solve(pieces);
+        assertEquals(
+          !!warm,
+          !!cold,
+          `seed ${seed} edit ${edit}: solvability diverged`,
+        );
+        if (!warm || !cold) continue;
+        assert(
+          Math.abs(length(warm) - length(cold)) < 1e-9,
+          `seed ${seed} edit ${edit}: warm ${length(warm)} != cold ${
+            length(cold)
+          }`,
+        );
+        const thunders = [...base, ...pieces].filter((b) => b.thunder);
+        assertEquals(
+          pathDuration(warm, thunders)[0],
+          pathDuration(cold, thunders)[0],
+          `seed ${seed} edit ${edit}: durations diverged`,
+        );
+      }
+    }
+  });
+
   await t.step("cachedSolver shares one solver per base board", () => {
     const checkpoint = { x: 9.5, y: 9.5 };
     const a = cachedSolver([{ x: 5, y: 5 }, { x: 12, y: 3 }], checkpoint);
