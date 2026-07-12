@@ -78,35 +78,51 @@ templates** — nothing reads them live. The authoritative files are
 
 6. **TLS (zero-downtime for a live domain).** `certbot --nginx` uses HTTP-01,
    which needs DNS already pointing at this box — a chicken-and-egg that forces
-   a TLS gap when migrating `blocktol.com` off Deno Deploy. Instead **pre-issue
-   via DNS-01 before repointing DNS**:
+   a TLS gap when migrating `blocktol.com` off Deno Deploy. Pre-issue via DNS-01
+   **before** repointing DNS instead, apex only (avoids a second per-name swap
+   for `www`):
    ```bash
-   sudo certbot certonly --manual --preferred-challenges dns \
-     -d blocktol.com -d www.blocktol.com
-   # add the printed _acme-challenge TXT record(s), wait for propagation
+   sudo certbot certonly --manual --preferred-challenges dns -d blocktol.com
    ```
-   Wire the issued cert into the vhost (or let the reissue below do it), cut DNS
-   over (step 8), then reissue through nginx to get auto-renewal:
-   ```bash
-   sudo certbot --nginx -d blocktol.com -d www.blocktol.com
-   ```
+   The catch on this domain: `_acme-challenge.blocktol.com` is already a CNAME →
+   `<id>._acme.deno.net` (Deno's own DNS-01 renewal delegation), and a CNAME
+   can't coexist with the TXT certbot wants there. So in the DNS zone (Google
+   Cloud DNS / googledomains nameservers):
+   1. **Save** the CNAME's target, then **delete** the CNAME.
+   2. **Add** the `_acme-challenge.blocktol.com` TXT certbot prints (TTL 60) and
+      confirm it resolves: `dig +short TXT _acme-challenge.blocktol.com`.
+   3. Press Enter so certbot issues, then **restore** the CNAME so Deno keeps
+      renewing until cutover.
+
+   Deno's live cert is unaffected — it renews only ~every 90 days, so the
+   few-minute delegation gap is a no-op. The post-cutover reissue (for
+   auto-renewal) and dropping the CNAME are in the Cutover section.
 
 7. **w3xio config.** Set `BLOCKTOL_DIR=/home/ubuntu/blocktol` in w3xio's
    environment (its `/deploy` default is `/home/verit/blocktol`). The existing
    `DEPLOY_SECRET` is reused.
 
-8. **GitHub secret + DNS.** Set the blocktol repo's `DEPLOY_WEBHOOK_URL` secret
-   to `https://w3x.io/deploy?token=<DEPLOY_SECRET>` (merges to `prod` then
-   deploy automatically), and point `blocktol.com` / `www.blocktol.com` at the
-   EC2's IP.
+8. **GitHub secret.** Set the blocktol repo's `DEPLOY_WEBHOOK_URL` secret to
+   `https://w3x.io/deploy?token=<DEPLOY_SECRET>` — merges to `prod` then deploy
+   automatically. (The DNS repoint is the Cutover step.)
 
 ## Cutover
 
-With the service healthy and the cert pre-issued:
+With the service healthy and the apex cert pre-issued (step 6):
 
-1. Repoint `blocktol.com` DNS from Deno Deploy to the EC2.
-2. Reissue with `certbot --nginx` (step 6) for auto-renewal.
-3. **Disconnect the Deno Deploy GitHub integration** (app.deno.com) so the two
+1. **Lower the apex TTL ahead of time.** Deno's A/AAAA TTL is 14400 (4h); set
+   the records to 300 first so the flip takes minutes, not hours.
+2. **Repoint `blocktol.com` (apex only) from Deno Deploy to the EC2, and delete
+   the AAAA.** The apex has an AAAA (`2602:f70f::1` → Deno) and this EC2 is
+   IPv4-only, so leaving it makes dual-stack clients prefer IPv6 and keep
+   hitting Deno (a split brain). Point the A record at the EC2 and **delete the
+   AAAA** (or point it at an EC2 IPv6 if one is added).
+3. **Reissue for auto-renewal, then drop the delegation:**
+   ```bash
+   sudo certbot --nginx -d blocktol.com
+   ```
+   then delete the Deno `_acme-challenge.blocktol.com` CNAME permanently.
+4. **Disconnect the Deno Deploy GitHub integration** (app.deno.com) so the two
    don't both deploy on push to `prod`.
 
 ## Operating

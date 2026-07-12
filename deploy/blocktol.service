@@ -30,6 +30,9 @@ ExecStart=/home/ubuntu/.deno/bin/deno task start
 # would be logged as a failure.
 SuccessExitStatus=143 SIGTERM
 
+# Tag journal lines "blocktol" (journalctl -u blocktol works regardless).
+SyslogIdentifier=blocktol
+
 Restart=always
 RestartSec=2
 
