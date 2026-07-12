@@ -38,8 +38,8 @@ deno check server/index.ts client/index.ts common/pathing.ts   # typecheck (CI d
 Run a **single test file / filter**:
 
 ```bash
-deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD common/pathing.test.ts
-deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD --filter "line of sight" server/
+deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL common/pathing.test.ts
+deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL --filter "line of sight" server/
 ```
 
 Most tests are pure and need no permissions. The `*.test.ts` under

@@ -16,7 +16,7 @@
 //
 // Run locally against an environment (same SQL proxy the app uses):
 //   APP_ENV=prod SQL_PASSWORD=... \
-//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD scripts/comparePathing.ts
+//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL scripts/comparePathing.ts
 //   ...add --apply to write the new times.
 //
 // Flags:

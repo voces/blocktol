@@ -33,7 +33,7 @@
 //   deno run --allow-read --allow-run --allow-write scripts/comparePathViz.ts --search
 //   deno run --allow-read --allow-run --allow-write scripts/comparePathViz.ts --seed=42
 //   APP_ENV=prod SQL_PASSWORD=... deno run --allow-read --allow-run --allow-write \
-//     --allow-net --allow-env=APP_ENV,SQL_PASSWORD \
+//     --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL \
 //     scripts/comparePathViz.ts --iteration=41
 
 import { offsets } from "../common/constants.ts";
