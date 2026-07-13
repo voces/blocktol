@@ -397,6 +397,45 @@ alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset
 alerts are no-ops). The task definitions enumerate the exact `--allow-env`
 grants.
 
+**Observability (OpenTelemetry).** Blocktol uses Deno's **built-in** OTel
+(`OTEL_DENO=true`), which auto-instruments `Deno.serve` requests, outbound
+`fetch` (the SQL proxy hop), and crons — so tracing is **env-configured, not
+code**: there is no OTel SDK wiring in the source, and these vars are read by
+the runtime's telemetry subsystem, **not** user code, so they need no
+`--allow-env` grant (and `start`/`dev` already use bare `--allow-net`).
+Telemetry is enabled **only on the co-located blocktol.com instance** — the one
+running on the w3x.io box alongside VictoriaTraces + VictoriaLogs; the Deno
+Deploy instance is deliberately left un-instrumented. VictoriaLogs v1.51.0
+(`127.0.0.1:9428`) and VictoriaTraces v0.9.4 (`127.0.0.1:10428`) run as systemd
+services, **bound to localhost only**, data under `/data`, 30-day retention —
+first-party infra (same box as the SQL proxy, not a third-party recipient), so
+ingest is a pure loopback call with **no auth**. blocktol emits **both** traces
+and logs through Deno's built-in OTel straight to those endpoints; the env lives
+in the systemd `EnvironmentFile` at `/home/ubuntu/blocktol/.env`
+(`OTEL_DENO=true`, `OTEL_SERVICE_NAME=blocktol`, `OTEL_METRICS_EXPORTER=none` —
+neither backend ingests metrics, `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`,
+and per-signal endpoints). The per-signal endpoints are required because
+VictoriaTraces/Logs use non-standard ingest paths and Deno otherwise appends the
+standard `/v1/*`:
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/insert/opentelemetry/v1/traces`,
+`OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:9428/insert/opentelemetry/v1/logs`.
+
+The box also runs **Vector** (a journald→VictoriaLogs shipper) for its _other_
+services (`w3xio`, `dw3xio`, `katma`, `st2mr`, `emojist`) — but blocktol is
+**deliberately excluded** from Vector: Deno OTel already ships blocktol's logs,
+so listing it there would double-ingest every line. Don't re-add it. The VL/VT
+UIs are localhost-only (no public endpoint); view them over an SSH tunnel to the
+ports — `localhost:9428/select/vmui/` and `localhost:10428/select/vmui/`. (A
+`victoria.w3x.io` DNS record exists but is currently parked/unused — there is no
+authed public ingest or viewing endpoint.)
+
+Runs alongside New Relic (`NEW_RELIC_API_KEY`) for now; New Relic is to be
+retired once the self-hosted pipeline is proven, which also drops that US
+third-party transfer. Today blocktol attaches **no user id** to spans/logs —
+it's plain Deno auto-instrumentation (request/fetch/cron spans); any future
+span/log user-id tagging must use a **hashed** id, never the raw `authorization`
+credential.
+
 ## Operational scripts (`scripts/`)
 
 Dry-run by default, `--apply` to write; run locally against an env with
