@@ -118,8 +118,17 @@ diverge — the server's accepted time must equal what the client previewed.
 ## Server architecture
 
 **Entry (`server/index.ts`):** import-side-effect registers the crons
-(`util/gen.ts`, `util/rateDailies.ts`), runs pending migrations (best-effort,
-never crash-loops), then `Deno.serve(router.route)`.
+(`util/gen.ts`, `util/rateDailies.ts`), then **binds the port immediately** and
+runs pending migrations (best-effort, never crash-loops) in the background. A
+`ready` gate makes each request `await` the migration before routing — so a
+redeploy's fresh process starts accepting connections without waiting on the
+migration DB round-trip (the cohost's single nginx upstream 502s while the port
+is unbound), yet a request is never served against a schema the code predates.
+Most deploys carry no pending migration, so `ready` resolves at once; a
+migration deploy briefly holds requests instead of dropping them.
+(`deno task start` runs with `--no-check` — CI's `deno check`/`test` is the type
+gate — so boot skips the redundant local type-check, further shrinking the
+restart gap.)
 
 **Router (`server/util/Router.ts` + `server/router.ts`):** a small Express-like
 middleware chain over `URLPattern`. Path params are type-derived from the route
