@@ -397,6 +397,27 @@ alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset
 alerts are no-ops). The task definitions enumerate the exact `--allow-env`
 grants.
 
+**Observability (OpenTelemetry).** Blocktol uses Deno's **built-in** OTel
+(`OTEL_DENO=true`), which auto-instruments `Deno.serve` requests, outbound
+`fetch` (the SQL proxy hop), and crons — so tracing is **env-configured, not
+code**: there is no OTel SDK wiring in the source, and these vars are read by
+the runtime's telemetry subsystem, **not** user code, so they need no
+`--allow-env` grant (and `start`/`dev` already use bare `--allow-net`).
+Spans/logs export over OTLP/HTTP to a **self-hosted** VictoriaTraces +
+VictoriaLogs on the w3x.io box (first-party infra, same as the SQL proxy — not a
+third-party recipient). The per-signal endpoints are set because VictoriaTraces
+(`:10428`) and VictoriaLogs (`:9428`) use non-standard ingest paths and Deno
+appends the standard `/v1/*` otherwise: `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+(…`/insert/opentelemetry/v1/traces`), `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
+(…`/insert/opentelemetry/v1/logs`), `OTEL_EXPORTER_OTLP_HEADERS` (the
+`Authorization: Bearer` for `victoria.w3x.io`, since Deno Deploy isolates reach
+it over the public internet, not localhost), `OTEL_METRICS_EXPORTER=none`
+(neither backend ingests metrics), and `OTEL_SERVICE_NAME=blocktol`. Runs
+alongside New Relic (`NEW_RELIC_API_KEY`) for now; New Relic is to be retired
+once the self-hosted pipeline is proven, which also drops that US third-party
+transfer. Any user-id tagging on spans must use a **hashed** id, never the raw
+`authorization` credential.
+
 ## Operational scripts (`scripts/`)
 
 Dry-run by default, `--apply` to write; run locally against an env with
