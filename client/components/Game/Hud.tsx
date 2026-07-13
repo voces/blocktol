@@ -70,6 +70,7 @@ export const Hud = () => {
     time,
     run,
     setTime,
+    deadlineRef,
     iteration,
     freePlay,
     attemptsRemaining,
@@ -89,20 +90,29 @@ export const Hud = () => {
     }
   };
 
-  // Free-play only: re-stage a fresh board, discarding the in-progress build.
-  // Free play never persists to the server until it executes, so abandoning is
-  // just dropping the client-side record and re-staging — but that record must
-  // go FIRST, or the re-stage would resume the very build we're discarding. The
-  // board is cached, so the reset is instant.
+  // Free-play only: discard the in-progress build. Free play never persists to
+  // the server until it executes, so abandoning is just dropping the
+  // client-side record — which must go FIRST, or the re-stage would resume the
+  // very build we're discarding. On the live board that means re-staging fresh
+  // (cached, so instant); while reviewing another maze it instead just stops
+  // the abandoned build's countdown and stays on the reviewed maze — Play then
+  // stages fresh rather than resuming.
   const onReset = () => {
     if (iteration === undefined) return;
     clearFreePlay();
+    if (phase === "viewing") {
+      deadlineRef.current = null;
+      setTime(-1);
+      return;
+    }
     showBoard(iteration);
   };
   // Shown mid-round for free play only: after the first placement opens the run
-  // and while not reviewing a past maze. Daily runs (freePlay false) never get
-  // it.
-  const showReset = freePlay && phase !== "staged" && phase !== "viewing";
+  // and until it executes — including while reviewing a past maze with the
+  // build's countdown still live (time > 0 there means exactly that; parked
+  // views sit at -1). Daily runs (freePlay false) never get it.
+  const showReset = freePlay && phase !== "staged" &&
+    (phase !== "viewing" || time > 0);
 
   // Keyboard shortcut: R runs the current build now, or starts a fresh run once
   // the previous one has finished (power === -1 marks the idle/finished state).
@@ -224,11 +234,17 @@ export const Hud = () => {
           )
           : phase === "viewing"
           ? (
-            // Reviewing a past maze: the clock slot becomes the way back to play.
+            // Reviewing a past maze: the clock slot becomes the way back to
+            // play. With a free-play build still on the clock its countdown
+            // shows in place of the label — the window keeps running while
+            // reviewing — and clicking resumes that build (Play goes through
+            // showBoard, whose staging resumes the stored attempt).
             <button type="button" class="hud__build tapc" onClick={onPlay}>
               <span class="hud__build-face hud__play">
                 <span class="hud__play-icon" aria-hidden="true">▶</span>
-                Play
+                {time > 0
+                  ? <span class="mono">{formatBuild(time)}</span>
+                  : "Play"}
               </span>
             </button>
           )

@@ -169,11 +169,17 @@ export const useGameState = () => {
   // and checkpoint, with the reviewed maze as the local blocks.
   const viewMaze = (maze: ReadonlyArray<Point & { thunder?: boolean }>) => {
     setRun(undefined);
-    setStaged(false);
     // Reviewing a past maze leaves the board inert (Play button); drop any
     // lingering free-play verdict so it doesn't keep overriding the HUD.
     setVerdict(undefined);
-    setTime(-1);
+    // A live free-play build's window does NOT pause while its owner reviews
+    // another maze, so its countdown stays on the clock — the HUD keeps showing
+    // it (with the reset button) and Play resumes the build with whatever is
+    // honestly left. Every other state parks the clock at -1 (inert board);
+    // the ticking clock alone can't make the board playable — the input hooks
+    // gate on `viewing`.
+    if (!(freePlay && !staged && timeRef.current > 0)) setTime(-1);
+    setStaged(false);
     // Show what this run left unspent: every placed block cost a brick, every
     // thunder an extra snowflake. 0/0 when the whole budget was used. Hidden (-1)
     // only if we somehow never loaded the board's budget.

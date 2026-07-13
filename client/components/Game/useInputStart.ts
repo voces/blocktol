@@ -32,13 +32,16 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     grid,
     dragRef,
     placingRef,
+    viewing,
   } = useContext(GameStateContext);
 
   useEffect(() => {
     // `press` is a pointer/touch down: if it lands on a local block we grab it
     // to drag; otherwise it (and subsequent moves) position a placement preview.
+    // `viewing` is checked explicitly: a reviewed maze keeps a live free-play
+    // build's countdown on the clock (time > 0), but the board must stay inert.
     const callback = (clientX: number, clientY: number, press = false) => {
-      if (!svg || timeRef.current <= 0) return;
+      if (!svg || viewing || timeRef.current <= 0) return;
 
       const box = svg.getBoundingClientRect();
       const xRaw = Math.min(
@@ -200,6 +203,9 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // Ignore taps on the board's border/wall band so they don't zoom or
       // place blocks — that ring holds the HUD controls (Ready?, best score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
+      // An inert reviewed maze doesn't zoom either (`touching` drives the
+      // placing zoom, which keys off time > 0 — live during a view now).
+      if (viewing) return;
       touching.value = true;
       callback(touch.clientX, touch.clientY, true);
       e.preventDefault();
@@ -214,5 +220,5 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     };
     // The clock and pointer state are read through refs/signals, so the
     // listeners only re-register when the board itself changes.
-  }, [svg, bricks, blocks, checkpoint]);
+  }, [svg, bricks, blocks, checkpoint, viewing]);
 };

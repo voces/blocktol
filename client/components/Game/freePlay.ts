@@ -89,7 +89,10 @@ export const clearFreePlay = () => {
 // A resumable attempt for `iteration`, or null: present, same day, its window
 // still open, and non-empty. Adopts the stored id so the resumed attempt commits
 // idempotently under it. A mismatched/expired record is discarded so it can't
-// resurrect onto the wrong board.
+// resurrect onto the wrong board. Deliberately KEPT when it merely doesn't match
+// the board being staged: navigating away (another day, a reviewed maze) doesn't
+// abandon the build — its window keeps running, and coming back within it
+// resumes.
 export const resumableFreePlay = (
   iteration: number,
   now: number,

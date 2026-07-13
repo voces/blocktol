@@ -18,6 +18,7 @@ import {
   refreshMonth,
 } from "../../store/dailyItems.ts";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
+import { clearFreePlay } from "./freePlay.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Item = DailyItem;
@@ -172,8 +173,13 @@ export const Calendar = () => {
     if (item.iteration === selected) {
       // Re-clicking the current board's date cancels an in-progress free-play
       // build — re-stage a fresh board. Ranked attempts (and an untouched staged
-      // board) are left alone.
-      if (freePlay && !staged) showBoard(item.iteration);
+      // board) are left alone. Same contract as the HUD reset: the local record
+      // must go FIRST, or the re-stage would resume the very build being
+      // cancelled.
+      if (freePlay && !staged) {
+        clearFreePlay();
+        showBoard(item.iteration);
+      }
       return;
     }
     showBoard(item.iteration);

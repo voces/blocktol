@@ -304,8 +304,14 @@ board back. **Free play** bypasses the saver entirely: `freePlay.ts` mints the
 per-attempt `client_id`, mirrors the maze to `localStorage` for reload-resume,
 and `commitRun` fires once at execution; `useInit` awaits that commit before
 re-staging so a slow (retrying) commit can't let the re-stage drop the run from
-recents. `useClock`/`RunClock` run the 60s/animation timing; `verdict.ts`
-computes the result.
+recents. Navigating away mid-build (reviewing a maze, another day) deliberately
+does NOT abandon the build — the record stays, and staging its board within the
+window resumes it. Its window doesn't pause either: reviewing a past maze keeps
+the live countdown in the HUD's Play slot alongside the reset button, and reset
+there clears the attempt while staying on the reviewed maze (the input hooks
+gate on `viewing`, so the ticking clock never makes a reviewed board editable).
+`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
+result.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy
