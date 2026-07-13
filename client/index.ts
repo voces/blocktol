@@ -1,5 +1,5 @@
 import { h, render } from "preact";
-import { prime, primeBoot } from "./api.ts";
+import { primeBoot } from "./api.ts";
 import { currentMonthIdx, monthListInput } from "./store/dailyItems.ts";
 import { todayIteration } from "./store/standings.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
@@ -22,44 +22,44 @@ initSettings();
 // api.prime). Skipped mid-onboarding (the app defers its fetch then anyway)
 // and while a sign-in link is pending (the gate must resolve identity first —
 // priming would bake in the wrong user).
-// A `/YYYYMMDD` boot restores that day, not today (see store/notifNav.ts). The
-// primed pool is keyed by method name only, so the day-link's own first
-// getBoard / standings call would otherwise consume TODAY's primed response and
-// stage today instead — so skip those two today-primes on a day-link boot and
-// let the deep-link fetch the day for real.
-const dayLinkBoot = /^\/\d{8}$/.test(location.pathname);
+//
+// One request feeds the whole cold load. `boot` bundles getDailySummary,
+// getProfile, standings, getBoard (soft), getNotifications, and the calendar's
+// two mount months (current + prev); the client primes each slice, content-keyed
+// by the input its consumer sends, so every call site consumes off this single
+// fetch (getBoard is soft, so an unfinished daily comes back { incomplete };
+// showBoard discards that and fetches for real, so priming can never wedge a
+// later stage).
+//
+// A `/YYYYMMDD` permalink restores that day, not today (see store/notifNav.ts).
+// It boots through the SAME request: `day` tells boot to also bundle the linked
+// day's board + standings, and primeBoot primes the three calls the deep-link
+// handler fires for it (by-date standings to resolve the id, then getBoard and
+// standings by iteration). Because the pool is content-keyed (method + input),
+// the linked day's iteration-keyed calls never collide with today's timeZone-
+// keyed primes — so today's slices still feed the dock/calendar/summary while the
+// linked day feeds the staged board. (This is why the old day-link path, which
+// skipped boot entirely, is no longer needed.)
+const dayMatch = location.pathname.match(/^\/(\d{4})(\d{2})(\d{2})$/);
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
-  if (dayLinkBoot) {
-    // A day-link boot stages the LINKED day, not today, so it deliberately skips
-    // priming today's board/standings (the deep link fetches the day for real).
-    // Only the day-independent slices are worth priming here.
-    prime("getDailySummary", { timeZone: getTimeZone() });
-    prime("getProfile", {});
-  } else {
-    // Normal boot: one request feeds the whole thing. Each method boot bundles —
-    // getDailySummary, getProfile, standings, getBoard (soft), getNotifications,
-    // and the calendar's two mount months (current + prev) — consumes its slice
-    // off this single fetch, collapsing the old two-wave fan-out. Each list month
-    // is content-keyed by its range; the [current, prev] order matches boot's.
-    // (getBoard is soft, so an unfinished daily comes back { incomplete };
-    // showBoard discards that and fetches for real, so priming can never wedge a
-    // later stage.)
-    const idx = currentMonthIdx();
-    primeBoot(
-      { timeZone: getTimeZone() },
-      [monthListInput(idx), monthListInput(idx - 1)],
-    ).then((b) => {
-      // Seed today's iteration id from boot BEFORE the board stages, so the
-      // standings dock recognizes the staged board as today (isToday) and fetches
-      // standings for today (undefined → { timeZone }) — consuming boot's primed
-      // slice — rather than fetching by id and missing it. Runs in the same
-      // microtask batch as the primed slices, ahead of App's consume→stage chain.
-      const s = b?.standings;
-      if (s && !("error" in s) && typeof s.iteration === "number") {
-        todayIteration.value = s.iteration;
-      }
-    }).catch(() => {});
-  }
+  const idx = currentMonthIdx();
+  const day: [number, number, number] | undefined = dayMatch
+    ? [Number(dayMatch[1]), Number(dayMatch[2]), Number(dayMatch[3])]
+    : undefined;
+  primeBoot(
+    { timeZone: getTimeZone(), ...(day ? { day } : {}) },
+    [monthListInput(idx), monthListInput(idx - 1)],
+  ).then((b) => {
+    // Seed today's iteration id from boot BEFORE the board stages, so the
+    // standings dock recognizes today (isToday) and consumes boot's { timeZone }
+    // slice rather than fetching by id. On a day-link boot this also lets the dock
+    // tell the linked day apart from today. Runs in the same microtask batch as
+    // the primed slices, ahead of App's consume→stage chain.
+    const s = b?.standings;
+    if (s && !("error" in s) && typeof s.iteration === "number") {
+      todayIteration.value = s.iteration;
+    }
+  }).catch(() => {});
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);
