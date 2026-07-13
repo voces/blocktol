@@ -118,10 +118,19 @@ export const ensureMonth = (idx: number) => {
   monthOnce(idx).catch(() => setTimeout(() => ensureMonth(idx), 1500));
 };
 
+// How fresh a month must be for refreshMonth to leave it alone (see below).
+const FRESH_REFRESH_MS = 4_000;
+
 // Drop a month's dedupe entry and refetch it — for when its data is known to
 // be incomplete (a brand-new user's current-month fetch can land before their
 // first run is recorded; see Calendar).
+//
+// boot seeds the current month, and the calendar's post-summary effect fires
+// refreshMonth(current) the moment attemptsRemaining resolves to 0 — a redundant
+// refetch right after boot. Skip the bust while the month is this fresh (any run
+// at boot is already recorded, so boot's month is accurate); a genuine
+// mid-session refresh is well outside the window and still busts + refetches.
 export const refreshMonth = (idx: number) => {
-  monthOnce.bust(idx);
+  if (monthOnce.age(idx) > FRESH_REFRESH_MS) monthOnce.bust(idx);
   ensureMonth(idx);
 };
