@@ -10,7 +10,7 @@ import { format, raw, sql } from "./query.ts";
 // in the low hundreds), but a hard ceiling so a runaway client can't ask us to
 // serialize an unbounded maze list. Hitting it means the panel is now dropping
 // that player's oldest runs — a human-actionable oddity, so alert once (see
-// below). Keep RUN_CAP and the literal LIMIT in allRunsByIteration in sync.
+// below).
 const RUN_CAP = 10_000;
 // Dedup the cap alert to once per (user, iteration) per process — the read
 // fires on every board load, and we want one ping, not one per refresh.
@@ -233,7 +233,7 @@ export const allRunsByIteration = (user: string, iteration: number) =>
       AND iteration = ${iteration}
       AND (void = FALSE OR ranked = TRUE)
     ORDER BY created ASC
-    LIMIT 10000;
+    LIMIT ${RUN_CAP};
   `.then((r) => {
     // At the cap the panel is truncating this player's runs (the query returns
     // their OLDEST RUN_CAP, so newer ones silently drop). Warn an operator once.
