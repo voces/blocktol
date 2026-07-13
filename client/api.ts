@@ -190,6 +190,49 @@ export const primeBoot = (
     primed.set(primeKey("list", li), slice((b) => b.list[i]));
   });
 
+  // A `/YYYYMMDD` deep-link boot: `day` is set, so boot also carries the linked
+  // day's slices (`b.linked`). Prime the three requests consumeDeepLink /
+  // showBoard / the dock fire for that day, so it collapses onto this one boot
+  // too. A slice that finds no linked day THROWS, so the consumer falls through
+  // to its own real fetch (the deep-link handler already tolerates an
+  // unresolvable date) — a linked miss degrades to the old per-call path.
+  if (input.day) {
+    const [ly, lm, ld] = input.day;
+    const linkedSlice = (
+      pick: (l: NonNullable<MessageMap["boot"]["linked"]>) => unknown,
+    ) => {
+      const s = bootData.then((b) => {
+        if (b && "error" in b) throw new Error("boot failed");
+        if (!b?.linked) throw new Error("boot: no linked day");
+        return new Response(JSON.stringify(pick(b.linked)));
+      });
+      s.catch(() => {});
+      return s;
+    };
+    // consumeDeepLink resolves the date first, via standings BY DATE.
+    primed.set(
+      primeKey("standings", { year: ly, month: lm, day: ld }),
+      linkedSlice((l) => l.standings),
+    );
+    // The board (showBoard) and the dock's standings key off the ITERATION,
+    // which is only known once boot lands — so set those primes then. They're
+    // ready well before consumeDeepLink's multi-hop resolve→stage reaches them
+    // (a miss just falls through to a real fetch, so ordering is not load-bearing).
+    bootData.then((b) => {
+      const linked = b?.linked;
+      if (!linked || typeof linked.iteration !== "number") return;
+      const it = linked.iteration;
+      primed.set(
+        primeKey("getBoard", { iteration: it, timeZone: tz }),
+        Promise.resolve(new Response(JSON.stringify(linked.board))),
+      );
+      primed.set(
+        primeKey("standings", { iteration: it }),
+        Promise.resolve(new Response(JSON.stringify(linked.standings))),
+      );
+    }).catch(() => {});
+  }
+
   // Returned so the caller can seed today's iteration id from the response (see
   // index.ts) — the standings dock needs it to recognize the staged board as
   // today and consume the primed { timeZone } slice rather than fetching by id.

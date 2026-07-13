@@ -168,6 +168,23 @@ boot's standings slice so the dock recognizes the staged board as today and
 consumes the primed `standings` rather than refetching by id. On a boot failure
 each slice rejects and the consumer falls through to its own fetch.
 
+A `/YYYYMMDD` **permalink cold-load** boots through the same one request:
+`primeBoot` passes the URL's date as `boot`'s optional `day`, and boot resolves
+it to an iteration and _also_ bundles that day's
+`linked: { iteration, board,
+standings }` (non-soft `getBoard` + `standings`,
+same composition as `dayView`). `primeBoot` then primes the three calls the
+deep-link handler fires for that day — by-date `standings` (what
+`consumeDeepLink` resolves the id with), then `getBoard` and `standings` **by
+iteration** (the id is only known once boot lands, so those two primes are set
+in boot's `.then`). Because the pool is content-keyed, the linked day's
+iteration-keyed calls never collide with today's timezone-keyed primes — today's
+slices still feed the dock/calendar/summary while the linked day feeds the
+staged board. An unresolvable date (or a linked slice that can't be served)
+throws, so the consumer falls through to its own fetch — the old skip-boot
+day-link path is gone. `entryIsDayLink` still gates today-**staging** so the
+linked day wins the board (`useInit`).
+
 **`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
 `getBoard` (non-soft) + `standings` for a chosen `{ iteration, timeZone }` —
 because a day navigation (a calendar click, view-best) fires exactly those two:
