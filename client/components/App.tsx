@@ -2,6 +2,7 @@ import { ComponentChildren, h } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/compat";
 import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";
+import { primeSession } from "../boot.ts";
 import { startBoardRun } from "../store/board.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
@@ -204,6 +205,13 @@ export const App = () => {
       <Shell gameState={gameState}>
         <IntroBoard
           onDone={() => {
+            // Fire the one boot request NOW, before the re-render mounts Game and
+            // its effects fetch — so a first-time user's first load consolidates
+            // to a single request instead of fanning out (the module-eval prime
+            // was skipped so boot's daily auto-start didn't open the 60s clock
+            // mid-tutorial; finishing onboarding is when it should). Set
+            // synchronously here, the primes are in place before the effects run.
+            primeSession();
             setShowOnboarding(false);
             setHasCompletedOnboarding();
           }}
