@@ -21,13 +21,18 @@ export type MessageMap =
 const host = {};
 const em = emitter<typeof host, MessageMap>(host);
 
-// Primed fetches: fired before the app renders (see index.ts) so the boot
-// round trips overlap module evaluation and the first render. The next call
-// of the same method consumes the in-flight response and continues through
-// the normal handling below — by then listeners are subscribed, so the
-// dispatched event isn't dropped. Keyed by method only: priming is a boot
-// concern, and the boot call repeats the same input.
+// Primed fetches: fired before the app renders (see index.ts) so the boot round
+// trips overlap module evaluation and the first render. The next call with the
+// SAME method + input consumes the in-flight response and continues through the
+// normal handling below — by then listeners are subscribed, so the dispatched
+// event isn't dropped. **Content-addressed** (method + serialized input), so a
+// single bundled `boot` fetch can prime a parameterized method — e.g. `list` for
+// a specific month — and only the call with matching input consumes that slice
+// (the calendar's other months key separately and fetch on their own).
 const primed = new Map<string, Promise<Response>>();
+
+const primeKey = (method: string, input: unknown) =>
+  `${method}:${JSON.stringify(input ?? null)}`;
 
 const doFetch = (method: string, input: unknown) =>
   fetch(`/api/${method}`, {
@@ -105,7 +110,62 @@ export const prime = <Method extends keyof BlocktolApi>(
   // Observed so an early failure can't surface as an unhandled rejection;
   // the consuming call still sees it (and handles it like its own fetch).
   p.catch(() => {});
-  primed.set(method, p);
+  primed.set(primeKey(method, input), p);
+};
+
+// Prime the whole cold boot from ONE request. `boot` composes the handlers
+// server-side; here each is primed with a promise that awaits that single fetch
+// and hands back its slice as a synthetic Response — **content-keyed by the exact
+// input the consumer sends** (see the table below), so every existing call site
+// (App, the Dock, the Calendar, the stores) resolves off the one boot request
+// with no change to those call sites.
+//
+// `listInputs` are the calendar's mount-month ranges, in the SAME order boot
+// returns them ([current, prev]) — passed in from index.ts (the dailyItems store
+// owns that range shape; taking it as a param avoids an api<->store import
+// cycle). Each is primed under its own month key against boot's matching slice,
+// so both calendar month fetches consume off the one request.
+//
+// If boot fails at transport (or returns a top-level auth error) each slice
+// rejects, and the consumer's existing fall-through fetches that one method for
+// real — a boot hiccup degrades to the old per-call path, not a broken boot.
+export const primeBoot = (
+  input: Parameters<BlocktolApi["boot"]>[0],
+  listInputs: Parameters<BlocktolApi["list"]>[0][],
+) => {
+  const bootData = doFetch("boot", input).then((r) => r.json());
+  bootData.catch(() => {});
+  const tz = input.timeZone;
+  // A synthetic Response for one slice of the boot bundle, chosen by `pick`.
+  const slice = (pick: (b: MessageMap["boot"]) => unknown) => {
+    const s = bootData.then((b) => {
+      if (b && "error" in b) throw new Error("boot failed");
+      return new Response(JSON.stringify(pick(b)));
+    });
+    s.catch(() => {});
+    return s;
+  };
+
+  // [method, the input its boot-time consumer sends, slice picker]
+  const single: [string, unknown, (b: MessageMap["boot"]) => unknown][] = [
+    ["getDailySummary", { timeZone: tz }, (b) => b.summary],
+    ["getProfile", {}, (b) => b.profile],
+    ["standings", { timeZone: tz }, (b) => b.standings],
+    ["getNotifications", {}, (b) => b.notifications],
+    ["getBoard", { timeZone: tz }, (b) => b.board],
+  ];
+  for (const [method, consumerInput, pick] of single) {
+    primed.set(primeKey(method, consumerInput), slice(pick));
+  }
+  // Each calendar month, keyed by its range, against boot.list[i].
+  listInputs.forEach((li, i) => {
+    primed.set(primeKey("list", li), slice((b) => b.list[i]));
+  });
+
+  // Returned so the caller can seed today's iteration id from the response (see
+  // index.ts) — the standings dock needs it to recognize the staged board as
+  // today and consume the primed { timeZone } slice rather than fetching by id.
+  return bootData as Promise<MessageMap["boot"]>;
 };
 
 export const api = new Proxy({}, {
@@ -123,8 +183,9 @@ export const api = new Proxy({}, {
     if (method === "removeEventListener") return em.removeEventListener;
 
     return async (input: Parameters<BlocktolApi[keyof BlocktolApi]>) => {
-      const preloaded = primed.get(method);
-      if (preloaded) primed.delete(method);
+      const key = primeKey(method, input);
+      const preloaded = primed.get(key);
+      if (preloaded) primed.delete(key);
       let resp: Response;
       try {
         // Consume the primed response if there is one; if that primed fetch

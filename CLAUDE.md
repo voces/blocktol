@@ -138,6 +138,27 @@ typed `api.<method>()` appears automatically. A handler returning
 `{ status: >=500 }` (or throwing) is reported; 4xx are treated as expected
 client faults.
 
+**`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
+that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
+`standings`, `getNotifications`, soft `getBoard`, and the current month's
+`list`) and bundles their results. Each sub-handler re-derives `userId` from the
+request, so their exact semantics — including `getDailySummary`'s server-side
+auto-start of the next ranked attempt — carry through unchanged.
+
+The client's `primeBoot` (`client/api.ts`) fires it once and primes each method
+with its slice, so every existing call site consumes off the single fetch —
+collapsing the old ~8-call, two-wave boot (the second wave was stores refetching
+in reaction to the first; the boot standings double-fire is separately guarded
+by a freshness check in `store/standings.ts`). The prime is
+**content-addressed** (method + serialized input), which is what lets a
+parameterized method be bundled: the calendar's two mount months (`list` returns
+`[current, prev]`) are each keyed by their month range, so both month fetches
+consume off boot (boot derives the two months from the caller's timezone to
+match `dailyItems.monthListInput`). `primeBoot` also seeds `todayIteration` from
+boot's standings slice so the dock recognizes the staged board as today and
+consumes the primed `standings` rather than refetching by id. On a boot failure
+each slice rejects and the consumer falls through to its own fetch.
+
 **Database (`server/db/`):** MariaDB reached over HTTP through a SQL proxy at
 `w3x.io/sql` (`db/query.ts`) — there is no local DB driver. Two tagged-template
 helpers, and the choice is a correctness concern:
