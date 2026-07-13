@@ -403,20 +403,23 @@ grants.
 code**: there is no OTel SDK wiring in the source, and these vars are read by
 the runtime's telemetry subsystem, **not** user code, so they need no
 `--allow-env` grant (and `start`/`dev` already use bare `--allow-net`).
-Spans/logs export over OTLP/HTTP to a **self-hosted** VictoriaTraces +
-VictoriaLogs on the w3x.io box (first-party infra, same as the SQL proxy — not a
-third-party recipient). The per-signal endpoints are set because VictoriaTraces
-(`:10428`) and VictoriaLogs (`:9428`) use non-standard ingest paths and Deno
-appends the standard `/v1/*` otherwise: `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
-(…`/insert/opentelemetry/v1/traces`), `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
-(…`/insert/opentelemetry/v1/logs`), `OTEL_EXPORTER_OTLP_HEADERS` (the
-`Authorization: Bearer` for `victoria.w3x.io`, since Deno Deploy isolates reach
-it over the public internet, not localhost), `OTEL_METRICS_EXPORTER=none`
-(neither backend ingests metrics), and `OTEL_SERVICE_NAME=blocktol`. Runs
-alongside New Relic (`NEW_RELIC_API_KEY`) for now; New Relic is to be retired
-once the self-hosted pipeline is proven, which also drops that US third-party
-transfer. Any user-id tagging on spans must use a **hashed** id, never the raw
-`authorization` credential.
+Telemetry is enabled **only on the co-located blocktol.com instance** — the one
+running on the w3x.io box alongside VictoriaTraces + VictoriaLogs; the Deno
+Deploy instance is deliberately left un-instrumented. Being co-located, it
+exports over OTLP/HTTP to **localhost** — a loopback call needing no auth — to
+VictoriaTraces (`:10428`) and VictoriaLogs (`:9428`), first-party infra (same
+box as the SQL proxy, not a third-party recipient). Per-signal endpoints are
+required because those two use non-standard ingest paths and Deno otherwise
+appends the standard `/v1/*`:
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/insert/opentelemetry/v1/traces`,
+`OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:9428/insert/opentelemetry/v1/logs`,
+`OTEL_METRICS_EXPORTER=none` (neither backend ingests metrics), and
+`OTEL_SERVICE_NAME=blocktol`. (`victoria.w3x.io` is the separate **authed
+viewing** endpoint for the UIs, not used for ingest.) Runs alongside New Relic
+(`NEW_RELIC_API_KEY`) for now; New Relic is to be retired once the self-hosted
+pipeline is proven, which also drops that US third-party transfer. Any user-id
+tagging on spans must use a **hashed** id, never the raw `authorization`
+credential.
 
 ## Operational scripts (`scripts/`)
 
