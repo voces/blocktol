@@ -50,6 +50,9 @@ const doFetch = (method: string, input: unknown) =>
 //   - startRun / abandonRun — run-lifecycle transitions; a lost response after
 //                   the server acted must not be silently redone.
 //   - merge       — destructive, one-shot.
+//   - deleteAccount — destructive lifecycle (id rotation); the client resets its
+//                   local id on success, so a blind retry would act on the stale
+//                   id. (The server op is itself an idempotent no-op on repeat.)
 //   - reportClientError — retrying error reports risks amplifying a bad loop.
 // commitRun IS retryable: free play's commit carries a per-attempt clientId and
 // the server INSERT is guarded on it (NOT EXISTS), so a repeat is a no-op. Old
@@ -63,6 +66,7 @@ const RETRYABLE = new Set<keyof BlocktolApi>([
   "standings",
   "getProfile",
   "moveInfo",
+  "exportData",
   "getNotifications",
   "discordInfo",
   "pushConfig",

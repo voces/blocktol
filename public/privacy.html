@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy &amp; data — Blocktol</title>
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="/favicon.svg" />
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: light-dark(#f7f7fb, #0c0c11);
+      --surface: light-dark(#fff, #17171f);
+      --border: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.1));
+      --text: light-dark(#16161c, #eceef3);
+      --dim: light-dark(#3d3d48, #c9cad3);
+      --mute: light-dark(#6a6a77, #8a8a97);
+      --accent: light-dark(hsl(220, 72%, 46%), hsl(220, 70%, 62%));
+      --font: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 400 16px/1.65 var(--font);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 22px calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+
+    h1 {
+      font-size: 30px;
+      line-height: 1.2;
+      margin: 0 0 4px;
+    }
+
+    .updated {
+      color: var(--mute);
+      font-size: 13px;
+      margin: 0 0 32px;
+    }
+
+    h2 {
+      font-size: 19px;
+      margin: 36px 0 10px;
+    }
+
+    p,
+    li {
+      color: var(--dim);
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .card {
+      margin: 18px 0;
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .card h2 {
+      margin-top: 0;
+    }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 28px;
+      color: var(--mute);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--mute);
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <a class="back" href="/">‹ Back to Blocktol</a>
+    <h1>Privacy &amp; the data we collect</h1>
+    <p class="updated">Last updated 13 July 2026</p>
+
+    <p>
+      Blocktol is a daily maze-building game with <strong>no accounts</strong> —
+      no sign-up, no email, no password. This page explains exactly what we
+      store, why, and how you can get a copy of it or delete it.
+    </p>
+
+    <h2>Who you are to us</h2>
+    <p>
+      When you first open the game your device generates a random anonymous ID
+      and keeps it in your browser's local storage. That ID is how we recognise
+      your builds and stats across visits. We don't know your name (unless you
+      type a display name), your email, or your identity — just this random ID.
+    </p>
+
+    <h2>What we store</h2>
+    <ul>
+      <li><strong>Your anonymous ID</strong> — the random identifier above.</li>
+      <li>
+        <strong>Display name</strong> — a random one to start; you can change it.
+      </li>
+      <li>
+        <strong>Your gameplay</strong> — the mazes you build, their times, and
+        which attempts counted, so we can score the daily and show leaderboards.
+      </li>
+      <li>
+        <strong>Preferences</strong> — theme, zoom, and notification settings.
+      </li>
+      <li>
+        <strong>Rating</strong> — your ELO-style score across days played.
+      </li>
+      <li>
+        <strong>Language/region</strong> — your browser locale, so notifications
+        read in your language. Your timezone is used while you play to pick the
+        right daily, but is not stored.
+      </li>
+      <li>
+        <strong>Push subscriptions</strong> — only if you turn on notifications:
+        the browser push endpoint needed to deliver them.
+      </li>
+    </ul>
+
+    <h2>Cookies</h2>
+    <p>
+      We don't use cookies, and we don't run any advertising or third-party
+      tracking. The only thing stored on your device is the functional data the
+      game needs to work (your ID, your in-progress build, and your settings), so
+      there is no cookie banner to click through.
+    </p>
+
+    <h2>Who else sees it</h2>
+    <p>
+      Our own servers and database run the game. Beyond that, a small number of
+      services may process limited data on our behalf:
+    </p>
+    <ul>
+      <li>
+        <strong>Error monitoring</strong> — when something crashes, a diagnostic
+        report (including your anonymous ID) is sent to our error-monitoring
+        provider so we can fix it.
+      </li>
+      <li>
+        <strong>Push delivery</strong> — if you enable notifications, your
+        browser's push service (e.g. Google, Mozilla, or Apple) delivers them.
+      </li>
+      <li>
+        <strong>Fonts</strong> — the game's typeface is loaded from Google Fonts.
+      </li>
+    </ul>
+    <p>
+      We never sell your data, and we don't use it for advertising.
+    </p>
+
+    <h2>Your rights</h2>
+    <p>
+      You can do both of these yourself, any time, from
+      <strong>Profile → Account</strong>:
+    </p>
+    <div class="card">
+      <h2>Export my data</h2>
+      <p style="margin-bottom:0">
+        Downloads a JSON file with everything we hold about you — your profile,
+        every run, your notifications, and your push subscriptions.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Delete my data</h2>
+      <p style="margin-bottom:0">
+        Permanently removes your profile, name, preferences, and push
+        subscriptions, and unlinks every maze you've built from you. Your builds
+        stay on past leaderboards as an <strong>anonymous</strong> player — with
+        no way to connect them back to you — so the historical results of days
+        other people competed in aren't rewritten. This can't be undone, and your
+        device starts over as a brand-new player.
+      </p>
+    </div>
+
+    <h2>How long we keep it</h2>
+    <p>
+      Your profile and builds are kept while you keep playing, so your stats and
+      history stay intact. Delete your data (above) to remove them sooner.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about privacy? Reach us at
+      <a href="mailto:admin@blocktol.com">admin@blocktol.com</a> or in the
+      Blocktol Discord.
+    </p>
+
+    <footer>
+      Blocktol — a daily maze-building game.
+    </footer>
+  </main>
+</body>
+
+</html>

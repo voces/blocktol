@@ -26,6 +26,7 @@ import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
 import { Modal } from "./Modal.tsx";
 import { MoveDevice } from "./MoveDevice.tsx";
+import { DeleteAccount } from "./DeleteAccount.tsx";
 import { Crown, Flag } from "./Notifications/icons.tsx";
 import { pushPermission, requestPushPermission } from "../util/push.ts";
 import type { NotificationPrefs } from "../../common/settings.ts";
@@ -58,6 +59,42 @@ const LinkIcon = () => (
         stroke-linejoin="round"
       />
     </g>
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width={1.5}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M8 2v8" />
+    <path d="M4.5 7 8 10.5 11.5 7" />
+    <path d="M2.5 13h11" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width={1.5}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M2.5 4h11" />
+    <path d="M6 4V2.5h4V4" />
+    <path d="M4 4l.7 9a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L12 4" />
   </svg>
 );
 
@@ -138,7 +175,11 @@ const NotifRow = (
 );
 
 const ProfileDialog = (
-  { onClose, onMove }: { onClose: () => void; onMove: () => void },
+  { onClose, onMove, onDelete }: {
+    onClose: () => void;
+    onMove: () => void;
+    onDelete: () => void;
+  },
 ) => {
   const { attemptsRemaining, viewMaze } = useContext(GameStateContext);
   // Signal read: the dialog re-renders as the open-time refetch lands.
@@ -150,6 +191,7 @@ const ProfileDialog = (
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   // Live Discord presence for the Community card (see store/discord.ts): seeded
   // from the last-known value so the card doesn't grow a line when the count
   // lands, refreshed on open.
@@ -197,6 +239,31 @@ const ProfileDialog = (
     ]).then(([staged, best]) => {
       if (staged && !("error" in best)) viewMaze(best.maze);
     });
+  };
+
+  // Download everything the game holds about this player as a JSON file (GDPR
+  // access/portability). The server assembles the document (see exportData.ts);
+  // here we just offer it as a browser download.
+  const downloadData = () => {
+    if (exporting) return;
+    setExporting(true);
+    api.exportData({}).then((data) => {
+      setExporting(false);
+      if (!data || "error" in data) return;
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `blocktol-data-${
+        new Date().toISOString().slice(0, 10)
+      }.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }).catch(() => setExporting(false));
   };
 
   // Toggle a notification preference. Turning one ON also nudges the browser for
@@ -460,6 +527,48 @@ const ProfileDialog = (
           </div>
           <span class="profile-action__chev" aria-hidden="true">›</span>
         </button>
+
+        <button
+          type="button"
+          class="profile-action profile-action--row tapc"
+          onClick={downloadData}
+          disabled={exporting}
+        >
+          <DownloadIcon />
+          <div class="profile-action__text">
+            <div class="profile-action__title">
+              {exporting ? "Preparing…" : "Export my data"}
+            </div>
+            <div class="profile-action__sub">
+              Download everything we hold about you
+            </div>
+          </div>
+          <span class="profile-action__chev" aria-hidden="true">›</span>
+        </button>
+
+        <button
+          type="button"
+          class="profile-action profile-action--row profile-action--danger tapc"
+          onClick={onDelete}
+        >
+          <TrashIcon />
+          <div class="profile-action__text">
+            <div class="profile-action__title">Delete my data</div>
+            <div class="profile-action__sub">
+              Erase your profile and unlink your builds
+            </div>
+          </div>
+          <span class="profile-action__chev" aria-hidden="true">›</span>
+        </button>
+
+        <a
+          class="profile-privacy-link tapc"
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy &amp; the data we collect
+        </a>
       </div>
     </Modal>
   );
@@ -471,8 +580,9 @@ export const Profile = () => {
   const [open, setOpen] = useState(false);
   // The move sheet replaces the dialog rather than stacking over it: opening it
   // closes the dialog; its back button reopens the dialog, its close dismisses
-  // to the board.
+  // to the board. The delete-confirm sheet works the same way.
   const [moving, setMoving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Hidden while a daily is in progress (mirrors the calendar button) — no
   // wandering off to the profile mid-run.
@@ -531,6 +641,10 @@ export const Profile = () => {
             setOpen(false);
             setMoving(true);
           }}
+          onDelete={() => {
+            setOpen(false);
+            setDeleting(true);
+          }}
         />
       )}
       {moving && (
@@ -541,6 +655,15 @@ export const Profile = () => {
             setOpen(true);
           }}
           onClose={() => setMoving(false)}
+        />
+      )}
+      {deleting && (
+        <DeleteAccount
+          onBack={() => {
+            setDeleting(false);
+            setOpen(true);
+          }}
+          onClose={() => setDeleting(false)}
         />
       )}
     </>
