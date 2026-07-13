@@ -2443,14 +2443,24 @@ a:hover {
    that erases. */
 .profile-action--danger {
   color: var(--lose);
+  border-color: color-mix(in srgb, var(--lose) 42%, var(--border-strong));
+  background: color-mix(in srgb, var(--lose) 8%, var(--surface-2));
 }
 
-.profile-action--danger .profile-action__title {
+/* Title, chevron, and the trash icon (currentColor) all take the full loss
+   colour; the sub-line is a softer red so it stays readable against the tint. */
+.profile-action--danger .profile-action__title,
+.profile-action--danger .profile-action__chev {
   color: var(--lose);
 }
 
+.profile-action--danger .profile-action__sub {
+  color: color-mix(in srgb, var(--lose) 62%, var(--text-mute));
+}
+
 .profile-action--danger:hover {
-  background: color-mix(in srgb, var(--lose) 12%, var(--surface-2));
+  background: color-mix(in srgb, var(--lose) 15%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--lose) 55%, var(--border-strong));
 }
 
 /* Stacked account rows (Move / Export / Delete) sit flush otherwise — .pref has
