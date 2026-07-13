@@ -9,7 +9,7 @@ import {
   SUPREME_COLOR,
 } from "../../../common/percentileColor.ts";
 import { standing } from "../../../common/standing.ts";
-import { showBoard } from "../../store/board.ts";
+import { showBoard, showDay } from "../../store/board.ts";
 import {
   DailyItem,
   dailyItems,
@@ -176,7 +176,7 @@ export const Calendar = () => {
       if (freePlay && !staged) showBoard(item.iteration);
       return;
     }
-    showBoard(item.iteration);
+    showDay(item.iteration);
   };
 
   const cell = (year: number, month0: number, day: number) => {

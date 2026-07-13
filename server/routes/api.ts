@@ -4,6 +4,7 @@ import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
 import { boot } from "./boot.ts";
 import { getBoard } from "./iteration/board.ts";
+import { dayView } from "./dayView.ts";
 import { getDailySummary } from "./iteration/daily.ts";
 import { discordInfo } from "./discord.ts";
 import { listIterations } from "./iteration/list.ts";
@@ -27,6 +28,7 @@ import { setSettings } from "./setSettings.ts";
 
 const handlers = {
   boot,
+  dayView,
   list: listIterations,
   getBoard,
   getDailySummary,

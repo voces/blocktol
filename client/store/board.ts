@@ -1,5 +1,6 @@
-import { api, MessageMap } from "../api.ts";
+import { api, MessageMap, primeFrom } from "../api.ts";
 import { getTimeZone } from "../util/timeZone.ts";
+import { todayIteration } from "./standings.ts";
 
 // The client's normalized board store: one entry per iteration, fed by every
 // board-shaped response (getBoard, startRun, the summary's resumed run), plus
@@ -142,6 +143,31 @@ export const showBoard = (iteration?: number) => {
       "incomplete" in r && s === seq ? req().then(settle) : settle(r)
     )
     .catch(() => !!cached && s === seq);
+};
+
+/**
+ * Navigate to a specific day: its board AND its standings in ONE request
+ * (`dayView`), then delegate to `showBoard` for the actual staging. A calendar
+ * click / view-best used to fire getBoard (from showBoard) and standings
+ * (the dock reacting to the iteration change) separately; this primes both off
+ * one composite fetch under the exact inputs those two consumers send, so they
+ * consume the slices instead of round-tripping again. It's boot, but for one
+ * arbitrary chosen day.
+ *
+ * The standings input has to MATCH what the dock will send (see Dock.tsx): a day
+ * that is today keys by { timeZone } (the dock treats it as today), a past day
+ * by { iteration }. Both getBoard and standings are `RETRYABLE`, so a primed
+ * response that fails at transport falls through to a real, retried fetch.
+ */
+export const showDay = (iteration: number) => {
+  const timeZone = getTimeZone();
+  const dv = api.dayView({ iteration, timeZone });
+  primeFrom("getBoard", { iteration, timeZone }, dv, (r) => r.board);
+  const standingsInput = iteration === todayIteration.value
+    ? { timeZone }
+    : { iteration };
+  primeFrom("standings", standingsInput, dv, (r) => r.standings);
+  return showBoard(iteration);
 };
 
 /**
