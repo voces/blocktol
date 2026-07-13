@@ -56,6 +56,7 @@ const doFetch = (method: string, input: unknown) =>
 // clients' bare commit is an idempotent flip-to-non-void, also safe to repeat.
 const RETRYABLE = new Set<keyof BlocktolApi>([
   "list",
+  "dayView",
   "getBoard",
   "getDailySummary",
   "best",
@@ -109,6 +110,33 @@ export const prime = <Method extends keyof BlocktolApi>(
   const p = doFetch(method, input);
   // Observed so an early failure can't surface as an unhandled rejection;
   // the consuming call still sees it (and handles it like its own fetch).
+  p.catch(() => {});
+  primed.set(primeKey(method, input), p);
+};
+
+// Prime one method's next call from a slice of a *shared* composite response —
+// the general form of what primeBoot does for boot. `source` is a composite
+// fetch already in flight (e.g. `api.dayView(...)`), `pick` selects this
+// method's slice, and it's stashed under the exact input the consumer will
+// send. So a click that fires one `dayView` primes both the getBoard the
+// board-loader sends AND the standings the dock reacts with, off the one
+// request. If the source fails at transport (or comes back an auth error) the
+// primed promise rejects and the consumer falls through to its own real fetch —
+// a composite hiccup degrades to the old per-call path.
+export const primeFrom = <Method extends keyof BlocktolApi, Source>(
+  method: Method,
+  input: Parameters<BlocktolApi[Method]>[0],
+  source: Promise<Source>,
+  pick: (data: Exclude<Source, { error: unknown }>) => unknown,
+) => {
+  const p = source.then((d) => {
+    if (d && typeof d === "object" && "error" in d) {
+      throw new Error(`prime source for ${String(method)} failed`);
+    }
+    return new Response(
+      JSON.stringify(pick(d as Exclude<Source, { error: unknown }>)),
+    );
+  });
   p.catch(() => {});
   primed.set(primeKey(method, input), p);
 };

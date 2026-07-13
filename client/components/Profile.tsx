@@ -4,7 +4,7 @@ import { formatDecimal, formatSeconds } from "../../common/format.ts";
 import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
 import { api } from "../api.ts";
-import { showBoard } from "../store/board.ts";
+import { showDay } from "../store/board.ts";
 import {
   fetchProfile,
   patchProfile,
@@ -192,7 +192,7 @@ const ProfileDialog = (
     // trips become one), overlaying once both land — skipped if a newer
     // navigation superseded the stage.
     Promise.all([
-      showBoard(bestIteration!),
+      showDay(bestIteration!),
       api.best({ iteration: bestIteration! }),
     ]).then(([staged, best]) => {
       if (staged && !("error" in best)) viewMaze(best.maze);

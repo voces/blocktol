@@ -159,6 +159,20 @@ boot's standings slice so the dock recognizes the staged board as today and
 consumes the primed `standings` rather than refetching by id. On a boot failure
 each slice rejects and the consumer falls through to its own fetch.
 
+**`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
+`getBoard` (non-soft) + `standings` for a chosen `{ iteration, timeZone }` —
+because a day navigation (a calendar click, view-best) fires exactly those two:
+`getBoard` from `showBoard`, and `standings` as the dock reacts to the iteration
+change. `client/store/board.ts`'s `showDay(iteration)` fires the one `dayView`,
+then `primeFrom` (the general form of `primeBoot`'s slicing — `client/api.ts`)
+primes each slice under the exact input its consumer sends: `getBoard` under
+`{ iteration, timeZone }`, and `standings` under `{ timeZone }` when the day is
+today (the dock keys today by timezone) or `{ iteration }` for a past day — then
+delegates to `showBoard`. Both methods are `RETRYABLE`, so a primed slice that
+fails at transport falls through to a real fetch. `Calendar` (cross-day pick)
+and `Profile` (view-best) call `showDay`; same-day re-stage, deep-links, and
+gameplay stay on `showBoard`.
+
 **Database (`server/db/`):** MariaDB reached over HTTP through a SQL proxy at
 `w3x.io/sql` (`db/query.ts`) — there is no local DB driver. Two tagged-template
 helpers, and the choice is a correctness concern:
