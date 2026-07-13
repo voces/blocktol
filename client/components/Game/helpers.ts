@@ -2,7 +2,6 @@ import { is } from "../../../common/typeguards.ts";
 import { offsets } from "../../../common/constants.ts";
 import {
   cachedSolver,
-  findPath,
   newGrid,
   pathDuration,
   Slow,
@@ -10,6 +9,33 @@ import {
 import { Point } from "../../../common/types.ts";
 
 export type LocalRun = { path: Point[]; duration: number; slows: Slow[] };
+
+export type BoardBlocks = ReadonlyArray<
+  Point & { thunder?: boolean; local?: boolean }
+>;
+
+/**
+ * Whether the maze formed by `blocks` (plus an optional candidate block at
+ * (x, y)) still leaves the runner a route. Existence-only — hover and drag
+ * validity — on the same shared solver the preview and the server run, whose
+ * memo and one-added shortcut make a pointer sweep cheap. A throw (overlap the
+ * caller's pre-checks missed, the boot board's off-board checkpoint sentinel)
+ * reads as unsolvable.
+ */
+export const solvable = (
+  blocks: BoardBlocks,
+  checkpoint: Point,
+  candidate?: Point,
+) => {
+  try {
+    return !!cachedSolver(blocks.filter((b) => !b.local), checkpoint).solve([
+      ...blocks.filter((b) => b.local),
+      ...(candidate ? [candidate] : []),
+    ]);
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Compute the runner's path and time client-side with the same engine — the
@@ -24,7 +50,7 @@ export type LocalRun = { path: Point[]; duration: number; slows: Slow[] };
  * state (mid-drag illegal placement); the caller keeps the prior run then.
  */
 export const localRun = (
-  blocks: ReadonlyArray<Point & { thunder?: boolean; local?: boolean }>,
+  blocks: BoardBlocks,
   checkpoint: Point,
 ): LocalRun | undefined => {
   let path: Point[] | undefined;
@@ -85,12 +111,14 @@ export const rebuildGrid = (
 
 /**
  * Whether dropping the block `origin` at (x, y) is not allowed: adjacent to the
- * checkpoint, overlapping another block, or blocking the only path. Temporarily
- * vacates `origin` and fills the candidate cells in `grid`, then restores it, so
- * a block can be dragged over/through where it currently sits.
+ * checkpoint, overlapping another block, or blocking the only path. The grid
+ * (with `origin` temporarily vacated) answers the overlap question, so a block
+ * can be dragged over/through where it currently sits; the shared solver
+ * answers reachability for the maze with `origin` relocated.
  */
 export const isInvalidMove = (
   grid: boolean[][],
+  blocks: BoardBlocks,
   checkpoint: Point,
   origin: Point,
   x: number,
@@ -99,17 +127,8 @@ export const isInvalidMove = (
   if (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y) <= 1) return true;
 
   offsets.forEach(([xd, yd]) => grid[origin.y + yd][origin.x + xd] = false);
-  let invalid = false;
-  if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) invalid = true;
-  else {
-    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-    try {
-      if (!findPath(grid, checkpoint)) invalid = true;
-    } catch {
-      invalid = true;
-    }
-    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
-  }
+  const invalid = offsets.some(([xd, yd]) => grid[y + yd][x + xd]) ||
+    !solvable(blocks.filter((b) => b !== origin), checkpoint, { x, y });
   offsets.forEach(([xd, yd]) => grid[origin.y + yd][origin.x + xd] = true);
   return invalid;
 };

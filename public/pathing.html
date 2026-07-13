@@ -8,176 +8,149 @@
 <body>
   <svg id="svg"></svg>
   <script type="module">
-    import { findPath, pathDuration } from "./js/pathing.js";
+    // Debug page for the pathing engine, on real game semantics: the 20×20
+    // board with its border ring, 2×2 pieces, and a checkpoint cell — solved
+    // by the same PathSolver the game runs.
+    //   click        place a 2×2 piece anchored at the cell / remove the piece
+    //                covering the cell
+    //   alt-click    move the checkpoint to the cell
+    //   shift-click  toggle a placed piece between block and thunder
+    // The path, its exact length, and pathDuration's [duration, slows] log to
+    // the console on every change.
+    import { newGrid, PathSolver, pathDuration } from "./js/pathing.js";
 
-    const SIZE = 19; // MUST BE ODD
+    const SIZE = 20;
 
     const svg = document.getElementById("svg");
-
     svg.setAttribute("width", SIZE);
     svg.setAttribute("height", SIZE);
     svg.setAttribute("viewBox", `0 0 ${SIZE} ${SIZE}`);
 
     const colorWalkable = "#77aaee";
-    const colorBlocked = "#ee77dd";
-    const colorEnd = "#77ee77";
-    const colorWaypoint = "#eeee77";
+    const colorWall = "#445566";
+    const colorBlock = "#ee77dd";
+    const colorThunder = "#eeee77";
+    const colorCheckpoint = "#77ee77";
 
-    const WALKABLE = 0;
-    const BLOCKED = 1;
-    const START = 2;
-    const END = 3;
-    const WAYPOINT = 4;
+    let checkpoint = { x: 9.5, y: 9.5 };
+    const pieces = (globalThis.pieces = []);
 
-    const grid = (globalThis.grid = Array.from(Array(SIZE), () =>
-      Array.from(Array(SIZE), () => (Math.random() < 0.65 ? WALKABLE : BLOCKED))
-    ));
+    const pieceAt = (x, y) =>
+      pieces.find((p) => x >= p.x && x <= p.x + 1 && y >= p.y && y <= p.y + 1);
 
-    const start = { x: (SIZE - 1) / 2, y: SIZE - 1 };
-    const end = { x: (SIZE - 1) / 2, y: 0 };
-    const waypoint = { x: (SIZE - 1) / 2, y: (SIZE - 1) / 2 };
+    const walls = newGrid();
 
-    grid[start.y][start.x] = START;
-    grid[end.y][end.x] = END;
-    grid[waypoint.y][waypoint.x] = WAYPOINT;
-
-    const colorMap = {
-      [WALKABLE]: colorWalkable,
-      [BLOCKED]: colorBlocked,
-      [START]: colorEnd,
-      [END]: colorEnd,
-      [WAYPOINT]: colorWaypoint,
+    const cellColor = (x, y) => {
+      if (walls[y][x]) return colorWall;
+      if (x === checkpoint.x + 0.5 && y === checkpoint.y + 0.5) {
+        return colorCheckpoint;
+      }
+      const piece = pieceAt(x, y);
+      if (piece) return piece.thunder ? colorThunder : colorBlock;
+      return colorWalkable;
     };
 
-    const updateCell = (x = 0, y = 0, mode = WALKABLE) => {
-      grid[y][x] = mode;
-      nodeMap[y][x].setAttribute("fill", colorMap[mode]);
-    };
+    const cells = [];
+    const pathElements = [];
 
-    const pathElements = [
-      document.createElementNS("http://www.w3.org/2000/svg", "circle"),
-    ];
-    pathElements.splice(0);
-
-    const createPathSquare = (x = 0, y = 0) => {
-      const square = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "rect"
-      );
-      square.classList.add("path")
-      square.setAttribute("x", x);
-      square.setAttribute("y", y);
-      square.setAttribute("width", 1);
-      square.setAttribute("height", 1);
-      square.setAttribute("fill", "rgba(0, 0, 0, 0.2)");
-
-      svg.appendChild(square);
-      pathElements.push(square);
-    };
-
-    const createPathLine = (start = { x: 0, y: 0 }, end = { x: 0, y: 0 }) => {
-      const line = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "line"
-      );
-
-      line.setAttribute("x1", start.x + 0.5);
-      line.setAttribute("y1", start.y + 0.5);
-      line.setAttribute("x2", end.x + 0.5);
-      line.setAttribute("y2", end.y + 0.5);
-      const angle = Math.atan2(end.y - start.y, end.x - start.x);
-      line.setAttribute(
-        "stroke-width",
-        Math.abs(Math.sin(angle)) + Math.abs(Math.cos(angle))
-      );
-      line.setAttribute("stroke", "rgba(0,0,0,0.2)");
-
-      svg.appendChild(line);
-      pathElements.push(line);
-    };
-
-    const redoPath = async () => {
-      for (const el of pathElements) svg.removeChild(el);
-      pathElements.splice(0);
-
-      const path = await findPath(
-        grid.map((row) => row.map((v) => v === BLOCKED)),
-        { x: waypoint.x - 0.5, y: waypoint.y - 0.5 },
-        start,
-        end
-      );
-      const [duration, slows] = pathDuration(path)
-      console.log(path, duration, slows);
-
-      if (path?.length) {
-        createPathSquare(path[0].x, path[0].y);
-
-        for (let i = 1; i < path.length; i++) {
-          createPathSquare(path[i].x, path[i].y);
-          createPathLine(path[i - 1], path[i]);
+    const repaint = () => {
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          cells[y][x].setAttribute("fill", cellColor(x, y));
         }
       }
     };
 
-    for (let y = 0; y < SIZE; y++)
+    const createPathLine = (start, end) => {
+      const line = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "line",
+      );
+      line.setAttribute("x1", start.x + 0.5);
+      line.setAttribute("y1", start.y + 0.5);
+      line.setAttribute("x2", end.x + 0.5);
+      line.setAttribute("y2", end.y + 0.5);
+      line.setAttribute("stroke-width", 0.15);
+      line.setAttribute("stroke", "rgba(0,0,0,0.5)");
+      svg.appendChild(line);
+      pathElements.push(line);
+    };
+
+    const redoPath = () => {
+      for (const el of pathElements) svg.removeChild(el);
+      pathElements.splice(0);
+
+      let path;
+      try {
+        path = new PathSolver(pieces, checkpoint).solve([]);
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+      if (!path) {
+        console.log("no path");
+        return;
+      }
+      let length = 0;
+      for (let i = 1; i < path.length; i++) {
+        length += Math.hypot(
+          path[i].x - path[i - 1].x,
+          path[i].y - path[i - 1].y,
+        );
+        createPathLine(path[i - 1], path[i]);
+      }
+      console.log(
+        path,
+        `length ${length}`,
+        pathDuration(path, pieces.filter((p) => p.thunder)),
+      );
+    };
+
+    for (let y = 0; y < SIZE; y++) {
+      cells.push([]);
       for (let x = 0; x < SIZE; x++) {
         const cell = document.createElementNS(
           "http://www.w3.org/2000/svg",
-          "rect"
+          "rect",
         );
         cell.setAttribute("y", y);
         cell.setAttribute("x", x);
         cell.setAttribute("width", 1);
         cell.setAttribute("height", 1);
-        cell.setAttribute("fill", colorMap[grid[y][x]]);
 
         cell.addEventListener("click", (e) => {
+          if (walls[y][x]) return;
+          const existing = pieceAt(x, y);
           if (e.altKey) {
-            updateCell(waypoint.x, waypoint.y, WALKABLE);
-            updateCell(x, y, WAYPOINT);
-            waypoint.x = x;
-            waypoint.y = y;
-          } else if (e.metaKey) {
-            if (e.shiftKey) {
-              updateCell(end.x, end.y, WALKABLE);
-              updateCell(x, y, END);
-              end.x = x;
-              end.y = y;
-            } else {
-              updateCell(start.x, start.y, WALKABLE);
-              updateCell(x, y, START);
-              start.x = x;
-              start.y = y;
-            }
-          } else if (grid[y][x] === WALKABLE) updateCell(x, y, BLOCKED);
-          else if (grid[y][x] === BLOCKED) updateCell(x, y, WALKABLE);
-
+            if (!existing) checkpoint = { x: x - 0.5, y: y - 0.5 };
+          } else if (e.shiftKey) {
+            if (existing) existing.thunder = !existing.thunder;
+          } else if (existing) {
+            pieces.splice(pieces.indexOf(existing), 1);
+          } else {
+            // Anchor clamped so the 2×2 piece stays inside the interior; only
+            // place when all four cells are free (like the game does).
+            const ax = Math.min(x, 17);
+            const ay = Math.min(y, 17);
+            const free = [0, 1].every((dx) =>
+              [0, 1].every((dy) =>
+                !walls[ay + dy][ax + dx] && !pieceAt(ax + dx, ay + dy) &&
+                !(ax + dx === checkpoint.x + 0.5 &&
+                  ay + dy === checkpoint.y + 0.5)
+              )
+            );
+            if (free) pieces.push({ x: ax, y: ay });
+          }
+          repaint();
           redoPath();
         });
 
         svg.appendChild(cell);
-
-        if (SIZE < 20) {
-          const text = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "text"
-          );
-
-          text.setAttribute("x", x + 0.3);
-          text.setAttribute("y", y + 0.6);
-          text.textContent = `(${x}, ${y})`;
-
-          svg.appendChild(text);
-        }
+        cells[y].push(cell);
       }
+    }
 
-    const nodeMap = Array.from(Array(SIZE), (_, y) =>
-      Array.from(
-        Array(SIZE),
-        (_, x) => svg.children[(y * SIZE + x) * (SIZE < 20 ? 2 : 1)]
-      )
-    );
-
+    repaint();
     redoPath();
   </script>
   <style>
@@ -196,15 +169,8 @@
       filter: brightness(80%) saturate(125%);
     }
 
-    rect.path,
-    line,
-    text {
+    line {
       pointer-events: none;
-    }
-
-    text {
-      font-size: 0.2px;
-      fill: rgba(0, 0, 0, 0.6);
     }
   </style>
 </body>

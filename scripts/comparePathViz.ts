@@ -1,5 +1,5 @@
-// Render an SVG that overlays the OLD path (Theta*, loaded from a git ref) and
-// the NEW path (current working tree) for the same board, so the difference the
+// Render an SVG that overlays the OLD path (loaded from a git ref) and the
+// NEW path (current working tree) for the same board, so the difference a
 // pathing change makes is visible at a glance. New is drawn as a thick solid
 // blue line; the old path is drawn dashed red *on top* so it stays visible even
 // where the two coincide (the blue shows through the gaps).
@@ -10,9 +10,10 @@
 // legend. The two times are full simulated run times (thunder slows included),
 // so the old one can be cross-checked against the run's stored DB time.
 //
-// The baseline's sibling modules (BinaryHeap/constants/MMap/types) are unchanged
-// by the pathing work, so the old pathing.ts body is dropped next to them and
-// imported directly — only findPathFromData/pathDuration differ.
+// The baseline's sibling modules (BinaryHeap/constants/MMap/types) are kept
+// around precisely so an old pathing.ts body can be dropped next to them and
+// imported directly; the baseline solves via findPathFromData when it has one
+// (pre-PathSolver refs) and PathSolver otherwise.
 //
 // Board source (pick one):
 //   --seed=N        generate a deterministic random board (no DB needed)
@@ -32,7 +33,7 @@
 //   deno run --allow-read --allow-run --allow-write scripts/comparePathViz.ts --search
 //   deno run --allow-read --allow-run --allow-write scripts/comparePathViz.ts --seed=42
 //   APP_ENV=prod SQL_PASSWORD=... deno run --allow-read --allow-run --allow-write \
-//     --allow-net --allow-env=APP_ENV,SQL_PASSWORD \
+//     --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL \
 //     scripts/comparePathViz.ts --iteration=41
 
 import { offsets } from "../common/constants.ts";
@@ -64,7 +65,10 @@ const baselineSource = new TextDecoder().decode(
     args: ["show", `${gitRef}:common/pathing.ts`],
   }).output()).stdout,
 );
-if (!baselineSource.includes("findPathFromData")) {
+if (
+  !baselineSource.includes("findPathFromData") &&
+  !baselineSource.includes("PathSolver")
+) {
   console.error(`Could not read common/pathing.ts at ref '${gitRef}'.`);
   Deno.exit(1);
 }
@@ -77,7 +81,14 @@ const baselinePath =
 await Deno.writeTextFile(baselinePath, baselineSource);
 
 type PathingModule = {
-  findPathFromData: (blocks: Point[], checkpoint: Point) => Point[] | undefined;
+  findPathFromData?: (
+    blocks: Point[],
+    checkpoint: Point,
+  ) => Point[] | undefined;
+  PathSolver?: new (
+    blocks: Point[],
+    checkpoint: Point,
+  ) => { solve(pieces: Point[]): Point[] | undefined };
   pathDuration: typeof current.pathDuration;
   newGrid: typeof current.newGrid;
 };
@@ -118,76 +129,75 @@ try {
   };
 
   const duration = (mod: PathingModule, board: Board) => {
-    const path = mod.findPathFromData(
-      board.blocks.map(({ x, y }) => ({ x, y })),
-      board.checkpoint,
-    );
+    const blocks = board.blocks.map(({ x, y }) => ({ x, y }));
+    let path: Point[] | undefined;
+    try {
+      path = mod.findPathFromData
+        ? mod.findPathFromData(blocks, board.checkpoint)
+        : new mod.PathSolver!(blocks, board.checkpoint).solve([]);
+    } catch {
+      return undefined;
+    }
     if (!path) return undefined;
     const thunders = board.blocks.filter((b) => b.thunder);
     return { path, seconds: mod.pathDuration(path, thunders)[0] };
   };
 
   // The stretches of a path the runner covers while slowed, as sub-polylines.
-  // This mirrors pathDuration's simulation step-for-step (`common/pathing.ts`)
-  // and records the runner's position whenever it is moving at half speed, so
-  // the render can mark exactly where a thunder slows it — the same thing that
-  // makes a longer-looking route sometimes finish sooner.
+  // Derived from the current engine's slows: each trigger slows the runner
+  // from its instant until six seconds later or the next trigger's reset,
+  // whichever comes first, and positions follow the same piecewise-linear
+  // motion (SPEED, halved while slowed). Viz-grade: slow times are the
+  // two-decimal ones pathDuration reports.
   const SPEED = current.SPEED;
   const slowedSpans = (path: Point[], thunders: Point[]): Point[][] => {
+    if (path.length < 2 || !thunders.length) return [];
+    const [, slows] = current.pathDuration(path, thunders);
+    if (!slows.length) return [];
+
+    // Slowed wall-clock windows: a re-trigger resets, never stacks.
+    const windows: [number, number][] = [];
+    for (const { time } of slows) {
+      const previous = windows[windows.length - 1];
+      if (previous && time <= previous[1]) previous[1] = time + 6;
+      else windows.push([time, time + 6]);
+    }
+
+    const cum = [0];
+    for (let i = 1; i < path.length; i++) {
+      cum.push(
+        cum[i - 1] +
+          Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y),
+      );
+    }
+    const total = cum[cum.length - 1];
+    const pointAt = (dist: number): Point => {
+      let i = 1;
+      while (i < cum.length - 1 && cum[i] < dist) i++;
+      const p = (dist - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+      return {
+        x: path[i - 1].x * (1 - p) + path[i].x * p,
+        y: path[i - 1].y * (1 - p) + path[i].y * p,
+      };
+    };
+
     const spans: Point[][] = [];
-    if (path.length < 2 || !thunders.length) return spans;
-    const dist = (a: Point, b: Point) =>
-      ((a.x - b.x) ** 2 + (a.y - b.y) ** 2) ** 0.5;
-
-    let distance = 0;
-    let consumed = 0;
-    let index = 0;
-    let distanceToNext = dist(path[0], path[1]);
-    const usage = thunders.map(() => -Infinity);
-    const runner: Point = { x: path[0].x, y: path[0].y };
-    let slowed = 0;
-    let steps = 0;
-    let span: Point[] | null = null;
-
-    while (index < path.length - 1) {
-      steps++;
-      const from = { x: runner.x, y: runner.y };
-      let triggered = false;
-      for (let i = 0; i < thunders.length; i++) {
-        if (
-          dist(runner, { x: thunders[i].x + 0.5, y: thunders[i].y + 0.5 }) >
-            4 ||
-          usage[i] + 32 * SPEED >= steps
-        ) continue;
-        usage[i] = steps;
-        if (!triggered) triggered = true, slowed = 6 * SPEED;
+    let t = 0;
+    let d = 0;
+    for (const [start, end] of windows) {
+      d += (start - t) * SPEED;
+      const from = Math.min(d, total);
+      d += (end - start) * (SPEED / 2);
+      t = end;
+      const to = Math.min(d, total);
+      if (to <= from) continue;
+      // The window's endpoints plus every path vertex inside it.
+      const span: Point[] = [pointAt(from)];
+      for (let i = 1; i < path.length - 1; i++) {
+        if (cum[i] > from && cum[i] < to) span.push(path[i]);
       }
-      const isSlow = slowed >= 1e-8;
-      distance += isSlow ? 0.05 : 0.1;
-      slowed -= 0.1;
-      while (
-        (distance - consumed) + 1e-8 >= distanceToNext && index < path.length
-      ) {
-        index++;
-        consumed += distanceToNext;
-        if (index < path.length - 1) {
-          distanceToNext = dist(path[index], path[index + 1]);
-        }
-      }
-      if (index < path.length - 1) {
-        const p = (distance - consumed) / distanceToNext;
-        runner.x = path[index].x * (1 - p) + path[index + 1].x * p;
-        runner.y = path[index].y * (1 - p) + path[index + 1].y * p;
-      }
-      if (isSlow) {
-        if (!span) span = [from], spans.push(span);
-        // Decimate colinear samples so the SVG stays small.
-        if (dist(span[span.length - 1], runner) > 0.2) {
-          span.push({ x: runner.x, y: runner.y });
-        }
-      } else if (span) {
-        span.push(from), span = null;
-      }
+      span.push(pointAt(to));
+      spans.push(span);
     }
     return spans;
   };
@@ -412,9 +422,9 @@ try {
   const legend: string[] = [
     `<text x="0" y="21.05" fill="#e6e6e6" font-size="0.6" font-weight="600">${board.label}</text>`,
     `<rect x="0" y="21.55" width="0.8" height="0.18" fill="#ff5a5a"/>`,
-    `<text x="1" y="21.73" fill="#e6e6e6" font-size="0.56">Theta* (old): ${
-      old.seconds.toFixed(2)
-    }s${
+    `<text x="1" y="21.73" fill="#e6e6e6" font-size="0.56">old (${
+      gitRef.slice(0, 12)
+    }): ${old.seconds.toFixed(2)}s${
       board.storedTime !== undefined
         ? `  ·  stored ${board.storedTime.toFixed(2)}s ${
           Math.abs(board.storedTime - old.seconds) < 0.02 ? "✓" : "✗ differs"
@@ -422,7 +432,7 @@ try {
         : ""
     }</text>`,
     `<rect x="0" y="22.35" width="0.8" height="0.18" fill="#4c8dff"/>`,
-    `<text x="1" y="22.53" fill="#e6e6e6" font-size="0.56">Visibility graph (new): ${
+    `<text x="1" y="22.53" fill="#e6e6e6" font-size="0.56">current working tree: ${
       neu.seconds.toFixed(2)
     }s</text>`,
     `<text x="0" y="23.35" fill="#8fce9b" font-size="0.56">Runner reaches exit ${

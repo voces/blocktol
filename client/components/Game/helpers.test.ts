@@ -9,8 +9,8 @@ import { offsets } from "../../../common/constants.ts";
 // pathDuration (see validateRun). Same-engine matters beyond length: with
 // thunders, duration depends on the path's geometry, so previewed and
 // persisted times only stay equal if equal-length ties break identically too.
-// This pins them together. (PathSolver's own length parity with the
-// brute-verified findPathFromData is asserted in common/pathing.test.ts.)
+// This pins them together. (PathSolver's own optimality is asserted against a
+// brute-force full-cell visibility graph in common/pathing.test.ts.)
 Deno.test("localRun equals the server's PathSolver + pathDuration", () => {
   // Checkpoints are half-integer cells (see newIteration / validateRun.test).
   const checkpoint = { x: 9.5, y: 9.5 };

@@ -9,7 +9,7 @@
 //
 // Run locally against an environment (reads the same proxy the app uses):
 //   APP_ENV=prod SQL_PASSWORD=... \
-//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD scripts/auditRuns.ts
+//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL scripts/auditRuns.ts
 //   ...add --apply to actually delete.
 //
 // Reusing validateRun means "legal" here is identical to what the server accepts

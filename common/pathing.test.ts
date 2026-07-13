@@ -2,8 +2,6 @@ import { assert, assertEquals } from "@std/assert";
 
 import {
   cachedSolver,
-  findPath,
-  findPathFromData,
   lineOfSight,
   newGrid,
   pathDuration,
@@ -84,7 +82,7 @@ Deno.test("pathDuration", async (t) => {
             { x: 1, y: 1 },
           ],
           [],
-          0.30, // 0.20*√2 = ~0.283, round up 0.02 seconds
+          0.28, // √2/5 = ~0.2828, rounded — no tick to round up to anymore
         ),
     );
 
@@ -98,7 +96,7 @@ Deno.test("pathDuration", async (t) => {
             { x: 0, y: 1 },
           ],
           [],
-          0.5, // 0.20*√2 + 0.2 = ~0.483, round up
+          0.48, // (√2 + 1)/5 = ~0.4828, rounded
         ),
     );
 
@@ -141,9 +139,55 @@ Deno.test("pathDuration", async (t) => {
           // but easier math
           { x: 4.5, y: -0.5 },
         ],
-        23, // slowed for six seconds by half
-        [{ thunder: { x: 4.5, y: -0.5 }, time: 0.22 }], // 1 tile + step into next
+        23, // slowed for six seconds by half: 100/5 + 6/2
+        // Centre (5,0), radius 4: range entry at distance 1 exactly = 0.2s.
+        // No re-trigger: the cooldown expires (3.4s) at the very instant the
+        // slowed runner reaches the range EXIT (distance 9) — a graze, and
+        // "in range" is strict.
+        [{ thunder: { x: 4.5, y: -0.5 }, time: 0.2 }],
       ));
+
+    await t.step("simultaneous triggers share one slow", () => {
+      // Two thunders mirrored across the path: identical in-range windows, so
+      // both fire at the exact same instant. Both are recorded and both
+      // cooldowns burn, but the slow is shared — the duration is identical to
+      // the single-thunder run.
+      const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+      const pair = [{ x: 4.5, y: 2.5 }, { x: 4.5, y: -3.5 }]; // centres (5,±3)
+      const entry = (5 - Math.sqrt(7)) / 5; // |x-5| < √(16-9) from x=0, at SPEED
+      assertPathDuration(path, pair, 23, [
+        { thunder: pair[0], time: Math.round(entry * 100) / 100 },
+        { thunder: pair[1], time: Math.round(entry * 100) / 100 },
+      ]);
+      assertPathDuration(path, [pair[0]], 23, [
+        { thunder: pair[0], time: Math.round(entry * 100) / 100 },
+      ]);
+    });
+
+    await t.step("a re-trigger resets the slow, never stacks", () => {
+      // Second thunder 10 units downstream: the slowed runner (2.5/s) reaches
+      // its window 4s after the first trigger, mid-slow. The slow RESETS to
+      // 6s there, so total slowed wall-time is 4 + 6 = 10s — the first slow's
+      // last 2s are wasted, not banked: 100/5 + 10/2 = 25.
+      const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+      const thunders = [{ x: 4.5, y: 2.5 }, { x: 14.5, y: 2.5 }];
+      const t1 = (5 - Math.sqrt(7)) / 5;
+      assertPathDuration(path, thunders, 25, [
+        { thunder: thunders[0], time: Math.round(t1 * 100) / 100 },
+        { thunder: thunders[1], time: Math.round((t1 + 4) * 100) / 100 },
+      ]);
+    });
+
+    await t.step("a window thinner than the old tick still triggers", () => {
+      // Centre 3.9997 off the path: in-range for only ~0.05 distance — the
+      // retired tick engine sampled every 0.1 and could step clean over it;
+      // the continuous engine cannot. Intentional behaviour change.
+      const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+      const thunder = { x: 4.5, y: 3.4997 };
+      const [duration, slows] = pathDuration(path, [thunder]);
+      assert(Math.abs(duration - 23) < 1e-9, `expected 23, got ${duration}`);
+      assertEquals(slows.length, 1);
+    });
   });
 });
 
@@ -156,10 +200,10 @@ const length = (path: ReadonlyArray<Point>) => {
   return total;
 };
 
-// Independent optimum: a visibility graph over *every* free cell (a superset of
-// the corner nodes findPath uses), sharing the exact same `lineOfSight` oracle.
-// If findPath's corner-restricted search were ever suboptimal, this denser graph
-// would find something strictly shorter.
+// Independent optimum: a visibility graph over *every* free cell (a superset
+// of the corner nodes PathSolver uses), sharing the exact same `lineOfSight`
+// oracle. If the solver's corner-restricted search were ever suboptimal, this
+// denser graph would find something strictly shorter.
 const bruteOptimalLength = (
   start: Point,
   end: Point,
@@ -196,10 +240,9 @@ const bruteOptimalLength = (
   return dist[1];
 };
 
-Deno.test("findPath — any-angle optimality", async (t) => {
+Deno.test("PathSolver — any-angle optimality", async (t) => {
   await t.step("unobstructed run is a single straight segment", () => {
-    const grid = newGrid();
-    const path = findPath(grid, { x: 9.5, y: 18.5 })!;
+    const path = new PathSolver([], { x: 9.5, y: 18.5 }).solve([])!;
     // start -> checkpoint cell (10,19) -> end, both straight.
     assertEquals(path.length, 3);
     assert(
@@ -237,19 +280,26 @@ Deno.test("findPath — any-angle optimality", async (t) => {
         y: 1.5 + Math.floor(rng() * 17),
       };
       grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      const anchors: Point[] = [];
       const blockCount = 3 + Math.floor(rng() * 28);
       for (let b = 0; b < blockCount; b++) {
         const x = 2 + Math.floor(rng() * 17);
         const y = 2 + Math.floor(rng() * 17);
         if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
         offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+        anchors.push({ x, y });
       }
 
-      const path = findPath(structuredClone(grid), checkpoint);
+      // Split the anchors between the precomputed base and solve-time pieces
+      // so the brute check also covers the augmented-board machinery (base
+      // visibility invalidation, ring corners), not just base solves.
+      const split = Math.floor(rng() * (anchors.length + 1));
+      const path = new PathSolver(anchors.slice(0, split), checkpoint)
+        .solve(anchors.slice(split));
       if (!path) continue;
       checked++;
 
-      // Reproduce findPath's internal grid (checkpoint cell walkable) for brute.
+      // Reproduce the search's internal grid (checkpoint cell walkable).
       const g = structuredClone(grid);
       g[checkpoint.y + 0.5][checkpoint.x + 0.5] = false;
       const cell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
@@ -258,36 +308,43 @@ Deno.test("findPath — any-angle optimality", async (t) => {
 
       assert(
         length(path) <= optimum + 1e-6,
-        `seed ${seed}: findPath ${length(path)} > optimum ${optimum}`,
+        `seed ${seed}: solver ${length(path)} > optimum ${optimum}`,
       );
     }
     assert(checked > 40, `expected many solvable boards, got ${checked}`);
   });
 });
 
-Deno.test("findPath returns undefined for an off-board checkpoint", () => {
-  // On page load the board holds the off-board sentinel checkpoint {-2,-2} on a
-  // fresh grid whose fractional checkpoint row was never allocated. A hover can
-  // call findPath in that state; it must return undefined, not throw
-  // "Cannot set properties of undefined" writing into the missing row.
-  const grid = newGrid();
-  assertEquals(findPath(grid, { x: -2, y: -2 }), undefined);
-});
-
-Deno.test("findPathFromData rejects overlapping placements", () => {
-  // Two blocks sharing a cell is invalid data and must throw, not path.
+Deno.test("PathSolver throws for an off-board checkpoint", () => {
+  // On page load the board holds the off-board sentinel checkpoint {-2,-2},
+  // whose fractional grid row was never allocated. Construction throws (there
+  // is nothing to precompute); the client's localRun/solvable helpers catch it
+  // and read the board as path-less rather than crashing a hover.
   let threw = false;
   try {
-    findPathFromData([{ x: 5, y: 5 }, { x: 6, y: 5 }], { x: 9.5, y: 9.5 });
+    new PathSolver([], { x: -2, y: -2 });
   } catch {
     threw = true;
   }
   assert(threw);
 });
 
-Deno.test("PathSolver matches findPathFromData", async (t) => {
-  // findPathFromData is the brute-verified reference (see the optimality test
-  // above), so parity here transitively covers the solver's optimality.
+Deno.test("PathSolver rejects overlapping placements", () => {
+  // Two blocks sharing a cell is invalid data and must throw, not path —
+  // whether they collide in the base board or at solve time.
+  let threw = false;
+  try {
+    new PathSolver([{ x: 5, y: 5 }, { x: 6, y: 5 }], { x: 9.5, y: 9.5 });
+  } catch {
+    threw = true;
+  }
+  assert(threw);
+});
+
+Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
+  // The optimality test above anchors correctness against the brute oracle;
+  // these steps pin the SHARED-INSTANCE behaviours — grid restoration between
+  // solves, the result memo, the one-added shortcut — to a cold solver.
   // Deterministic LCG so failures are reproducible.
   let s = 24681357 >>> 0;
   const rng = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
@@ -329,7 +386,7 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
           const roundScratch = structuredClone(scratch);
           const pieces = placeRandom(roundScratch, Math.floor(rng() * 22));
 
-          const expected = findPathFromData([...base, ...pieces], checkpoint);
+          const expected = new PathSolver(base, checkpoint).solve(pieces);
           const actual = solver.solve(pieces);
 
           assertEquals(
@@ -362,7 +419,7 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
       assert(good);
 
       // Overlapping the base block, the checkpoint cell, and a second piece that
-      // overlaps the first: all must throw like findPathFromData — and the last
+      // overlaps the first: all must throw — and the last
       // one only after the first piece was already placed, exercising the
       // mid-throw grid restore.
       for (
@@ -493,6 +550,5 @@ Deno.test("PathSolver matches findPathFromData", async (t) => {
     const solver = new PathSolver([], checkpoint);
     // (9,18) covers the start cell (9,19); the runner has nowhere to stand.
     assertEquals(solver.solve([{ x: 9, y: 18 }]), undefined);
-    assertEquals(findPathFromData([{ x: 9, y: 18 }], checkpoint), undefined);
   });
 });

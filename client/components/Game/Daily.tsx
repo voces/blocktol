@@ -177,7 +177,8 @@ export const Daily = () => {
                   class="result__time mono"
                   style={i === bestIdx ? { color: accent } : undefined}
                 >
-                  {attempt.duration}s
+                  {/* Two decimals, locale-aware, aligned down the column. */}
+                  {formatSeconds(attempt.duration)}s
                 </span>
               </span>
             </div>

@@ -1,6 +1,5 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
-import { findPath } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { claimBoard } from "../../store/board.ts";
 import {
@@ -17,6 +16,7 @@ import {
   isTouchSource,
   localRun,
   rebuildGrid,
+  solvable,
 } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -132,7 +132,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         const target = placingBlock.peek();
         if (target.x !== origin.x || target.y !== origin.y) {
           if (!onBoard) return;
-          if (isInvalidMove(grid, checkpoint, origin, target.x, target.y)) {
+          if (
+            isInvalidMove(grid, blocks, checkpoint, origin, target.x, target.y)
+          ) {
             removeBlock(origin);
           } else {
             apply(
@@ -154,14 +156,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
       if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return;
 
-      offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
-
-      try {
-        if (!findPath(grid, checkpoint)) {
-          offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = false);
-          return;
-        }
-      } catch { /* do nothing */ }
+      // A placement that walls the runner off entirely is refused outright
+      // (the grid stays untouched — apply() rebuilds it from blocks anyway).
+      if (!solvable(blocks, checkpoint, { x, y })) return;
 
       const newBlocks = [...blocks, { x, y, local: true }];
       // Free play opens the run on this first placement — locally, with no

@@ -300,8 +300,12 @@ export const Attempts = () => {
                     }
                     : undefined}
                 >
+                  {
+                    /* Always two decimals: the times sit in a mono column and
+                      a "17.5" between "17.54"s reads misaligned. */
+                  }
                   <span class="attempts__time mono">
-                    {formatSeconds(attempt.duration, { min: 0 })}s
+                    {formatSeconds(attempt.duration)}s
                   </span>
                   <div class="attempts__meta">
                     <div class="attempts__kind">
