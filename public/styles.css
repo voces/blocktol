@@ -2453,6 +2453,12 @@ a:hover {
   background: color-mix(in srgb, var(--lose) 12%, var(--surface-2));
 }
 
+/* Stacked account rows (Move / Export / Delete) sit flush otherwise — .pref has
+   no gap; spacing between siblings is done per-component (cf. .pref__row). */
+.profile-action + .profile-action {
+  margin-top: 8px;
+}
+
 /* Quiet text link under the account rows, out to the static privacy page. */
 .profile-privacy-link {
   display: block;
