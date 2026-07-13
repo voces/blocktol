@@ -47,8 +47,8 @@ const doFetch = (method: string, input: unknown) =>
 // and idempotent/last-write-wins writes. Deliberately EXCLUDED:
 //   - updateRun   — runSaver.ts owns its own coalescing retry+backoff; a second
 //                   layer here would fight it.
-//   - startRun / abandonRun — run-lifecycle transitions; a lost response after
-//                   the server acted must not be silently redone.
+//   - startRun     — a run-lifecycle transition; a lost response after the
+//                   server acted must not be silently redone.
 //   - merge       — destructive, one-shot.
 //   - reportClientError — retrying error reports risks amplifying a bad loop.
 // commitRun IS retryable: free play's commit carries a per-attempt clientId and
