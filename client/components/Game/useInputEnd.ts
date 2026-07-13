@@ -45,6 +45,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     setStaged,
     setTime,
     freePlay,
+    viewing,
     deadlineRef,
   } = useContext(GameStateContext);
 
@@ -90,7 +91,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     // `onBoard` is whether the release landed on the playable board (not a HUD
     // control, text, or the border ring / outside the SVG).
     const commit = (onBoard: boolean) => {
-      if (timeRef.current <= 0) {
+      // `viewing` checked explicitly: a reviewed maze keeps a live free-play
+      // build's countdown on the clock (time > 0), but stays non-editable.
+      if (viewing || timeRef.current <= 0) {
         dragRef.current = null;
         return;
       }
@@ -213,5 +216,6 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     iteration,
     staged,
     freePlay,
+    viewing,
   ]);
 };

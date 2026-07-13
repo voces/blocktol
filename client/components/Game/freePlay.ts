@@ -86,14 +86,8 @@ export const clearFreePlay = () => {
   } catch { /* ignore */ }
 };
 
-// A resumable attempt for `iteration`, or null: present, same day, its window
-// still open, and non-empty. Adopts the stored id so the resumed attempt commits
-// idempotently under it. A mismatched/expired record is discarded so it can't
-// resurrect onto the wrong board.
-export const resumableFreePlay = (
-  iteration: number,
-  now: number,
-): FreePlayState | null => {
+// The raw stored record, or null when absent/unreadable/corrupt.
+const readRecord = (): FreePlayState | null => {
   let raw: string | null;
   try {
     raw = localStorage.getItem(KEY);
@@ -101,14 +95,44 @@ export const resumableFreePlay = (
     return null;
   }
   if (!raw) return null;
-  let state: FreePlayState;
   try {
-    state = JSON.parse(raw);
+    return JSON.parse(raw);
   } catch {
     return null;
   }
+};
+
+// A resumable attempt for `iteration`, or null: present, same day, its window
+// still open, and non-empty. Adopts the stored id so the resumed attempt commits
+// idempotently under it. A mismatched/expired record is discarded so it can't
+// resurrect onto the wrong board. Deliberately KEPT when it merely doesn't match
+// the board being staged: navigating away (another day, a reviewed maze) doesn't
+// abandon the build — its window keeps running, and coming back within it
+// resumes.
+export const resumableFreePlay = (
+  iteration: number,
+  now: number,
+): FreePlayState | null => {
+  const state = readRecord();
   if (
-    state.iteration !== iteration || !(state.deadline > now) ||
+    !state || state.iteration !== iteration || !(state.deadline > now) ||
+    !Array.isArray(state.blocks) || state.blocks.length === 0
+  ) {
+    return null;
+  }
+  clientId = state.clientId;
+  return state;
+};
+
+// The stored attempt for `iteration` REGARDLESS of its window (non-empty only).
+// The expiry hand-off — a build executing while its owner reviews another maze —
+// needs the record at exactly the moment the deadline check starts failing, so
+// this skips it. Adopts the stored id like a resume does, so the commit still
+// lands under the attempt's own idempotency key.
+export const pendingFreePlay = (iteration: number): FreePlayState | null => {
+  const state = readRecord();
+  if (
+    !state || state.iteration !== iteration ||
     !Array.isArray(state.blocks) || state.blocks.length === 0
   ) {
     return null;
