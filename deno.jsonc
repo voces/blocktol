@@ -26,8 +26,8 @@
     // local graph on every boot is redundant work on the cold-start critical
     // path — dropping it shrinks the redeploy restart gap (nginx's single
     // upstream 502s while the port is unbound; see server/index.ts).
-    "start": "deno run --no-check --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT --allow-read server/index.ts",
-    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT --allow-read --watch server/index.ts",
+    "start": "deno run --no-check --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read server/index.ts",
+    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
     "migrate": "deno run --no-check=remote --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit

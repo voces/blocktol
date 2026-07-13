@@ -370,10 +370,13 @@ selects the proxy database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL`
 localhost address when the server is co-located with it, e.g. the EC2 cohost, to
 drop the internet round-trip), `DISABLE_CRONS` (any non-empty value skips
 registering the `ensure-iterations`/`rate-dailies` crons — for a second instance
-on the shared DB), `NEW_RELIC_API_KEY`, and
+on the shared DB), `NEW_RELIC_API_KEY`,
 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
-`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app). The
-task definitions enumerate the exact `--allow-env` grants.
+`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app), and
+`DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
+alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset =
+alerts are no-ops). The task definitions enumerate the exact `--allow-env`
+grants.
 
 ## Operational scripts (`scripts/`)
 
