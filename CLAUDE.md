@@ -295,6 +295,25 @@ Other invariants:
   folding them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the
   loser row in one transaction). The client-side gate is
   `MoveGate`/`MoveDevice`.
+- **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
+  in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
+  returns everything held about the caller (user row, all runs incl. void,
+  notifications, push endpoints) as one JSON document the client offers as a
+  download. `deleteAccount` (`routes/deleteAccount.ts` → `db/deleteAccount.ts`,
+  `anonymizeUser`) is **anonymize-in-place, not a row delete**: it hard-deletes
+  the caller's push subscriptions + notifications, then rotates `user.id` to a
+  fresh random UUID and clears `name`/`settings`/`locale`. The runs ride along
+  via `FK_run_user ON UPDATE CASCADE`, so the player's build history survives as
+  one distinct **anonymous** competitor — the day's field, others' percentiles,
+  and the applied ELO deltas aren't rewritten, and every `JOIN user` still
+  resolves. The new id is never returned, so the link to the person is gone
+  (anonymization, not pseudonymization). The op is an idempotent no-op on retry
+  (the old id is gone), but `deleteAccount` is still **excluded from the client
+  `RETRYABLE` allowlist** because on success the client mints a fresh local id +
+  reloads, so a blind retry would act on the stale id. The confirm is gated
+  behind typing "DELETE" (`DeleteAccount.tsx`). `public/privacy.html` is the
+  static disclosure page linked from the same panel (the SQL proxy is
+  first-party infra, not listed as a third-party recipient).
 
 ## Client architecture
 

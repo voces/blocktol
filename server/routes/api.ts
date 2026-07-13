@@ -6,7 +6,9 @@ import { boot } from "./boot.ts";
 import { getBoard } from "./iteration/board.ts";
 import { dayView } from "./dayView.ts";
 import { getDailySummary } from "./iteration/daily.ts";
+import { deleteAccount } from "./deleteAccount.ts";
 import { discordInfo } from "./discord.ts";
+import { exportData } from "./exportData.ts";
 import { listIterations } from "./iteration/list.ts";
 import { commitRun } from "./iteration/run/commit.ts";
 import { setRunPinned } from "./iteration/run/pin.ts";
@@ -41,6 +43,8 @@ const handlers = {
   rename,
   merge,
   moveInfo,
+  exportData,
+  deleteAccount,
   reportClientError,
   setSettings,
   getNotifications,

@@ -2436,6 +2436,114 @@ a:hover {
   color: var(--color);
 }
 
+/* ===== Account: data export / delete rows + delete-confirm sheet ========== */
+
+/* The destructive "Delete my data" row — same shape as the other account rows
+   (profile-action--row) but tinted with the loss colour so it reads as the one
+   that erases. */
+.profile-action--danger {
+  color: var(--lose);
+  border-color: color-mix(in srgb, var(--lose) 42%, var(--border-strong));
+  background: color-mix(in srgb, var(--lose) 8%, var(--surface-2));
+}
+
+/* Title, sub-line, chevron, and the trash icon (currentColor) all take the full
+   loss colour, so the whole row reads red. */
+.profile-action--danger .profile-action__title,
+.profile-action--danger .profile-action__sub,
+.profile-action--danger .profile-action__chev {
+  color: var(--lose);
+}
+
+.profile-action--danger:hover {
+  background: color-mix(in srgb, var(--lose) 15%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--lose) 55%, var(--border-strong));
+}
+
+/* Stacked account rows (Move / Export / Delete) sit flush otherwise — .pref has
+   no gap; spacing between siblings is done per-component (cf. .pref__row). */
+.profile-action + .profile-action {
+  margin-top: 8px;
+}
+
+/* Quiet text link under the account rows, out to the static privacy page. */
+.profile-privacy-link {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+}
+
+/* Delete-confirm sheet (shell is the shared .modal; head/body reuse .move__*). */
+.delete-confirm {
+  margin: 4px 0 14px;
+}
+
+.delete-confirm__label {
+  display: block;
+  margin-bottom: 8px;
+  font: 500 13px var(--font);
+  color: var(--text-dim);
+}
+
+.delete-confirm__label .mono {
+  color: var(--lose);
+  letter-spacing: 0.06em;
+}
+
+.delete-confirm__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--lose) 30%, var(--border));
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--color);
+  font: 600 15px var(--font);
+  letter-spacing: 0.04em;
+}
+
+.delete-confirm__input:focus {
+  outline: none;
+  border-color: var(--lose);
+}
+
+.delete-confirm__btn {
+  width: 100%;
+  height: 46px;
+  margin-bottom: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--lose);
+  color: #fff;
+  font: 700 15px var(--font);
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.delete-confirm__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.delete-error {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lose) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lose) 30%, transparent);
+  font: 500 12px var(--font);
+  color: var(--lose);
+  line-height: 1.5;
+}
+
+/* The reassurance note reuses .move__safety's shape but in a neutral tint. */
+.delete-safety {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
 /* ── Move / merge gate ─────────────────────────────────────────────────────
    The pre-app takeover that resolves a sign-in link opening on a device that
    already has a profile (see MoveGate.tsx): clean-adopt confirm, the fork, the
