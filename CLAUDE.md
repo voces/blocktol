@@ -310,8 +310,8 @@ successful response dispatches an event keyed by method; `error` is its own
 channel), which `hooks/useApiListener.ts` and the stores subscribe to. `prime()`
 stashes an in-flight boot response for the next call of that method to consume.
 Retries (transport failures only, never HTTP errors) are gated by a `RETRYABLE`
-allowlist — non-idempotent lifecycle writes (`startRun`/`abandonRun`/`merge`,
-and `updateRun`, which has its own saver) are deliberately excluded. `commitRun`
+allowlist — non-idempotent lifecycle writes (`startRun`/`merge`, and
+`updateRun`, which has its own saver) are deliberately excluded. `commitRun`
 **is** retryable: its free-play `INSERT` is `client_id`-guarded (idempotent) and
 the legacy path is an idempotent flip-to-non-void, so a deploy-dropped commit
 can safely retry.

@@ -8,7 +8,6 @@ import { dayView } from "./dayView.ts";
 import { getDailySummary } from "./iteration/daily.ts";
 import { discordInfo } from "./discord.ts";
 import { listIterations } from "./iteration/list.ts";
-import { abandonRun } from "./iteration/run/abandon.ts";
 import { commitRun } from "./iteration/run/commit.ts";
 import { setRunPinned } from "./iteration/run/pin.ts";
 import { startRun } from "./iteration/run/start.ts";
@@ -34,7 +33,6 @@ const handlers = {
   getDailySummary,
   startRun,
   updateRun,
-  abandonRun,
   commitRun,
   setRunPinned,
   best,

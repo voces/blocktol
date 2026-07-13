@@ -60,26 +60,11 @@ export const startRun = (
         AND TIMESTAMPDIFF(SECOND, created, NOW()) < 2
     );`;
 
-// Abandon the user's current run on an iteration by voiding it, so it drops out
-// of the panel and never counts toward best/standing. Constrained to
-// ranked = FALSE: this privilege is for free-play runs only — a spent daily
-// attempt can't be erased. Targets the latest run (the one in progress).
-export const voidCurrentRun = (user: string, iteration: number) =>
-  sql`
-    UPDATE run
-    SET void = TRUE
-    WHERE user = ${user}
-      AND iteration = ${iteration}
-      AND ranked = FALSE
-    ORDER BY created DESC
-    LIMIT 1;
-  `;
-
-// The mirror of voidCurrentRun: mark the caller's current free-play run non-void
-// once it actually executes (timer expiry or an explicit start). Free-play runs
-// are inserted void and only counted here, so leaving before the run runs keeps
-// it void (abandoned). ranked = FALSE scopes it to free play — daily attempts
-// are already committed on build.
+// Mark the caller's current free-play run non-void once it actually executes
+// (timer expiry or an explicit start). Free-play runs are inserted void and only
+// counted here, so leaving before the run runs keeps it void (abandoned).
+// ranked = FALSE scopes it to free play — daily attempts are already committed
+// on build.
 export const commitRun = (user: string, iteration: number) =>
   sql`
     UPDATE run
