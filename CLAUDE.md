@@ -310,6 +310,9 @@ window resumes it. Its window doesn't pause either: reviewing a past maze keeps
 the live countdown in the HUD's Play slot alongside the reset button, and reset
 there clears the attempt while staying on the reviewed maze (the input hooks
 gate on `viewing`, so the ticking clock never makes a reviewed board editable).
+Should the window expire mid-review, the board hands back to the build (restored
+from the local record via `pendingFreePlay`, the one read that ignores the
+deadline) and it executes normally — committed, runner released.
 `useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
 result.
 

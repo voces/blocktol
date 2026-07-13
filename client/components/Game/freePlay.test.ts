@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert";
 import {
   clearFreePlay,
   freePlayClientId,
+  pendingFreePlay,
   persistFreePlay,
   resumableFreePlay,
 } from "./freePlay.ts";
@@ -40,6 +41,26 @@ Deno.test("free play resume: staging another day skips the record but KEEPS it",
   // ...but it survives, so returning within the window still resumes. Only an
   // explicit reset (clearFreePlay) or the window expiring ends the attempt.
   assertEquals(resumableFreePlay(7, NOW)?.iteration, 7);
+
+  clearFreePlay();
+});
+
+Deno.test("free play pending: the expiry hand-off reads the record past its deadline", () => {
+  clearFreePlay();
+  const id = freePlayClientId();
+  persistFreePlay(7, NOW + 30_000, [{ x: 5, y: 5 }]);
+
+  // The hand-off happens exactly when the deadline check starts failing —
+  // resume refuses the expired record, pending still hands it over (with its
+  // idempotency id, so the commit lands under the attempt's own key).
+  assertEquals(resumableFreePlay(7, NOW + 60_000), null);
+  const pending = pendingFreePlay(7);
+  assertEquals(pending?.iteration, 7);
+  assertEquals(pending?.clientId, id);
+  // Another board (or an emptied build) still gets nothing to execute.
+  assertEquals(pendingFreePlay(8), null);
+  persistFreePlay(7, NOW + 30_000, []);
+  assertEquals(pendingFreePlay(7), null);
 
   clearFreePlay();
 });

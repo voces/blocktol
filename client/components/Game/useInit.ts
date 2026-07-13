@@ -23,6 +23,7 @@ import {
   awaitPendingCommit,
   clearFreePlay,
   freePlayClientId,
+  pendingFreePlay,
   resumableFreePlay,
   setPendingCommit,
 } from "./freePlay.ts";
@@ -74,7 +75,7 @@ export const useInit = () => {
     setFreePlay,
     setViewedAttempts,
     viewedAttempts,
-
+    viewing,
     setViewing,
     blocks,
     min,
@@ -333,6 +334,36 @@ export const useInit = () => {
     },
     [iteration, attemptsRemaining, freePlay],
   );
+
+  // The free-play window closed while its owner was reviewing another maze:
+  // hand the board back to the build and let it execute. Restore the built
+  // maze from the local record (the deadline just passed, so this is the one
+  // read that must ignore the window — pendingFreePlay), recompute its run,
+  // and drop `viewing`; `time` is still 0, so the execute effect below fires
+  // on the restored state and commits + releases the runner exactly as if the
+  // board had been live all along. An emptied/absent record restores nothing:
+  // there is no attempt to execute, so the view simply stays (the clock slot
+  // reverts to Play).
+  useEffect(() => {
+    if (time !== 0 || !viewing || !freePlay || iteration === undefined) return;
+    const pending = pendingFreePlay(iteration);
+    if (!pending) return;
+    const restored = pending.blocks.map((b) => ({ ...b, local: true }));
+    const merged = [...blocks.filter((b) => !b.local), ...restored];
+    rebuildGrid(grid, checkpoint, merged);
+    setBlocks(merged);
+    setBricks(
+      bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - restored.length),
+    );
+    setPower(
+      powerTotal < 0
+        ? -1
+        : Math.max(0, powerTotal - restored.filter((b) => b.thunder).length),
+    );
+    const r = localRun(merged, checkpoint);
+    if (r) setRun(r);
+    setViewing(false);
+  }, [time, viewing, freePlay, iteration, blocks, checkpoint]);
 
   useEffect(() => {
     if (time !== 0 || !run) return;
