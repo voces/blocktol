@@ -13,6 +13,8 @@
     "qrcode-generator": "npm:qrcode-generator@^1.4.4",
     "zod": "npm:zod@^3.20.2",
     "sqlstring": "npm:sqlstring@^2.3.3",
+    "mysql2/promise": "npm:mysql2@^3.11.0/promise",
+    "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "@std/assert": "jsr:@std/assert@^1",
     "@std/http/file-server": "jsr:@std/http@^1/file-server",
     "@std/path/posix": "jsr:@std/path@^1/posix"
@@ -26,14 +28,17 @@
     // local graph on every boot is redundant work on the cold-start critical
     // path — dropping it shrinks the redeploy restart gap (nginx's single
     // upstream 502s while the port is unbound; see server/index.ts).
-    "start": "deno run --no-check --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read server/index.ts",
-    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
+    // --allow-sys: the direct DB connector (mysql2) inspects host info when it
+    // opens a connection. Harmless on the proxy transport (the driver never
+    // loads). SQL_TRANSPORT/HOST/PORT/USER/DATABASE configure that connector.
+    "start": "deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read server/index.ts",
+    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
-    "migrate": "deno run --no-check=remote --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL server/db/migrate.ts",
+    "migrate": "deno run --no-check=remote --allow-net --allow-sys --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit
     // the (dev) database through the SQL proxy; they self-skip when
     // SQL_PASSWORD isn't set, and the pure tests need no permissions.
-    "test": "deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL"
+    "test": "deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE"
   },
   "deploy": {
     "build": "deno task build",
