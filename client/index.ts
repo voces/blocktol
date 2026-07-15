@@ -6,9 +6,9 @@ import { initSettings } from "./hooks/useSettings.ts";
 import { installErrorReporting } from "./util/errorReport.ts";
 import { getCleanLink, getPendingLink } from "./util/id.ts";
 
-// Catch uncaught errors / rejections app-wide and forward them to NewRelic
-// (via the reportClientError endpoint). Installed first so a crash during boot
-// is still reported.
+// Catch uncaught errors / rejections app-wide and forward them to the server
+// (via the reportClientError endpoint → VictoriaLogs). Installed first so a
+// crash during boot is still reported.
 installErrorReporting();
 
 // Apply the cached theme before first paint (the server value reconciles later).

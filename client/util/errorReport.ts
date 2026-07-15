@@ -2,15 +2,14 @@ import { api } from "../api.ts";
 
 // Global client-error capture. Uncaught exceptions and unhandled promise
 // rejections are forwarded to the server's reportClientError endpoint, which
-// relays them to NewRelic (see server/util/newrelic.ts) — so a crash a player
+// logs them server-side (→ VictoriaLogs, via Deno's OTel) — so a crash a player
 // hits is visible to us, not just sitting in their console.
 //
-// We route through our own same-origin endpoint rather than loading NewRelic's
-// browser agent on purpose: it keeps the ingest key out of the client bundle,
-// avoids a third-party script and the CSP surface it needs, and reuses the
-// reporting path ErrorBoundary and the api proxy already use. (If we later want
-// full session replay, that's the point to add a dedicated browser SDK — see
-// the PR notes.)
+// We route through our own same-origin endpoint rather than a third-party
+// browser agent on purpose: no third-party SDK or its keys in the client bundle,
+// no extra CSP surface, and it reuses the reporting path ErrorBoundary and the
+// api proxy already use. (If we ever want full session replay, that's the point
+// to add a dedicated browser SDK.)
 //
 // Dedupe + rate-limit so a tight error loop can't hammer the endpoint: the same
 // message isn't resent within a short window, and there's a hard cap per page
