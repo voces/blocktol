@@ -13,8 +13,9 @@ import { updateRun } from "./update.ts";
 
 // Integration tests for the run lifecycle — the void/ranked/daily state
 // machine where most of the audit's bugs lived (1a, 1c, 1g, 3b, the #98
-// auto-start). The semantics live in multi-statement SQL (session variables,
-// window checks, transactions), which a fake couldn't faithfully emulate, so
+// in-panel run exclusion). The semantics live in multi-statement SQL (session
+// variables, window checks, transactions), which a fake couldn't faithfully
+// emulate, so
 // these exercise the REAL route handlers against the real (dev) database:
 // each test plays as a throwaway user and deletes it afterwards (its runs
 // cascade). Skipped wholesale when SQL_PASSWORD isn't available, so a
@@ -408,16 +409,30 @@ Deno.test({
 });
 
 Deno.test({
-  name: "boot auto-starts the daily and keeps it out of the panel (#98)",
+  name:
+    "boot does not start the daily; an open run stays out of the panel (#98)",
   ignore: !live,
   fn: async () => {
     const user = await testUser();
     const req = authed(user);
     try {
       await todayDaily();
+
+      // Boot no longer auto-starts: the summary opens no run and counts no
+      // attempt (the client raises an explicit "Start attempt" overlay), so a
+      // background boot can't silently spend one.
+      const boot = await getDailySummary.handler({ timeZone: "UTC" }, req);
+      assert(!("error" in boot));
+      assertEquals(boot.currentRun, null, "boot opens no run");
+      assertEquals(boot.ranked.length, 0, "boot starts no attempt");
+
+      // The explicit Start action opens the attempt; a follow-up summary now
+      // resumes it as currentRun, counts it in ranked, yet keeps it out of the
+      // finished-attempts panel (#98 — it's the board, not a finished row).
+      await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       const summary = await getDailySummary.handler({ timeZone: "UTC" }, req);
       assert(!("error" in summary));
-      assertExists(summary.currentRun, "one response boots to a playable run");
+      assertExists(summary.currentRun, "the started attempt resumes as a run");
       assertEquals(summary.ranked.length, 1, "the started attempt is counted");
       assertEquals(summary.attempts.length, 0, "but not shown as finished");
     } finally {

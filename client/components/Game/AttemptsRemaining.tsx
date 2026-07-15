@@ -5,7 +5,7 @@ import { GameStateContext } from "./useGameState.ts";
 export const AttemptsRemaining = (
   { extraAttemptBannerTime }: { extraAttemptBannerTime: boolean },
 ) => {
-  const { attemptsRemaining } = useContext(GameStateContext);
+  const { attemptsRemaining, phase } = useContext(GameStateContext);
   const [showMessage, setShowMessage] = useState(false);
 
   // Flash "N attempts remaining" for a beat whenever the count changes (the
@@ -25,7 +25,11 @@ export const AttemptsRemaining = (
     return () => clearTimeout(timeout);
   }, [attemptsRemaining]);
 
-  if (!showMessage || attemptsRemaining <= 0) return null;
+  // The "Start attempt" overlay already spells out the attempt number, and it
+  // sits over the board — a banner flashing behind it just bleeds through.
+  if (!showMessage || attemptsRemaining <= 0 || phase === "prestart") {
+    return null;
+  }
 
   return (
     <div

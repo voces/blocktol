@@ -20,6 +20,7 @@ import { Verdict } from "./verdict.ts";
 // re-deriving the combination themselves.
 export type BoardPhase =
   | "loading" // nothing fetched yet (boot)
+  | "prestart" // a daily attempt is ready but unstarted (Start attempt overlay)
   | "viewing" // static review of a past maze (Play button)
   | "staged" // free play before the opening placement (clock frozen)
   | "building" // a run's build window is counting down
@@ -106,6 +107,10 @@ export const useGameState = () => {
   // it finishes.
   const [staged, setStaged] = useState(false);
   const [freePlay, setFreePlay] = useState(false);
+  // A ranked daily attempt is ready to start but hasn't — the "Start attempt"
+  // overlay is up over an inert, empty board (the day's real pieces are NOT
+  // staged; starting is an explicit action). Drives the "prestart" phase.
+  const [prestart, setPrestart] = useState(false);
   // Field / personal bests and the iteration floor, captured when a board loads.
   // Free play colours the live timer by the run's score in [min, best] and reads
   // a finished run's milestone off these (see verdict.ts). NaN until a board with
@@ -159,8 +164,35 @@ export const useGameState = () => {
     thunderHover.value = undefined;
     setStaged(false);
     setFreePlay(false);
+    setPrestart(false);
     setViewing(false);
     setVerdict(undefined);
+    dragMoved.value = false;
+  };
+
+  // Raise the daily "Start attempt" overlay: a clean, inert board with the run
+  // cleared and the clock parked. The day's real pieces are deliberately NOT
+  // laid out — starting is an explicit action (the Start button fires the
+  // fetch-and-start `startRun`), so nothing here can leak the puzzle or open a
+  // run. `time` leaves loading (-2) so the phase resolves to "prestart", and
+  // sits at -1 so the input hooks stay inert until Start opens the run.
+  const enterPrestart = () => {
+    setRun(undefined);
+    setStaged(false);
+    setFreePlay(false);
+    setViewing(false);
+    setVerdict(undefined);
+    setPrestart(true);
+    setBlocks([]);
+    setBricks(-1);
+    setPower(-1);
+    setTime(-1);
+    deadlineRef.current = null;
+    touching.value = false;
+    invalid.value = false;
+    transitionBlock.value = undefined;
+    placingBlock.value = { ...placingBlock.value, placing: false };
+    thunderHover.value = undefined;
     dragMoved.value = false;
   };
 
@@ -180,6 +212,9 @@ export const useGameState = () => {
     // gate on `viewing`.
     if (!(freePlay && !staged && timeRef.current > 0)) setTime(-1);
     setStaged(false);
+    // Reviewing a maze (e.g. tapping a past attempt from the panel while the
+    // Start overlay is up) exits prestart so the review is actually visible.
+    setPrestart(false);
     // Show what this run left unspent: every placed block cost a brick, every
     // thunder an extra snowflake. 0/0 when the whole budget was used. Hidden (-1)
     // only if we somehow never loaded the board's budget.
@@ -201,6 +236,8 @@ export const useGameState = () => {
 
   const phase: BoardPhase = time === -2
     ? "loading"
+    : prestart
+    ? "prestart"
     : viewing
     ? "viewing"
     : staged
@@ -243,6 +280,7 @@ export const useGameState = () => {
     setAttempts,
     clear,
     viewMaze,
+    enterPrestart,
     attemptsRemaining,
     setAttemptsRemaining,
     viewedAttempts,
@@ -253,6 +291,8 @@ export const useGameState = () => {
     setStaged,
     freePlay,
     setFreePlay,
+    prestart,
+    setPrestart,
     viewing,
     setViewing,
     calendarOpen,

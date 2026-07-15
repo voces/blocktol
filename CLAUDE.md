@@ -151,8 +151,17 @@ client faults.
 that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
 `standings`, `getNotifications`, soft `getBoard`, and the current month's
 `list`) and bundles their results. Each sub-handler re-derives `userId` from the
-request, so their exact semantics — including `getDailySummary`'s server-side
-auto-start of the next ranked attempt — carry through unchanged.
+request, so their exact semantics carry through unchanged. Note
+`getDailySummary` deliberately **does not** start a daily attempt — it resumes
+an already-open run (`currentRun`) but never opens one, so a background
+boot/refresh can't silently spend an attempt. When attempts remain and nothing
+is in progress the client raises an explicit "Start attempt" overlay
+(`Game/Prestart.tsx`, the `prestart` board phase) over an inert board; the
+button fires `startRun` — still the one fetch-and-start call — and only that
+opens the attempt. Finishing a ranked attempt re-raises the overlay for the next
+one (no auto-start) rather than opening it. The pre-start overlay's blurred
+backdrop is the tutorial maze (`IntroBoard`'s `initialBlocks`), deliberately
+**not** the day's puzzle, so it can't leak the layout.
 
 The client's `primeBoot` (`client/api.ts`) fires it once and primes each method
 with its slice, so every existing call site consumes off the single fetch —

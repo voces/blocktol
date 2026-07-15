@@ -16,6 +16,7 @@ import { useInputEnd } from "./useInputEnd.ts";
 import { useOnSlow } from "./useOnSlow.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { Daily } from "./Daily.tsx";
+import { Prestart } from "./Prestart.tsx";
 import { TodayResult } from "./TodayResult.tsx";
 import { Calendar } from "./Calendar.tsx";
 import { Attempts } from "./Attempts.tsx";
@@ -86,6 +87,7 @@ export const Game = (
           <AttemptsRemaining
             extraAttemptBannerTime={extraAttemptBannerTime ?? false}
           />
+          <Prestart />
         </div>
         {
           /* One wrapper so mobile can scroll these as a unit below the board;

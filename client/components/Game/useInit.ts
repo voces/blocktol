@@ -16,7 +16,6 @@ import {
   ingestBoard,
   setBoardHandlers,
   showBoard,
-  startBoardRun,
 } from "../../store/board.ts";
 import { localRun, rebuildGrid } from "./helpers.ts";
 import {
@@ -73,6 +72,8 @@ export const useInit = () => {
     setStaged,
     freePlay,
     setFreePlay,
+    setPrestart,
+    enterPrestart,
     setViewedAttempts,
     viewedAttempts,
     viewing,
@@ -130,6 +131,7 @@ export const useInit = () => {
     (data: NonNullable<MessageMap["getDailySummary"]["currentRun"]>) => {
       setRun({ path: data.path, duration: data.duration, slows: data.slows });
       setStaged(false);
+      setPrestart(false);
       setViewing(false);
       // Drop any lingering free-play verdict — a new board is loading, so the
       // previous run's celebration (which otherwise overrides the whole HUD)
@@ -177,6 +179,7 @@ export const useInit = () => {
       setRun(undefined);
       setFreePlay(true);
       setStaged(true);
+      setPrestart(false);
       setViewing(false);
       // Clear any lingering verdict so a re-stage (reset, day change, or the
       // post-run restage) returns to the normal "to build" clock instead of the
@@ -300,6 +303,12 @@ export const useInit = () => {
       }
 
       setAttemptsRemaining(3 - ranked.length);
+      // Attempts remain and nothing's in progress: raise the explicit "Start
+      // attempt" overlay over an inert board (no auto-start). Only on a real
+      // boot (time === -2) — a mid-session refresh re-raises it from runFinish,
+      // which fires at a safe moment and can't clobber a live build — and never
+      // on a day-link boot, which stages the linked day instead.
+      if (time === -2 && !entryIsDayLink) enterPrestart();
     },
   );
 
@@ -328,9 +337,15 @@ export const useInit = () => {
         });
         return;
       }
+      // The ranked attempt is spent. No auto-start of the next one: raise the
+      // "Start attempt" overlay for the next attempt (an inert board — the
+      // player opens it explicitly via `startRun`), except on the last attempt,
+      // where the summary brings up the result modal instead. Decrement first
+      // so the overlay reads the right attempt number immediately; the summary
+      // refresh reconciles it and folds the just-finished run into the panel.
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
-      if (attemptsRemaining === 1) api.getDailySummary({ iteration });
-      else startBoardRun(iteration);
+      if (attemptsRemaining > 1) enterPrestart();
+      api.getDailySummary({ iteration });
     },
     [iteration, attemptsRemaining, freePlay],
   );

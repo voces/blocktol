@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "preact/compat";
 import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";
 import { primeSession } from "../boot.ts";
-import { startBoardRun } from "../store/board.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
@@ -23,7 +22,7 @@ import {
   initPushChannel,
   startNotificationsPolling,
 } from "../store/notifications.ts";
-import { consumeDeepLink, entryIsDayLink } from "../store/notifNav.ts";
+import { consumeDeepLink } from "../store/notifNav.ts";
 import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
@@ -161,13 +160,11 @@ export const App = () => {
         setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
         return;
       }
-      if (ret.currentRun) return;
-      // The summary auto-starts the daily server-side and returns it as
-      // currentRun; this explicit start is only the fallback for when that
-      // insert failed. Skip it when we booted onto a day link — staging today
-      // here would steal the board from the linked day (the run still exists
-      // server-side; navigating home stages it).
-      if (!entryIsDayLink && ret.ranked.length < 3) startBoardRun("daily");
+      // Staging is the summary listener's job now (useInit): it resumes an
+      // in-progress run (currentRun) or raises the explicit "Start attempt"
+      // overlay when attempts remain. Nothing auto-starts here — an attempt
+      // opens only when the player taps Start, so a background boot can't
+      // silently spend one.
     }).catch(() => {
       setDisconnected(true);
       setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
@@ -201,23 +198,19 @@ export const App = () => {
 
   // Recover a board that never finished staging when the app is reopened. A
   // backgrounded PWA gets suspended/frozen (iOS) or frozen then possibly
-  // discarded (Android's Page Lifecycle) — a request in flight when it froze can
-  // stall and never settle. The summary itself normally DOES land (that's why
-  // "N attempts remaining" shows — it's the summary's count), so the gap is the
-  // staging that follows it: on the currentRun-less path, staging is App's
-  // fallback startRun, which is non-retryable and swallows its failure — so an
-  // interrupted or failed start leaves the board stuck on the loading phase with
-  // an empty board under the count. Reopening fires visibilitychange/pageshow
-  // but no fresh navigation, so nothing re-boots — the "had to manually refresh"
-  // report (seen on both iOS and Android). On return to the foreground still in
-  // `loading`, re-run the boot staging (the automatic form of that refresh).
-  // Going back through getDailySummary is the SAFE recovery: it reports an
-  // already-open run and only auto-starts when there genuinely isn't one, so it
-  // can't double-spend a ranked attempt the way a blind startRun retry could.
-  // Gated on the loading phase so a live build/run coming back to the foreground
-  // is left untouched. pageshow is gated on `persisted` (a bfcache restore) so a
-  // normal first load — which fires pageshow while already loading — doesn't
-  // double-boot; visibilitychange never fires on first load.
+  // discarded (Android's Page Lifecycle) — the boot summary request in flight
+  // when it froze can stall and never settle, leaving the board stuck on the
+  // loading phase (never reaching the "Start attempt" overlay or a resumed run).
+  // Reopening fires visibilitychange/pageshow but no fresh navigation, so
+  // nothing re-boots — the "had to manually refresh" report (seen on both iOS
+  // and Android). On return to the foreground still in `loading`, re-run the
+  // boot staging (the automatic form of that refresh). Going back through
+  // getDailySummary is the SAFE recovery: it resumes an already-open run and
+  // never starts one, so it can't spend a ranked attempt. Gated on the loading
+  // phase so a live build/run — or the Start overlay (prestart) — coming back to
+  // the foreground is left untouched. pageshow is gated on `persisted` (a
+  // bfcache restore) so a normal first load — which fires pageshow while already
+  // loading — doesn't double-boot; visibilitychange never fires on first load.
   useEffect(() => {
     if (showOnboarding || linkPending) return;
     const recover = () => {

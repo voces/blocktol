@@ -26,8 +26,8 @@ Deno.test({
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
     await createOrUpdateUser(id);
     try {
-      // Today's iteration id comes off standings (boot's auto-start ensures the
-      // day exists), which dayView then targets by id.
+      // Today's iteration id comes off standings (the ensure-iterations cron
+      // generates the day), which dayView then targets by id.
       const b = await boot.handler({ timeZone: "UTC" }, authed(id));
       if ("error" in b) throw new Error("boot returned an auth error");
       if ("error" in b.standings) throw new Error("standings auth error");

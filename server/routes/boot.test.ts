@@ -6,10 +6,10 @@ import { dailyParts } from "../util/dailyParts.ts";
 import { boot } from "./boot.ts";
 
 // The boot endpoint composes existing handlers in parallel; this checks the
-// bundle carries every slice and that composition preserves the load-bearing
-// side effect — getDailySummary auto-starting the next ranked attempt — through
-// boot. Hits the dev DB like the run-lifecycle tests; self-skips without
-// SQL_PASSWORD.
+// bundle carries every slice and that boot does NOT start a daily attempt —
+// getDailySummary leaves it unstarted (the client raises an explicit "Start
+// attempt" overlay), so a background boot can't silently spend one. Hits the
+// dev DB like the run-lifecycle tests; self-skips without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -21,7 +21,7 @@ const authed = (userId: string) => {
 };
 
 Deno.test({
-  name: "boot bundles every slice and auto-starts the daily",
+  name: "boot bundles every slice and does not start the daily",
   ignore: !live,
   fn: async () => {
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
@@ -43,11 +43,13 @@ Deno.test({
         ],
       );
 
-      // A brand-new user: the composed getDailySummary auto-started attempt 1
-      // (so it counts as underway), free play is still locked (board incomplete),
-      // and nothing is in the notifications feed yet.
+      // A brand-new user: the composed getDailySummary started NOTHING (no
+      // ranked attempt, no open run — the client raises the "Start attempt"
+      // overlay), free play is still locked (board incomplete), and nothing is
+      // in the notifications feed yet.
       assert(!("error" in r.summary), "summary should succeed");
-      assertEquals(r.summary.ranked.length, 1, "boot auto-started the daily");
+      assertEquals(r.summary.ranked.length, 0, "boot does not start the daily");
+      assertEquals(r.summary.currentRun, null, "no run opened on boot");
       assert(
         "incomplete" in r.board,
         "free play locked until 3 attempts spent",
@@ -74,7 +76,7 @@ Deno.test({
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
     await createOrUpdateUser(id);
     try {
-      // Today exists (the auto-start in the bare boot ensures its iteration);
+      // Today's iteration exists (the ensure-iterations cron generates it);
       // point the day-link at it and confirm boot resolves + bundles it.
       const { year, month, day } = dailyParts("UTC");
       const r = await boot.handler(

@@ -10,7 +10,11 @@ import {
 } from "preact/compat";
 import { Point } from "../../common/types.ts";
 
-const initialBlocks: (Point & {
+// Exported so the daily "Start attempt" overlay (Prestart.tsx) can render this
+// same maze as a purely decorative, blurred backdrop — a real-looking board
+// that is deliberately NOT today's puzzle, so the mask can't leak the layout the
+// player is about to build.
+export const initialBlocks: (Point & {
   local?: boolean;
   thunder?: boolean;
   active?: boolean;
@@ -54,6 +58,10 @@ const initialBlocks: (Point & {
 // Local blocks pre-placed in the starting maze — the baseline the brick budget
 // counts up from.
 const INITIAL_LOCAL = initialBlocks.filter((b) => b.local).length;
+
+// The tutorial maze's checkpoint, shared with the decorative Start-attempt
+// backdrop (Prestart.tsx).
+export const introCheckpoint: Point = { x: 10.5, y: 4.5 };
 
 const storedRun = {
   path: [
@@ -305,7 +313,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         power={run ? -1 : 1 - blocks.filter((b) => b.thunder).length}
         thunderHover={undefined}
         blocks={blocks}
-        checkpoint={{ x: 10.5, y: 4.5 }}
+        checkpoint={introCheckpoint}
         invalid={false}
         run={run}
         onFinish={() => setTimeout(onDone, 1_000)}
