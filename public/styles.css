@@ -318,7 +318,6 @@ body {
 .board-frame {
   max-width: var(--maze-size);
   margin: 0 auto;
-  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.7);
 }
@@ -681,7 +680,6 @@ a:hover {
 .prestart__deco .board-frame {
   max-width: none;
   margin: 0;
-  border: 0;
   border-radius: 0;
   box-shadow: none;
   height: 100%;
@@ -762,16 +760,35 @@ a:hover {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* Best of the attempts spent so far — a target to beat. */
-.prestart__best {
+/* The previous attempt's time, and (from the third attempt) a diff against the
+   one before it — green when it improved (higher time is better), red when it
+   dropped. */
+.prestart__prev {
   margin-top: 16px;
   font: 500 14px var(--font);
   color: var(--text-mute);
 }
 
-.prestart__best .mono {
+.prestart__prev .mono {
   font-weight: 700;
   color: var(--color);
+}
+
+.prestart__diff {
+  margin-left: 8px;
+  font-weight: 700;
+}
+
+.prestart__diff--up {
+  color: var(--win);
+}
+
+.prestart__diff--down {
+  color: var(--lose);
+}
+
+.prestart__diff--even {
+  color: var(--text-mute);
 }
 
 .prestart__btn {

@@ -43,10 +43,17 @@ export const Prestart = () => {
   );
   const completed = attemptNo - 1;
 
-  // Best of the attempts spent so far (the panel list carries the finished
-  // ranked runs), shown as a target to beat. Absent on the first attempt.
-  const best = viewedAttempts.length
-    ? Math.max(...viewedAttempts.map((a) => a.duration))
+  // The attempts spent so far (the panel list carries the finished ranked runs),
+  // oldest → newest. "Previous" is the most recent; on the third attempt a diff
+  // against the one before it shows the trend — higher time is better, so a gain
+  // is green and a drop red. Absent on the first attempt.
+  const spent = viewedAttempts
+    .filter((a) => a.ranked)
+    .sort((a, b) => a.created - b.created);
+  const previous = spent[spent.length - 1] ?? null;
+  const priorToPrevious = spent[spent.length - 2] ?? null;
+  const diff = previous && priorToPrevious
+    ? previous.duration - priorToPrevious.duration
     : null;
 
   const displayDate = new Date().toLocaleDateString(undefined, {
@@ -105,9 +112,25 @@ export const Prestart = () => {
             />
           ))}
         </div>
-        {best !== null && (
-          <div class="prestart__best">
-            Best · <span class="mono">{formatSeconds(best)}s</span>
+        {previous && (
+          <div class="prestart__prev">
+            Previous ·{" "}
+            <span class="mono">
+              {formatSeconds(previous.duration)}s
+            </span>
+            {diff !== null && (
+              <span
+                class={"prestart__diff " +
+                  (diff > 0
+                    ? "prestart__diff--up"
+                    : diff < 0
+                    ? "prestart__diff--down"
+                    : "prestart__diff--even")}
+              >
+                {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
+                {formatSeconds(Math.abs(diff))}s
+              </span>
+            )}
           </div>
         )}
         <Button
