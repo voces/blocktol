@@ -1,5 +1,5 @@
 import { is } from "../../common/typeguards.ts";
-import { reportError } from "../util/newrelic.ts";
+import { log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
 import { boot } from "./boot.ts";
@@ -86,18 +86,14 @@ export const api: Handler<"method"> = async (req, { method }) => {
   let status = 200;
   if (isStatusObj(output)) status = output.status;
   // A handler that returns a 5xx (e.g. a DB write that failed) surfaces a real
-  // server fault without throwing — the Router catch never sees it — so report
-  // it here. 4xxs are expected client faults (bad input, auth, expired window)
-  // and stay unreported.
+  // server fault without throwing — the Router catch never sees it — so log it
+  // here. Deno's OTel ships this to VictoriaLogs, and the 500 response already
+  // marks the request span errored in VictoriaTraces. 4xxs are expected client
+  // faults (bad input, auth, expired window) and stay unlogged.
   if (status >= 500) {
-    reportError({
-      source: "server",
-      message: `handler ${method} failed`,
-      attributes: {
-        method,
-        status,
-        error: isErrorObj(output) ? output.error : undefined,
-      },
+    log.error(req, `handler ${method} failed`, {
+      status,
+      error: isErrorObj(output) ? output.error : undefined,
     });
   }
   return Response.json(output, { status });
