@@ -2,6 +2,8 @@ import SqlString from "sqlstring";
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
 import { log } from "../util/logging.ts";
+import { directQuery } from "./directTransport.ts";
+import { withDbSpan } from "./trace.ts";
 
 const isSqlError = is.object({
   code: is.number,
@@ -18,7 +20,19 @@ class SQLError extends Error {}
 // the request is sent.
 const SQL_PROXY_URL = Deno.env.get("SQL_PROXY_URL") ?? "https://w3x.io/sql";
 
-const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
+// Transport selection. Two ways to reach MariaDB, chosen once at boot:
+//   - "proxy" (default): HTTP to the SQL proxy at SQL_PROXY_URL, below.
+//   - "direct": the MySQL wire protocol straight to the DB (directTransport.ts),
+//     for the deployment co-located with the database — no proxy hop at all.
+// Both return the identical result shape (see directTransport.ts), so nothing
+// downstream of `query` cares which is in use. Deno Deploy leaves this unset and
+// stays on the proxy; only the co-located box sets SQL_TRANSPORT=direct.
+const useDirect = Deno.env.get("SQL_TRANSPORT") === "direct";
+
+const proxyQuery = async <T = unknown>(
+  query: string,
+  retries = 1,
+): Promise<T> => {
   const makeFetch = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
@@ -82,6 +96,20 @@ const query = async <T = unknown>(query: string, retries = 1): Promise<T> => {
 
   throw new Error("Failed to fetch", { cause: lastError });
 };
+
+// The one entry point both `sql` and `sqlOnce` funnel through: pick the
+// transport and wrap the call in a `db.transport`-tagged span so DB timing is
+// visible on either path (the direct connector's raw socket isn't auto-traced
+// the way the proxy's `fetch` is — see trace.ts).
+const query = <T = unknown>(query: string, retries = 1): Promise<T> =>
+  withDbSpan(
+    useDirect ? "direct" : "proxy",
+    query,
+    () =>
+      useDirect
+        ? directQuery<T>(query, retries)
+        : proxyQuery<T>(query, retries),
+  );
 
 export const sql = <T = unknown>(
   strings: TemplateStringsArray,

@@ -199,9 +199,31 @@ fails at transport falls through to a real fetch. `Calendar` (cross-day pick)
 and `Profile` (view-best) call `showDay`; same-day re-stage, deep-links, and
 gameplay stay on `showBoard`.
 
-**Database (`server/db/`):** MariaDB reached over HTTP through a SQL proxy at
-`w3x.io/sql` (`db/query.ts`) — there is no local DB driver. Two tagged-template
-helpers, and the choice is a correctness concern:
+**Database (`server/db/`):** MariaDB, reached one of **two interchangeable
+transports** selected once at boot (`db/query.ts`, `useDirect`):
+
+- **proxy** (default) — HTTP to the SQL proxy at `w3x.io/sql`. Works from
+  anywhere (Deno Deploy), needs no DB driver.
+- **direct** (`SQL_TRANSPORT=direct`) — the MySQL wire protocol straight to the
+  DB via `mysql2` (`db/directTransport.ts`), for the instance **co-located with
+  the database** (the w3x.io box); skips the proxy's HTTP hop entirely. mysql2
+  is lazily imported only when this transport is selected, so proxy deployments
+  never load the driver.
+
+The direct connector is a **transport swap only**: it returns the byte-identical
+result shape the proxy does (single statement → its result; multi-statement
+batch → an array of per-statement results), with coercion tuned to match the
+proxy's JSON (`decimalNumbers` so `ROUND(...)` reads as a number, `dateStrings`
+so `created` is the literal timestamp string — the co-located box is UTC), so
+**every `server/db/*` caller is untouched**. Both paths honor the same retry
+contract below and both are wrapped in a `db.transport`-tagged OTel span
+(`db/trace.ts`) — the proxy hop is auto-traced as a `fetch`, but a raw socket is
+not, so the direct path would otherwise be a tracing blind spot; the manual span
+keeps DB timing visible either way and stamps which transport a query took. The
+span carries only the SQL verb + transport, never the statement (it embeds the
+raw user-id credential).
+
+Two tagged-template helpers, and the choice is a correctness concern:
 
 - `sql\`...\`` — retries once on transport failure. Use for reads and
   **idempotent** writes (upserts, absolute-value UPDATEs).
@@ -387,9 +409,13 @@ delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys set.
 selects the proxy database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL`
 (the SQL proxy endpoint; defaults to `https://w3x.io/sql` — set to the proxy's
 localhost address when the server is co-located with it, e.g. the EC2 cohost, to
-drop the internet round-trip), `DISABLE_CRONS` (any non-empty value skips
-registering the `ensure-iterations`/`rate-dailies` crons — for a second instance
-on the shared DB), `NEW_RELIC_API_KEY`,
+drop the internet round-trip), `SQL_TRANSPORT` (`direct` selects the direct
+MariaDB connector over the proxy — for the co-located instance; anything else,
+including unset, stays on the proxy) with `SQL_HOST` (default `127.0.0.1`),
+`SQL_PORT` (`3306`), `SQL_USER`/`SQL_DATABASE` (both default `blocktol-<env>`)
+configuring that connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any
+non-empty value skips registering the `ensure-iterations`/`rate-dailies` crons —
+for a second instance on the shared DB), `NEW_RELIC_API_KEY`,
 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
 `deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app), and
 `DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
