@@ -645,37 +645,51 @@ a:hover {
    puzzle, so the mask can't leak the layout the player is about to build. */
 .prestart {
   position: absolute;
-  inset: 0;
+  /* Match the board square exactly (not the taller game__board, which includes
+     the Hud strip) so the mask is symmetric on all sides. Same width + centering
+     + rounding as `.board-frame`, anchored to the board at the bottom. */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  max-width: var(--maze-size);
+  aspect-ratio: 1;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--radius);
   /* New stacking context so the deco/scrim/content z-indexes below order
      against each other, not the rest of the board. */
   isolation: isolate;
 }
 
-/* Bottom layer: the tutorial maze, blurred + faded to a texture (overfilled so
-   it covers the taller board area, cropped by the overlay's overflow). */
+/* Bottom layer: the tutorial maze, blurred + faded to a texture. Its own board
+   frame (border, shadow, rounding) is stripped so it fills edge to edge rather
+   than reading as a second board nested inside the overlay. */
 .prestart__deco {
   position: absolute;
   inset: 0;
   z-index: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: none;
   filter: blur(16px) saturate(0.9);
   opacity: light-dark(0.5, 0.6);
 }
 
-.prestart__deco svg {
-  flex: none;
-  width: 130%;
-  height: 130%;
+.prestart__deco .board-frame {
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100%;
+}
+
+.prestart__deco .board-frame > svg {
+  height: 100%;
+  border-radius: 0;
 }
 
 /* Middle layer: a themed scrim that dims the deco below it for text contrast,
@@ -721,31 +735,47 @@ a:hover {
   color: var(--text-mute);
 }
 
+/* Progress pips — rounded squares: spent attempts filled green, the current one
+   accent (with a soft ring), the rest an empty outline. */
 .prestart__dots {
   display: flex;
-  gap: 9px;
-  margin: 16px 0 20px;
+  gap: 10px;
+  margin: 18px 0 0;
 }
 
 .prestart__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
   border: 1.5px solid var(--border-strong);
   background: transparent;
+}
+
+.prestart__dot--done {
+  border-color: var(--win);
+  background: var(--win);
 }
 
 .prestart__dot--active {
   border-color: var(--accent);
   background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.prestart__dot--done {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+/* Best of the attempts spent so far — a target to beat. */
+.prestart__best {
+  margin-top: 16px;
+  font: 500 14px var(--font);
+  color: var(--text-mute);
+}
+
+.prestart__best .mono {
+  font-weight: 700;
+  color: var(--color);
 }
 
 .prestart__btn {
+  margin-top: 20px;
   min-width: 240px;
   padding-block: 14px;
   justify-content: center;

@@ -1,9 +1,10 @@
 import { h } from "preact";
-import { useContext, useRef, useState } from "preact/compat";
+import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { Board } from "../Board.tsx";
 import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
 import { initialBlocks, introCheckpoint } from "../IntroBoard.tsx";
+import { formatSeconds } from "../../../common/format.ts";
 import { startBoardRun } from "../../store/board.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -17,18 +18,37 @@ const ATTEMPTS = 3;
 // button fires `startBoardRun("daily")` (the one fetch-and-start call), which
 // stages the live board and drops us out of this phase.
 export const Prestart = () => {
-  const { phase, attemptsRemaining } = useContext(GameStateContext);
+  const { phase, attemptsRemaining, viewedAttempts } = useContext(
+    GameStateContext,
+  );
   const [starting, setStarting] = useState(false);
   const decoRef = useRef<SVGSVGElement>(null);
+
+  // The component stays mounted (rendering null) between attempts, so a
+  // `starting` left true by the previous Start click would stick and wedge the
+  // button on "Starting…". Clear it whenever we're not showing the overlay, so
+  // the next attempt's overlay opens with a live button.
+  useEffect(() => {
+    if (phase !== "prestart") setStarting(false);
+  }, [phase]);
 
   if (phase !== "prestart") return null;
 
   // attemptsRemaining counts the attempt about to be played, so the number is
-  // ATTEMPTS - remaining + 1 (clamped for safety).
+  // ATTEMPTS - remaining + 1 (clamped for safety). completed = number of
+  // attempts already spent.
   const attemptNo = Math.min(
     ATTEMPTS,
     Math.max(1, ATTEMPTS - attemptsRemaining + 1),
   );
+  const completed = attemptNo - 1;
+
+  // Best of the attempts spent so far (the panel list carries the finished
+  // ranked runs), shown as a target to beat. Absent on the first attempt.
+  const best = viewedAttempts.length
+    ? Math.max(...viewedAttempts.map((a) => a.duration))
+    : null;
+
   const displayDate = new Date().toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -38,7 +58,8 @@ export const Prestart = () => {
     if (starting) return;
     setStarting(true);
     // On failure/supersession, re-enable so the player can retry; on success
-    // the live board stages (phase leaves prestart) and this unmounts.
+    // the live board stages (phase leaves prestart) and the reset effect above
+    // clears `starting` for the next attempt.
     startBoardRun("daily").then((ok) => {
       if (!ok) setStarting(false);
     });
@@ -76,14 +97,19 @@ export const Prestart = () => {
             <span
               key={i}
               class={"prestart__dot" +
-                (i < attemptNo - 1
+                (i < completed
                   ? " prestart__dot--done"
-                  : i === attemptNo - 1
+                  : i === completed
                   ? " prestart__dot--active"
                   : "")}
             />
           ))}
         </div>
+        {best !== null && (
+          <div class="prestart__best">
+            Best · <span class="mono">{formatSeconds(best)}s</span>
+          </div>
+        )}
         <Button
           class="prestart__btn"
           onClick={start}

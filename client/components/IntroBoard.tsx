@@ -334,6 +334,10 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
           backgroundColor: onboardingStep < 7 ? "#0001" : undefined,
+          // Match the board's rounded corners so the mask doesn't square off
+          // over them (--radius is a fixed length, so it tracks at any board
+          // size the same way the SVG's own rounding does).
+          borderRadius: "var(--radius)",
         }}
         onClick={advance}
       >
