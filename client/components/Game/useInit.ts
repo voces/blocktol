@@ -10,6 +10,14 @@ import { regradedIterations } from "../../store/notifications.ts";
 import { entryIsDayLink } from "../../store/notifNav.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
+import { nextLocalMidnight } from "../../util/dayBoundary.ts";
+import {
+  newDailyAvailable,
+  pinSessionDay,
+  rankedEndsAtMidnight,
+  rolledOver,
+  setNewDailyRestage,
+} from "../../store/dailyRollover.ts";
 import {
   BoardData,
   boardSeq,
@@ -152,10 +160,17 @@ export const useInit = () => {
       setPowerTotal(
         data.power + data.blocks.filter((b) => b.player && b.thunder).length,
       );
-      setTime(Math.floor(data.remainingTime));
       // Wall-clock deadline for the build countdown (useClock derives the
-      // display from it, immune to background-tab interval throttling).
-      deadlineRef.current = Date.now() + data.remainingTime * 1000;
+      // display from it, immune to background-tab interval throttling). Ranked
+      // play is a strictly local-day affair, so the window is hard-cut at the
+      // next local midnight: an attempt started at 11:59:40 gets ~20s, and one
+      // resumed after midnight (backgrounded across it) is already expired and
+      // executes at once. `rankedEndsAtMidnight` lets the HUD say why it's short.
+      const windowEnd = Date.now() + data.remainingTime * 1000;
+      const deadline = Math.min(windowEnd, nextLocalMidnight());
+      deadlineRef.current = deadline;
+      setTime(Math.max(0, Math.floor((deadline - Date.now()) / 1000)));
+      rankedEndsAtMidnight.value = deadline < windowEnd;
       setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
       // Field / personal bests for the free-play verdict (see verdict.ts). These
@@ -256,9 +271,24 @@ export const useInit = () => {
     },
   });
 
+  // Switching to the new day (playNewDaily, fired from the rollover notice)
+  // re-stages its fresh prestart — reset the count to a full three optimistically
+  // (the getDailySummary refresh in playNewDaily reconciles it), then raise the
+  // overlay. Wired every render so it closes over current state.
+  setNewDailyRestage(() => {
+    setAttemptsRemaining(3);
+    enterPrestart();
+  });
+
   useApiListener(
     "getDailySummary",
     ({ attempts, ranked, currentRun }) => {
+      // Pin the session to boot's local day so the rollover watcher can tell
+      // when midnight has since passed (store/dailyRollover.ts). Only a real
+      // boot re-pins; a mid-session refresh (time !== -2) leaves the pin, and a
+      // day switch re-pins itself via playNewDaily.
+      if (time === -2) pinSessionDay();
+
       // `attempts` is the full list (panel); `ranked` (first three) drives the
       // result modal and the attempts-remaining count.
       //
@@ -337,6 +367,17 @@ export const useInit = () => {
         });
         return;
       }
+      // Local midnight passed while this attempt ran — it was cut short and the
+      // old day's ranked play is over (no next attempt). Raise the new-daily
+      // overlay (the notice + switch) instead of re-staging the spent day; the
+      // player picks up the fresh daily when they choose to. Prestart renders
+      // its rollover variant off `newDailyAvailable`.
+      if (rolledOver()) {
+        newDailyAvailable.value = true;
+        enterPrestart();
+        return;
+      }
+
       // The ranked attempt is spent. No auto-start of the next one: raise the
       // "Start attempt" overlay for the next attempt (an inert board — the
       // player opens it explicitly via `startRun`), except on the last attempt,
