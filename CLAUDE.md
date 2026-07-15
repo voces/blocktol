@@ -307,9 +307,15 @@ Other invariants:
   `blocks`). Trusting the client on free play is deliberate: it's post-ranked,
   never feeds ELO, and the server still recomputes the time from the submitted
   maze — only the 60s budget is client-enforced.
-- **Free play unlocks only after the day's three ranked attempts are spent**
-  (`getBoard` gates on it), and since "today" is the latest day, that also
-  unlocks every past day for replay.
+- **Free play is ungated except for today's own daily.** Any past date is
+  replayable at any time; the only board `getBoard` gates is _today's_ daily —
+  it can't be free-played until its three ranked attempts are spent (no
+  previewing/practising the puzzle you're about to rank). So a day that just
+  rolled over is immediately replayable even while the new day's daily is still
+  outstanding. **Ranked play is a strictly local-day affair** — the client
+  hard-cuts a ranked attempt's build window at the player's local midnight (an
+  in-progress attempt executes early; no further attempts open on the old day),
+  and surfaces the new day via an explicit switch (see the daily-rollover flow).
 - `standing(time, min, best)` (`common/standing.ts`) is the one shared
   position-in-field formula used by every surface; `min` is the time of the base
   board's unobstructed shortest path, stored on the iteration. It's a

@@ -1,4 +1,4 @@
-import { h } from "preact";
+import { Fragment, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { Board } from "../Board.tsx";
 import { Button } from "../Button.tsx";
@@ -6,6 +6,7 @@ import { Logo } from "../Logo.tsx";
 import { initialBlocks, introCheckpoint } from "../IntroBoard.tsx";
 import { formatSeconds } from "../../../common/format.ts";
 import { startBoardRun } from "../../store/board.ts";
+import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 const ATTEMPTS = 3;
@@ -96,50 +97,70 @@ export const Prestart = () => {
       </div>
       <div class="prestart__content">
         <Logo size={44} />
-        <div class="prestart__eyebrow">Daily · {displayDate}</div>
-        <h2 class="prestart__title">Attempt {attemptNo} of {ATTEMPTS}</h2>
-        <p class="prestart__sub">You'll have 60 seconds per attempt.</p>
-        <div class="prestart__dots" aria-hidden="true">
-          {Array.from({ length: ATTEMPTS }, (_, i) => (
-            <span
-              key={i}
-              class={"prestart__dot" +
-                (i < completed
-                  ? " prestart__dot--done"
-                  : i === completed
-                  ? " prestart__dot--active"
-                  : "")}
-            />
-          ))}
-        </div>
-        {previous && (
-          <div class="prestart__prev">
-            Previous ·{" "}
-            <span class="mono">
-              {formatSeconds(previous.duration)}s
-            </span>
-            {diff !== null && (
-              <span
-                class={"prestart__diff " +
-                  (diff > 0
-                    ? "prestart__diff--up"
-                    : diff < 0
-                    ? "prestart__diff--down"
-                    : "prestart__diff--even")}
+        {newDailyAvailable.value
+          ? (
+            // Local midnight passed: the opened day's ranked play is over. Offer
+            // the fresh daily instead of a start — switching re-boots the day
+            // (playNewDaily) with no manual refresh.
+            <Fragment>
+              <div class="prestart__eyebrow">Daily · {displayDate}</div>
+              <h2 class="prestart__title">New daily available</h2>
+              <p class="prestart__sub">
+                Yesterday's daily has ended. A fresh puzzle is ready.
+              </p>
+              <Button class="prestart__btn" onClick={() => playNewDaily()}>
+                Play today's daily
+              </Button>
+            </Fragment>
+          )
+          : (
+            <Fragment>
+              <div class="prestart__eyebrow">Daily · {displayDate}</div>
+              <h2 class="prestart__title">Attempt {attemptNo} of {ATTEMPTS}</h2>
+              <p class="prestart__sub">You'll have 60 seconds per attempt.</p>
+              <div class="prestart__dots" aria-hidden="true">
+                {Array.from({ length: ATTEMPTS }, (_, i) => (
+                  <span
+                    key={i}
+                    class={"prestart__dot" +
+                      (i < completed
+                        ? " prestart__dot--done"
+                        : i === completed
+                        ? " prestart__dot--active"
+                        : "")}
+                  />
+                ))}
+              </div>
+              {previous && (
+                <div class="prestart__prev">
+                  Previous ·{" "}
+                  <span class="mono">
+                    {formatSeconds(previous.duration)}s
+                  </span>
+                  {diff !== null && (
+                    <span
+                      class={"prestart__diff " +
+                        (diff > 0
+                          ? "prestart__diff--up"
+                          : diff < 0
+                          ? "prestart__diff--down"
+                          : "prestart__diff--even")}
+                    >
+                      {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
+                      {formatSeconds(Math.abs(diff))}s
+                    </span>
+                  )}
+                </div>
+              )}
+              <Button
+                class="prestart__btn"
+                onClick={start}
+                disabled={starting}
               >
-                {diff > 0 ? "+" : diff < 0 ? "−" : "±"}
-                {formatSeconds(Math.abs(diff))}s
-              </span>
-            )}
-          </div>
-        )}
-        <Button
-          class="prestart__btn"
-          onClick={start}
-          disabled={starting}
-        >
-          {starting ? "Starting…" : "Start attempt"}
-        </Button>
+                {starting ? "Starting…" : "Start attempt"}
+              </Button>
+            </Fragment>
+          )}
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import {
   startNotificationsPolling,
 } from "../store/notifications.ts";
 import { consumeDeepLink } from "../store/notifNav.ts";
+import { startRolloverWatch } from "../store/dailyRollover.ts";
 import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
@@ -189,6 +190,9 @@ export const App = () => {
     startNotificationsPolling();
     initPushChannel();
     syncPushSubscription();
+    // Watch for local midnight ticking over so a new daily surfaces without a
+    // manual refresh (store/dailyRollover.ts).
+    startRolloverWatch();
     // If this load came from a day permalink / push notification, route to the
     // day it points at (runs after the game tree mounts, so board handlers exist).
     consumeDeepLink();

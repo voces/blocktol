@@ -10,6 +10,7 @@ import {
 } from "../../../common/percentileColor.ts";
 import { standing } from "../../../common/standing.ts";
 import { showBoard, showDay } from "../../store/board.ts";
+import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
 import {
   DailyItem,
   dailyItems,
@@ -252,6 +253,24 @@ export const Calendar = () => {
     );
   };
 
+  // Local midnight ticked over: a fresh daily is ready. Surface it at the top of
+  // the calendar (the switch — playNewDaily re-boots the day, no manual refresh).
+  // The new day isn't a normal cell (the calendar only lists days you've played),
+  // so this banner is how you get there.
+  const newDaily = newDailyAvailable.value
+    ? (
+      <button
+        type="button"
+        class="calendar__new-daily tapc"
+        onClick={() => playNewDaily()}
+      >
+        <span class="calendar__new-daily-dot" aria-hidden="true" />
+        <span class="calendar__new-daily-text">New daily available</span>
+        <span class="calendar__new-daily-cta">Play →</span>
+      </button>
+    )
+    : null;
+
   const pager = (
     <div class="calendar__pager">
       <button
@@ -329,6 +348,7 @@ export const Calendar = () => {
               </button>
             </div>
           </div>
+          {newDaily}
           {grids}
         </div>
       </div>
@@ -342,6 +362,7 @@ export const Calendar = () => {
         <span class="section-title">Previous days</span>
         {pager}
       </div>
+      {newDaily}
       {grids}
     </div>
   );

@@ -1,8 +1,9 @@
-// GET a buildable board WITHOUT starting a run (free play). The daily's three
-// ranked attempts always auto-start on request; free play instead stages the
-// board and only opens a run on the first placement. Gated so the board can't
-// be previewed before the ranked attempts are spent: you must have used all
-// three attempts on today's daily (the latest day) to unlock free play.
+// GET a buildable board WITHOUT starting a run (free play). Free play stages
+// the board and only opens a run on the first placement. Any date is
+// free-playable at any time — the ONLY gate is today's OWN daily, which can't
+// be previewed or practiced before its three ranked attempts are spent. So a
+// past day (including one that just rolled over) is always replayable, even
+// while today's daily is still outstanding.
 
 import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
@@ -30,17 +31,20 @@ const getBoardBody = z.object({
 export const getBoard = method(getBoardBody, true)(
   async ({ userId, timeZone, iteration: inputIteration, soft }) => {
     const { year, month, day } = dailyParts(timeZone);
+    const todayId = await requireDailyIterationId(year, month, day);
+    const iteration = inputIteration ?? todayId;
 
-    // Free play unlocks once today's three attempts are spent; with today being
-    // the latest day, that also unlocks every past day for replay.
-    const todayAttempts = await dailyAttempts(userId, year, month, day);
-    if (todayAttempts.length < 3) {
-      if (soft) return { incomplete: true as const };
-      return { error: "daily not complete", status: 403 };
+    // The gate applies ONLY to today's own daily: it can't be free-played before
+    // its three ranked attempts are spent (no previewing/practising the puzzle
+    // you're about to rank). Every other date is ungated — replayable anytime,
+    // even with today's daily still outstanding.
+    if (iteration === todayId) {
+      const todayAttempts = await dailyAttempts(userId, year, month, day);
+      if (todayAttempts.length < 3) {
+        if (soft) return { incomplete: true as const };
+        return { error: "daily not complete", status: 403 };
+      }
     }
-
-    const iteration = inputIteration ??
-      await requireDailyIterationId(year, month, day);
 
     const [data, ownBest, otherBest, attempts] = await Promise.all([
       getIteration(iteration),

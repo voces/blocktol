@@ -1,6 +1,7 @@
 import { Fragment, h, JSX } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { showBoard, startBoardRun } from "../../store/board.ts";
+import { rankedEndsAtMidnight } from "../../store/dailyRollover.ts";
 import { Timer } from "../Timer.tsx";
 import { clearFreePlay } from "./freePlay.ts";
 import { GameStateContext } from "./useGameState.ts";
@@ -213,7 +214,11 @@ export const Hud = () => {
             >
               <span class="hud__build-face hud__build-time">
                 <span class="mono">{formatBuild(time)}</span>
-                <span class="hud__build-label">to build</span>
+                <span class="hud__build-label">
+                  {!freePlay && rankedEndsAtMidnight.value
+                    ? "to midnight"
+                    : "to build"}
+                </span>
               </span>
               <span class="hud__build-face hud__build-ready">Ready?</span>
             </button>
