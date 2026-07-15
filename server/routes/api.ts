@@ -1,5 +1,5 @@
 import { is } from "../../common/typeguards.ts";
-import { log } from "../util/logging.ts";
+import { errText, log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { best } from "./iteration/best.ts";
 import { boot } from "./boot.ts";
@@ -93,7 +93,7 @@ export const api: Handler<"method"> = async (req, { method }) => {
   if (status >= 500) {
     log.error(req, `handler ${method} failed`, {
       status,
-      error: isErrorObj(output) ? output.error : undefined,
+      error: isErrorObj(output) ? errText(output.error) : undefined,
     });
   }
   return Response.json(output, { status });

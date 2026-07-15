@@ -6,7 +6,8 @@ const utf8 = new TextEncoder();
 // The raw id in the `authorization` header IS the bearer credential (see
 // client/util/id.ts): anyone who reads it can act as — or merge away — that user.
 // So it must never land in a log line, error report, or span, all of which flow to
-// stores (VictoriaLogs, New Relic) that are readable without that authority. This
+// stores (VictoriaLogs, VictoriaTraces) that are readable without that authority.
+// This
 // hashes it first: correlation survives (the same id always maps to the same tag,
 // so one player's requests are still followable through the logs/trace) while the
 // stored value is useless as a credential — SHA-256 over the id's ~64 bits of

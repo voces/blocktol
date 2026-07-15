@@ -3,7 +3,7 @@ import "./util/gen.ts";
 import "./util/rateDailies.ts";
 import { migrate } from "./db/migrate.ts";
 import { router } from "./router.ts";
-import { log } from "./util/logging.ts";
+import { errText, log } from "./util/logging.ts";
 
 // Bind the port FIRST, then migrate — so a redeploy's fresh process starts
 // accepting connections immediately. The cohost fronts a single upstream
@@ -22,7 +22,7 @@ import { log } from "./util/logging.ts";
 // expires. The gate resolves either way, so a migration hiccup degrades to
 // serving (exactly as the old catch did) rather than wedging the process.
 const ready = migrate().catch((err) => {
-  log.error("startup migration failed", err);
+  log.error("startup migration failed", { error: errText(err) });
 });
 
 // On Deno Deploy the listening port is managed by the platform; `PORT` is only
@@ -31,7 +31,7 @@ const port = Number(Deno.env.get("PORT")) || undefined;
 
 Deno.serve({
   port,
-  onListen: ({ port }) => log.info("Listening on", port),
+  onListen: ({ port }) => log.info("listening", { port }),
 }, async (req) => {
   await ready;
   return router.route(req);

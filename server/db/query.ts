@@ -1,7 +1,7 @@
 import SqlString from "sqlstring";
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
-import { log } from "../util/logging.ts";
+import { errText, log } from "../util/logging.ts";
 import { directQuery } from "./directTransport.ts";
 import { withDbSpan } from "./trace.ts";
 
@@ -71,12 +71,11 @@ const proxyQuery = async <T = unknown>(
       try {
         json = JSON.parse(text);
       } catch {
-        log.error(
-          "Non-JSON response from SQL proxy:",
-          `status=${ret.status}`,
-          `content-type=${ret.headers.get("content-type")}`,
-          `body=${JSON.stringify(text.slice(0, 500))}`,
-        );
+        log.error("non-JSON response from SQL proxy", {
+          status: ret.status,
+          contentType: ret.headers.get("content-type"),
+          body: text.slice(0, 500),
+        });
         throw new Error(`SQL proxy returned non-JSON (status ${ret.status})`);
       }
       if (isSqlError(json)) throw new SQLError(json.message);
@@ -85,12 +84,10 @@ const proxyQuery = async <T = unknown>(
     } catch (err) {
       if (err instanceof SQLError) throw err;
       lastError = err;
-      log.error(err);
-      log.error(
-        "Error fetching,",
-        retries + 1,
-        "retries remaining",
-      );
+      log.error("db fetch failed", {
+        retriesRemaining: retries + 1,
+        error: errText(err),
+      });
     }
   }
 

@@ -5,7 +5,7 @@ import {
 } from "../../../db/iteration.ts";
 import { updateCurrentRun } from "../../../db/run.ts";
 import { checkLostTop } from "../../../util/lostTop.ts";
-import { log } from "../../../util/logging.ts";
+import { errText, log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
@@ -36,7 +36,7 @@ export const updateRun = method(updateRunBody, true)(
         getIterationOtherBest(iterationId, userId)(),
       ]);
     } catch (err) {
-      console.error(err);
+      log.error(req, "invalid iteration", { error: errText(err) });
       return { error: "invalid iteration", status: 400 };
     }
 
@@ -59,7 +59,7 @@ export const updateRun = method(updateRunBody, true)(
       // accepted maze and starts the run (which is what the server is doing).
       if (!saved) return { expired: true as const };
     } catch (err) {
-      log.error(req, err);
+      log.error(req, "failed to save run", { error: errText(err) });
       return { error: "failed to save run", status: 500 };
     }
 
