@@ -1,6 +1,6 @@
 import { log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
-import { logMap } from "./beginLogger.ts";
+import { logMap, routeOf } from "./beginLogger.ts";
 
 const sizes = ["B", "KB", "MB", "GB", "TB"];
 
@@ -21,10 +21,10 @@ export const endLogger: Handler = (req, _, prev) => {
 
   const length = prev?.headers.get("content-length");
 
-  log.info(req, "request", {
+  log.info(req, "request finish", {
     method: req.method,
     status: prev?.status,
-    route: req.url.slice(new URL(req.url).origin.length),
+    route: routeOf(req),
     // Numeric ms (was "12ms") so it's aggregatable in VictoriaLogs.
     ms: data?.start ? Date.now() - data.start : undefined,
     size: typeof length === "string" ? prettySize(parseInt(length)) : undefined,
