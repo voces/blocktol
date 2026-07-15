@@ -145,6 +145,9 @@ export const App = () => {
   }, [toast]);
   const [retry, setRetry] = useState(0);
   const [disconnected, setDisconnected] = useState(false);
+  // Bumped when the app returns to the foreground still stuck on an unstaged
+  // board (see the resume-recovery effect below); re-runs the boot staging.
+  const [resumeNonce, setResumeNonce] = useState(0);
 
   useEffect(() => {
     if (showOnboarding || linkPending) return;
@@ -176,7 +179,7 @@ export const App = () => {
     fetchProfile().then((p) => {
       if (p?.settings) adoptServerSettings(p.settings);
     });
-  }, [showOnboarding, linkPending, retry]);
+  }, [showOnboarding, linkPending, retry, resumeNonce]);
 
   // Notifications: warm the bell, start the quiet badge poll, and (for users who
   // already granted permission) re-register their push subscription. One-shot,
@@ -195,6 +198,40 @@ export const App = () => {
   }, [showOnboarding, linkPending]);
 
   const gameState = useGameState();
+
+  // Recover a board that never finished staging when the app is reopened. iOS
+  // suspends a backgrounded PWA and can drop the in-flight boot request without
+  // ever settling its promise — so the dead fetch can't re-stage, and startRun
+  // isn't retried — leaving the board stuck on the loading phase (the summary
+  // still landed, so "N attempts remaining" shows over an empty board; the
+  // daily's window is already open server-side, silently ticking). Reopening
+  // the icon fires visibilitychange/pageshow but no fresh navigation, so nothing
+  // re-boots — the "had to manually refresh" report. On return to the foreground
+  // still in `loading`, re-run the boot staging (the automatic form of that
+  // refresh). Gated on the loading phase so a live build/run coming back to the
+  // foreground is left untouched. pageshow is gated on `persisted` (a bfcache
+  // restore) so a normal first load — which fires pageshow while already loading
+  // — doesn't double-boot; visibilitychange never fires on first load.
+  useEffect(() => {
+    if (showOnboarding || linkPending) return;
+    const recover = () => {
+      if (
+        document.visibilityState === "visible" &&
+        gameState.phase === "loading"
+      ) {
+        setResumeNonce((n) => n + 1);
+      }
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) recover();
+    };
+    document.addEventListener("visibilitychange", recover);
+    globalThis.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", recover);
+      globalThis.removeEventListener("pageshow", onPageShow);
+    };
+  }, [showOnboarding, linkPending, gameState.phase]);
 
   if (linkPending) {
     return <MoveGate onResolved={() => setLinkPending(false)} />;
