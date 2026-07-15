@@ -1,4 +1,4 @@
-import { reportError } from "./newrelic.ts";
+import { trace } from "@opentelemetry/api";
 import { UserError } from "./UserError.ts";
 
 type Method =
@@ -125,12 +125,12 @@ export class Router implements AbstractRouter {
       if (typeof err === "object" && err instanceof UserError) {
         return Response.json({ error: err }, { status: 400 });
       }
-      reportError({
-        source: "server",
-        message: "unhandled exception",
-        error: err,
-        attributes: { method: request.method, url: request.url },
-      });
+      // console.error above ships the stack to VictoriaLogs (trace-correlated);
+      // recordException surfaces it on the request span in VictoriaTraces, and the
+      // 500 response marks that span errored. No-ops when OTel is off.
+      trace.getActiveSpan()?.recordException(
+        err instanceof Error ? err : String(err),
+      );
       return Response.json({ error: "unhandled exception" }, { status: 500 });
     }
   }

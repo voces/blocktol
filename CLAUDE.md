@@ -135,7 +135,8 @@ middleware chain over `URLPattern`. Path params are type-derived from the route
 string. Every request flows: `beginLogger` → login-link routes → `extractUserId`
 → **`POST /api/:method`** → the `/YYYYMMDD` day-permalink (serves the SPA shell)
 → `staticServe` → `endLogger`. A thrown `UserError` becomes a 400; anything else
-is a 500 reported to New Relic.
+is a 500 — logged (`console.error` → VictoriaLogs) and recorded on the request
+span (`recordException` → VictoriaTraces).
 
 **The API is one endpoint.** `server/routes/api.ts` owns a `handlers` registry;
 `POST /api/:method` looks the method up, zod-validates the body against
@@ -430,7 +431,7 @@ including unset, stays on the proxy) with `SQL_HOST` (default `127.0.0.1`),
 `SQL_PORT` (`3306`), `SQL_USER`/`SQL_DATABASE` (both default `blocktol-<env>`)
 configuring that connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any
 non-empty value skips registering the `ensure-iterations`/`rate-dailies` crons —
-for a second instance on the shared DB), `NEW_RELIC_API_KEY`,
+for a second instance on the shared DB),
 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
 `deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app), and
 `DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
@@ -470,18 +471,24 @@ ports — `localhost:9428/select/vmui/` and `localhost:10428/select/vmui/`. (A
 `victoria.w3x.io` DNS record exists but is currently parked/unused — there is no
 authed public ingest or viewing endpoint.)
 
-Runs alongside New Relic (`NEW_RELIC_API_KEY`) for now; New Relic is to be
-retired once the self-hosted pipeline is proven, which also drops that US
-third-party transfer. The request log carries the user id as a **hashed** tag
-(`userHash`, via `util/hashUserId.ts` — a truncated SHA-256, set in
-`middleware/userid.ts` and used by `reportClientError`'s New Relic report and
-the cap-hit warn), never the raw `authorization` credential: the raw id is the
-bearer token, and logs flow to VictoriaLogs/New Relic, which are readable
-without it. Spans themselves carry no user id yet (plain Deno request/fetch/cron
-auto-instrumentation). The rule for any user-id tagging — logs today, spans if
-ever added — is the same: **hashed only, never the raw credential.** (The one
-deliberate exception is the low-volume Discord operator alert in `db/user.ts`,
-which keeps the raw id so an operator can look the player up in the DB.)
+New Relic has been **retired** — this self-hosted pipeline is the only sink now,
+which also drops that US third-party transfer. Errors flow to it, not a separate
+service: a thrown handler exception is `console.error`'d (→ VictoriaLogs,
+trace-correlated by `trace_id`) and `recordException`'d onto the request span (→
+VictoriaTraces); a handler that returns a 5xx without throwing is `log.error`'d,
+and the 500 response marks its span errored; a relayed client crash
+(`reportClientError`) is `log.error`'d the same way. There is no `reportError`
+helper and no `NEW_RELIC_API_KEY`.
+
+The user id rides telemetry only as a **hashed** tag (`userHash` in the request
+log, `user.hash` on the request span), via `util/hashUserId.ts` (a truncated
+SHA-256) — set in `middleware/userid.ts`, also used by the cap-hit warn. Never
+the raw `authorization` credential: the raw id is the bearer token, and
+logs/traces flow to VictoriaLogs/VictoriaTraces, which are readable without it.
+The rule for any user-id tagging is the same everywhere: **hashed only, never
+the raw credential.** (The one deliberate exception is the low-volume Discord
+operator alert in `db/user.ts`, which keeps the raw id so an operator can look
+the player up in the DB.)
 
 ## Operational scripts (`scripts/`)
 

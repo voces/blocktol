@@ -31,8 +31,8 @@
     // --allow-sys: the direct DB connector (mysql2) inspects host info when it
     // opens a connection. Harmless on the proxy transport (the driver never
     // loads). SQL_TRANSPORT/HOST/PORT/USER/DATABASE configure that connector.
-    "start": "deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read server/index.ts",
-    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,NEW_RELIC_API_KEY,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
+    "start": "deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read server/index.ts",
+    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
     "migrate": "deno run --no-check=remote --allow-net --allow-sys --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit
