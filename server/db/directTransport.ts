@@ -1,6 +1,6 @@
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
-import { log } from "../util/logging.ts";
+import { errText, log } from "../util/logging.ts";
 
 // The only slice of mysql2's pool we touch. Declared locally rather than pulled
 // from the package's types: mysql2 defines `query` via a mixin base class that
@@ -107,8 +107,10 @@ export const directQuery = async <T = unknown>(
         throw new SQLError(err instanceof Error ? err.message : String(err));
       }
       lastError = err;
-      log.error(err);
-      log.error("Error querying,", retries + 1, "retries remaining");
+      log.error("db query failed", {
+        retriesRemaining: retries + 1,
+        error: errText(err),
+      });
     }
   }
 

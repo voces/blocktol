@@ -1,5 +1,5 @@
 import { env } from "./env.ts";
-import { log } from "./logging.ts";
+import { errText, log } from "./logging.ts";
 
 // A fire-and-forget admin ping to Discord for rare, human-actionable events an
 // operator should see (e.g. a player hitting the attempts cap).
@@ -37,7 +37,7 @@ export const alertAdmin = (message: string): void => {
     body: JSON.stringify({ content }),
   })
     .then((r) => {
-      if (!r.ok) log.error("admin alert failed", r.status);
+      if (!r.ok) log.error("admin alert failed", { status: r.status });
     })
-    .catch((err) => log.error("admin alert error", err));
+    .catch((err) => log.error("admin alert error", { error: errText(err) }));
 };

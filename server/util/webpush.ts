@@ -7,7 +7,7 @@
 // encryption pipeline is verified against RFC 8291 §5's published test vector
 // (see webpush.test.ts).
 
-import { log } from "./logging.ts";
+import { errText, log } from "./logging.ts";
 
 // An ArrayBuffer-backed byte array — the shape WebCrypto's BufferSource params
 // require under the strict typed-array generics (a bare `Uint8Array` defaults to
@@ -285,11 +285,14 @@ export const sendPush = async (
     await res.arrayBuffer().catch(() => {});
     const gone = res.status === 404 || res.status === 410;
     if (!res.ok && !gone) {
-      log.error("push send failed", res.status, sub.endpoint.slice(0, 60));
+      log.error("push send failed", {
+        status: res.status,
+        endpoint: sub.endpoint.slice(0, 60),
+      });
     }
     return { ok: res.ok, gone, status: res.status };
   } catch (err) {
-    log.error("push send error", err);
+    log.error("push send error", { error: errText(err) });
     return { ok: false, gone: false };
   }
 };

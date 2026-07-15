@@ -247,7 +247,10 @@ export const allRunsByIteration = (user: string, iteration: number) =>
         // access-controlled operator channel, and the raw id is what lets an
         // operator look the player up in the DB (there is no hash column to join
         // on). If that channel's trust boundary ever changes, hash this too.
-        log.warn("attempts cap hit", await hashUserId(user), iteration);
+        log.warn("attempts cap hit", {
+          userHash: await hashUserId(user),
+          iteration,
+        });
         alertAdmin(
           `Player \`${user}\` hit the ${RUN_CAP}-run cap on iteration ` +
             `${iteration}; the attempts panel is now dropping their oldest runs.`,

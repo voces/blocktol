@@ -10,7 +10,7 @@
 
 import { getUserPrevBest } from "../db/run.ts";
 import { getIterationBests, getStandingsMeta } from "../db/standings.ts";
-import { log } from "./logging.ts";
+import { errText, log } from "./logging.ts";
 import { notifyLostTop } from "./notify.ts";
 
 export type BestRow = { user: string; name: string; best: number };
@@ -98,6 +98,6 @@ export const checkLostTop = async (iteration: number, actor: string) => {
       ),
     );
   } catch (err) {
-    log.error("checkLostTop failed", err);
+    log.error("checkLostTop failed", { error: errText(err) });
   }
 };

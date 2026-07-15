@@ -1,4 +1,4 @@
-import { log } from "../util/logging.ts";
+import { errText, log } from "../util/logging.ts";
 import { migrations, pendingMigrations } from "./migrations.ts";
 import { type ExecResult, raw, sql } from "./query.ts";
 
@@ -74,7 +74,7 @@ export const migrate = async () => {
     // Re-read under the lock: another isolate may have applied some (or all) of
     // these between our first check and winning the lease.
     for (const m of pendingMigrations(await currentVersion())) {
-      log.info("applying migration", m.version, m.name);
+      log.info("applying migration", { version: m.version, name: m.name });
       await sql`
         ${raw(m.up)}
         INSERT INTO schema_migration (version, name) VALUES (${m.version}, ${m.name});`;
@@ -83,17 +83,16 @@ export const migrate = async () => {
     await releaseLock(holder);
   }
 
-  log.info(
-    "schema migrated to version",
-    migrations[migrations.length - 1].version,
-  );
+  log.info("schema migrated", {
+    version: migrations[migrations.length - 1].version,
+  });
 };
 
 if (import.meta.main) {
   try {
     await migrate();
   } catch (err) {
-    log.error("migration failed", err);
+    log.error("migration failed", { error: errText(err) });
     Deno.exit(1);
   }
 }

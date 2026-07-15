@@ -1,5 +1,5 @@
 import { getDailyIteration } from "../db/iteration.ts";
-import { log } from "./logging.ts";
+import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
 
 const ONE_MINUTE = 1_000 * 60;
@@ -28,11 +28,10 @@ const ensureIterations = async (offsetDays: number) => {
     try {
       await ensureIteration(day);
     } catch (err) {
-      log.error(
-        "failed to ensure iteration for",
-        new Date(day).toDateString(),
-        err,
-      );
+      log.error("failed to ensure iteration", {
+        date: new Date(day).toDateString(),
+        error: errText(err),
+      });
     }
     day += ONE_DAY;
   }

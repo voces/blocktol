@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { log } from "../util/logging.ts";
+import { coerceFlat, log } from "../util/logging.ts";
 import { method } from "./apiHelpers.ts";
 
 const reportClientErrorBody = z.object({
@@ -14,7 +14,7 @@ const reportClientErrorBody = z.object({
 // `data.error` is the stack/message the client lifted from the caught value.
 export const reportClientError = method(reportClientErrorBody)(
   ({ message, data }, req) => {
-    log.error(req, `client error: ${message}`, data);
+    log.error(req, `client error: ${message}`, coerceFlat(data ?? {}));
     return {};
   },
 );

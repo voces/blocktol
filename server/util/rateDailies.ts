@@ -5,7 +5,7 @@ import {
 } from "../db/iteration.ts";
 import { getIterationOutcomeField, getStandingsMeta } from "../db/standings.ts";
 import { applyRatings, getRatingParticipants } from "../db/user.ts";
-import { log } from "./logging.ts";
+import { errText, log } from "./logging.ts";
 import { selfExcludedPercentiles } from "./math.ts";
 import { notifyDailyFinals } from "./notify.ts";
 import { computeRatingChange } from "./rating.ts";
@@ -30,7 +30,10 @@ const notifyIterationFinal = async (iteration: number) => {
     }
     await notifyDailyFinals(iteration, [meta.y, meta.m, meta.d], outcomes);
   } catch (err) {
-    log.error("failed to notify daily final", iteration, err);
+    log.error("failed to notify daily final", {
+      iteration,
+      error: errText(err),
+    });
   }
 };
 
@@ -58,7 +61,7 @@ const rateIteration = async (iteration: number) => {
 
   // Marks the iteration rated even when `updates` is empty, so it isn't rechecked.
   await applyRatings(iteration, updates);
-  log.info("rated daily iteration", iteration, `(${updates.length} players)`);
+  log.info("rated daily iteration", { iteration, players: updates.length });
 
   // The day is now final — notify its ranked players. After applyRatings so the
   // rating write is never held up by (or rolled back with) the notifications.
@@ -71,14 +74,14 @@ const rateDailies = async () => {
     iterations = await getUnratedClosedIterations();
   } catch (err) {
     // e.g. the `rated` column not migrated in yet — degrade quietly.
-    log.error("failed to list unrated iterations", err);
+    log.error("failed to list unrated iterations", { error: errText(err) });
     return;
   }
   for (const iteration of iterations) {
     try {
       await rateIteration(iteration);
     } catch (err) {
-      log.error("failed to rate iteration", iteration, err);
+      log.error("failed to rate iteration", { iteration, error: errText(err) });
     }
   }
 };

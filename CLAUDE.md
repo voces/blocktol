@@ -480,6 +480,22 @@ and the 500 response marks its span errored; a relayed client crash
 (`reportClientError`) is `log.error`'d the same way. There is no `reportError`
 helper and no `NEW_RELIC_API_KEY`.
 
+`util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
+(`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
+— so VictoriaLogs surfaces `status`/`route`/`userHash`/… as queryable fields via
+a `| unpack_logfmt _msg` at query time (nothing extracts them at ingest — Deno's
+OTel delivers the console line as the `_msg` body). The API is
+`log.<level>(msg, fields?)` or `log.<level>(req, msg, fields?)` (the `req` form
+folds in the request context), and **`fields` is flat by type** — nested
+objects/arrays don't compile, forcing a caller to flatten (logfmt can't
+represent nesting and VL can't query what it can't see as a field). Two escape
+hatches in the same module: `errText(err)` renders a caught value to one field
+(an Error's stack, else stringified — use it as `{ error: errText(err) }`), and
+`coerceFlat(record)` flattens an `unknown`-typed record (client error payloads)
+by stringifying any non-primitive value. No timestamp in the payload — Deno's
+OTel stamps `_time`; a second would duplicate it. `level=` also gives Grafana a
+field to colour rows by.
+
 The user id rides telemetry only as a **hashed** tag (`userHash` in the request
 log, `user.hash` on the request span), via `util/hashUserId.ts` (a truncated
 SHA-256) — set in `middleware/userid.ts`, also used by the cap-hit warn. Never

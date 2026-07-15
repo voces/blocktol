@@ -22,7 +22,7 @@ import {
   upsertLostTop,
 } from "../db/notification.ts";
 import { getUserSettings } from "../db/user.ts";
-import { log } from "./logging.ts";
+import { errText, log } from "./logging.ts";
 import { pushConfigured, sendPush, sha256hex } from "./webpush.ts";
 
 type Day = [number, number, number];
@@ -64,7 +64,7 @@ const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
       await deleteSubscription(await sha256hex(sub.endpoint)).catch(() => {});
     }
   } catch (err) {
-    log.error("push fan-out error", err);
+    log.error("push fan-out error", { error: errText(err) });
   }
 };
 
@@ -108,7 +108,7 @@ export const notifyLostTop = async (
       PUSH_CONCURRENCY,
     );
   } catch (err) {
-    log.error("notifyLostTop failed", err);
+    log.error("notifyLostTop failed", { error: errText(err) });
   }
 };
 
@@ -143,12 +143,12 @@ export const notifyDailyFinals = async (
       return [() => sendOne(s, payload)];
     });
     await pool(tasks, PUSH_CONCURRENCY);
-    log.info(
-      "daily-final notifications",
+    log.info("daily-final notifications", {
       iteration,
-      `(${outcomes.length} in-app, ${tasks.length} pushes)`,
-    );
+      inApp: outcomes.length,
+      pushes: tasks.length,
+    });
   } catch (err) {
-    log.error("notifyDailyFinals failed", err);
+    log.error("notifyDailyFinals failed", { error: errText(err) });
   }
 };

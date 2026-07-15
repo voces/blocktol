@@ -5,7 +5,7 @@ import { createIteration } from "../db/iteration.ts";
 import { log } from "./logging.ts";
 
 export const newIteration = async (date: Date) => {
-  log.info("New iteration for", date.toDateString());
+  log.info("new iteration", { date: date.toDateString() });
 
   // Interior cells are 1..18 (0 and 19 are the border ring). The checkpoint is a
   // single cell at coord + 0.5, so 0.5..17.5 spans the full interior and can sit
