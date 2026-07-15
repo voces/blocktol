@@ -258,7 +258,7 @@ export const App = () => {
 
   return (
     <Shell gameState={gameState}>
-      <Game extraAttemptBannerTime={!hadCompletedOnboarding.current} />
+      <Game />
       {
         /* Boot failure, or persistent mid-game transport failures (the run
         saver keeps retrying underneath — this just tells the player why the

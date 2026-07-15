@@ -424,18 +424,6 @@ a:hover {
   cursor: pointer;
 }
 
-@keyframes attemptsLoad {
-  0% {
-    font-size: min(calc(var(--maze-size) / 11), 64px);
-    opacity: 1;
-  }
-
-  100% {
-    font-size: min(calc(var(--maze-size) / 12), calc(64px * 11 / 12));
-    opacity: 0;
-  }
-}
-
 /* Onboarding gets the same side breathing room the game board has, so the
    board doesn't run to the screen edges on mobile. */
 .onboarding {

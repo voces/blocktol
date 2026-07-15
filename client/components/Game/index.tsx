@@ -20,7 +20,6 @@ import { Prestart } from "./Prestart.tsx";
 import { TodayResult } from "./TodayResult.tsx";
 import { Calendar } from "./Calendar.tsx";
 import { Attempts } from "./Attempts.tsx";
-import { AttemptsRemaining } from "./AttemptsRemaining.tsx";
 import { Hud } from "./Hud.tsx";
 import { StandingsDock } from "../Standings/Dock.tsx";
 
@@ -67,9 +66,7 @@ const BoardArea = (
   );
 };
 
-export const Game = (
-  { extraAttemptBannerTime }: { extraAttemptBannerTime?: boolean },
-) => {
+export const Game = () => {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useInit();
@@ -84,9 +81,6 @@ export const Game = (
         <div class="game__board">
           <Hud />
           <BoardArea svgRef={svgRef} onSlow={onSlow} />
-          <AttemptsRemaining
-            extraAttemptBannerTime={extraAttemptBannerTime ?? false}
-          />
           <Prestart />
         </div>
         {
