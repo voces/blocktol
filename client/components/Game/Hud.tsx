@@ -74,17 +74,19 @@ export const Hud = () => {
     iteration,
     freePlay,
     attemptsRemaining,
+    enterPrestart,
     min,
     best,
     verdict,
   } = useContext(GameStateContext);
 
   // Reviewing a past maze leaves the board inert; a Play button is the way back
-  // to a live board. If the daily's still open it resumes the ranked run;
-  // otherwise it free-plays the day currently in view.
+  // to a live board. If the daily's still open it returns to the "Start attempt"
+  // overlay (a ranked attempt opens only from that explicit action, never as a
+  // side effect of leaving a review); otherwise it free-plays the day in view.
   const onPlay = () => {
     if (attemptsRemaining > 0) {
-      startBoardRun("daily");
+      enterPrestart();
     } else if (iteration !== undefined) {
       showBoard(iteration);
     }

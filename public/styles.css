@@ -318,7 +318,6 @@ body {
 .board-frame {
   max-width: var(--maze-size);
   margin: 0 auto;
-  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.7);
 }
@@ -422,18 +421,6 @@ a {
 a:hover {
   filter: brightness(75%);
   cursor: pointer;
-}
-
-@keyframes attemptsLoad {
-  0% {
-    font-size: min(calc(var(--maze-size) / 11), 64px);
-    opacity: 1;
-  }
-
-  100% {
-    font-size: min(calc(var(--maze-size) / 12), calc(64px * 11 / 12));
-    opacity: 0;
-  }
 }
 
 /* Onboarding gets the same side breathing room the game board has, so the
@@ -646,6 +633,171 @@ a:hover {
 .game__board {
   grid-area: board;
   min-width: 0;
+  /* Anchor the daily "Start attempt" overlay (Prestart.tsx) to the board. */
+  position: relative;
+}
+
+/* Daily "Start attempt" gate (Prestart.tsx). A ranked attempt no longer opens
+   on load — the player starts it here, so a background boot can't spend one.
+   A themed blur mask (light and dark) over the board, backed by a decorative,
+   blurred copy of the tutorial maze — a real-looking board that is NOT today's
+   puzzle, so the mask can't leak the layout the player is about to build. */
+.prestart {
+  position: absolute;
+  /* Match the board square exactly (not the taller game__board, which includes
+     the Hud strip) so the mask is symmetric on all sides. Same width + centering
+     + rounding as `.board-frame`, anchored to the board at the bottom. */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  max-width: var(--maze-size);
+  aspect-ratio: 1;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  /* New stacking context so the deco/scrim/content z-indexes below order
+     against each other, not the rest of the board. */
+  isolation: isolate;
+}
+
+/* Bottom layer: the tutorial maze, blurred + faded to a texture. Its own board
+   frame (border, shadow, rounding) is stripped so it fills edge to edge rather
+   than reading as a second board nested inside the overlay. */
+.prestart__deco {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(16px) saturate(0.9);
+  opacity: light-dark(0.5, 0.6);
+}
+
+.prestart__deco .board-frame {
+  max-width: none;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100%;
+}
+
+.prestart__deco .board-frame > svg {
+  height: 100%;
+  border-radius: 0;
+}
+
+/* Middle layer: a themed scrim that dims the deco below it for text contrast,
+   and (via backdrop-blur) softens the empty real board behind the whole
+   overlay. Sits ABOVE the deco, BELOW the content. */
+.prestart::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: light-dark(rgba(244, 244, 247, 0.64), rgba(9, 9, 14, 0.62));
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.prestart__content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 320px;
+}
+
+.prestart__eyebrow {
+  margin-top: 12px;
+  font: 600 12px var(--font);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+.prestart__title {
+  margin: 4px 0 0;
+  font: 800 clamp(26px, 6vw, 34px) var(--font);
+  color: var(--color);
+}
+
+.prestart__sub {
+  margin: 8px 0 0;
+  font: 400 14px var(--font);
+  color: var(--text-mute);
+}
+
+/* Progress pips — rounded squares: spent attempts filled green, the current one
+   accent (with a soft ring), the rest an empty outline. */
+.prestart__dots {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.prestart__dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+}
+
+.prestart__dot--done {
+  border-color: var(--win);
+  background: var(--win);
+}
+
+.prestart__dot--active {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* The previous attempt's time, and (from the third attempt) a diff against the
+   one before it — green when it improved (higher time is better), red when it
+   dropped. */
+.prestart__prev {
+  margin-top: 16px;
+  font: 500 14px var(--font);
+  color: var(--text-mute);
+}
+
+.prestart__prev .mono {
+  font-weight: 700;
+  color: var(--color);
+}
+
+.prestart__diff {
+  margin-left: 8px;
+  font-weight: 700;
+}
+
+.prestart__diff--up {
+  color: var(--win);
+}
+
+.prestart__diff--down {
+  color: var(--lose);
+}
+
+.prestart__diff--even {
+  color: var(--text-mute);
+}
+
+.prestart__btn {
+  margin-top: 20px;
+  min-width: 240px;
+  padding-block: 14px;
+  justify-content: center;
+  font-weight: 700;
+  box-shadow: 0 10px 30px -8px var(--accent-soft);
 }
 
 /* Shared panel heading (Today / Previous days / Attempts). */
