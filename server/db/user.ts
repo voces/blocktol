@@ -1,6 +1,7 @@
 import { randomName } from "../../common/random/name.ts";
 import { parseSettings } from "../../common/settings.ts";
 import { alertAdmin } from "../util/adminAlert.ts";
+import { hashUserId } from "../util/hashUserId.ts";
 import { log } from "../util/logging.ts";
 import { deserializeRun } from "../util/run.ts";
 import { format, raw, sql } from "./query.ts";
@@ -234,14 +235,19 @@ export const allRunsByIteration = (user: string, iteration: number) =>
       AND (void = FALSE OR ranked = TRUE)
     ORDER BY created ASC
     LIMIT ${RUN_CAP};
-  `.then((r) => {
+  `.then(async (r) => {
     // At the cap the panel is truncating this player's runs (the query returns
     // their OLDEST RUN_CAP, so newer ones silently drop). Warn an operator once.
     if (r.length >= RUN_CAP) {
       const key = `${user}:${iteration}`;
       if (!capAlerted.has(key)) {
         capAlerted.add(key);
-        log.warn("attempts cap hit", user, iteration);
+        // The log flows to VictoriaLogs, so it gets the hashed id (hashUserId).
+        // The Discord alert deliberately keeps the RAW id: it's a low-volume,
+        // access-controlled operator channel, and the raw id is what lets an
+        // operator look the player up in the DB (there is no hash column to join
+        // on). If that channel's trust boundary ever changes, hash this too.
+        log.warn("attempts cap hit", await hashUserId(user), iteration);
         alertAdmin(
           `Player \`${user}\` hit the ${RUN_CAP}-run cap on iteration ` +
             `${iteration}; the attempts panel is now dropping their oldest runs.`,

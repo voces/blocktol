@@ -466,10 +466,16 @@ authed public ingest or viewing endpoint.)
 
 Runs alongside New Relic (`NEW_RELIC_API_KEY`) for now; New Relic is to be
 retired once the self-hosted pipeline is proven, which also drops that US
-third-party transfer. Today blocktol attaches **no user id** to spans/logs —
-it's plain Deno auto-instrumentation (request/fetch/cron spans); any future
-span/log user-id tagging must use a **hashed** id, never the raw `authorization`
-credential.
+third-party transfer. The request log carries the user id as a **hashed** tag
+(`userHash`, via `util/hashUserId.ts` — a truncated SHA-256, set in
+`middleware/userid.ts` and used by `reportClientError`'s New Relic report and
+the cap-hit warn), never the raw `authorization` credential: the raw id is the
+bearer token, and logs flow to VictoriaLogs/New Relic, which are readable
+without it. Spans themselves carry no user id yet (plain Deno request/fetch/cron
+auto-instrumentation). The rule for any user-id tagging — logs today, spans if
+ever added — is the same: **hashed only, never the raw credential.** (The one
+deliberate exception is the low-volume Discord operator alert in `db/user.ts`,
+which keeps the raw id so an operator can look the player up in the DB.)
 
 ## Operational scripts (`scripts/`)
 
