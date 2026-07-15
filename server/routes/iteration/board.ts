@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
 import type { Point } from "../../../common/types.ts";
+import { errText, log } from "../../util/logging.ts";
 import {
   getIteration,
   getIterationOtherBest,
@@ -29,7 +30,7 @@ const getBoardBody = z.object({
 });
 
 export const getBoard = method(getBoardBody, true)(
-  async ({ userId, timeZone, iteration: inputIteration, soft }) => {
+  async ({ userId, timeZone, iteration: inputIteration, soft }, req) => {
     const { year, month, day } = dailyParts(timeZone);
     const todayId = await requireDailyIterationId(year, month, day);
     const iteration = inputIteration ?? todayId;
@@ -59,7 +60,7 @@ export const getBoard = method(getBoardBody, true)(
       // the first stage of a board this is a cached copy, not a search.
       path = cachedSolver(data.blocks, data.checkpoint).solve([]);
     } catch (err) {
-      console.error(err);
+      log.error(req, "invalid base path", { error: errText(err) });
       return { error: "invalid path", status: 400 };
     }
 

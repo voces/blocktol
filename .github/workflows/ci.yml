@@ -26,6 +26,11 @@ jobs:
       - name: Format check
         run: deno fmt --check
 
+      - name: Lint
+        # Enforces the no-console ban (server + common; scripts/client are
+        # excluded in deno.jsonc). See deno.jsonc `lint`.
+        run: deno lint
+
       - name: Type check
         run: deno check server/index.ts client/index.ts common/pathing.ts
 

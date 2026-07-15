@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import { setRunPinned as dbSetRunPinned } from "../../../db/run.ts";
+import { errText, log } from "../../../util/logging.ts";
 import { method } from "../../apiHelpers.ts";
 
 const setRunPinnedBody = z.object({
@@ -22,11 +23,11 @@ const setRunPinnedBody = z.object({
 });
 
 export const setRunPinned = method(setRunPinnedBody, true)(
-  async ({ userId, iteration, created, pinned }) => {
+  async ({ userId, iteration, created, pinned }, req) => {
     try {
       await dbSetRunPinned(userId, iteration, created, pinned);
     } catch (err) {
-      console.error(err);
+      log.error(req, "failed to pin run", { error: errText(err) });
       return { error: "failed to pin run", status: 500 };
     }
     return { kind: "setRunPinned" as const, iteration, pinned };

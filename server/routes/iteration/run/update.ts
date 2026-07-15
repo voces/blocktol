@@ -36,7 +36,7 @@ export const updateRun = method(updateRunBody, true)(
         getIterationOtherBest(iterationId, userId)(),
       ]);
     } catch (err) {
-      console.error(err);
+      log.error(req, "invalid iteration", { error: errText(err) });
       return { error: "invalid iteration", status: 400 };
     }
 

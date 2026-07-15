@@ -7,6 +7,7 @@
 //     - returns a run id
 
 import { z } from "zod";
+import { errText, log } from "../../../util/logging.ts";
 import {
   getIteration,
   getIterationOtherBest,
@@ -31,7 +32,7 @@ const startRunBody = z.object({
 });
 
 export const startRun = method(startRunBody, true)(
-  async ({ userId, iteration: inputIteration, timeZone, block }) => {
+  async ({ userId, iteration: inputIteration, timeZone, block }, req) => {
     const { year, month, day } = dailyParts(timeZone);
 
     let iteration: number;
@@ -58,7 +59,7 @@ export const startRun = method(startRunBody, true)(
     try {
       await dbStartRun(iteration, userId, data.min, year, month, day);
     } catch (err) {
-      console.error(err);
+      log.error(req, "failed to start run", { error: errText(err) });
       return { error: "failed to start run", status: 500 };
     }
 
@@ -80,7 +81,9 @@ export const startRun = method(startRunBody, true)(
       } catch (err) {
         // The run is started regardless; the client re-sends the maze on its
         // next placement, so a lost opening block self-heals.
-        console.error(err);
+        log.error(req, "failed to persist opening block", {
+          error: errText(err),
+        });
       }
       return {
         ...data,
@@ -102,7 +105,7 @@ export const startRun = method(startRunBody, true)(
       // the first start on a board this is a cached copy, not a search.
       path = cachedSolver(data.blocks, data.checkpoint).solve([]);
     } catch (err) {
-      console.error(err);
+      log.error(req, "invalid base path", { error: errText(err) });
       return { error: "invalid path", status: 400 };
     }
 

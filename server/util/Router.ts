@@ -1,4 +1,5 @@
 import { trace } from "@opentelemetry/api";
+import { errText, log } from "./logging.ts";
 import { UserError } from "./UserError.ts";
 
 type Method =
@@ -117,17 +118,18 @@ export class Router implements AbstractRouter {
 
       if (resp) return resp;
 
-      console.warn(new Date(), "Unhandled route:", request.url);
+      log.warn(request, "unhandled route", { url: request.url });
       return new Response("Not found", { status: 404 });
     } catch (err: unknown) {
-      console.error(err);
-      // A UserError is an expected 400 (bad input) — not something to page on.
+      // A UserError is an expected 400 (bad input) — not something to page on,
+      // so it's not logged at error level (endLogger still records the 400).
       if (typeof err === "object" && err instanceof UserError) {
         return Response.json({ error: err }, { status: 400 });
       }
-      // console.error above ships the stack to VictoriaLogs (trace-correlated);
-      // recordException surfaces it on the request span in VictoriaTraces, and the
-      // 500 response marks that span errored. No-ops when OTel is off.
+      // log.error → VictoriaLogs (trace-correlated); recordException surfaces it
+      // on the request span in VictoriaTraces, and the 500 response marks that
+      // span errored. No-ops when OTel is off.
+      log.error(request, "unhandled exception", { error: errText(err) });
       trace.getActiveSpan()?.recordException(
         err instanceof Error ? err : String(err),
       );

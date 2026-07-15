@@ -100,6 +100,8 @@ const emit = (
   const all: LogFields = req
     ? { ...getLoggingContext(req), ...fields }
     : fields;
+  // The one sanctioned console call — the sink every other log flows to.
+  // deno-lint-ignore no-console
   console[level](formatLogfmt(level, msg, all));
 };
 

@@ -10,7 +10,6 @@ export const wrapperStore = <Args extends any[], Value>() => {
   // TODO: should have different roots for each args.length
   const root = [
     new Map<unknown, unknown>(),
-    // deno-lint-ignore ban-types
     new WeakMap<object, unknown>(),
   ] as const;
 

@@ -19,6 +19,7 @@ import {
 import { getIteration } from "../../../db/iteration.ts";
 import { checkLostTop } from "../../../util/lostTop.ts";
 import { validateRun } from "../../../util/validateRun.ts";
+import { errText, log } from "../../../util/logging.ts";
 import { method } from "../../apiHelpers.ts";
 
 const commitRunBody = z.object({
@@ -33,7 +34,7 @@ const commitRunBody = z.object({
 });
 
 export const commitRun = method(commitRunBody, true)(
-  async ({ userId, iteration, blocks, clientId }) => {
+  async ({ userId, iteration, blocks, clientId }, req) => {
     try {
       if (blocks && clientId) {
         const data = await getIteration(iteration);
@@ -50,7 +51,7 @@ export const commitRun = method(commitRunBody, true)(
         await dbCommitRun(userId, iteration);
       }
     } catch (err) {
-      console.error(err);
+      log.error(req, "failed to commit run", { error: errText(err) });
       return { error: "failed to commit run", status: 500 };
     }
     // The committed run just entered the PB field: if it passed (or tied) another

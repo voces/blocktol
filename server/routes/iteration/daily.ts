@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
 import type { Point } from "../../../common/types.ts";
+import { errText, log } from "../../util/logging.ts";
 import {
   getIteration,
   getIterationOtherBest,
@@ -24,7 +25,7 @@ const getDailySummaryBody = z.union([
 ]);
 
 export const getDailySummary = method(getDailySummaryBody, true)(
-  async ({ userId, ...rest }) => {
+  async ({ userId, ...rest }, req) => {
     const iterationId = "timeZone" in rest
       ? (() => {
         const { year, month, day } = dailyParts(rest.timeZone);
@@ -77,7 +78,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
           path = cachedSolver(iteration.blocks, iteration.checkpoint)
             .solve(latestRun.maze);
         } catch (err) {
-          console.error(err);
+          log.error(req, "invalid path", { error: errText(err) });
           return { error: "invalid path", status: 400 };
         }
 

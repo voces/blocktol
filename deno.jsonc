@@ -48,7 +48,15 @@
     }
   },
   "lint": {
-    "exclude": ["public"]
+    // `scripts/` are operator CLIs where console output IS the interface, and
+    // `client/` is browser code Deno's server-tuned rules (no-window, …) don't
+    // fit — so lint (and the no-console gate) covers server + common only.
+    "exclude": ["public", "scripts", "client"],
+    // Force server/common logging through util/logging.ts (structured logfmt);
+    // the sink itself opts out with an inline `// deno-lint-ignore no-console`.
+    "rules": {
+      "include": ["no-console"]
+    }
   },
   "fmt": {
     "exclude": ["public"]
