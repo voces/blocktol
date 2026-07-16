@@ -182,6 +182,11 @@ export const useGameState = () => {
     setFreePlay(false);
     setViewing(false);
     setVerdict(undefined);
+    // The overlay is always today's daily-in-waiting, so reset to today
+    // (iteration===undefined) — otherwise a prestart reached from another day
+    // strands the view there, leaking its standings behind the overlay and
+    // deep-linking a refresh back onto it.
+    setIteration(undefined);
     setPrestart(true);
     setBlocks([]);
     setBricks(-1);
