@@ -471,14 +471,12 @@ ports — `localhost:9428/select/vmui/` and `localhost:10428/select/vmui/`. (A
 `victoria.w3x.io` DNS record exists but is currently parked/unused — there is no
 authed public ingest or viewing endpoint.)
 
-New Relic has been **retired** — this self-hosted pipeline is the only sink now,
-which also drops that US third-party transfer. Errors flow to it, not a separate
-service: a thrown handler exception is `console.error`'d (→ VictoriaLogs,
+This self-hosted pipeline is the only error sink; there's no separate error
+service. A thrown handler exception is `console.error`'d (→ VictoriaLogs,
 trace-correlated by `trace_id`) and `recordException`'d onto the request span (→
 VictoriaTraces); a handler that returns a 5xx without throwing is `log.error`'d,
 and the 500 response marks its span errored; a relayed client crash
-(`reportClientError`) is `log.error`'d the same way. There is no `reportError`
-helper and no `NEW_RELIC_API_KEY`.
+(`reportClientError`) is `log.error`'d the same way.
 
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
 (`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)

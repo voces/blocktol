@@ -45,15 +45,18 @@ templates** — nothing reads them live. The authoritative files are
    APP_ENV=prod
    SQL_PASSWORD=...
    SQL_PROXY_URL=http://127.0.0.1:3626/sql
-   NEW_RELIC_API_KEY=...
    VAPID_PUBLIC_KEY=...
    VAPID_PRIVATE_KEY=...
    VAPID_SUBJECT=...
    ```
-   `SQL_PASSWORD` is the password of the MySQL user named after the database
-   (`blocktol-prod`) — the **same secret Deno Deploy prod uses**, NOT a shared/
-   global one (reusing w3xio's yields `Access denied for 'blocktol-prod'`). The
-   `blocktol-dev`/`-prod`/`-local` databases already exist.
+
+   Telemetry (traces + logs) is env-configured via the OTel vars — see the
+   Observability section of the top-level `CLAUDE.md`; those go in this same
+   file on the co-located instance. `SQL_PASSWORD` is the password of the MySQL
+   user named after the database (`blocktol-prod`) — the **same secret Deno
+   Deploy prod uses**, NOT a shared/ global one (reusing w3xio's yields
+   `Access denied for 'blocktol-prod'`). The `blocktol-dev`/`-prod`/`-local`
+   databases already exist.
 
 3. **systemd service.** Copy `deploy/blocktol.service` to
    `/etc/systemd/system/blocktol.service`, then:
