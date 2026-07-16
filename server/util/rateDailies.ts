@@ -5,6 +5,7 @@ import {
 } from "../db/iteration.ts";
 import { getIterationOutcomeField, getStandingsMeta } from "../db/standings.ts";
 import { applyRatings, getRatingParticipants } from "../db/user.ts";
+import { alertAdmin } from "./adminAlert.ts";
 import { errText, log } from "./logging.ts";
 import { selfExcludedPercentiles } from "./math.ts";
 import { notifyDailyFinals } from "./notify.ts";
@@ -82,6 +83,13 @@ const rateDailies = async () => {
       await rateIteration(iteration);
     } catch (err) {
       log.error("failed to rate iteration", { iteration, error: errText(err) });
+      // A closed day we found but couldn't rate is stuck: its ELO deltas never
+      // apply and its "daily final" notifications never fire until an operator
+      // intervenes. Bounded (few unrated iterations per run) and operator-
+      // actionable, so alert — a no-op without the webhook. The list-fetch failure
+      // above stays a quiet degrade: it's the documented migration-transient case
+      // that the next run heals on its own.
+      alertAdmin(`rate-dailies: failed to rate iteration ${iteration}`);
     }
   }
 };

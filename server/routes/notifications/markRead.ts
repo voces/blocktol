@@ -12,7 +12,10 @@ import { method } from "../apiHelpers.ts";
 // not the id), or all when nothing is given ("Mark all read"). Returns the fresh
 // unread count so the badge updates without a refetch.
 const body = z.object({
-  ids: z.array(z.number()).optional(),
+  // Bounded so an unauthenticated-equivalent caller can't hand the IN (…) an
+  // arbitrarily large id list; a user never has anywhere near this many unread
+  // notifications, so the panel never sends more.
+  ids: z.array(z.number()).max(1000).optional(),
   iteration: z.number().optional(),
   kind: z.enum(["lost_top", "daily_final"]).optional(),
 });

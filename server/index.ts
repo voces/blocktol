@@ -3,6 +3,7 @@ import "./util/gen.ts";
 import "./util/rateDailies.ts";
 import { migrate } from "./db/migrate.ts";
 import { router } from "./router.ts";
+import { alertAdmin } from "./util/adminAlert.ts";
 import { errText, log } from "./util/logging.ts";
 
 // Bind the port FIRST, then migrate — so a redeploy's fresh process starts
@@ -23,6 +24,11 @@ import { errText, log } from "./util/logging.ts";
 // serving (exactly as the old catch did) rather than wedging the process.
 const ready = migrate().catch((err) => {
   log.error("startup migration failed", { error: errText(err) });
+  // The gate resolves anyway, so this process keeps serving — against a schema
+  // the code may predate. Rare and operator-actionable (the next boot retries
+  // once the lease expires), so surface it rather than leaving it to the
+  // localhost-only log UI. No-op without the webhook.
+  alertAdmin(`startup migration failed: ${errText(err)}`);
 });
 
 // On Deno Deploy the listening port is managed by the platform; `PORT` is only
