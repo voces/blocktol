@@ -1,76 +1,50 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { decidePbAnnouncement, pbEmbed } from "./pbBoard.ts";
-import { CHARTREUSE, GOLD } from "./discordResults.ts";
+import { pbEmbed, topPbToAnnounce } from "./pbBoard.ts";
+import { type BestRow } from "./lostTop.ts";
+import { GOLD } from "./discordResults.ts";
 
 const day: [number, number, number] = [2026, 7, 6];
 
-const stored = (
-  over: Partial<{ topTime: number; topUser: string; holders: number }> = {},
-) => ({
-  topTime: 30.5,
-  topUser: "alice",
-  holders: 1,
-  ...over,
+const rows = (...pairs: [string, number][]): BestRow[] =>
+  pairs.map(([user, best]) => ({ user, name: user, best }));
+
+Deno.test("topPbToAnnounce: passing the previous holder announces the passer", () => {
+  const t = topPbToAnnounce(rows(["me", 55], ["a", 50]), "me", 30);
+  assertEquals(t, { name: "me", time: 55 });
 });
 
-Deno.test("decidePbAnnouncement: first record of the day posts", () => {
-  assertEquals(decidePbAnnouncement(30.5, "alice", 1, null, false), "post");
+Deno.test("topPbToAnnounce: the day's first PB (sole player) announces", () => {
+  assertEquals(topPbToAnnounce(rows(["me", 40]), "me", null), {
+    name: "me",
+    time: 40,
+  });
 });
 
-Deno.test("decidePbAnnouncement: a new leader taking a higher top posts", () => {
-  assertEquals(decidePbAnnouncement(35, "bob", 1, stored(), false), "post");
+Deno.test("topPbToAnnounce: a non-topping build announces nothing", () => {
+  // The replay bug: a build below the top must not surface the standing record.
+  assertEquals(topPbToAnnounce(rows(["me", 45], ["a", 50]), "me", 20), null);
 });
 
-Deno.test("decidePbAnnouncement: the same leader improving within the window edits (no spam)", () => {
-  assertEquals(decidePbAnnouncement(35, "alice", 1, stored(), false), "edit");
+Deno.test("topPbToAnnounce: a tie announces nothing", () => {
+  assertEquals(topPbToAnnounce(rows(["me", 50], ["a", 50]), "me", 30), null);
 });
 
-Deno.test("decidePbAnnouncement: the same leader improving after the window posts anew", () => {
-  // A return visit hours later (sameHolderStale) earns its own message.
-  assertEquals(decidePbAnnouncement(35, "alice", 1, stored(), true), "post");
+Deno.test("topPbToAnnounce: extending your own lead announces nothing", () => {
+  assertEquals(topPbToAnnounce(rows(["me", 70], ["a", 50]), "me", 60), null);
 });
 
-Deno.test("decidePbAnnouncement: the same leader improving after a match posts anew", () => {
-  // A → B matches (holders now 2) → A improves: breaking a shared record is a
-  // reclaim, not a burst, so it posts a fresh message even within the window.
-  assertEquals(
-    decidePbAnnouncement(35, "alice", 1, stored({ holders: 2 }), false),
-    "post",
-  );
+Deno.test("topPbToAnnounce: a sole player's non-improving replay announces nothing", () => {
+  // me already at 40 (prev 40); a worse/equal build doesn't better their own best.
+  assertEquals(topPbToAnnounce(rows(["me", 40]), "me", 40), null);
 });
 
-Deno.test("decidePbAnnouncement: a matched top edits the tie count even when stale", () => {
-  // The staleness gate is only for a same-holder IMPROVEMENT; a fresh match still
-  // edits the standing post's tie count.
-  assertEquals(decidePbAnnouncement(30.5, "alice", 2, stored(), true), "edit");
-});
-
-Deno.test("decidePbAnnouncement: the same top and holder count is a no-op", () => {
-  assertEquals(decidePbAnnouncement(30.5, "alice", 1, stored(), false), "none");
-});
-
-Deno.test("decidePbAnnouncement: a lower top (can't happen) is a no-op", () => {
-  assertEquals(decidePbAnnouncement(28, "alice", 1, stored(), false), "none");
-});
-
-Deno.test("pbEmbed: a sole holder is gold and names the setter", () => {
-  const e = pbEmbed("alice", 30.5, 1, day);
+Deno.test("pbEmbed: gold, names the setter, links the day", () => {
+  const e = pbEmbed("alice", 30.5, day);
   assertEquals(e.color, GOLD);
-  assertStringIncludes(e.description, "**alice**");
-  assertStringIncludes(e.description, "30.50s");
-  assertStringIncludes(e.url, "20260706?board=pb");
-});
-
-Deno.test("pbEmbed: a matched record is chartreuse with the tie count", () => {
-  const two = pbEmbed("alice", 30.5, 2, day);
-  assertEquals(two.color, CHARTREUSE);
-  // Keeps the solo opener, then appends the tally.
+  assertEquals(e.title, "Top PB: Jul 6");
   assertStringIncludes(
-    two.description,
-    "set the top build of Jul 6 at **30.50s**.",
+    e.description,
+    "**alice** set the top build of Jul 6 at **30.50s**.",
   );
-  assertStringIncludes(two.description, "1 player has matched.");
-
-  const four = pbEmbed("alice", 30.5, 4, day);
-  assertStringIncludes(four.description, "3 players have matched.");
+  assertStringIncludes(e.url, "20260706?board=pb");
 });
