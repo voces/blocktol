@@ -103,13 +103,17 @@ export const pbEmbed = (
   const t = `${formatSeconds(time)}s`;
   const solo = holders <= 1;
   const matched = holders - 1;
-  const description = solo
-    ? `**${holder}** set the top build of ${date} at **${t}**.\n\n[Open the puzzle](${url})`
-    : `**${holder}** holds the top build of ${date} at **${t}**, now matched by ${matched} ${
-      matched === 1 ? "player" : "players"
-    } — a record.\n\n[Open the puzzle](${url})`;
+  // Same opening line whether solo or matched; a match just appends the tally.
+  // The shared-record signal is the chartreuse colour, not words.
+  const opener = `**${holder}** set the top build of ${date} at **${t}**.`;
+  const tally = ` ${matched} ${
+    matched === 1 ? "player has" : "players have"
+  } matched.`;
+  const description = `${
+    solo ? opener : opener + tally
+  }\n\n[Open the puzzle](${url})`;
   return {
-    title: `Top PB — ${date}`,
+    title: `Top PB: ${date}`,
     url,
     description,
     color: solo ? GOLD : CHARTREUSE,

@@ -40,18 +40,16 @@ export const dailyEmbed = (
   if (solo) {
     description = `**${winners[0]}** won the daily at **${t}**.`;
   } else if (winners.length <= MAX_NAMES) {
-    description =
-      `${winners.length} players tied for the top at **${t}** — a record:\n${
-        winners.map((w) => `• ${w}`).join("\n")
-      }`;
+    description = `${winners.length} players tied for the top at **${t}**:\n${
+      winners.map((w) => `• ${w}`).join("\n")
+    }`;
   } else {
-    description =
-      `${winners.length} players tied for the top at **${t}** — a record.`;
+    description = `${winners.length} players tied for the top at **${t}**.`;
   }
   description += `\n\n[View the results](${url})`;
 
   return {
-    title: `Daily results — ${date}`,
+    title: `Daily results: ${date}`,
     url,
     description,
     color: solo ? GOLD : CHARTREUSE,
