@@ -51,6 +51,20 @@ import { computeVerdict } from "./verdict.ts";
 // Monotonic key for implosion ghosts, so overlapping reverts can't collide.
 let implosionId = 0;
 
+// The client's ranked build clock is run this many ms ahead of the server's true
+// 60s window. The server enforces the window from the run's insert time; the
+// client derives its deadline from the server's reported remaining time, but that
+// response spent time in flight, leaving the client a hair LATER than the real
+// close. A save fired at the client's 0 (the execute-time flush) could then reach
+// the server just past 60s and come back expired — the last-second edit is lost
+// and the runner executes a stale path (the persistence-revert incident). Pulling
+// the client window in by this margin gives the final flush headroom to land
+// inside the server window. The player loses a quarter second of build time; the
+// hard 60s threshold stops booting last-second edits. Ranked only — free play is
+// client-authoritative (it commits the executed maze in full) with no server
+// window to race.
+const SAVE_GRACE_MS = 250;
+
 export const useInit = () => {
   const game = useGame();
   const {
@@ -166,7 +180,10 @@ export const useInit = () => {
       // next local midnight: an attempt started at 11:59:40 gets ~20s, and one
       // resumed after midnight (backgrounded across it) is already expired and
       // executes at once. `rankedEndsAtMidnight` lets the HUD say why it's short.
-      const windowEnd = Date.now() + data.remainingTime * 1000;
+      // The 60s window is pulled in by SAVE_GRACE_MS so the execute-time flush
+      // lands inside the server's window (see the constant); the midnight cut is
+      // a separate hard limit and takes no grace.
+      const windowEnd = Date.now() + data.remainingTime * 1000 - SAVE_GRACE_MS;
       const deadline = Math.min(windowEnd, nextLocalMidnight());
       deadlineRef.current = deadline;
       setTime(Math.max(0, Math.floor((deadline - Date.now()) / 1000)));
