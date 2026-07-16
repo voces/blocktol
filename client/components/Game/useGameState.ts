@@ -182,14 +182,10 @@ export const useGameState = () => {
     setFreePlay(false);
     setViewing(false);
     setVerdict(undefined);
-    // The overlay is always TODAY's daily-in-waiting (boot, next attempt, or the
-    // post-rollover switch), and today is canonically iteration===undefined for
-    // the view-scoped surfaces. Clear it so a prestart reached from another day
-    // — the rollover switch (playNewDaily), or hitting Play back to Start while
-    // reviewing a past maze — doesn't strand `iteration` on that old day: the
-    // standings dock would keep its reveal gate off (surfacing a past day's field
-    // behind the overlay) and syncViewUrl would keep writing that day's
-    // `/YYYYMMDD`, so a refresh would land back on it instead of the daily.
+    // The overlay is always today's daily-in-waiting, so reset to today
+    // (iteration===undefined) — otherwise a prestart reached from another day
+    // strands the view there, leaking its standings behind the overlay and
+    // deep-linking a refresh back onto it.
     setIteration(undefined);
     setPrestart(true);
     setBlocks([]);
