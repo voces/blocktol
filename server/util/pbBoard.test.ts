@@ -30,6 +30,15 @@ Deno.test("decidePbAnnouncement: the same leader improving after the window post
   assertEquals(decidePbAnnouncement(35, "alice", 1, stored(), true), "post");
 });
 
+Deno.test("decidePbAnnouncement: the same leader improving after a match posts anew", () => {
+  // A → B matches (holders now 2) → A improves: breaking a shared record is a
+  // reclaim, not a burst, so it posts a fresh message even within the window.
+  assertEquals(
+    decidePbAnnouncement(35, "alice", 1, stored({ holders: 2 }), false),
+    "post",
+  );
+});
+
 Deno.test("decidePbAnnouncement: a matched top edits the tie count even when stale", () => {
   // The staleness gate is only for a same-holder IMPROVEMENT; a fresh match still
   // edits the standing post's tie count.

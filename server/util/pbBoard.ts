@@ -59,13 +59,15 @@ export const PB_RECORD_RESET_MS = 12 * 60 * 60 * 1000;
 // a return visit, not a burst. Pure so its branches are unit-testable without a
 // webhook or a clock:
 //   - "post": the first record of the day; a strictly higher top taken by a
-//     DIFFERENT holder (a lead change); or the same holder improving after the
-//     post went stale — a fresh message goes up.
-//   - "edit": the standing record evolved within the window — the same holder
-//     pushed their own top higher, or more players matched the current top — so
-//     the existing message is updated in place. Editing the same-holder
-//     improvement is what keeps one player's climb (many leading saves in a 60s
-//     window) to a single message rather than a burst of "new record" posts.
+//     DIFFERENT holder (a lead change); or the same holder improving their own top
+//     when that's no longer part of one live burst — the record has since been
+//     MATCHED by someone else (breaking a shared record is its own event) or the
+//     post has gone stale (a return visit hours later). A fresh message goes up.
+//   - "edit": the standing record evolved as part of the holder's own live climb —
+//     they pushed their still-unmatched top higher within the window — or more
+//     players matched the current top. The existing message is updated in place.
+//     Editing the same-holder climb is what keeps one player's burst (many leading
+//     saves in a 60s window) to a single message rather than a spray of posts.
 //   - "none": nothing changed (or the top somehow regressed, which can't happen).
 export const decidePbAnnouncement = (
   top: number,
@@ -77,7 +79,11 @@ export const decidePbAnnouncement = (
   if (!stored) return "post";
   if (top > stored.topTime) {
     if (holder !== stored.topUser) return "post"; // lead change
-    return sameHolderStale ? "post" : "edit"; // same holder: burst vs return
+    // Same holder improving their own top. Edit to collapse a live save-burst,
+    // but post anew once that framing breaks: the record was matched in between
+    // (holders > 1, so this improvement breaks a shared record) or the post is
+    // stale (a return visit). Both are competitive events worth their own message.
+    return sameHolderStale || stored.holders > 1 ? "post" : "edit";
   }
   if (top === stored.topTime && holders > stored.holders) return "edit";
   return "none";
