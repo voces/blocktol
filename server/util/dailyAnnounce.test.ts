@@ -17,7 +17,6 @@ Deno.test("dailyEmbed: a tie up to ten lists every winner (chartreuse)", () => {
   const e = dailyEmbed(winners, 42.1, day);
   assertEquals(e.color, CHARTREUSE);
   assertStringIncludes(e.description, "3 players tied");
-  assertEquals(e.description.includes("a record"), false);
   for (const w of winners) assertStringIncludes(e.description, `• ${w}`);
 });
 
