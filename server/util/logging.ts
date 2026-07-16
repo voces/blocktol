@@ -100,9 +100,17 @@ const emit = (
   const all: LogFields = req
     ? { ...getLoggingContext(req), ...fields }
     : fields;
-  // The one sanctioned console call — the sink every other log flows to.
+  // The one sanctioned console call — the sink every other log flows to. The
+  // trailing space is deliberate and load-bearing: Deno's console→OTel bridge
+  // copies the console newline into the exported log-record *body*, so each line
+  // reaches VictoriaLogs as "…lastKey=lastVal\n". `unpack_logfmt` ends a bare
+  // value at the next whitespace, so without this the trailing \n sticks to the
+  // last field's value (box-side hit exactly that). The space terminates the
+  // last value before the newline; it's invisible in journalctl and
+  // insignificant to logfmt. formatLogfmt stays pure logfmt (its tests assert
+  // that) — the compensation lives only here, at the console sink.
   // deno-lint-ignore no-console
-  console[level](formatLogfmt(level, msg, all));
+  console[level](formatLogfmt(level, msg, all) + " ");
 };
 
 // `(msg, fields?)`, or `(req, msg, fields?)` to fold in the request context.
