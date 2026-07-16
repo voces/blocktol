@@ -476,7 +476,11 @@ service. A thrown handler exception is `console.error`'d (→ VictoriaLogs,
 trace-correlated by `trace_id`) and `recordException`'d onto the request span (→
 VictoriaTraces); a handler that returns a 5xx without throwing is `log.error`'d,
 and the 500 response marks its span errored; a relayed client crash
-(`reportClientError`) is `log.error`'d the same way.
+(`reportClientError`) is `log.error`'d the same way. `endLogger` also returns
+the request span's trace id on every response as `x-blocktol-trace-id` (skipped
+when tracing is off — the Deno Deploy instance reports the all-zero id), so a
+response can be pasted straight into VictoriaTraces to pull its trace, and its
+logs via the shared `trace_id`.
 
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
 (`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
