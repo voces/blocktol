@@ -78,6 +78,19 @@ const fieldsToLogfmt = (fields: LogFields): string =>
 
 type Level = "error" | "warn" | "info" | "debug";
 
+// A single trailing space appended to every emitted line. NOT cosmetic — do not
+// remove. Deno exposes no structured-logs API (`Deno.telemetry` has only
+// tracer/meter/context providers), so `console.*` is the only way a log reaches
+// VictoriaLogs, and Deno's console→OTel bridge copies console's newline into the
+// exported log-record *body* (verified against Deno's actual OTLP output). VL's
+// `unpack_logfmt` ends a bare value at the next whitespace, so a body of
+// "…lastKey=lastVal\n" would fold that `\n` into the last field's value. This
+// terminator ends the last value on whitespace *before* the newline, so the last
+// field parses clean. Insignificant to logfmt and invisible in journalctl. Kept
+// out of formatLogfmt so that stays pure logfmt (its tests assert exact output);
+// the newline is a console-sink artifact, so its fix lives at the sink.
+const RECORD_TERMINATOR = " ";
+
 // The full logfmt line. `level=` doubles as the field Grafana colours log rows by.
 // No timestamp in the payload — Deno's OTel stamps `_time`; a second one here would
 // duplicate it (the bug the Vector-shipped services hit).
@@ -101,8 +114,10 @@ const emit = (
     ? { ...getLoggingContext(req), ...fields }
     : fields;
   // The one sanctioned console call — the sink every other log flows to.
+  // RECORD_TERMINATOR shields the last field from Deno's injected newline (see
+  // its definition).
   // deno-lint-ignore no-console
-  console[level](formatLogfmt(level, msg, all));
+  console[level](formatLogfmt(level, msg, all) + RECORD_TERMINATOR);
 };
 
 // `(msg, fields?)`, or `(req, msg, fields?)` to fold in the request context.

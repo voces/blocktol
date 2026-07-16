@@ -31,6 +31,12 @@ jobs:
         # excluded in deno.jsonc). See deno.jsonc `lint`.
         run: deno lint
 
+      - name: Generate version
+        # common/version.ts is gitignored/generated; both server/index.ts and
+        # client/index.ts import it, so it must exist before the type check (and
+        # the build regenerates it anyway). git is present here (checkout).
+        run: deno task version
+
       - name: Type check
         run: deno check server/index.ts client/index.ts common/pathing.ts
 

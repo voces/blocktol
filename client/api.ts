@@ -1,5 +1,6 @@
 import type { BlocktolApi } from "../common/api.ts";
 import { noteFailure, noteSuccess } from "./store/connection.ts";
+import { CLIENT_SHA, noteServerVersion } from "./store/version.ts";
 import { Emitter, emitter } from "./util/emitter.ts";
 import { getId } from "./util/id.ts";
 
@@ -38,7 +39,10 @@ const doFetch = (method: string, input: unknown) =>
   fetch(`/api/${method}`, {
     method: "POST",
     body: JSON.stringify(input),
-    headers: { authorization: getId() },
+    // x-blocktol-client-sha: this bundle's build, so the server logs the version
+    // skew of who's calling it (beginLogger). The server answers with its own
+    // build in x-blocktol-server-sha, which we read below to detect a stale tab.
+    headers: { authorization: getId(), "x-blocktol-client-sha": CLIENT_SHA },
   });
 
 // Methods safe to auto-retry on a transport failure (fetch rejected — the
@@ -283,6 +287,11 @@ export const api = new Proxy({}, {
         throw err;
       }
       noteSuccess();
+      // Note the server's build off the response header; a build newer than this
+      // bundle marks the tab stale and schedules a reload at a safe moment (see
+      // store/version.ts, useVersionRefresh). Synthetic primed responses carry no
+      // header — a no-op.
+      noteServerVersion(resp.headers.get("x-blocktol-server-sha"));
       try {
         const data = await resp.json();
         if (!("error" in data)) em.dispatchEvent(method, data);

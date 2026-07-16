@@ -17,9 +17,10 @@ WorkingDirectory=/home/ubuntu/blocktol
 Environment=HOME=/home/ubuntu
 
 # All runtime config lives here (chmod 600): PORT, APP_ENV=prod, SQL_PASSWORD,
-# SQL_PROXY_URL, NEW_RELIC_API_KEY, VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT.
-# SQL_PROXY_URL points at the LOCAL /sql proxy (http://127.0.0.1:3626/sql) to
-# drop the internet hop.
+# SQL_PROXY_URL, VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT, and the OTel telemetry
+# vars (OTEL_DENO=true, per-signal endpoints — see CLAUDE.md's Observability
+# section). SQL_PROXY_URL points at the LOCAL /sql proxy
+# (http://127.0.0.1:3626/sql) to drop the internet hop.
 EnvironmentFile=/home/ubuntu/blocktol/.env
 
 # The client bundle is rebuilt by the deploy webhook, not here, so start is fast;

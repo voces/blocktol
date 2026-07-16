@@ -27,6 +27,7 @@ import { startRolloverWatch } from "../store/dailyRollover.ts";
 import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
+import { useVersionRefresh } from "../hooks/useVersionRefresh.ts";
 
 const Shell = (
   { children, gameState }: {
@@ -235,6 +236,10 @@ export const App = () => {
       globalThis.removeEventListener("pageshow", onPageShow);
     };
   }, [showOnboarding, linkPending, gameState.phase]);
+
+  // Reload to the newest build when the server reports one — deferred until the
+  // board is out of an attempt (never mid-build/run). See useVersionRefresh.
+  useVersionRefresh(gameState.phase);
 
   if (linkPending) {
     return <MoveGate onResolved={() => setLinkPending(false)} />;

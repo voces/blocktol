@@ -471,14 +471,12 @@ ports — `localhost:9428/select/vmui/` and `localhost:10428/select/vmui/`. (A
 `victoria.w3x.io` DNS record exists but is currently parked/unused — there is no
 authed public ingest or viewing endpoint.)
 
-New Relic has been **retired** — this self-hosted pipeline is the only sink now,
-which also drops that US third-party transfer. Errors flow to it, not a separate
-service: a thrown handler exception is `console.error`'d (→ VictoriaLogs,
+This self-hosted pipeline is the only error sink; there's no separate error
+service. A thrown handler exception is `console.error`'d (→ VictoriaLogs,
 trace-correlated by `trace_id`) and `recordException`'d onto the request span (→
 VictoriaTraces); a handler that returns a 5xx without throwing is `log.error`'d,
 and the 500 response marks its span errored; a relayed client crash
-(`reportClientError`) is `log.error`'d the same way. There is no `reportError`
-helper and no `NEW_RELIC_API_KEY`.
+(`reportClientError`) is `log.error`'d the same way.
 
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
 (`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
@@ -495,6 +493,24 @@ hatches in the same module: `errText(err)` renders a caught value to one field
 by stringifying any non-primitive value. No timestamp in the payload — Deno's
 OTel stamps `_time`; a second would duplicate it. `level=` also gives Grafana a
 field to colour rows by.
+
+**Build SHA / stale-client reload.** `common/version.ts` (`export const SHA`) is
+generated at build time by `scripts/genVersion.ts` — the `version` task, which
+`build`/`dev` run first; it's **gitignored** (a build artifact like
+`public/js`), so `deno task start` requires a prior build (CI generates it
+before `deno check`/`build`). Because it lives in pure `common/`, the server
+imports the _same_ constant the client bundles, so the two SHAs are
+byte-identical by construction — no `GIT_SHA` env plumbing, no short-vs-full
+mismatch. `genVersion` prefers a `GIT_SHA` env, else
+`git rev-parse --short HEAD`, else `"dev"` (which no-ops the comparison). Every
+request logs `serverSha` (this process's build) and `clientSha` (the caller's
+bundle, sent as the `x-blocktol-client-sha` header) on the start line, so
+version skew is queryable. `endLogger` stamps `x-blocktol-server-sha` on
+responses; the client reads it (`api.ts` → `store/version.ts`) and, when the
+server's build is newer than its own bundle, flips a sticky `staleClient`
+signal. `useVersionRefresh` (wired in `App`) then `location.reload()`s to pick
+up the fresh assets — but **never mid-attempt** (deferred while the board phase
+is `building`/`running`; the sticky flag reloads once the attempt ends).
 
 The user id rides telemetry only as a **hashed** tag (`userHash` in the request
 log, `user.hash` on the request span), via `util/hashUserId.ts` (a truncated
