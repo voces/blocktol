@@ -64,8 +64,14 @@ Deno.test("pbEmbed: a sole holder is gold and names the setter", () => {
 Deno.test("pbEmbed: a matched record is chartreuse with the tie count", () => {
   const two = pbEmbed("alice", 30.5, 2, day);
   assertEquals(two.color, CHARTREUSE);
-  assertStringIncludes(two.description, "matched by 1 player");
+  // Keeps the solo opener, then appends the tally — no "a record" wording.
+  assertStringIncludes(
+    two.description,
+    "set the top build of Jul 6 at **30.50s**.",
+  );
+  assertStringIncludes(two.description, "1 player has matched.");
+  assertEquals(two.description.includes("a record"), false);
 
   const four = pbEmbed("alice", 30.5, 4, day);
-  assertStringIncludes(four.description, "matched by 3 players");
+  assertStringIncludes(four.description, "3 players have matched.");
 });
