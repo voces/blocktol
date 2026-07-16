@@ -496,6 +496,24 @@ by stringifying any non-primitive value. No timestamp in the payload — Deno's
 OTel stamps `_time`; a second would duplicate it. `level=` also gives Grafana a
 field to colour rows by.
 
+**Build SHA / stale-client reload.** `common/version.ts` (`export const SHA`) is
+generated at build time by `scripts/genVersion.ts` — the `version` task, which
+`build`/`dev` run first; it's **gitignored** (a build artifact like
+`public/js`), so `deno task start` requires a prior build (CI generates it
+before `deno check`/`build`). Because it lives in pure `common/`, the server
+imports the _same_ constant the client bundles, so the two SHAs are
+byte-identical by construction — no `GIT_SHA` env plumbing, no short-vs-full
+mismatch. `genVersion` prefers a `GIT_SHA` env, else
+`git rev-parse --short HEAD`, else `"dev"` (which no-ops the comparison). Every
+request logs `serverSha` (this process's build) and `clientSha` (the caller's
+bundle, sent as the `x-blocktol-client-sha` header) on the start line, so
+version skew is queryable. `endLogger` stamps `x-blocktol-server-sha` on
+responses; the client reads it (`api.ts` → `store/version.ts`) and, when the
+server's build is newer than its own bundle, flips a sticky `staleClient`
+signal. `useVersionRefresh` (wired in `App`) then `location.reload()`s to pick
+up the fresh assets — but **never mid-attempt** (deferred while the board phase
+is `building`/`running`; the sticky flag reloads once the attempt ends).
+
 The user id rides telemetry only as a **hashed** tag (`userHash` in the request
 log, `user.hash` on the request span), via `util/hashUserId.ts` (a truncated
 SHA-256) — set in `middleware/userid.ts`, also used by the cap-hit warn. Never

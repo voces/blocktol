@@ -20,9 +20,14 @@
     "@std/path/posix": "jsr:@std/path@^1/posix"
   },
   "tasks": {
+    // Stamp the build's git SHA into common/version.ts (gitignored, generated) —
+    // the one constant both the server and the bundled client read to detect a
+    // stale client (see scripts/genVersion.ts). Runs first in build/dev so the
+    // file exists before the bundle and the server import resolve.
+    "version": "deno run --allow-run=git --allow-env=GIT_SHA --allow-write=common/version.ts scripts/genVersion.ts",
     "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
     "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
-    "build": "deno task bundle && deno task bundle:pathing",
+    "build": "deno task version && deno task bundle && deno task bundle:pathing",
     // --no-check (not =remote): skip type-checking at start entirely. CI's
     // `deno check` and `deno task test` are the type gate, so re-checking the
     // local graph on every boot is redundant work on the cold-start critical
@@ -32,7 +37,7 @@
     // opens a connection. Harmless on the proxy transport (the driver never
     // loads). SQL_TRANSPORT/HOST/PORT/USER/DATABASE configure that connector.
     "start": "deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read server/index.ts",
-    "dev": "deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
+    "dev": "deno task version && deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
     "migrate": "deno run --no-check=remote --allow-net --allow-sys --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit
@@ -59,6 +64,8 @@
     }
   },
   "fmt": {
-    "exclude": ["public"]
+    // common/version.ts is generated (scripts/genVersion.ts) — exclude it so a
+    // build never trips `deno fmt --check` on machine-written output.
+    "exclude": ["public", "common/version.ts"]
   }
 }

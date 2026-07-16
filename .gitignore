@@ -1,3 +1,5 @@
 *.http
 scratchpad
 .env
+# Generated at build time by scripts/genVersion.ts (the shared build SHA).
+common/version.ts

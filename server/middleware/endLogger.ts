@@ -1,3 +1,4 @@
+import { SHA } from "../../common/version.ts";
 import { log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { logMap, routeOf } from "./beginLogger.ts";
@@ -18,6 +19,18 @@ const prettySize = (size: number) => {
 
 export const endLogger: Handler = (req, _, prev) => {
   const data = logMap.get(req);
+
+  // Stamp this process's build SHA on the way out so a running client can tell
+  // it's older than the deploy now answering and reload (client reads it in
+  // api.ts → store/version.ts). Every handled response carries it — the client
+  // only reads it off API responses, but a blanket header is simplest and
+  // harmless elsewhere. Guarded: a few responses (e.g. some static assets) come
+  // back with immutable headers, where set() throws.
+  if (prev) {
+    try {
+      prev.headers.set("x-blocktol-server-sha", SHA);
+    } catch { /* immutable headers — skip */ }
+  }
 
   const length = prev?.headers.get("content-length");
 
