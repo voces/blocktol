@@ -46,9 +46,12 @@ let attempt = 0;
 let retryTimer = -1;
 // Trailing-debounce timer: a burst of placements collapses to one save instead
 // of one-per-placement. Only ranked builds use this saver now (free play persists
-// locally), and the endgame stays per-placement — see saveRun's `immediate`.
+// locally). The delay is passed per-save by the caller (useInputEnd, `saveDebounce`),
+// which shrinks it toward 0 as the clock runs out so a last-second edit still
+// lands before the window closes. DEBOUNCE_MS is the ceiling (and the default
+// when no delay is given).
 let debounceTimer = -1;
-const DEBOUNCE_MS = 2_000;
+export const DEBOUNCE_MS = 2_000;
 // Bumped by reset/finalize; an in-flight response from a previous generation
 // is ignored so a late verdict can't mutate a board it no longer describes.
 let gen = 0;
@@ -108,17 +111,17 @@ const flush = () => {
 
 // Queue the build's current maze for persistence (replacing any older
 // unconfirmed save). A fresh user action also supersedes a pending retry
-// backoff. Normally the send is debounced so a burst of placements collapses to
-// one save; `immediate` (passed when the clock is low) sends now, so the maze the
-// run will execute is server-confirmed before the 60s window closes — the
-// debounce never widens the existing window-edge race.
-export const saveRun = (save: Save, immediate = false) => {
+// backoff. `debounceMs` collapses a burst of placements into one save; the
+// caller shrinks it as the clock runs out (0 = send now), so the maze the run
+// will execute is server-confirmed before the 60s window closes — the debounce
+// never widens the existing window-edge race.
+export const saveRun = (save: Save, debounceMs = DEBOUNCE_MS) => {
   latest = save;
   clearTimeout(retryTimer);
   clearTimeout(debounceTimer);
   attempt = 0;
-  if (immediate) flush();
-  else debounceTimer = setTimeout(flush, DEBOUNCE_MS);
+  if (debounceMs <= 0) flush();
+  else debounceTimer = setTimeout(flush, debounceMs);
 };
 
 // Drop all pending work and ignore any in-flight response. For board changes

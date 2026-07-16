@@ -8,7 +8,7 @@ import {
   touching,
   transitionBlock,
 } from "./interaction.ts";
-import { saveRun } from "./runSaver.ts";
+import { DEBOUNCE_MS, saveRun } from "./runSaver.ts";
 import { beginFreePlay, persistFreePlay } from "./freePlay.ts";
 import {
   isBorderPoint,
@@ -20,11 +20,19 @@ import {
 } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
-// Below this many seconds left, ranked saves go out immediately rather than
-// debounced (see saveRun) — the endgame stays per-placement so the executed maze
-// is server-confirmed before the window closes. Comfortably above DEBOUNCE_MS, so
-// a debounced save from earlier has always flushed by the time we cross it.
-const IMMEDIATE_SAVE_SECONDS = 3;
+// Trailing-debounce window for a ranked save, shrinking as the clock runs out.
+// Early in the build a burst of placements collapses to one save (DEBOUNCE_MS);
+// over the final RAMP_SECONDS it ramps linearly to 0, so a late edit is sent
+// almost immediately and is server-confirmed before the window closes rather
+// than caught by it and reverted (the last-second-edit-lost incident). At ~5s
+// left the wait is ~1s, at 1s it's ~0.2s, at 0 it sends now. Free play doesn't
+// use this saver (it persists locally and commits once at execution).
+const DEBOUNCE_RAMP_SECONDS = 10;
+const saveDebounce = (secondsLeft: number) =>
+  secondsLeft >= DEBOUNCE_RAMP_SECONDS ? DEBOUNCE_MS : Math.max(
+    0,
+    Math.round((DEBOUNCE_MS * secondsLeft) / DEBOUNCE_RAMP_SECONDS),
+  );
 
 export const useInputEnd = (svg: SVGSVGElement | null) => {
   const {
@@ -64,7 +72,8 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       setBlocks(newBlocks);
       // Persistence diverges by mode. Free play keeps its state on the client
       // (localStorage) until commit — no network mid-build. Ranked saves to the
-      // server, debounced, but immediately in the final seconds.
+      // server, debounced by a delay that shrinks to 0 as the clock runs out
+      // (saveDebounce) so a last-second edit still lands.
       if (freePlay) {
         persistFreePlay(
           iteration ?? -1,
@@ -74,7 +83,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       } else {
         saveRun(
           { iteration: iteration ?? -1, blocks: localBlocks },
-          timeRef.current <= IMMEDIATE_SAVE_SECONDS,
+          saveDebounce(timeRef.current),
         );
       }
     };

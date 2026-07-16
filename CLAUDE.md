@@ -293,21 +293,25 @@ Other invariants:
 - **The run lifecycle splits by type, to keep request volume down and survive
   deploys.** A **ranked** attempt keeps the server bookends: `startRun` (stamps
   `ranked`, opens the authoritative 60s window) and per-build `updateRun`s — now
-  **debounced** in `runSaver.ts` (a burst of placements collapses to one save),
-  except the final seconds save immediately so the executed maze is confirmed
-  before the window closes. **Free play** makes _no_ server round trips during
-  the build: the client computes the path locally (`localRun`, the same engine
-  the server runs), enforces the 60s window itself, mirrors the in-progress maze
-  to `localStorage` (resume across reload — `freePlay.ts`), and touches the
-  server exactly once, at execution, via `commitRun`. That commit is a single
-  idempotent `INSERT` keyed by a client-generated `client_id` (migration v8), so
-  it is **retryable**: a connection dropped by a deploy retries onto a fresh
-  isolate and lands rather than losing the run. `commitRun` stays backwards
-  compatible — a legacy cached client that still
-  `startRun`+`updateRun`+bare-committed hits the old flip-void path (no
-  `blocks`). Trusting the client on free play is deliberate: it's post-ranked,
-  never feeds ELO, and the server still recomputes the time from the submitted
-  maze — only the 60s budget is client-enforced.
+  **debounced** in `runSaver.ts` (a burst of placements collapses to one save).
+  The debounce isn't fixed: `useInputEnd`'s `saveDebounce` ramps it from the 2s
+  ceiling down to 0 over the final 10s, so a last-second edit is confirmed
+  before the window closes rather than caught by it and reverted. The client
+  also runs the ranked build clock `SAVE_GRACE_MS` (250ms) ahead of the server's
+  true 60s (see `useInit`), so the execute-time flush lands inside the server
+  window instead of arriving just past it (the last-second-edit-lost incident).
+  **Free play** makes _no_ server round trips during the build: the client
+  computes the path locally (`localRun`, the same engine the server runs),
+  enforces the 60s window itself, mirrors the in-progress maze to `localStorage`
+  (resume across reload — `freePlay.ts`), and touches the server exactly once,
+  at execution, via `commitRun`. That commit is a single idempotent `INSERT`
+  keyed by a client-generated `client_id` (migration v8), so it is
+  **retryable**: a connection dropped by a deploy retries onto a fresh isolate
+  and lands rather than losing the run. `commitRun` stays backwards compatible —
+  a legacy cached client that still `startRun`+`updateRun`+bare-committed hits
+  the old flip-void path (no `blocks`). Trusting the client on free play is
+  deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
+  the time from the submitted maze — only the 60s budget is client-enforced.
 - **Free play is ungated except for today's own daily.** Any past date is
   replayable at any time; the only board `getBoard` gates is _today's_ daily —
   it can't be free-played until its three ranked attempts are spent (no
@@ -392,26 +396,26 @@ placement. Every placement recomputes the runner locally (`localRun` in
 the board updates with no round trip; **persistence then splits by run type**
 (see the run lifecycle above). **Ranked** goes through `runSaver.ts` — a
 **trailing-edge queue of depth 1** (every save sends the full maze, newer saves
-coalesce, failures retry with backoff), now **debounced** except in the final
-seconds. At run start `flushRunSaver` **sends** the pending maze immediately
-(rather than reverting to the last confirmed one — that would drop a debounced
-edit the player hasn't waited out, e.g. tapping "Ready?" mid-build); if the
-window has already closed the flush comes back expired and `onExpired` snaps the
-board back. **Free play** bypasses the saver entirely: `freePlay.ts` mints the
-per-attempt `client_id`, mirrors the maze to `localStorage` for reload-resume,
-and `commitRun` fires once at execution; `useInit` awaits that commit before
-re-staging so a slow (retrying) commit can't let the re-stage drop the run from
-recents. Navigating away mid-build (reviewing a maze, another day) deliberately
-does NOT abandon the build — the record stays, and staging its board within the
-window resumes it. Its window doesn't pause either: reviewing a past maze keeps
-the live countdown in the HUD's Play slot alongside the reset button, and reset
-there clears the attempt while staying on the reviewed maze (the input hooks
-gate on `viewing`, so the ticking clock never makes a reviewed board editable).
-Should the window expire mid-review, the board hands back to the build (restored
-from the local record via `pendingFreePlay`, the one read that ignores the
-deadline) and it executes normally — committed, runner released.
-`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
-result.
+coalesce, failures retry with backoff), now **debounced** with a delay that
+ramps from 2s down to 0 over the final 10s (`saveDebounce`). At run start
+`flushRunSaver` **sends** the pending maze immediately (rather than reverting to
+the last confirmed one — that would drop a debounced edit the player hasn't
+waited out, e.g. tapping "Ready?" mid-build); if the window has already closed
+the flush comes back expired and `onExpired` snaps the board back. **Free play**
+bypasses the saver entirely: `freePlay.ts` mints the per-attempt `client_id`,
+mirrors the maze to `localStorage` for reload-resume, and `commitRun` fires once
+at execution; `useInit` awaits that commit before re-staging so a slow
+(retrying) commit can't let the re-stage drop the run from recents. Navigating
+away mid-build (reviewing a maze, another day) deliberately does NOT abandon the
+build — the record stays, and staging its board within the window resumes it.
+Its window doesn't pause either: reviewing a past maze keeps the live countdown
+in the HUD's Play slot alongside the reset button, and reset there clears the
+attempt while staying on the reviewed maze (the input hooks gate on `viewing`,
+so the ticking clock never makes a reviewed board editable). Should the window
+expire mid-review, the board hands back to the build (restored from the local
+record via `pendingFreePlay`, the one read that ignores the deadline) and it
+executes normally — committed, runner released. `useClock`/`RunClock` run the
+60s/animation timing; `verdict.ts` computes the result.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy
