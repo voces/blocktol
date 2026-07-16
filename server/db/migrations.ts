@@ -246,6 +246,22 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_pb_announcement_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
+  {
+    version: 10,
+    name: "pb-announcement-announced-at",
+    // When the standing "top PB" post was created (util/pbBoard.ts). A same-holder
+    // improvement normally EDITS that post — collapsing a 60s burst of leading
+    // saves to one message — but if it lands more than PB_RECORD_RESET_MS later (a
+    // return visit, not a burst) it posts a fresh message instead. That gate needs
+    // the post's age, so record it: set to now on each (re)post, left untouched on
+    // an edit, so the window is anchored at the post. Appended rather than folded
+    // into v9 because v9 may already have run against the dev DB (the runner keys
+    // off version alone and never re-runs an applied migration). DEFAULT
+    // current_timestamp() backs any row v9 already wrote with a sane recent time.
+    // IF NOT EXISTS keeps it safe if added out of band. MariaDB dialect.
+    up:
+      "ALTER TABLE `pb_announcement` ADD COLUMN IF NOT EXISTS `announced_at` timestamp NOT NULL DEFAULT current_timestamp();",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

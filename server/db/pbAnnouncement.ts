@@ -13,6 +13,7 @@ export type PbAnnouncement = {
   topTime: number;
   topUser: string;
   holders: number;
+  announcedAt: number; // ms epoch — when this standing post was (re)posted
 };
 
 export const getPbAnnouncement = (
@@ -24,9 +25,12 @@ export const getPbAnnouncement = (
       top_time: number;
       top_user: string;
       holders: number;
+      announced_at: number;
     }[]
   >`
-    SELECT message_id, top_time, top_user, holders
+    SELECT
+      message_id, top_time, top_user, holders,
+      UNIX_TIMESTAMP(announced_at) * 1000 announced_at
     FROM pb_announcement
     WHERE iteration = ${iteration};
   `.then((r) =>
@@ -36,12 +40,15 @@ export const getPbAnnouncement = (
         topTime: Number(r[0].top_time),
         topUser: r[0].top_user,
         holders: Number(r[0].holders),
+        announcedAt: Number(r[0].announced_at),
       }
       : null
   );
 
-// Upsert the day's record post state. Idempotent (absolute-value write keyed by
-// iteration), so `sql` (retry-once) is correct — a retried write can't duplicate.
+// Record a freshly POSTED record message, stamping `announced_at` to now — the
+// anchor for the same-holder edit window (see util/pbBoard.ts). Overwrites any
+// prior row for the iteration (a lead change or a post-window re-post). Idempotent
+// absolute-value write keyed by iteration, so `sql` (retry-once) is correct.
 export const upsertPbAnnouncement = (
   iteration: number,
   messageId: string,
@@ -50,11 +57,27 @@ export const upsertPbAnnouncement = (
   holders: number,
 ) =>
   sql`
-    INSERT INTO pb_announcement (iteration, message_id, top_time, top_user, holders)
-    VALUES (${iteration}, ${messageId}, ${topTime}, ${topUser}, ${holders})
+    INSERT INTO pb_announcement (iteration, message_id, top_time, top_user, holders, announced_at)
+    VALUES (${iteration}, ${messageId}, ${topTime}, ${topUser}, ${holders}, current_timestamp())
     ON DUPLICATE KEY UPDATE
       message_id = VALUES(message_id),
       top_time = VALUES(top_time),
       top_user = VALUES(top_user),
-      holders = VALUES(holders);
+      holders = VALUES(holders),
+      announced_at = current_timestamp();
+  `;
+
+// Update an EDITED record message's top state in place, deliberately leaving
+// `announced_at` (and `message_id`) untouched — an edit doesn't move the window
+// anchor, so a burst of edits can't push the same-holder re-post threshold out.
+export const editPbAnnouncement = (
+  iteration: number,
+  topTime: number,
+  topUser: string,
+  holders: number,
+) =>
+  sql`
+    UPDATE pb_announcement
+    SET top_time = ${topTime}, top_user = ${topUser}, holders = ${holders}
+    WHERE iteration = ${iteration};
   `;

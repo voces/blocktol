@@ -16,6 +16,7 @@
 import { formatNotifDate } from "../../common/notifications.ts";
 import { formatSeconds } from "../../common/format.ts";
 import {
+  editPbAnnouncement,
   getPbAnnouncement,
   upsertPbAnnouncement,
 } from "../db/pbAnnouncement.ts";
@@ -44,26 +45,40 @@ type Best = { user: string; name: string; best: number; at: number };
 // equality (a tie of the current top) is exact rather than float-fuzzy.
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// How long the standing post absorbs a holder's own improvements before a further
+// one earns a fresh message. Under it, a same-holder climb is one save-burst and
+// edits in place; over it, the improvement is a return visit (a later session /
+// the next day) worth its own post. Anchored at the post, not each edit (see
+// editPbAnnouncement), so a long slow climb still re-posts 12h after it began.
+export const PB_RECORD_RESET_MS = 12 * 60 * 60 * 1000;
+
 // What to do with the Discord record post given the day's current top (its time,
 // its holder — the earliest to reach it — and how many share it) against the post
-// we last made (null = none yet). Pure so its branches are unit-testable without
-// a webhook:
-//   - "post": the first record of the day, or a strictly higher top taken by a
-//     DIFFERENT holder (a lead change) — a fresh message goes up.
-//   - "edit": the standing record evolved — the same holder pushed their own top
-//     higher, or more players matched the current top — so the existing message
-//     is updated in place. Editing the same-holder improvement is what keeps one
-//     player's climb (many leading saves in a 60s window) to a single message
-//     rather than a burst of "new record" posts.
+// we last made (null = none yet). `sameHolderStale` is true when the standing
+// post is older than PB_RECORD_RESET_MS — a same-holder improvement then reads as
+// a return visit, not a burst. Pure so its branches are unit-testable without a
+// webhook or a clock:
+//   - "post": the first record of the day; a strictly higher top taken by a
+//     DIFFERENT holder (a lead change); or the same holder improving after the
+//     post went stale — a fresh message goes up.
+//   - "edit": the standing record evolved within the window — the same holder
+//     pushed their own top higher, or more players matched the current top — so
+//     the existing message is updated in place. Editing the same-holder
+//     improvement is what keeps one player's climb (many leading saves in a 60s
+//     window) to a single message rather than a burst of "new record" posts.
 //   - "none": nothing changed (or the top somehow regressed, which can't happen).
 export const decidePbAnnouncement = (
   top: number,
   holder: string,
   holders: number,
   stored: { topTime: number; topUser: string; holders: number } | null,
+  sameHolderStale: boolean,
 ): "post" | "edit" | "none" => {
   if (!stored) return "post";
-  if (top > stored.topTime) return holder === stored.topUser ? "edit" : "post";
+  if (top > stored.topTime) {
+    if (holder !== stored.topUser) return "post"; // lead change
+    return sameHolderStale ? "post" : "edit"; // same holder: burst vs return
+  }
   if (top === stored.topTime && holders > stored.holders) return "edit";
   return "none";
 };
@@ -110,14 +125,23 @@ const announceRecord = async (
   // The earliest to reach the top time is the record holder shown on the post.
   const holder = holders.reduce((a, b) => (a.at <= b.at ? a : b));
 
-  const action = decidePbAnnouncement(top, holder.user, holders.length, stored);
+  const sameHolderStale = stored != null &&
+    Date.now() - stored.announcedAt >= PB_RECORD_RESET_MS;
+  const action = decidePbAnnouncement(
+    top,
+    holder.user,
+    holders.length,
+    stored,
+    sameHolderStale,
+  );
   if (action === "none") return;
 
   const embed = pbEmbed(holder.name, top, holders.length, day);
   if (action === "post") {
     const messageId = await postResult(embed);
     // Only persist state once we have a message id to edit later; a failed post
-    // leaves no row, so the next qualifying build simply retries the post.
+    // leaves no row, so the next qualifying build simply retries the post. The
+    // upsert stamps announced_at to now — resetting the same-holder window.
     if (messageId) {
       await upsertPbAnnouncement(
         iteration,
@@ -128,14 +152,10 @@ const announceRecord = async (
       );
     }
   } else if (stored) {
+    // Edit the standing message in place; editPbAnnouncement leaves announced_at
+    // (the window anchor) untouched so a burst of edits can't defer the re-post.
     await editResult(stored.messageId, embed);
-    await upsertPbAnnouncement(
-      iteration,
-      stored.messageId,
-      top,
-      holder.user,
-      holders.length,
-    );
+    await editPbAnnouncement(iteration, top, holder.user, holders.length);
   }
 };
 
