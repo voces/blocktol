@@ -262,7 +262,10 @@ double-write):**
   gaps). Timezones ahead of UTC hit a new local day first, hence the look-ahead.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
-  percentile-based), then fires "daily final" notifications.
+  percentile-based), then fires "daily final" notifications and posts the day's
+  results to Discord (`util/dailyAnnounce.ts` — the top ranked time and everyone
+  tied for it, up to 10 names then a count; gold for a sole winner, chartreuse
+  for a shared top).
 
 ## Domain model & invariants
 
@@ -423,6 +426,32 @@ and the in-app panel never drift). In-app notifications are always written; push
 delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys set.
 `public/sw.js` is the service worker.
 
+**Discord results webhook (`util/discordResults.ts`):** a player-facing channel
+mirror, separate from `adminAlert`'s operator pings. Two posts, both rich embeds
+in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with a
+title link to the day's `/YYYYMMDD?board=` permalink:
+
+- **Top PB** — the day's record on the PB (best-build) board. A fresh post goes
+  up for the first record and for a **lead change** (a strictly higher top taken
+  by a new holder — who, what time, which day); the **same holder pushing their
+  own top higher** and **others matching the top** both _edit_ the standing post
+  instead (chartreuse + a tie count for a shared record). Editing the
+  same-holder climb is what keeps one player's burst of leading saves in a 60s
+  window to a single message rather than a spray of posts. It runs from
+  `util/pbBoard.ts`'s `onPbBuild` — the one hook the run write path calls
+  whenever a build enters the PB field (free-play `commitRun`, or a ranked
+  `updateRun` that reaches the field top), which _also_ drives the lost-top
+  notifications off the same load of the day's bests. The post's message id +
+  last-announced top time/holder/holder-count live in the `pb_announcement`
+  table (one row per iteration, migration v9); `?wait=true` on the POST returns
+  the id to `PATCH` later. `decidePbAnnouncement` (pure, unit-tested) decides
+  post vs edit vs no-op from the current top against that stored state.
+- **Daily final** — posted by the `rate-dailies` cron once a day is rated (see
+  the cron list), listing the ranked winners.
+
+Both are best-effort (never throw, awaited so this Deploy doesn't kill them mid
+flight) and no-op without a webhook configured. See the `DISCORD_*` env vars.
+
 ## Environment variables
 
 `PORT` (local only; the platform manages it in prod), `APP_ENV` (`dev`/`prod` —
@@ -440,7 +469,11 @@ for a second instance on the shared DB),
 `deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app), and
 `DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
 alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset =
-alerts are no-ops). The task definitions enumerate the exact `--allow-env`
+alerts are no-ops), and `DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results
+webhook — the "top PB" and "daily final" posts via `util/discordResults.ts`;
+falls back to `DISCORD_ADMIN_WEBHOOK_URL` when unset, so results land in the
+operator channel until a dedicated one is wired up, and both being unset makes
+the posts no-ops). The task definitions enumerate the exact `--allow-env`
 grants.
 
 **Observability (OpenTelemetry).** Blocktol uses Deno's **built-in** OTel

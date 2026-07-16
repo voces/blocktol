@@ -1,0 +1,177 @@
+// The PB (best-build) board's post-build side effects, run once per build that
+// enters the field — a free-play commit, or a ranked build that reaches the
+// field top (see run/commit.ts and run/update.ts). Two effects share one load of
+// the day's bests:
+//
+//   1. lost-top notifications — a prior #1/T1 holder passed by this build
+//      (decideLostTop; its tie/lead edge cases are unit-tested in lostTop.ts).
+//   2. the Discord "top PB" post — a new day record is posted; when players later
+//      match it, that same post is edited with the tie count (decidePbAnnouncement
+//      below, also unit-tested).
+//
+// Both never throw — a notification/webhook hiccup must not fail the run — and
+// the caller AWAITs onPbBuild because this Deploy kills work left running past
+// the response.
+
+import { formatNotifDate } from "../../common/notifications.ts";
+import { formatSeconds } from "../../common/format.ts";
+import {
+  getPbAnnouncement,
+  upsertPbAnnouncement,
+} from "../db/pbAnnouncement.ts";
+import { getUserPrevBest } from "../db/run.ts";
+import { getIterationBests, getStandingsMeta } from "../db/standings.ts";
+import {
+  CHARTREUSE,
+  dayUrl,
+  editResult,
+  GOLD,
+  postResult,
+  type ResultEmbed,
+} from "./discordResults.ts";
+import { errText, log } from "./logging.ts";
+import { decideLostTop } from "./lostTop.ts";
+import { notifyLostTop } from "./notify.ts";
+
+type Day = [number, number, number];
+
+// A best-build row for the day: a player, their best time, and when they FIRST
+// reached it (`at`, ms epoch — the earliest setter of a shared top is the record
+// holder, matching getDailyStandings' tie rule).
+type Best = { user: string; name: string; best: number; at: number };
+
+// Times are stored to two decimals; round the float MAX back to that grid so top
+// equality (a tie of the current top) is exact rather than float-fuzzy.
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// What to do with the Discord record post given the day's current top (its time,
+// its holder — the earliest to reach it — and how many share it) against the post
+// we last made (null = none yet). Pure so its branches are unit-testable without
+// a webhook:
+//   - "post": the first record of the day, or a strictly higher top taken by a
+//     DIFFERENT holder (a lead change) — a fresh message goes up.
+//   - "edit": the standing record evolved — the same holder pushed their own top
+//     higher, or more players matched the current top — so the existing message
+//     is updated in place. Editing the same-holder improvement is what keeps one
+//     player's climb (many leading saves in a 60s window) to a single message
+//     rather than a burst of "new record" posts.
+//   - "none": nothing changed (or the top somehow regressed, which can't happen).
+export const decidePbAnnouncement = (
+  top: number,
+  holder: string,
+  holders: number,
+  stored: { topTime: number; topUser: string; holders: number } | null,
+): "post" | "edit" | "none" => {
+  if (!stored) return "post";
+  if (top > stored.topTime) return holder === stored.topUser ? "edit" : "post";
+  if (top === stored.topTime && holders > stored.holders) return "edit";
+  return "none";
+};
+
+// The record post's embed. Gold for a sole holder (an outright top), chartreuse
+// for a matched one (a shared record) — the same palette the in-app board uses.
+// The title links straight to the day's PB board.
+export const pbEmbed = (
+  holder: string,
+  time: number,
+  holders: number,
+  day: Day,
+): ResultEmbed => {
+  const url = dayUrl(day, "pb");
+  const date = formatNotifDate(day);
+  const t = `${formatSeconds(time)}s`;
+  const solo = holders <= 1;
+  const matched = holders - 1;
+  const description = solo
+    ? `**${holder}** set the top build of ${date} at **${t}**.\n\n[Open the puzzle](${url})`
+    : `**${holder}** holds the top build of ${date} at **${t}**, now matched by ${matched} ${
+      matched === 1 ? "player" : "players"
+    } — a record.\n\n[Open the puzzle](${url})`;
+  return {
+    title: `Top PB — ${date}`,
+    url,
+    description,
+    color: solo ? GOLD : CHARTREUSE,
+  };
+};
+
+// Post or edit the day's record based on the current bests. Idempotent against
+// the stored post state, so a stream of leading/tying saves within one attempt
+// posts once and only re-edits when the tie count actually grows.
+const announceRecord = async (
+  iteration: number,
+  bests: Best[],
+  day: Day,
+  stored: Awaited<ReturnType<typeof getPbAnnouncement>>,
+) => {
+  if (bests.length === 0) return;
+  const top = round2(Math.max(...bests.map((b) => b.best)));
+  const holders = bests.filter((b) => round2(b.best) === top);
+  // The earliest to reach the top time is the record holder shown on the post.
+  const holder = holders.reduce((a, b) => (a.at <= b.at ? a : b));
+
+  const action = decidePbAnnouncement(top, holder.user, holders.length, stored);
+  if (action === "none") return;
+
+  const embed = pbEmbed(holder.name, top, holders.length, day);
+  if (action === "post") {
+    const messageId = await postResult(embed);
+    // Only persist state once we have a message id to edit later; a failed post
+    // leaves no row, so the next qualifying build simply retries the post.
+    if (messageId) {
+      await upsertPbAnnouncement(
+        iteration,
+        messageId,
+        top,
+        holder.user,
+        holders.length,
+      );
+    }
+  } else if (stored) {
+    await editResult(stored.messageId, embed);
+    await upsertPbAnnouncement(
+      iteration,
+      stored.messageId,
+      top,
+      holder.user,
+      holders.length,
+    );
+  }
+};
+
+export const onPbBuild = async (iteration: number, actor: string) => {
+  try {
+    const [bestsRaw, prev, meta, stored] = await Promise.all([
+      getIterationBests(iteration),
+      getUserPrevBest(actor, iteration),
+      getStandingsMeta(iteration),
+      getPbAnnouncement(iteration),
+    ]);
+    const bests: Best[] = bestsRaw.map((b) => ({
+      user: b.user,
+      name: b.name ?? "anonymous",
+      best: b.best,
+      at: b.at,
+    }));
+    const day: Day = [meta.y, meta.m, meta.d];
+
+    // Lost-top notifications (strict pass only) and the Discord record post/edit
+    // run off the same bests. Fire both together; each is internally deduped.
+    const decision = decideLostTop(bests, actor, prev);
+    const lostTop = decision.passer
+      ? Promise.all(
+        decision.recipients.map((r) =>
+          notifyLostTop(r.user, iteration, day, {
+            passer: decision.passer!.name,
+            passerTime: decision.passer!.time,
+            yourTime: r.yourTime,
+          })
+        ),
+      )
+      : Promise.resolve();
+
+    await Promise.all([lostTop, announceRecord(iteration, bests, day, stored)]);
+  } catch (err) {
+    log.error("onPbBuild failed", { error: errText(err) });
+  }
+};

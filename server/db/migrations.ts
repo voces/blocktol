@@ -220,6 +220,32 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `client_id` varchar(64) NULL DEFAULT NULL;",
   },
+  {
+    version: 9,
+    name: "pb-announcement",
+    // Backs the Discord "top PB" post (util/pbBoard.ts): one row per iteration
+    // holding the message we posted for the day's current best-build record, so a
+    // later build can PATCH that same message when players match the top rather
+    // than posting anew. `top_time` is DECIMAL (not the run table's float) so it
+    // reads back as the exact two-decimal value the game stores — a float would
+    // drift and break the equality test that detects a tie of the current top.
+    // `top_user` is the record holder's id: a strictly higher top by a NEW holder
+    // posts a fresh message (a lead change), while the same holder improving their
+    // own top edits the standing one — so one player's climb doesn't spam. Holders
+    // is the count of players at that top, diffed to skip a redundant edit.
+    // Cascades on the iteration FK like every other per-iteration table.
+    // IF NOT EXISTS keeps it safe if the table was ever created out of band.
+    up: `
+      CREATE TABLE IF NOT EXISTS \`pb_announcement\` (
+        \`iteration\` int(10) unsigned NOT NULL,
+        \`message_id\` varchar(32) NOT NULL,
+        \`top_time\` decimal(6,2) unsigned NOT NULL,
+        \`top_user\` char(36) NOT NULL,
+        \`holders\` int(10) unsigned NOT NULL DEFAULT 1,
+        PRIMARY KEY (\`iteration\`),
+        CONSTRAINT \`FK_pb_announcement_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──
