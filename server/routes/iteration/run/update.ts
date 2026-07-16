@@ -16,9 +16,13 @@ import { method } from "../../apiHelpers.ts";
 // strips unknown keys).
 const updateRunBody = z.object({
   iteration: z.number(),
+  // The interior of the 20×20 board (its 18×18 non-border cells) is 324 cells, so
+  // no legal maze can carry more than that many pieces; cap well above it (400) so
+  // an oversized array is rejected by zod before validateRun pays to walk it — the
+  // budget check in validateRun is per-piece and runs only after the full parse.
   blocks: z.array(
     z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
-  ),
+  ).max(400),
 });
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);

@@ -1,4 +1,5 @@
 import { getDailyIteration } from "../db/iteration.ts";
+import { alertAdmin } from "./adminAlert.ts";
 import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
 
@@ -17,6 +18,7 @@ const ensureIteration = async (unix: number) => {
 
 const ensureIterations = async (offsetDays: number) => {
   let day = Date.now() - offsetDays * ONE_DAY;
+  const failures: string[] = [];
   // Through tomorrow (UTC): a day's iteration is keyed to the server (UTC) date,
   // but a player's daily is their *local* date, so timezones ahead of UTC reach
   // a new local day before UTC does — pre-generate tomorrow so they have it.
@@ -32,8 +34,22 @@ const ensureIterations = async (offsetDays: number) => {
         date: new Date(day).toDateString(),
         error: errText(err),
       });
+      failures.push(new Date(day).toDateString());
     }
     day += ONE_DAY;
+  }
+  // A day left without an iteration has no daily at all — the one generation
+  // failure an operator must actually see, since the only other trace is a line
+  // in the localhost-only log UI. Alert ONCE per run rather than per day (a full
+  // DB outage fails every day in the window) — a no-op without the webhook. The
+  // hourly retry heals transient blips, so a repeat alert means it's still broken.
+  if (failures.length) {
+    const shown = failures.slice(0, 3).join(", ");
+    alertAdmin(
+      `ensure-iterations: ${failures.length} day(s) failed to generate (${shown}${
+        failures.length > 3 ? ", …" : ""
+      }) — a day with no iteration has no daily`,
+    );
   }
 };
 

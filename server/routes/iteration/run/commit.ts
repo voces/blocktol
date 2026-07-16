@@ -27,9 +27,11 @@ const commitRunBody = z.object({
   // New (commit-only free play). Absent from legacy clients — zod strips the
   // unknown `freePlay` key an old client may still send, and their commit falls
   // through to the flip-void path below.
+  // Capped at 400 (> the board's 324 interior cells) so an oversized maze is
+  // rejected before validateRun's per-piece walk — see updateRun for the bound.
   blocks: z.array(
     z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
-  ).optional(),
+  ).max(400).optional(),
   clientId: z.string().min(1).max(64).optional(),
 });
 
