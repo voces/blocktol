@@ -262,6 +262,26 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `pb_announcement` ADD COLUMN IF NOT EXISTS `announced_at` timestamp NOT NULL DEFAULT current_timestamp();",
   },
+  {
+    version: 11,
+    name: "pb-top-marker",
+    // Replace pb_announcement (message id + editable post state for the old
+    // post/edit Discord mechanism) with pb_top: a minimal dedup marker recording
+    // who currently holds the announced top of an iteration's PB board (see
+    // util/pbBoard.ts). The Discord post now fires on a change of top HOLDER — a
+    // record-break, or the day's first PB — and never edits, so the message id,
+    // tie count, and stale window are all gone. Appended (v9/v10 reached prod, so
+    // they can't be edited in place). DROP/CREATE guarded so a re-run is a no-op.
+    up: `
+      DROP TABLE IF EXISTS \`pb_announcement\`;
+
+      CREATE TABLE IF NOT EXISTS \`pb_top\` (
+        \`iteration\` int(10) unsigned NOT NULL,
+        \`top_user\` char(36) NOT NULL,
+        PRIMARY KEY (\`iteration\`),
+        CONSTRAINT \`FK_pb_top_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

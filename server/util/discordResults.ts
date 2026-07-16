@@ -66,48 +66,25 @@ const body = (embed: ResultEmbed) =>
 
 const HEADERS = { "content-type": "application/json" };
 
-// Post a result embed. Uses `?wait=true` so Discord returns the created message
-// object; its id lets a later tie PATCH this same post. Never throws — a webhook
-// hiccup must not fail the run/cron that called it — and a no-op (null) without a
-// configured webhook. Returns the message id, or null on any failure.
-export const postResult = async (
-  embed: ResultEmbed,
-): Promise<string | null> => {
-  if (!WEBHOOK) return null;
+// Post a result embed. Fire-and-forget: nothing is ever edited, so we don't need
+// the created message id (no `?wait=true`). Never throws — a webhook hiccup must
+// not fail the run/cron that called it — and a no-op without a configured webhook.
+// Returns whether the post succeeded, so a caller can gate its dedup marker on it.
+export const postResult = async (embed: ResultEmbed): Promise<boolean> => {
+  if (!WEBHOOK) return false;
   try {
-    const url = new URL(WEBHOOK);
-    url.searchParams.set("wait", "true");
-    const res = await fetch(url, {
+    const res = await fetch(WEBHOOK, {
       method: "POST",
       headers: HEADERS,
       body: body(embed),
     });
     if (!res.ok) {
       log.error("result post failed", { status: res.status });
-      return null;
+      return false;
     }
-    const json = await res.json();
-    return typeof json?.id === "string" ? json.id : null;
+    return true;
   } catch (err) {
     log.error("result post error", { error: errText(err) });
-    return null;
-  }
-};
-
-// Edit a previously-posted result (the PB tie update). Best-effort, never throws.
-export const editResult = async (
-  messageId: string,
-  embed: ResultEmbed,
-): Promise<void> => {
-  if (!WEBHOOK) return;
-  try {
-    const res = await fetch(`${WEBHOOK}/messages/${messageId}`, {
-      method: "PATCH",
-      headers: HEADERS,
-      body: body(embed),
-    });
-    if (!res.ok) log.error("result edit failed", { status: res.status });
-  } catch (err) {
-    log.error("result edit error", { error: errText(err) });
+    return false;
   }
 };
