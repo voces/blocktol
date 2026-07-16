@@ -4,7 +4,7 @@ import {
   getIterationOtherBest as getIterationOtherBestRaw,
 } from "../../../db/iteration.ts";
 import { updateCurrentRun } from "../../../db/run.ts";
-import { checkLostTop } from "../../../util/lostTop.ts";
+import { onPbBuild } from "../../../util/pbBoard.ts";
 import { errText, log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
@@ -68,26 +68,32 @@ export const updateRun = method(updateRunBody, true)(
     }
 
     // A ranked attempt's build enters the PB field just like free play. When it
-    // passes the field top, notify whoever it displaced. Gated on the
-    // (already-computed) otherBest so it costs nothing on the common save that
-    // isn't leading; checkLostTop re-validates and dedupes the push, so a stream
-    // of leading saves within one attempt notifies the victim only once. Awaited
-    // — background work is unsafe on this Deploy — and it never throws.
+    // reaches the field top, run the PB-board side effects: lost-top
+    // notifications for anyone it passed, and the Discord "top PB" record post /
+    // tie edit. Gated on the (already-computed) otherBest so it costs nothing on
+    // the common save that isn't leading; onPbBuild re-validates and dedupes both
+    // effects, so a stream of leading saves within one attempt notifies/posts
+    // once. The gate includes an exact TIE (>=) and the no-other-player case
+    // (otherBest == null, this is the day's first build) because both can newly
+    // set or match the day's record even though decideLostTop stays silent on
+    // them. Awaited — background work is unsafe on this Deploy — and it never
+    // throws.
     //
     // Accepted edge case: because this fires per build save (not at
-    // finalization), a build can momentarily pass the field top — firing the
-    // card — then be trimmed back below it before the 60s window freezes the
-    // attempt, leaving the recipient a "lost #1" while the passer is no longer
-    // ahead. It's rare (you must lead mid-build, then worsen the maze in the same
-    // window) and low-harm: the upsert keeps it to one card, which deep-links to
-    // live standings, so it reads as stale rather than wrong. Deferring until the
-    // attempt finalizes would be the clean fix, but this Deploy has no cheap
-    // cancelable one-off scheduler (a `setTimeout` past the response dies with
-    // the isolate; `Deno.cron` is hourly, not per-run), so real-time with rare
-    // staleness is the deliberate trade. Free play doesn't have this — its
-    // `commitRun` hook fires once at execution, when the build is already locked.
-    if (otherBest != null && duration > otherBest) {
-      await checkLostTop(iterationId, userId);
+    // finalization), a build can momentarily reach the field top — firing the
+    // card / posting the record — then be trimmed back below it before the 60s
+    // window freezes the attempt, leaving a stale "lost #1" (and a record post
+    // whose holder later slipped). It's rare (you must lead mid-build, then
+    // worsen the maze in the same window) and low-harm: the upsert/dedupe keeps
+    // it to one card, which deep-links to live standings, so it reads as stale
+    // rather than wrong. Deferring until the attempt finalizes would be the clean
+    // fix, but this Deploy has no cheap cancelable one-off scheduler (a
+    // `setTimeout` past the response dies with the isolate; `Deno.cron` is
+    // hourly, not per-run), so real-time with rare staleness is the deliberate
+    // trade. Free play doesn't have this — its `commitRun` hook fires once at
+    // execution, when the build is already locked.
+    if (otherBest == null || duration >= otherBest) {
+      await onPbBuild(iterationId, userId);
     }
 
     return { path, duration, slows, supreme: duration > (otherBest ?? 0) };

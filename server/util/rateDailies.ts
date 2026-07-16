@@ -6,6 +6,7 @@ import {
 import { getIterationOutcomeField, getStandingsMeta } from "../db/standings.ts";
 import { applyRatings, getRatingParticipants } from "../db/user.ts";
 import { alertAdmin } from "./adminAlert.ts";
+import { announceDailyResult } from "./dailyAnnounce.ts";
 import { errText, log } from "./logging.ts";
 import { selfExcludedPercentiles } from "./math.ts";
 import { notifyDailyFinals } from "./notify.ts";
@@ -64,9 +65,13 @@ const rateIteration = async (iteration: number) => {
   await applyRatings(iteration, updates);
   log.info("rated daily iteration", { iteration, players: updates.length });
 
-  // The day is now final — notify its ranked players. After applyRatings so the
-  // rating write is never held up by (or rolled back with) the notifications.
-  await notifyIterationFinal(iteration);
+  // The day is now final — notify its ranked players and post the day's results
+  // to Discord. After applyRatings so the rating write is never held up by (or
+  // rolled back with) these; both swallow their own errors, so run them together.
+  await Promise.all([
+    notifyIterationFinal(iteration),
+    announceDailyResult(iteration),
+  ]);
 };
 
 const rateDailies = async () => {
