@@ -29,6 +29,10 @@ const WEBHOOK = (() => {
 // in-app colours is the point of reusing the same hexes.
 export const GOLD = 0xf0c442;
 export const CHARTREUSE = 0x9ed54a;
+// A muted grey for a SUPERSEDED top-PB message — when a fresh record post goes up,
+// the previous one is recoloured to this so the channel highlights only the
+// current record (Discord's own neutral "greyple").
+export const GREY = 0x99aab5;
 
 // Absolute site origin for the day permalink (a Discord link can't be relative,
 // unlike the in-app push URLs). The webhook is env-tagged in the footer, so a

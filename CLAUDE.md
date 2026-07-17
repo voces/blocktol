@@ -435,7 +435,9 @@ title link to the day's `/YYYYMMDD?board=` permalink:
   (best-build) board. A **new holder taking the top** posts a fresh (gold)
   message: a build passing the previous top holder (`decideLostTop` — the exact
   event that sets a **lost-top notification**), or the day's **first PB** (the
-  sole player bettering their own best, no one to pass). A build **matching the
+  sole player bettering their own best, no one to pass). Each fresh post first
+  greys out (`GREY`) the message it supersedes, reconstructed from the marker,
+  so the channel highlights only the current record. A build **matching the
   announced top** _edits_ the message with the tie count (chartreuse — "N
   players have matched it"). The **same holder improving their own lead**
   _edits_ within a 12h window (`PB_EDIT_WINDOW_MS`), and posts a fresh message
