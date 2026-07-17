@@ -66,25 +66,57 @@ const body = (embed: ResultEmbed) =>
 
 const HEADERS = { "content-type": "application/json" };
 
-// Post a result embed. Fire-and-forget: nothing is ever edited, so we don't need
-// the created message id (no `?wait=true`). Never throws — a webhook hiccup must
-// not fail the run/cron that called it — and a no-op without a configured webhook.
-// Returns whether the post succeeded, so a caller can gate its dedup marker on it.
-export const postResult = async (embed: ResultEmbed): Promise<boolean> => {
-  if (!WEBHOOK) return false;
+// Post a result embed. Uses `?wait=true` so Discord returns the created message
+// object; its id lets a same-holder improvement PATCH this same post within the
+// edit window (see util/pbBoard.ts). Never throws — a webhook hiccup must not fail
+// the run/cron that called it — and a no-op (null) without a configured webhook.
+// Returns the message id, or null on any failure.
+export const postResult = async (
+  embed: ResultEmbed,
+): Promise<string | null> => {
+  if (!WEBHOOK) return null;
   try {
-    const res = await fetch(WEBHOOK, {
+    const url = new URL(WEBHOOK);
+    url.searchParams.set("wait", "true");
+    const res = await fetch(url, {
       method: "POST",
       headers: HEADERS,
       body: body(embed),
     });
     if (!res.ok) {
       log.error("result post failed", { status: res.status });
+      return null;
+    }
+    const json = await res.json();
+    return typeof json?.id === "string" ? json.id : null;
+  } catch (err) {
+    log.error("result post error", { error: errText(err) });
+    return null;
+  }
+};
+
+// Edit a previously-posted result (a same-holder lead improvement within the edit
+// window). Best-effort, never throws. Returns whether the edit landed, so the
+// caller only advances its marker on success (a 404 from a deleted message leaves
+// the marker so the next improvement retries as a fresh post).
+export const editResult = async (
+  messageId: string,
+  embed: ResultEmbed,
+): Promise<boolean> => {
+  if (!WEBHOOK) return false;
+  try {
+    const res = await fetch(`${WEBHOOK}/messages/${messageId}`, {
+      method: "PATCH",
+      headers: HEADERS,
+      body: body(embed),
+    });
+    if (!res.ok) {
+      log.error("result edit failed", { status: res.status });
       return false;
     }
     return true;
   } catch (err) {
-    log.error("result post error", { error: errText(err) });
+    log.error("result edit error", { error: errText(err) });
     return false;
   }
 };
