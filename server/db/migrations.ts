@@ -299,6 +299,17 @@ export const migrations: Migration[] = [
         ADD COLUMN IF NOT EXISTS \`top_time\` decimal(6,2) unsigned NULL DEFAULT NULL,
         ADD COLUMN IF NOT EXISTS \`announced_at\` timestamp NULL DEFAULT NULL;`,
   },
+  {
+    version: 13,
+    name: "pb-top-holders",
+    // Restore tie tracking on the top-PB post: someone matching the announced top
+    // EDITS the message with the tie count, and the holder later breaking that tie
+    // (improving past a shared record) posts a FRESH message rather than editing
+    // (see util/pbBoard.ts's decidePbAction). Both need the count of players at the
+    // announced top. DEFAULT 1 backs existing rows (a sole holder). MariaDB dialect.
+    up:
+      "ALTER TABLE `pb_top` ADD COLUMN IF NOT EXISTS `holders` int(10) unsigned NOT NULL DEFAULT 1;",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

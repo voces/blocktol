@@ -431,26 +431,28 @@ mirror, separate from `adminAlert`'s operator pings. Two posts, both rich embeds
 in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with a
 title link to the day's `/YYYYMMDD?board=` permalink:
 
-- **Top PB** — a gold message tracking the day's current record on the PB
-  (best-build) board. A **new holder taking the top** posts a fresh message: a
-  build passing the previous top holder (`decideLostTop` — the exact event that
-  sets a **lost-top notification**), or the day's **first PB** (the sole player
-  bettering their own best, no one to pass). The **same holder improving their
-  own lead** _edits_ that message within a 12h window (`PB_EDIT_WINDOW_MS`) and
-  posts a fresh one past it (anchored at the post, not each edit, so a slow
-  climb still re-posts 12h on). Ties, non-topping builds, and replays that don't
-  take the top do nothing — so replaying an old board can't resurface its
-  record. The state is a **`pb_top` marker** (one row per iteration: the
-  announced holder, message id, time, and post time — migrations v11 + v12): the
-  `top_user` dedups a burst of leading saves to one post/edit, and the message
-  id + `announced_at` drive the edit-vs-repost window. `topPbToAnnounce`
-  (new-holder detection) and `decidePbAction` (post/edit/none) are pure and
-  unit-tested; `onPbBuild` (`util/pbBoard.ts`) is the one hook the run write
-  path calls whenever a build enters the PB field (free-play `commitRun`, or a
-  ranked `updateRun` that reaches the field top), and it drives both the post
-  and the lost-top notifications off the same load of the day's bests. (Ties are
-  not announced — the earlier tie-count editing was dropped; only the current
-  holder's own time is kept fresh.)
+- **Top PB** — a message tracking the day's current record on the PB
+  (best-build) board. A **new holder taking the top** posts a fresh (gold)
+  message: a build passing the previous top holder (`decideLostTop` — the exact
+  event that sets a **lost-top notification**), or the day's **first PB** (the
+  sole player bettering their own best, no one to pass). A build **matching the
+  announced top** _edits_ the message with the tie count (chartreuse — "N
+  players have matched it"). The **same holder improving their own lead**
+  _edits_ within a 12h window (`PB_EDIT_WINDOW_MS`), and posts a fresh message
+  past it **or** once the record has been matched in between (breaking a shared
+  record is its own event — the supreme→matched→retake-supreme case).
+  Non-topping builds and replays that don't take the top do nothing — so
+  replaying an old board can't resurface its record. The state is a **`pb_top`
+  marker** (one row per iteration: the announced holder, message id, time, tie
+  count, and post time — migrations v11–v13): `top_user` dedups a burst of
+  leading saves and distinguishes a lead change; `holders` drives the tie edit
+  and the break-the-seal repost; the message id + `announced_at` drive the
+  edit-vs-repost window. `topPbToAnnounce` (replay-safe new-sole-top detection)
+  and `decidePbAction` (post/edit/none) are pure and unit-tested; `onPbBuild`
+  (`util/pbBoard.ts`) is the one hook the run write path calls whenever a build
+  enters the PB field (free-play `commitRun`, or a ranked `updateRun` that
+  reaches the field top), and it drives both the post and the lost-top
+  notifications off the same load of the day's bests.
 - **Daily final** — posted by the `rate-dailies` cron once a day is rated (see
   the cron list), listing the ranked winners.
 
