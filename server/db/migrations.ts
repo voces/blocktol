@@ -282,6 +282,23 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_pb_top_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
+  {
+    version: 12,
+    name: "pb-top-edit-window",
+    // Restore same-holder editing on the top-PB post: a player improving their own
+    // lead EDITS the standing message within a 12h window, and posts a fresh one
+    // past it (see util/pbBoard.ts). That needs the announced message + time + the
+    // window anchor back on the pb_top marker (v11 kept only top_user). Nullable:
+    // rows v11 already wrote have only top_user, and a null message just falls back
+    // to a fresh post. `top_time` is DECIMAL so it reads back as the exact
+    // two-decimal value (a float MAX would drift). MariaDB dialect; IF NOT EXISTS
+    // keeps it safe if a column was added out of band.
+    up: `
+      ALTER TABLE \`pb_top\`
+        ADD COLUMN IF NOT EXISTS \`message_id\` varchar(32) NULL DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS \`top_time\` decimal(6,2) unsigned NULL DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS \`announced_at\` timestamp NULL DEFAULT NULL;`,
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

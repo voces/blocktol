@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { pbEmbed, topPbToAnnounce } from "./pbBoard.ts";
+import { decidePbAction, pbEmbed, topPbToAnnounce } from "./pbBoard.ts";
 import { type BestRow } from "./lostTop.ts";
 import { GOLD } from "./discordResults.ts";
 
@@ -7,6 +7,54 @@ const day: [number, number, number] = [2026, 7, 6];
 
 const rows = (...pairs: [string, number][]): BestRow[] =>
   pairs.map(([user, best]) => ({ user, name: user, best }));
+
+// Marker for the actor "me" at 30, with a message (editable) unless overridden.
+const held = (
+  over: Partial<{ topUser: string; topTime: number; hasMessage: boolean }> = {},
+) => ({
+  topUser: "me",
+  topTime: 30,
+  hasMessage: true,
+  ...over,
+});
+
+Deno.test("decidePbAction: a new holder posts", () => {
+  // Someone else (or first PB) newly took the top; marker is another holder / null.
+  assertEquals(
+    decidePbAction(true, 55, true, held({ topUser: "a" }), "me", false),
+    "post",
+  );
+  assertEquals(decidePbAction(true, 40, true, null, "me", false), "post");
+});
+
+Deno.test("decidePbAction: a non-topping build with no prior record does nothing", () => {
+  assertEquals(decidePbAction(false, 45, false, null, "me", false), "none");
+});
+
+Deno.test("decidePbAction: the same holder improving within the window edits", () => {
+  assertEquals(decidePbAction(true, 35, true, held(), "me", false), "edit");
+});
+
+Deno.test("decidePbAction: the same holder improving past the window posts anew", () => {
+  assertEquals(decidePbAction(true, 35, true, held(), "me", true), "post");
+});
+
+Deno.test("decidePbAction: the same holder improving with no editable message posts", () => {
+  // A pre-window marker row (v11) has no message id to PATCH — fall back to a post.
+  assertEquals(
+    decidePbAction(true, 35, true, held({ hasMessage: false }), "me", false),
+    "post",
+  );
+});
+
+Deno.test("decidePbAction: the same holder not improving does nothing", () => {
+  assertEquals(decidePbAction(true, 30, false, held(), "me", false), "none");
+});
+
+Deno.test("decidePbAction: the announced holder who got passed does nothing", () => {
+  // me held the announced top but is no longer the outright top (someone passed).
+  assertEquals(decidePbAction(false, 30, false, held(), "me", false), "none");
+});
 
 Deno.test("topPbToAnnounce: passing the previous holder announces the passer", () => {
   const t = topPbToAnnounce(rows(["me", 55], ["a", 50]), "me", 30);

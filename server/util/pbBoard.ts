@@ -5,11 +5,14 @@
 //
 //   1. lost-top notifications — a prior #1/T1 holder passed by this build
 //      (decideLostTop; its tie/lead edge cases are unit-tested in lostTop.ts).
-//   2. the Discord "top PB" post — announced on a change of the board's top
-//      holder: a record-break (the same event that sets a lost-top notification)
-//      or the day's first PB. It never edits; a `pb_top` marker (who currently
-//      holds the announced top) is all that's kept, so a burst of leading saves —
-//      or a replay of an old board — can't re-post.
+//   2. the Discord "top PB" post — a message tracking the day's current record.
+//      A NEW holder taking the top (a record-break, the same event that sets a
+//      lost-top notification; or the day's first PB) posts a fresh message. The
+//      SAME holder improving their own lead edits that message within a 12h window
+//      (PB_EDIT_WINDOW_MS) and posts a fresh one past it. Ties, non-topping builds,
+//      and replays that don't take the top do nothing — so replaying an old board
+//      can't resurface its record. A `pb_top` marker (who holds the announced top,
+//      the message, its time, and when it posted) is the state that drives this.
 //
 // Both never throw — a notification/webhook hiccup must not fail the run — and the
 // caller AWAITs onPbBuild because this Deploy kills work left running past the
@@ -17,11 +20,17 @@
 
 import { formatNotifDate } from "../../common/notifications.ts";
 import { formatSeconds } from "../../common/format.ts";
-import { getPbTop, upsertPbTop } from "../db/pbTop.ts";
+import {
+  bumpPbTopTime,
+  getPbTop,
+  type PbTop,
+  upsertPbTop,
+} from "../db/pbTop.ts";
 import { getUserPrevBest } from "../db/run.ts";
 import { getIterationBests, getStandingsMeta } from "../db/standings.ts";
 import {
   dayUrl,
+  editResult,
   GOLD,
   postResult,
   type ResultEmbed,
@@ -32,14 +41,17 @@ import { notifyLostTop } from "./notify.ts";
 
 type Day = [number, number, number];
 
-// Who to announce as the new top PB, or null. A record-break reuses the lost-top
-// pass detection — so the Discord post fires on exactly the event that sets a
-// lost-top notification. The day's first PB has no one to pass (and so no
-// notification), so it's handled separately: the sole player on the board
-// improving their own best. Pure; the once-only guard is the pb_top marker in
-// onPbBuild, not here — this returns the same target on every save of a burst, and
-// the marker collapses that to one post. (A non-improving replay returns null, so
-// merely revisiting an old board never announces.)
+// How long the standing post absorbs the SAME holder's own improvements as edits
+// before a further one earns a fresh message. Anchored at the post, not each edit
+// (see bumpPbTopTime), so a long slow climb still re-posts 12h after it began.
+export const PB_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+// Whether this build makes the actor a NEW top holder — a record-break (reusing
+// the lost-top pass detection, so it fires on exactly the event that sets a
+// lost-top notification) or the day's first PB (the sole player bettering their
+// own best, where there's no one to pass). The actor's prior best guards against a
+// replay: a build by someone already leading, or below the top, returns null. Pure
+// so its branches are unit-testable; the burst/dup guard is the pb_top marker.
 export const topPbToAnnounce = (
   bests: readonly BestRow[],
   actor: string,
@@ -47,8 +59,6 @@ export const topPbToAnnounce = (
 ): { name: string; time: number } | null => {
   const decision = decideLostTop(bests, actor, prev);
   if (decision.passer) return decision.passer;
-  // First PB: the actor is the only player with a build, and this build bettered
-  // their own prior best (so a worse/equal replay of a solo board is silent).
   const me = bests.find((b) => b.user === actor);
   if (bests.length === 1 && me && me.best > (prev ?? -Infinity)) {
     return { name: me.name, time: me.best };
@@ -56,9 +66,32 @@ export const topPbToAnnounce = (
   return null;
 };
 
-// The record post's embed — gold (an outright new top; there are no ties to render
-// now that the post fires only on a holder change). The title links to the day's
-// PB board.
+// What the Discord post should do given the board state and the marker. Pure so
+// its branches are unit-testable without a webhook or a clock:
+//   - "post": the actor NEWLY took the top (`newHolder`), or the actor already
+//     holds the announced top and improved it past the edit window (stale) or with
+//     no message to edit — a fresh message goes up.
+//   - "edit": the actor holds the announced top and improved it within the window —
+//     the standing message's time is updated in place.
+//   - "none": the actor isn't the outright top (a tie or below), or holds it but
+//     didn't improve — nothing changed.
+export const decidePbAction = (
+  isTop: boolean,
+  me: number,
+  newHolder: boolean,
+  marker: { topUser: string; topTime: number; hasMessage: boolean } | null,
+  actor: string,
+  staleForHolder: boolean,
+): "post" | "edit" | "none" => {
+  if (marker && marker.topUser === actor) {
+    if (!isTop || me <= marker.topTime) return "none";
+    return staleForHolder || !marker.hasMessage ? "post" : "edit";
+  }
+  return newHolder ? "post" : "none";
+};
+
+// The record post's embed — gold (an outright top; ties aren't announced). The
+// title links to the day's PB board.
 export const pbEmbed = (name: string, time: number, day: Day): ResultEmbed => {
   const url = dayUrl(day, "pb");
   const date = formatNotifDate(day);
@@ -74,9 +107,57 @@ export const pbEmbed = (name: string, time: number, day: Day): ResultEmbed => {
   };
 };
 
+const announce = async (
+  iteration: number,
+  actor: string,
+  bests: BestRow[],
+  prev: number | null,
+  day: Day,
+  marker: PbTop | null,
+) => {
+  const me = bests.find((b) => b.user === actor);
+  if (!me) return;
+  const othersTop = bests.reduce(
+    (max, b) => (b.user === actor ? max : Math.max(max, b.best)),
+    -Infinity,
+  );
+  const isTop = me.best > othersTop;
+  const newHolder = topPbToAnnounce(bests, actor, prev) !== null;
+
+  const staleForHolder = marker != null && marker.topUser === actor &&
+    (marker.announcedAt == null ||
+      Date.now() - marker.announcedAt >= PB_EDIT_WINDOW_MS);
+
+  const action = decidePbAction(
+    isTop,
+    me.best,
+    newHolder,
+    marker && {
+      topUser: marker.topUser,
+      topTime: marker.topTime ?? -Infinity,
+      hasMessage: marker.messageId != null,
+    },
+    actor,
+    staleForHolder,
+  );
+
+  if (action === "edit" && marker?.messageId) {
+    // Edit the standing message; bumpPbTopTime leaves the window anchor untouched
+    // so a burst of edits can't defer the past-window re-post.
+    if (await editResult(marker.messageId, pbEmbed(me.name, me.best, day))) {
+      await bumpPbTopTime(iteration, me.best);
+    }
+  } else if (action === "post") {
+    // Advance the marker only on a successful post (stamping a fresh window), so a
+    // failed one retries on the next qualifying save rather than being swallowed.
+    const messageId = await postResult(pbEmbed(me.name, me.best, day));
+    if (messageId) await upsertPbTop(iteration, messageId, actor, me.best);
+  }
+};
+
 export const onPbBuild = async (iteration: number, actor: string) => {
   try {
-    const [bestsRaw, prev, meta, topUser] = await Promise.all([
+    const [bestsRaw, prev, meta, marker] = await Promise.all([
       getIterationBests(iteration),
       getUserPrevBest(actor, iteration),
       getStandingsMeta(iteration),
@@ -103,19 +184,10 @@ export const onPbBuild = async (iteration: number, actor: string) => {
       )
       : Promise.resolve();
 
-    // Discord post: only when this build makes the actor a NEW top holder, and the
-    // marker doesn't already credit them (dedupes a burst of leading saves — the
-    // actor stays the passer/sole player across the burst — to a single post).
-    const announce = (async () => {
-      const target = topPbToAnnounce(bests, actor, prev);
-      if (!target || topUser === actor) return;
-      const posted = await postResult(pbEmbed(target.name, target.time, day));
-      // Advance the marker only on a successful post, so a failed one retries on
-      // the next qualifying save rather than being silently swallowed.
-      if (posted) await upsertPbTop(iteration, actor);
-    })();
-
-    await Promise.all([lostTop, announce]);
+    await Promise.all([
+      lostTop,
+      announce(iteration, actor, bests, prev, day, marker),
+    ]);
   } catch (err) {
     log.error("onPbBuild failed", { error: errText(err) });
   }
