@@ -29,6 +29,7 @@ import {
   dayUrl,
   editResult,
   GOLD,
+  GREY,
   postResult,
   type ResultEmbed,
 } from "./discordResults.ts";
@@ -174,6 +175,21 @@ const announce = async (
       await editPbTop(iteration, top, holders.length);
     }
   } else {
+    // A fresh post supersedes the standing message: grey out the old one first (so
+    // the channel highlights only the current record), then post the new. Its
+    // content is reconstructed from the marker — topTime/holders are the old
+    // message's current values, the name re-derived from the still-present holder.
+    // Greying first means a failed post just retries (and re-greys) next save,
+    // rather than stranding two coloured messages. topTime is non-null whenever a
+    // message id is (both are written together).
+    if (marker?.messageId && marker.topTime != null) {
+      const prevName = bests.find((b) => b.user === marker.topUser)?.name ??
+        "anonymous";
+      await editResult(marker.messageId, {
+        ...pbEmbed(prevName, marker.topTime, marker.holders, day),
+        color: GREY,
+      });
+    }
     // A fresh post (or an "edit" with no message to PATCH — a pre-column marker).
     // Advance the marker only on success, so a failed post retries next save.
     const messageId = await postResult(embed);
