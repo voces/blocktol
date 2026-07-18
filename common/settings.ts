@@ -19,9 +19,17 @@ export const ZOOM_DEFAULT = 2;
 // before sending a push, never before writing the in-app row.
 export type NotificationPrefs = { lostTop: boolean; dailyFinal: boolean };
 
+// UI language. "system" follows the device/browser language (falling back to
+// English for an unsupported one); any other value is a BCP-47 tag the catalog
+// resolves (exact → language-prefix → en, see common/i18n resolveCatalog). Kept
+// as a plain string — the picker only offers supported locales, and the runtime
+// tolerates anything, so no locale enum has to be imported here.
+export type Language = "system" | string;
+
 export type Settings = {
   theme: Theme;
   zoom: number;
+  language: Language;
   notifications: NotificationPrefs;
 };
 export type SettingsPatch = Partial<Settings>;
@@ -37,6 +45,7 @@ export const defaultNotificationPrefs = (): NotificationPrefs => ({
 export const defaultSettings = (): Settings => ({
   theme: "system",
   zoom: ZOOM_DEFAULT,
+  language: "system",
   notifications: defaultNotificationPrefs(),
 });
 
@@ -80,6 +89,9 @@ export const parseSettings = (raw: unknown): Settings => {
       ? (src.theme as Theme)
       : "system",
     zoom: clampZoom(Number(src.zoom)),
+    // Tolerant: any string rides through (the catalog resolves an unsupported
+    // tag to English); anything else is the follow-the-device default.
+    language: typeof src.language === "string" ? src.language : "system",
     notifications: parseNotifications(src.notifications),
   };
 };

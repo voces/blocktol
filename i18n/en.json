@@ -611,6 +611,14 @@
     "message": "Appearance",
     "description": "Label (and group aria-label) for the light/dark/system theme selector."
   },
+  "profile.language": {
+    "message": "Language",
+    "description": "Label for the UI language selector in Preferences."
+  },
+  "profile.languageSystem": {
+    "message": "System",
+    "description": "The language option that follows the device/browser language (falling back to English if it isn't supported)."
+  },
   "profile.themeSystem": {
     "message": "System",
     "description": "Theme option that follows the device's light/dark setting."

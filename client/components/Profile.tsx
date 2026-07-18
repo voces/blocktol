@@ -30,8 +30,27 @@ import { DeleteAccount } from "./DeleteAccount.tsx";
 import { Crown, Flag } from "./Notifications/icons.tsx";
 import { pushPermission, requestPushPermission } from "../util/push.ts";
 import type { NotificationPrefs, Theme } from "../../common/settings.ts";
-import type { MessageKey } from "../../common/i18n.ts";
+import { locales, type MessageKey } from "../../common/i18n.ts";
 import { t } from "../util/t.ts";
+
+// A language's name in its own tongue (endonym), for the picker — "Español",
+// "日本語", "Português (Brasil)". DisplayNames can lowercase some (French,
+// Spanish), so uppercase the first letter. Cached; Intl constructors aren't free.
+const endonymCache = new Map<string, string>();
+const endonym = (tag: string): string => {
+  let v = endonymCache.get(tag);
+  if (v === undefined) {
+    try {
+      const name = new Intl.DisplayNames(tag, { type: "language" }).of(tag) ??
+        tag;
+      v = name.charAt(0).toUpperCase() + name.slice(1);
+    } catch {
+      v = tag;
+    }
+    endonymCache.set(tag, v);
+  }
+  return v;
+};
 
 // Theme value → catalog key, mapped by a literal object so every live key stays
 // greppable (see the i18n conventions).
@@ -468,6 +487,26 @@ const ProfileDialog = (
               </button>
             ))}
           </div>
+        </div>
+
+        <div class="pref__row">
+          <div class="pref__label">{t("profile.language")}</div>
+          {
+            /* A native select: 7 locales + System is too many for a segmented
+              control. Each option is the language's endonym so it stays
+              recognizable whatever language the UI is currently in. */
+          }
+          <select
+            class="pref__select tapc"
+            value={settings.language}
+            aria-label={t("profile.language")}
+            onChange={(e) => setSettings({ language: e.currentTarget.value })}
+          >
+            <option value="system">{t("profile.languageSystem")}</option>
+            {locales.map((loc) => (
+              <option key={loc} value={loc}>{endonym(loc)}</option>
+            ))}
+          </select>
         </div>
 
         {(touch || settings.zoom !== ZOOM_DEFAULT) && (

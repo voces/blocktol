@@ -15,6 +15,9 @@
 
 import { catalog, type Locale, locales } from "./i18n.generated.ts";
 export type { Locale, MessageKey, MessageParams } from "./i18n.generated.ts";
+// The supported catalog locales, exposed so the language picker can enumerate
+// them (the type-only re-export above can't carry the runtime array).
+export { locales } from "./i18n.generated.ts";
 import type { MessageKey, MessageParams } from "./i18n.generated.ts";
 
 // One node of a compiled ICU message. A plain string is literal text; `{ arg }`

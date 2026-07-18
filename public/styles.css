@@ -2550,6 +2550,22 @@ a:hover {
   cursor: pointer;
 }
 
+/* Language picker — a native select styled to sit beside the segmented toggle. */
+.pref__select {
+  font: 600 13px var(--font);
+  color: var(--color);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 6px 10px;
+  cursor: pointer;
+  max-width: 60%;
+}
+
+.pref__select:hover {
+  border-color: var(--text-mute);
+}
+
 /* ===== Move-to-device sheet (shell is the shared .modal, see Modal.tsx) ==== */
 .move__head {
   display: flex;

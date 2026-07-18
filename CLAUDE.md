@@ -522,9 +522,23 @@ internal `bricks`/`power`/`slow` names never appear in copy (see
 `i18n/glossary.json`, which the translator reads).
 
 Adding/altering copy: edit `i18n/en.json`, run `deno task i18n` (or any
-`build`/`dev`/`test`), and call `t(...)`. First consumer is
-`common/notifications.ts`; migration of the rest of the app's copy and the
-LLM-translation pipeline are tracked in `docs/localization.md`.
+`build`/`dev`/`test`), and call `t(...)`. Remaining migration work is tracked in
+`docs/localization.md`.
+
+**Picking the language.** `settings.language` (`common/settings.ts`) holds the
+choice — `"system"` (the default) or a BCP-47 tag; the tolerant parser keeps any
+string (the catalog resolves an unsupported tag to English). `applyLanguage`
+(`client/hooks/useSettings.ts`, run at `initSettings` boot and on every settings
+change, mirroring `applyTheme`) points the `uiLocale` signal at the tag —
+`"system"` resolves to `navigator.language`, so **an un-overridden user gets
+their browser language**, falling back to English — and stamps
+`document.documentElement.lang` with the resolved catalog locale. Because every
+`t(...)` reads `uiLocale`, a switch re-renders live. The Profile → Preferences
+picker is a native `<select>` of `locales` (endonyms via `Intl.DisplayNames`)
+plus a System option. An **explicit** choice also rides to the server
+(`setSettings` → `updateUserLocale`) so push copy — rendered in `user.locale` —
+matches; `"system"` leaves `user.locale` as the browser tag captured passively
+at push-subscribe, so the two stay in step.
 
 ## Environment variables
 
