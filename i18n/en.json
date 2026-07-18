@@ -294,5 +294,89 @@
   "daily.keepPlaying": {
     "message": "Keep playing",
     "description": "Button that dismisses the daily result card and returns to a free-play board for the day."
+  },
+  "standings.title": {
+    "message": "Standings",
+    "description": "Title of the standings/leaderboard (the sheet header, its accessible label, and the collapsed dock title)."
+  },
+  "standings.open": {
+    "message": "Open standings",
+    "description": "Accessible label for the collapsed standings dock button that opens the full sheet."
+  },
+  "standings.closeHandle": {
+    "message": "Close standings",
+    "description": "Accessible label for the standings sheet's drag/close handle."
+  },
+  "standings.dateLine": {
+    "message": "{day} · {count} players",
+    "description": "Sub-line under the standings title: the viewed day and the field size. {day} is a short calendar day like \"Jul 7\"; {count} is the pre-formatted player count; \"·\" is a separator."
+  },
+  "standings.untilRanked": {
+    "message": "until ranked",
+    "description": "Label beside the countdown timer showing how long until the day's daily closes and is ranked."
+  },
+  "standings.sortGroup": {
+    "message": "Sort standings",
+    "description": "Accessible group label for the standings sort toggle (daily vs personal-best board)."
+  },
+  "standings.sortByLabel": {
+    "message": "SORT BY",
+    "description": "Small label before the standings sort toggle. All-caps."
+  },
+  "standings.sortDaily": {
+    "message": "DAILY",
+    "description": "Standings sort tab for the ranked daily board. All-caps. \"Daily\" is the game term (see glossary)."
+  },
+  "standings.sortPb": {
+    "message": "PB",
+    "description": "Standings sort tab for the personal-best board. All-caps. \"PB\" = personal best; keep the abbreviation if it's understood, else a short local equivalent."
+  },
+  "standings.rowPb": {
+    "message": "PB",
+    "description": "Prefix on a daily-board row's small secondary line showing that player's personal-best time. \"PB\" = personal best."
+  },
+  "standings.rowDay": {
+    "message": "day",
+    "description": "Prefix on a PB-board row's small secondary line showing that player's ranked daily time."
+  },
+  "standings.between": {
+    "message": "{count} between",
+    "description": "Separator row in the standings list where the window skips ranks: how many players sit between the rows above and below. {count} is a pre-formatted number."
+  },
+  "standings.emptyDaily": {
+    "message": "No runs this day",
+    "description": "Empty state on the daily standings board when no one has a ranked run for the day."
+  },
+  "standings.emptyPb": {
+    "message": "No runs yet",
+    "description": "Empty state on the personal-best standings board when no builds exist yet."
+  },
+  "standings.youSub": {
+    "message": "you · {ago}",
+    "description": "Sub-line on your own standings row: marks it as yours plus when your time was set. {ago} is a relative time like \"5m ago\"; \"·\" is a separator."
+  },
+  "standings.leadYouPb": {
+    "message": "you top PB",
+    "description": "Dock leader line when you hold the top of the personal-best board. \"PB\" = personal best."
+  },
+  "standings.leadOtherPb": {
+    "message": "{name} tops PB",
+    "description": "Dock leader line when another player holds the top of the personal-best board. {name} is a display name; \"PB\" = personal best."
+  },
+  "standings.leadYou": {
+    "message": "you lead",
+    "description": "Dock leader line when you hold the top of the daily board."
+  },
+  "standings.leadOther": {
+    "message": "{name} leads",
+    "description": "Dock leader line when another player holds the top of the daily board. {name} is a display name."
+  },
+  "standings.noRunsToday": {
+    "message": "no runs yet today",
+    "description": "Dock sub-line when today's board has no runs yet."
+  },
+  "standings.noRunsDay": {
+    "message": "no runs that day",
+    "description": "Dock sub-line when a past day's board has no runs."
   }
 }
