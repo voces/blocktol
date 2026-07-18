@@ -240,46 +240,55 @@ consistency. Output is validated by the same checks as the gate before being
 written — an LLM response that drops a placeholder or a plural branch is
 rejected and retried, never committed.
 
-**No hard dependency on any one model vendor.** The task talks to a
-**provider-agnostic gateway over the OpenAI-compatible `/v1/chat/completions`
-contract** — the de-facto standard shape every gateway and provider now speaks —
-and is configured entirely by env: `TRANSLATE_BASE_URL` (the gateway endpoint),
-`TRANSLATE_API_KEY`, and `TRANSLATE_MODEL` (a gateway-qualified id like
-`anthropic/claude-...`, `openai/gpt-...`, `google/gemini-...`). Swapping the
-model — or the vendor behind it — is a config change, never a code change, and
-the gateway can fan a batch across models or fail one over to another without
-the task knowing. This matches the codebase's existing posture of depending on a
-stable wire contract (the SQL proxy's HTTP shape, `BlocktolApi`) rather than a
-concrete backend. Two concrete ways to fill the endpoint, either fine:
+**The provider sits behind a one-method abstraction, so it's swappable — and the
+default talks to Anthropic directly.** The task depends on a small `Translator`
+interface in our own code:
 
-- **Self-hosted gateway — [LiteLLM proxy](https://docs.litellm.ai/)** (or
-  Cloudflare AI Gateway / Portkey / a bare LiteLLM container). One process you
-  run that exposes the OpenAI shape and routes to whatever provider key you give
-  it; keeps the provider keys on infra you control, adds request
-  logging/caching, and is the right call if translation volume ever grows or you
-  want the routing policy versioned. Deno talks plain HTTP to it — no SDK, no
-  Python in this repo.
-- **Hosted gateway — [OpenRouter](https://openrouter.ai/)** (or Vercel AI
-  Gateway). One key, one base URL, a `vendor/model` string picks the model; zero
-  infra to run. The lightest way to start, and because it's the same
-  OpenAI-compatible contract, moving to a self-hosted LiteLLM later is just a
-  base-URL + key swap.
+```ts
+interface Translator {
+  translate(req: TranslateBatch): Promise<TranslatedEntry[]>;
+}
+```
 
-Default recommendation: **start on OpenRouter** (nothing to operate), keep the
-option to point `TRANSLATE_BASE_URL` at a self-hosted LiteLLM if volume or key-
-custody ever justifies running one. The pinned model lives in config, not the
-doc, so it can track whatever is best/cheapest at translation without a code
-edit.
+Everything above the interface — batching, the glossary/ICU prompt, the
+validate-and-retry loop — is provider-agnostic. Only the adapter behind it knows
+a vendor. The **default adapter calls the Anthropic Messages API directly**
+through the official SDK (`npm:@anthropic-ai/sdk`, matching this repo's existing
+`npm:` imports), rather than routing through a third-party gateway. Direct
+integration is both simpler here (no proxy to run) and lets the adapter use two
+Anthropic-native cost levers that matter at repeat-translation scale:
+
+- **Prompt caching.** The ICU contract + glossary + shared instructions form a
+  large, byte-stable prefix reused across every batch and every locale; marking
+  it `cache_control: ephemeral` makes each subsequent batch read that prefix at
+  ~0.1× instead of reprocessing it. On a full re-translation across N locales
+  that prefix is paid once, not N times.
+- **The Message Batches API** (50% off, results within the hour) fits exactly,
+  since translation is never latency-sensitive — a good default for a full
+  N-locale regeneration, with the synchronous path kept for small diffs.
+
+Config: `ANTHROPIC_API_KEY` plus `TRANSLATE_MODEL` (defaults to the current best
+Anthropic model; pinned in config, not this doc, so it tracks the best/cheapest
+option for translation without a code edit).
+
+**Swapping providers stays cheap because the seam is the interface, not a
+gateway.** If a second vendor or a routing layer is ever wanted, it's a new
+`Translator` adapter — e.g. an OpenAI-compatible one pointed at a self-hosted
+LiteLLM proxy or OpenRouter — with the batching, prompt, and validation above it
+untouched. This matches the codebase's existing posture of depending on a stable
+seam (the SQL proxy's HTTP shape, the `BlocktolApi` type) rather than a concrete
+backend; the transport-swap-only DB connector is the same move. We start with
+the direct Anthropic adapter and add another only if a real need appears.
 
 **Automation:** a GitHub Action triggers on PRs whose diff touches
 `i18n/en.json` (or whenever `i18n:check` fails), runs the translate task with
-the `TRANSLATE_*` values from repo secrets, and pushes the resulting catalog
-commit back to the PR branch. The developer workflow is therefore: edit
-`en.json`, push, and the PR translates itself; the gate still verifies
-independently, so a broken pipeline (or a swapped-out model) fails loudly
-instead of deploying English. Local `deno task i18n:translate` covers the
-offline/faster path. Translation cost at this scale is noise (~300 short strings
-× N locales, only diffs retranslate).
+the `ANTHROPIC_API_KEY` repo secret, and pushes the resulting catalog commit
+back to the PR branch. The developer workflow is therefore: edit `en.json`,
+push, and the PR translates itself; the gate still verifies independently, so a
+broken pipeline (or a swapped-out model) fails loudly instead of deploying
+English. Local `deno task i18n:translate` covers the offline/faster path.
+Translation cost at this scale is noise (~300 short strings × N locales, only
+diffs retranslate).
 
 ### 3. The leak detector: no hardcoded strings in JSX
 
@@ -322,9 +331,14 @@ the convention is **never interpolate a key** — map an enum to its key through
 an object literal (`{ supreme: "notif.dailyFinal.supreme", … }`) so every live
 key appears verbatim exactly once and the scan is exact. That no-interpolation
 rule is enforced by the same lint plugin that catches hardcoded strings (§3).
-Posture: run `i18n:unused` as a **non-blocking CI report** first — a missed
-dynamic pattern shouldn't block an unrelated PR — then flip it to blocking once
-the convention is lint-enforced, at which point dead copy can't accumulate.
+Posture: **blocking from day one.** The usual reason to run a dead-code check
+non-blocking is a retrofit — an existing codebase full of dynamic patterns the
+scanner would false-positive on. This is greenfield: the catalog is built from
+scratch under the no-interpolation convention, so the scan is exact, and with no
+target catalogs yet a removal is a trivial one-`en.json`-edit (nothing to prune,
+no translation churn). So `i18n:unused` is a hard CI gate from the first PR — a
+dead key fails the build the same as a missing translation, and dead copy can
+never accumulate.
 
 ### Review posture for machine translations
 
