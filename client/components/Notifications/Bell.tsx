@@ -13,7 +13,7 @@ import { NotificationsPanel } from "./Panel.tsx";
 // (capped "9+"); tapping opens the panel. Warms the list on intent so the panel
 // opens on data, not an empty shell.
 export const NotificationsBell = () => {
-  const { attemptsRemaining } = useContext(GameStateContext);
+  const { dailyInProgress } = useContext(GameStateContext);
   const [open, setOpen] = useState(false);
   const count = unreadCount.value;
 
@@ -34,9 +34,10 @@ export const NotificationsBell = () => {
     seen.current = nudge;
   }, [nudge]);
 
-  // Hidden while a daily is in progress — mirrors the calendar/profile buttons,
-  // and keeps a notification tap from navigating the board away mid-run.
-  if (attemptsRemaining !== 0) return null;
+  // Hidden only while mid-run on today's ranked daily — mirrors the calendar /
+  // profile buttons, and keeps a notification tap from navigating the board away
+  // mid-run. On a past day (deep link / held across midnight) it stays available.
+  if (dailyInProgress) return null;
 
   return (
     <>

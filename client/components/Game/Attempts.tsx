@@ -7,7 +7,6 @@ import {
   standingColor,
 } from "../../../common/percentileColor.ts";
 import { api, MessageMap } from "../../api.ts";
-import { newDailyAvailable } from "../../store/dailyRollover.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Attempt = MessageMap["getDailySummary"]["attempts"][number];
@@ -80,7 +79,7 @@ export const Attempts = () => {
     viewedAttempts,
     setViewedAttempts,
     viewMaze,
-    attemptsRemaining,
+    dailyInProgress,
     blocks,
     viewing,
     iteration,
@@ -104,11 +103,10 @@ export const Attempts = () => {
   // Mid-daily the list shows in a simplified form — time, when, and which is
   // your best — but WITHOUT the field-relative info (percentile colour, %,
   // SUPREME) that would anchor how players approach their remaining attempts. It
-  // fills in fully once the daily is done (attemptsRemaining === 0), or once a
-  // new daily has rolled in — the pinned day is over, so the board on screen is
-  // a settled past day whose runs belong in full (see store/dailyRollover.ts).
+  // fills in fully once you're off the live daily (dailyInProgress false): the
+  // daily's done, or the board is a settled past day whose runs belong in full.
   // Nothing to show on a fresh daily with no runs yet.
-  const simplified = attemptsRemaining !== 0 && !newDailyAvailable.value;
+  const simplified = dailyInProgress;
   if (simplified && attempts.length === 0) return null;
 
   // Merge runs with identical maze data (anywhere in the list, not just

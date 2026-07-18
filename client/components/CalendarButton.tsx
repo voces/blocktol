@@ -11,15 +11,15 @@ import { GameStateContext } from "./Game/useGameState.ts";
 // attention with a persistent, non-dismissible pulse + dot until the player
 // opens the calendar and switches.
 export const CalendarButton = () => {
-  const { attemptsRemaining, setCalendarOpen } = useContext(GameStateContext);
+  const { dailyInProgress, setCalendarOpen } = useContext(GameStateContext);
+  // The pulse + dot cue: a new daily is waiting to be switched to (rollover, or a
+  // past day deep-linked while today's daily is outstanding — see dailyRollover.ts
+  // and useInit).
   const alert = newDailyAvailable.value;
-  // Shown once the daily's done or free play begins (attemptsRemaining === 0) —
-  // and also once a new daily has rolled in, when the pinned day is over so this
-  // (the in-app switch to it) must stay reachable. Otherwise a stale board with
-  // attempts still nominally remaining — e.g. a past day deep-linked while
-  // today's daily was outstanding — hides it, stranding the player after
-  // midnight with no way to switch (see store/dailyRollover.ts).
-  if (attemptsRemaining !== 0 && !alert) return null;
+  // Hidden only while mid-run on today's own ranked daily. On a past day (a deep
+  // link / a day held across midnight) the board isn't the live daily, so the
+  // calendar — the in-app day switch — must stay reachable (see dailyInProgress).
+  if (dailyInProgress) return null;
 
   return (
     <button
