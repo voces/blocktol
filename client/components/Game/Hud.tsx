@@ -24,11 +24,12 @@ export const BrickIcon = () => (
 );
 
 // A lightning bolt (not the old snowflake asterisk) — the piece is a "thunder"
-// in copy, so the icon reads as one. Same electric blue as the board's thunder
-// tint for continuity.
+// in copy, so the icon reads as one. Gold, its iconic lightning colour — the
+// same "use the thing's own colour" logic as the terracotta brick icon (the
+// board pieces carry their own gameplay tints separately).
 export const PowerIcon = () => (
   <svg width={16} height={16} viewBox="0 0 24 24">
-    <path d="M13 2 L3.5 13.5 H11 L10 22 L20.5 10 H13 Z" fill="#5aa9e6" />
+    <path d="M13 2 L3.5 13.5 H11 L10 22 L20.5 10 H13 Z" fill="#f2b134" />
   </svg>
 );
 
