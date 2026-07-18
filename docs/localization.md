@@ -297,6 +297,35 @@ minutes with it staged catches concatenation bugs and overflow before any real
 locale ships — German and Finnish will find the same bugs later, in production,
 otherwise.
 
+### String lifecycle: removal, orphans, and dead-key detection
+
+`en.json` is the authority — a key exists in a target catalog only because it
+exists in `en.json` — so string removal and dead-copy detection both key off it.
+
+**Removing a source string** is a one-file edit: delete the key from `en.json`.
+Two mechanisms clean up after it. The translate/sync task **prunes** that key
+from every target catalog on its next run (the pass that fills missing keys also
+deletes orphaned ones), and the GitHub Action that fires on `en.json` changes
+runs it automatically. The gate's **orphan check** (§1) is the backstop: any
+target-catalog key absent from `en.json` fails CI, so a stale `de.json` entry
+can't linger even if the prune is skipped or a target was hand-edited. The
+reverse — code still referencing a key you deleted from `en.json` — needs no new
+tooling: `MessageKey` is a union derived from `en.json`, so a dangling reference
+is a **compile error** at `deno check`.
+
+**Detecting unused keys** — present in `en.json`, referenced by no code — is a
+dedicated task, `deno task i18n:unused`: it walks server + common + client for
+`t()`/`tJsx()`/error-code call sites, collects the literal keys, and diffs
+against `en.json`; anything with zero references is dead copy. The one wedge is
+**computed keys** (`notif.dailyFinal.${variant}` never appears as a literal), so
+the convention is **never interpolate a key** — map an enum to its key through
+an object literal (`{ supreme: "notif.dailyFinal.supreme", … }`) so every live
+key appears verbatim exactly once and the scan is exact. That no-interpolation
+rule is enforced by the same lint plugin that catches hardcoded strings (§3).
+Posture: run `i18n:unused` as a **non-blocking CI report** first — a missed
+dynamic pattern shouldn't block an unrelated PR — then flip it to blocking once
+the convention is lint-enforced, at which point dead copy can't accumulate.
+
 ### Review posture for machine translations
 
 Machine-written catalogs are committed unreviewed by design — the deploy gate is
