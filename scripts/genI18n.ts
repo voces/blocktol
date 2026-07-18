@@ -54,7 +54,9 @@ for (const locale of localeFiles) {
 const paramsType = (key: string): string => {
   const params = collectParams(catalog.en[key]);
   const names = Object.keys(params).sort();
-  if (names.length === 0) return "Record<string, never>";
+  // `Record<never, never>` (keyof → never) lets `t(key)` omit the params arg for
+  // no-argument messages; keys with args keep their required params object.
+  if (names.length === 0) return "Record<never, never>";
   return `{ ${
     names.map((n) => `${JSON.stringify(n)}: ${params[n]}`).join("; ")
   } }`;

@@ -1,4 +1,28 @@
 {
+  "common.connecting": {
+    "message": "Connecting",
+    "description": "Overlay shown while the app is reconnecting to the server (animated dots are appended after this word)."
+  },
+  "error.crash.title": {
+    "message": "Something broke",
+    "description": "Headline of the crash screen shown when the app hits an unrecoverable render error."
+  },
+  "error.crash.body": {
+    "message": "The error has been reported. Reloading usually fixes it — your runs are saved on the server.",
+    "description": "Reassurance on the crash screen: the error was reported automatically and the player's data is safe."
+  },
+  "error.crash.reload": {
+    "message": "Reload",
+    "description": "Button on the crash screen that reloads the page."
+  },
+  "notif.bell.title": {
+    "message": "Notifications",
+    "description": "Label/tooltip for the notifications bell button in the header."
+  },
+  "notif.bell.unread": {
+    "message": "Notifications ({count, plural, one {# unread} other {# unread}})",
+    "description": "Accessible label for the bell when there are unread notifications; {count} is the unread count."
+  },
   "notif.lostTop.title": {
     "message": "You lost #1 on {date}",
     "description": "Push + in-app notification headline when another player passes your best build and takes the day's top spot. {date} is a short calendar day like \"Jul 6\". The literal \"#1\" means first place."

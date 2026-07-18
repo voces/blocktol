@@ -1,5 +1,6 @@
 import { Component, ComponentChildren, h } from "preact";
 import { api } from "../api.ts";
+import { t } from "../util/t.ts";
 
 // A render/effect crash anywhere below used to unmount the whole app to a
 // blank page with only the console knowing why. Catch it, report it (the
@@ -22,17 +23,14 @@ export class ErrorBoundary extends Component<{ children: ComponentChildren }> {
     return (
       <div class="crash">
         <div class="crash__card">
-          <div class="crash__title">Something broke</div>
-          <div class="crash__sub">
-            The error has been reported. Reloading usually fixes it — your runs
-            are saved on the server.
-          </div>
+          <div class="crash__title">{t("error.crash.title")}</div>
+          <div class="crash__sub">{t("error.crash.body")}</div>
           <button
             type="button"
             class="btn tapc"
             onClick={() => location.reload()}
           >
-            Reload
+            {t("error.crash.reload")}
           </button>
         </div>
       </div>

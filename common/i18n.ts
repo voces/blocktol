@@ -127,9 +127,10 @@ export const resolveCatalog = (locale: string | undefined): Locale => {
 export const t = <K extends MessageKey>(
   locale: string | undefined,
   key: K,
-  params: MessageParams[K],
+  // Required for keys with arguments; omittable for no-argument keys.
+  ...params: keyof MessageParams[K] extends never ? [] : [MessageParams[K]]
 ): string => {
   const cat = resolveCatalog(locale);
   const nodes = catalog[cat][key] ?? catalog.en[key];
-  return renderMessage(nodes, locale, params as I18nParams);
+  return renderMessage(nodes, locale, (params[0] ?? {}) as I18nParams);
 };

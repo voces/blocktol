@@ -6,6 +6,7 @@ import {
   unreadCount,
 } from "../../store/notifications.ts";
 import { GameStateContext } from "../Game/useGameState.ts";
+import { t } from "../../util/t.ts";
 import { Bell as BellIcon } from "./icons.tsx";
 import { NotificationsPanel } from "./Panel.tsx";
 
@@ -47,10 +48,10 @@ export const NotificationsBell = () => {
         onClick={() => setOpen(true)}
         onPointerEnter={() => fetchNotifications()}
         onFocus={() => fetchNotifications()}
-        title="Notifications"
+        title={t("notif.bell.title")}
         aria-label={count > 0
-          ? `Notifications (${count} unread)`
-          : "Notifications"}
+          ? t("notif.bell.unread", { count })
+          : t("notif.bell.title")}
       >
         <BellIcon filled={count > 0} />
         {count > 0 && (
