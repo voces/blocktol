@@ -37,12 +37,17 @@ const commitRunBody = z.object({
 
 export const commitRun = method(commitRunBody, true)(
   async ({ userId, iteration, blocks, clientId }, req) => {
+    // The run's server-assigned created (ms epoch), handed back so the client can
+    // pin the just-executed run off its optimistic panel row (see
+    // insertFreePlayRun). Null on the legacy flip-void path — that client already
+    // has the row's created from getBoard and never renders an optimistic row.
+    let created: number | null = null;
     try {
       if (blocks && clientId) {
         const data = await getIteration(iteration);
         const validation = validateRun(data, blocks);
         if (!validation.ok) return { error: validation.reason, status: 400 };
-        await insertFreePlayRun(
+        created = await insertFreePlayRun(
           userId,
           iteration,
           validation.duration,
@@ -64,6 +69,6 @@ export const commitRun = method(commitRunBody, true)(
     await onPbBuild(iteration, userId);
     // The iteration rides back so the client can refresh that day's standings —
     // a committed free-play run just entered the field and may move the PB board.
-    return { kind: "commitRun" as const, iteration };
+    return { kind: "commitRun" as const, iteration, created };
   },
 );

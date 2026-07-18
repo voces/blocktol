@@ -86,6 +86,15 @@ export const commitRun = (user: string, iteration: number) =>
 // sqlOnce + a NOT EXISTS guard on client_id makes the write idempotent: commitRun
 // is retryable now, so a retry after a lost response re-runs this exact INSERT and
 // the guard drops the duplicate. clientId is the client's per-attempt id.
+//
+// Returns the run's server-assigned `created` as ms epoch — the same
+// UNIX_TIMESTAMP(created) * 1000 the pin query matches on. The client shows the
+// just-executed run in its panel optimistically, before any re-stage refetches
+// the authoritative list; handing back the real created lets a pin on that row
+// match the stored row (a client Date.now() stamp — millisecond precision off
+// the player's own clock — never would). The trailing SELECT reads it back for
+// the row whether this call inserted it or an idempotent retry found it already
+// there, so the whole batch stays retry-safe.
 export const insertFreePlayRun = (
   user: string,
   iteration: number,
@@ -93,7 +102,7 @@ export const insertFreePlayRun = (
   blocks: (Point & { thunder?: boolean })[],
   clientId: string,
 ) =>
-  sqlOnce`
+  sqlOnce<[unknown, { created: number }[]]>`
     INSERT INTO run (user, iteration, time, data, void, daily, ranked, client_id)
     SELECT ${user}, ${iteration}, ${time}, ${
     serializeRun(blocks.map((b) => ({ ...b, player: true })))
@@ -105,7 +114,14 @@ export const insertFreePlayRun = (
         AND iteration = ${iteration}
         AND client_id = ${clientId}
     );
-  `;
+
+    SELECT UNIX_TIMESTAMP(created) * 1000 created
+    FROM run
+    WHERE user = ${user}
+      AND iteration = ${iteration}
+      AND client_id = ${clientId}
+    LIMIT 1;
+  `.then((r) => r?.[1]?.[0]?.created ?? null);
 
 // Save the caller's in-progress build (latest run, within the 60s window).
 // Whether the save also commits comes off the run row itself: `ranked` was

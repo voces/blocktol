@@ -509,6 +509,25 @@ export const useInit = () => {
           }).catch(() => {})
         );
         setPendingCommit(commit);
+        // The optimistic panel row below is stamped with a provisional local
+        // `created` so it renders at once. But `created` is also the pin key —
+        // the pin toggle sends it and the server matches on the row's
+        // second-precision UNIX_TIMESTAMP(created) * 1000, which a client
+        // wall-clock ms never equals — so pinning the still-running run would
+        // silently no-op. Once the commit lands, replace that provisional stamp
+        // with the server's real created so a pin on the row matches. (The
+        // finish re-stage would eventually replace the whole row with
+        // authoritative data, but not until the runner stops animating.)
+        const provisionalCreated = Date.now();
+        commit.then((r) => {
+          const created = r && !("error" in r) ? r.created : null;
+          if (created == null) return;
+          setViewedAttempts((attempts) =>
+            attempts.map((a) =>
+              a.created === provisionalCreated ? { ...a, created } : a
+            )
+          );
+        }).catch(() => {});
         // Show the run in the Runs panel the instant it starts executing, rather
         // than waiting for the runner to finish and the board to re-stage.
         // Mirrors the server's mapAttempts shaping (your best run re-normalises
@@ -537,7 +556,7 @@ export const useInit = () => {
             ranked: false,
             pinned: false,
             maze,
-            created: Date.now(),
+            created: provisionalCreated,
           },
         ]);
         // A free-play result is known the instant it commits, so fire the

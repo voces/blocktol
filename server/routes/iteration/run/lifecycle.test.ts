@@ -8,6 +8,7 @@ import { deserializeRun } from "../../../util/run.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { getDailySummary } from "../daily.ts";
 import { commitRun } from "./commit.ts";
+import { setRunPinned } from "./pin.ts";
 import { startRun } from "./start.ts";
 import { updateRun } from "./update.ts";
 
@@ -57,6 +58,18 @@ const runRows = (user: string) =>
     ORDER BY created ASC, time ASC;`;
 
 const cleanup = (user: string) => sql`DELETE FROM user WHERE id = ${user};`;
+
+// The pinned flags of the user's runs, in the same order runRows reads them —
+// the pin toggle sets an absolute value, so a test can read back whether a pin
+// actually landed on the row.
+const pinnedFlags = (user: string) =>
+  sql<{ pinned: number }[]>`
+    SELECT run.pinned
+    FROM run
+    WHERE user = ${user}
+    ORDER BY created ASC, time ASC;`.then((r) =>
+    r.map((x) => Number(x.pinned))
+  );
 
 // Age the user's latest run so it reads as started `seconds` ago — how tests
 // step past the 60s build window (and the 2s start-race guard) without
@@ -224,6 +237,70 @@ Deno.test({
         "the server recomputes the time from the maze",
       );
       assertEquals(deserializeRun(rows[0].data).length, cells.length);
+    } finally {
+      await cleanup(user);
+    }
+  },
+});
+
+Deno.test({
+  name: "commitRun returns the server-stored created so the run can be pinned",
+  ignore: !live,
+  fn: async () => {
+    const user = await testUser();
+    const req = authed(user);
+    try {
+      const iteration = await pastIteration();
+      const data = await getIteration(iteration);
+      const cells = freeCells(data, 2);
+
+      // Commit a free-play run the way the current client does (no
+      // startRun/updateRun — the whole maze arrives at commit).
+      const committed = await commitRun.handler(
+        { iteration, blocks: cells, clientId: crypto.randomUUID() },
+        req,
+      );
+      assert(!("error" in committed), "commit-only free play should succeed");
+
+      // The client optimistically shows the just-executed run in its panel while
+      // the runner is still animating — before any re-stage refetches the
+      // authoritative list. To let a pin on THAT row persist, the commit must
+      // hand back the run's server-assigned `created` (the same second-precision
+      // ms the pin query matches on), not leave the client guessing with a
+      // Date.now() stamp of its own.
+      assertExists(committed.created, "commit returns the run's created");
+      assertEquals(
+        committed.created % 1000,
+        0,
+        "the returned created is the DB's second-precision value",
+      );
+
+      // A pin sent with a client wall-clock stamp — millisecond precision off the
+      // player's own clock, as the buggy optimistic row used — cannot match the
+      // server's second-precision row, so it silently no-ops (the reported bug).
+      const clientStamp = committed.created + 123;
+      const stale = await setRunPinned.handler(
+        { iteration, created: [clientStamp], pinned: true },
+        req,
+      );
+      assert(!("error" in stale));
+      assertEquals(
+        await pinnedFlags(user),
+        [0],
+        "a mis-stamped pin matches no row",
+      );
+
+      // The created the commit returned matches exactly, so the pin lands.
+      const pinned = await setRunPinned.handler(
+        { iteration, created: [committed.created], pinned: true },
+        req,
+      );
+      assert(!("error" in pinned));
+      assertEquals(
+        await pinnedFlags(user),
+        [1],
+        "pinning with the server-returned created persists",
+      );
     } finally {
       await cleanup(user);
     }
