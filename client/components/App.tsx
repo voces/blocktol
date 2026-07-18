@@ -59,11 +59,6 @@ const Shell = (
     <GameStateContext.Provider value={gameState}>
       <div style={{ textAlign: "center" }}>
         {
-          /* Storage-blocked heads-up (in-memory fallback — util/storage.ts). In
-          Shell so it shows over both onboarding and the game. */
-        }
-        {!storagePersistent && <StorageNotice />}
-        {
           /* Always mounted (invisible at rest) so the release can EASE back —
             unmounting would cut the transition. */
         }
@@ -281,6 +276,13 @@ export const App = () => {
         board stopped responding). */
       }
       {(disconnected || failures.value >= 2) && <Disconnected />}
+      {
+        /* Storage-blocked heads-up — game view only, never over the tour.
+          A blocked browser also blocks sessionStorage, so the gateToast can't
+          be set/read there; the two toasts are mutually exclusive and never
+          collide. */
+      }
+      {!storagePersistent && <StorageNotice />}
       {toast && (
         <Toast
           title={toast.title}

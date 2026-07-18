@@ -3329,53 +3329,6 @@ a:hover {
   }
 }
 
-/* Storage-blocked notice — the app is on the in-memory fallback (util/storage.ts,
-   components/StorageNotice.tsx): a warn-tinted bar pinned top-center, dismissible
-   for the session. */
-.storage-notice {
-  position: fixed;
-  left: 50%;
-  top: calc(12px + env(safe-area-inset-top));
-  transform: translateX(-50%);
-  z-index: 70;
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  width: min(400px, calc(100vw - 24px));
-  background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border));
-  border-left: 3px solid var(--warn);
-  border-radius: 12px;
-  padding: 11px 11px 11px 13px;
-  box-shadow: 0 18px 44px -16px rgba(0, 0, 0, 0.6);
-  text-align: left;
-  animation: toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
-}
-.storage-notice__body {
-  flex: 1;
-  min-width: 0;
-}
-.storage-notice__title {
-  font: 700 13.5px var(--font);
-  color: var(--color);
-}
-.storage-notice__sub {
-  font: 500 12px var(--font);
-  color: var(--text-mute);
-  margin-top: 2px;
-  line-height: 1.35;
-}
-.storage-notice__close {
-  flex: none;
-  border: 0;
-  background: transparent;
-  color: var(--text-faint);
-  font-size: 20px;
-  line-height: 1;
-  padding: 4px 6px;
-  cursor: pointer;
-}
-
 /* ==== Standings (dock + expanded sheet) ==================================
    The collapsed sliver shows your rank and the current leader; tapping it
    opens the full board. Colour discipline mirrors the runs panel: one accent

@@ -1,8 +1,10 @@
-import { h } from "preact";
+import { ComponentChildren, h } from "preact";
 
-// A transient status toast, bottom-centered over the board. Used after a silent
-// profile adopt (the move/merge gate stashes it in sessionStorage; App renders it
-// on the next boot — see MoveGate.reloadAs and App).
+// A status toast, bottom-centered over the board. Used after a silent profile
+// adopt (the move/merge gate stashes it in sessionStorage; App renders it on the
+// next boot — see MoveGate.reloadAs and App) and for the storage-blocked heads-up
+// (StorageNotice). The default icon is a success check; pass `icon` to override
+// it (e.g. an info glyph for a non-success message).
 const CheckCircle = () => (
   <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">
     <circle cx={10} cy={10} r={9} fill="var(--win)" />
@@ -18,15 +20,16 @@ const CheckCircle = () => (
 );
 
 export const Toast = (
-  { title, sub, onClose }: {
+  { title, sub, onClose, icon }: {
     title: string;
     sub?: string;
     onClose: () => void;
+    icon?: ComponentChildren;
   },
 ) => (
   <div class="toast" role="status">
     <span class="toast__icon">
-      <CheckCircle />
+      {icon ?? <CheckCircle />}
     </span>
     <div class="toast__body">
       <div class="toast__title">{title}</div>
