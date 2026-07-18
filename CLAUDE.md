@@ -512,7 +512,14 @@ convention `common/format.ts` already uses. A locale missing a key falls back to
 the English AST. **Conventions:** keys are stable and namespaced by surface
 (`notif.`, …), never encode the English text; **never interpolate a key** — map
 an enum to its key with a literal object/ternary so every live key is greppable
-(see `notificationText`).
+(see `notificationText`). Rich-text copy — a message that wraps part of the
+sentence in markup (a `<b>`, a link) — uses `tJsx` (`client/util/t.ts`), which
+returns a `(string | VNode)[]` instead of a string: the catalog keeps one arg
+per wrapped span (`"You beat {pct} of players today"` with `pct={<b>84%</b>}`)
+so a locale can move the emphasis where its grammar wants; plain `t` covers
+everything else. **User-facing piece names are `block` and `thunder`** — the
+internal `bricks`/`power`/`slow` names never appear in copy (see
+`i18n/glossary.json`, which the translator reads).
 
 Adding/altering copy: edit `i18n/en.json`, run `deno task i18n` (or any
 `build`/`dev`/`test`), and call `t(...)`. First consumer is

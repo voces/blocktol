@@ -1,8 +1,8 @@
 {
   "Blocktol": "the game's name — never translate.",
   "runner": "the entity that travels the maze; a common noun, translate it.",
-  "brick": "a block the player places to lengthen the path; translate it.",
-  "thunder": "a slow-field the player places (also called power); translate it.",
+  "block": "a piece the player places to lengthen the path; translate it. User copy always says \"block\" (never \"brick\" — that's an internal variable name only).",
+  "thunder": "the slow-field the player places; translate it. User copy always says \"thunder\" (\"power\" and \"slow\" are internal code terms and never appear on screen).",
   "daily": "the day's ranked puzzle; translate as the noun for the daily challenge.",
   "free play": "unranked replay mode; translate the phrase.",
   "ranked": "counts toward the daily result; translate it.",

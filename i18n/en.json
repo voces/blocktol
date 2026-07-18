@@ -27,6 +27,10 @@
     "message": "SUPREME",
     "description": "Badge for a sole untied #1. All-caps; see glossary SUPREME."
   },
+  "badge.best": {
+    "message": "BEST",
+    "description": "Badge on the player's best of their three ranked attempts (not a field record). All-caps; see glossary BEST."
+  },
   "cal.newDaily": {
     "message": "New daily available",
     "description": "Label/tooltip on the calendar button when a new day's daily has become available."
@@ -262,5 +266,33 @@
   "notif.panel.sectionEarlier": {
     "message": "Earlier",
     "description": "Section heading over already-read notifications."
+  },
+  "daily.resultTitle": {
+    "message": "Blocktol · {date}",
+    "description": "Title of the daily result card. \"Blocktol\" is the app name — keep it verbatim (see glossary). {date} is a short calendar day like \"Jul 6\"; \"·\" is a separator."
+  },
+  "daily.attempt": {
+    "message": "Attempt {n}",
+    "description": "Row label in the daily result card for one of the three ranked attempts. {n} is the attempt number."
+  },
+  "daily.beat": {
+    "message": "You beat {pct} of players today",
+    "description": "Banner on the daily result card. {pct} is a bold percentage span like \"84%\" (the emphasis is markup — position it where the sentence reads naturally)."
+  },
+  "daily.median": {
+    "message": "median",
+    "description": "Label under the median time in the daily result card's stat row (shown beside the symbolic p25/p75 markers)."
+  },
+  "daily.share": {
+    "message": "Share result",
+    "description": "Button that copies a shareable summary of the day's result to the clipboard."
+  },
+  "daily.copied": {
+    "message": "Copied!",
+    "description": "Transient confirmation shown on the share button after the result is copied to the clipboard."
+  },
+  "daily.keepPlaying": {
+    "message": "Keep playing",
+    "description": "Button that dismisses the daily result card and returns to a free-play board for the day."
   }
 }

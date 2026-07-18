@@ -117,6 +117,23 @@ export const resolveCatalog = (locale: string | undefined): Locale => {
   return "en";
 };
 
+// Resolve a key to its compiled AST in the best-matching catalog, falling back
+// to English. Exposed so a framework-aware renderer (the client's `tJsx`, which
+// substitutes VNodes for some args) can walk the same nodes without re-resolving
+// the catalog or shipping the parser.
+export const messageNodes = (
+  locale: string | undefined,
+  key: MessageKey,
+): readonly I18nNode[] => {
+  const cat = resolveCatalog(locale);
+  return catalog[cat][key] ?? catalog.en[key];
+};
+
+// Locale-aware number formatting, shared so `tJsx` formats numeric args exactly
+// as `renderMessage` does.
+export const formatNumber = (locale: string | undefined, n: number): string =>
+  numberFormat(locale).format(n);
+
 /**
  * Render a catalog message. `locale` is a BCP-47 tag — omitted on the client
  * (renders in the viewer's own locale), set on the server to the recipient's
@@ -129,8 +146,9 @@ export const t = <K extends MessageKey>(
   key: K,
   // Required for keys with arguments; omittable for no-argument keys.
   ...params: keyof MessageParams[K] extends never ? [] : [MessageParams[K]]
-): string => {
-  const cat = resolveCatalog(locale);
-  const nodes = catalog[cat][key] ?? catalog.en[key];
-  return renderMessage(nodes, locale, (params[0] ?? {}) as I18nParams);
-};
+): string =>
+  renderMessage(
+    messageNodes(locale, key),
+    locale,
+    (params[0] ?? {}) as I18nParams,
+  );
