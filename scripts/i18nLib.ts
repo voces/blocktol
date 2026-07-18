@@ -62,9 +62,10 @@ const argNames = (message: string): Set<string> =>
   new Set(Object.keys(collectParams(parseMessage(message))));
 
 // The CLDR plural categories a locale requires for cardinals (always includes
-// "other"; e.g. en → {one, other}, de → {one, other}, pl → {one, few, many, other},
-// ja → {other}).
-const requiredPluralCategories = (locale: string): string[] => {
+// "other"; e.g. en → {one, other}, de → {one, other}, es → {one, many, other},
+// pl → {one, few, many, other}, ja → {other}). Exported so the translator can
+// tell the model exactly which branches to supply.
+export const requiredPluralCategories = (locale: string): string[] => {
   try {
     return new Intl.PluralRules(locale).resolvedOptions().pluralCategories;
   } catch {

@@ -8,6 +8,7 @@
 import {
   loadConfig,
   readJson,
+  requiredPluralCategories,
   sha256,
   type SourceCatalog,
   type TargetCatalog,
@@ -21,6 +22,8 @@ export type TranslateRequest = {
   locale: string;
   entries: { key: string; message: string; description?: string }[];
   glossary: Glossary;
+  // Validation errors from a previous attempt, fed back so the model self-corrects.
+  notes?: string[];
 };
 
 // The seam. An implementation returns key → translated ICU message for every
@@ -42,8 +45,9 @@ export const staleKeys = async (
   return out;
 };
 
-// Call the translator for the stale entries, validate the result (retry once on
-// a dropped placeholder / bad plural), and build the fresh target catalog:
+// Call the translator for the stale entries, validate the result (retrying with
+// the errors fed back on a dropped placeholder / bad plural), and build the fresh
+// target catalog:
 // unchanged translations kept, new ones spliced in, orphans dropped (we only
 // iterate en's keys). Returns null when nothing changed.
 export const translateLocale = async (
@@ -69,8 +73,15 @@ export const translateLocale = async (
       description: en[key].description,
     }));
     let out: Record<string, string> | null = null;
-    for (let attempt = 0; attempt < 2 && !out; attempt++) {
-      const result = await translator.translate({ locale, entries, glossary });
+    let notes: string[] | undefined;
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts && !out; attempt++) {
+      const result = await translator.translate({
+        locale,
+        entries,
+        glossary,
+        notes,
+      });
       const errors: string[] = [];
       for (const { key, message } of entries) {
         const got = result[key];
@@ -81,11 +92,14 @@ export const translateLocale = async (
         }
       }
       if (!errors.length) out = result;
-      else if (attempt === 1) {
+      else if (attempt === maxAttempts - 1) {
         throw new Error(
           `translation validation failed:\n  ${errors.join("\n  ")}`,
         );
-      } else console.warn(`retrying ${locale}:\n  ${errors.join("\n  ")}`);
+      } else {
+        notes = errors; // fed back so the next attempt corrects them
+        console.warn(`retrying ${locale}:\n  ${errors.join("\n  ")}`);
+      }
     }
     for (const key of stale) {
       next[key] = { message: out![key], hash: await sha256(en[key].message) };
@@ -125,13 +139,30 @@ Rules:
 Glossary (keep these terms consistent):
 ${Object.entries(glossary).map(([t, note]) => `- ${t}: ${note}`).join("\n")}`;
 
-const userPrompt = (req: TranslateRequest): string =>
-  `Translate these strings to ${localeName(req.locale)} (${req.locale}).\n\n` +
-  req.entries.map((e) =>
-    `key: ${e.key}\nmessage: ${e.message}${
-      e.description ? `\ncontext: ${e.description}` : ""
-    }`
-  ).join("\n\n");
+const userPrompt = (req: TranslateRequest): string => {
+  const cats = requiredPluralCategories(req.locale);
+  const lines = [
+    `Translate these strings to ${localeName(req.locale)} (${req.locale}).`,
+    // Deterministic plural guidance — the model otherwise misses categories that
+    // are counterintuitive (e.g. Spanish/French/Portuguese cardinals need "many").
+    `Any {…, plural, …} block MUST provide exactly these categories for ${req.locale}: ${
+      cats.join(", ")
+    } (plus any =N you keep from the source).`,
+  ];
+  if (req.notes?.length) {
+    lines.push(
+      `Your previous attempt had these problems — fix them:\n${
+        req.notes.map((n) => `- ${n}`).join("\n")
+      }`,
+    );
+  }
+  return lines.join("\n\n") + "\n\n" +
+    req.entries.map((e) =>
+      `key: ${e.key}\nmessage: ${e.message}${
+        e.description ? `\ncontext: ${e.description}` : ""
+      }`
+    ).join("\n\n");
+};
 
 export const makeAnthropicTranslator = (): Translator => ({
   async translate(req) {

@@ -74,6 +74,31 @@ Deno.test("translateLocale: prunes orphaned keys", async () => {
   assert(!("gone.key" in next));
 });
 
+Deno.test("translateLocale: retries with feedback and succeeds", async () => {
+  let calls = 0;
+  const flaky: Translator = {
+    translate: (req) => {
+      calls++;
+      const out: Record<string, string> = {};
+      // First attempt drops {name}; the retry (which receives notes) fixes it.
+      for (const e of req.entries) {
+        out[e.key] = calls === 1 ? "Hola" : "Hola {name}";
+      }
+      return Promise.resolve(out);
+    },
+  };
+  const next = await translateLocale(
+    flaky,
+    "es",
+    { "a.greet": en["a.greet"] },
+    {},
+    {},
+  );
+  assert(next);
+  assertEquals(next["a.greet"].message, "Hola {name}");
+  assert(calls >= 2);
+});
+
 Deno.test("translateLocale: rejects a dropped placeholder", async () => {
   const bad = fake({ "a.greet": "Hola" }); // dropped {name}
   await assertRejects(
