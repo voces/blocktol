@@ -31,13 +31,21 @@ const HI = 18;
 // Wave tuning (see the flood fill below). DELAY_PER_UNIT sets travel speed (s of
 // delay per unit of maze distance — small = fast); each cell's pulse length is
 // the CSS `floodCell` duration. BASE_DELAY lets the crest launch as the button
-// lands (its drop peaks ~0.24s in, see buildDrop). REACH is the distance the
-// crest survives to — peak brightness ramps to zero there, so the wave fades out
-// mid-board rather than slamming the far wall. Cells past REACH aren't drawn.
+// lands (its drop peaks ~0.14s in, see buildDrop). The crest dims gently with
+// distance — DIM is how much brightness it sheds by the FARTHEST reachable cell
+// (0.4 → the far wall still gets 60%), so it visibly reaches the whole board
+// instead of dying mid-way. Every reachable cell is drawn; a longer maze just
+// takes proportionally longer to fill, which is intended.
 const DELAY_PER_UNIT = 0.03;
-const BASE_DELAY = 0.2;
-const REACH = 26;
+const BASE_DELAY = 0.14;
+const DIM = 0.4;
 const PEAK = 0.62;
+
+// Fire each mark this many seconds EARLY — the cue leads the clock so the "1s"
+// ripple kicks off at 1.25s left, giving the wave room to sweep out before the
+// window closes. The whole-second `time` can't express a fractional lead, so the
+// marks are read off the fractional deadline instead.
+const LEAD = 0.25;
 
 // 8-connected so the flood reads as rounded rather than a diamond, but a
 // diagonal step is barred when both orthogonal cells beside it are blocked — the
@@ -127,16 +135,22 @@ const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
     }
   }
 
+  // Farthest reachable cell — normalizes the distance-dimming so the fade is
+  // relative to THIS maze's span (the crest reaches the far wall whether the
+  // board is open or a long winding maze).
+  let maxDist = 0;
+  for (const d of dist.values()) if (d > maxDist) maxDist = d;
+  const norm = maxDist || 1;
+
   const cells: Cell[] = [];
   let maxDelay = -1;
   let lastIdx = 0;
   for (const [k, d] of dist) {
-    if (d >= REACH) continue;
     const delay = BASE_DELAY + d * DELAY_PER_UNIT;
     cells.push({
       x: k % N,
       y: Math.floor(k / N),
-      peak: PEAK * (1 - d / REACH),
+      peak: PEAK * (1 - DIM * (d / norm)),
       delay,
       last: false,
     });
@@ -152,33 +166,46 @@ const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
 type Wave = { id: number; cells: Cell[] };
 
 export const TimerRipple = () => {
-  const { time, phase, blocks } = useContext(GameStateContext);
+  const { phase, blocks, deadlineRef } = useContext(GameStateContext);
   const [waves, setWaves] = useState<Wave[]>([]);
-  // Previous observed second, to fire only on a real tick DOWN across a mark —
-  // not on the initial mount, nor on the jump back up when a fresh attempt
-  // re-arms the clock to 60.
-  const prev = useRef(time);
   const nextId = useRef(0);
   // `blocks` changes at pointer speed while building; read it off a ref so it
-  // isn't a dependency of the mark effect (which must run only on a tick).
+  // isn't a dependency of the poll effect.
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
+  // Marks already fired this window, and the deadline they belong to — a fresh
+  // attempt re-arms the clock to a new deadline, which clears and re-arms them.
+  const firedRef = useRef<Set<number>>(new Set());
+  const windowRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const before = prev.current;
-    prev.current = time;
     if (phase !== "building") return;
-    if (time >= before) return;
-    // Largest mark newly crossed. A throttled background tab can skip several
-    // marks in one tick; one wave for the batch is deliberate (mild).
-    const mark = RIPPLE_MARKS.find((m) => before > m && time <= m);
-    if (mark === undefined) return;
-    const cells = floodCells(blocksRef.current);
-    if (!cells.length) return;
-    setWaves((w) => [...w, { id: nextId.current++, cells }]);
-    // Cue the button's drop, in sync (it is the source).
-    timerPulse.value++;
-  }, [time, phase]);
+    // Poll the fractional time left (not the whole-second `time`) so each mark
+    // can lead by LEAD; a 100ms tick catches every mark within ~0.1s of its
+    // lead point. The interval is torn down the moment the build window ends.
+    const tick = () => {
+      const deadline = deadlineRef.current;
+      if (deadline === null) return;
+      if (deadline !== windowRef.current) {
+        windowRef.current = deadline;
+        firedRef.current.clear();
+      }
+      const remaining = (deadline - Date.now()) / 1000;
+      const passed = RIPPLE_MARKS.filter((m) => remaining <= m + LEAD);
+      if (!passed.some((m) => !firedRef.current.has(m))) return;
+      // Mark every passed mark fired (a throttled tab that jumped several at
+      // once must not later replay the ones it skipped), but launch just one
+      // wave — the surface stirs once per crossing, never a burst.
+      for (const m of passed) firedRef.current.add(m);
+      const cells = floodCells(blocksRef.current);
+      if (!cells.length) return;
+      setWaves((w) => [...w, { id: nextId.current++, cells }]);
+      // Cue the button's drop, in sync (it is the source).
+      timerPulse.value++;
+    };
+    const iv = setInterval(tick, 100);
+    return () => clearInterval(iv);
+  }, [phase]);
 
   const remove = (id: number) => setWaves((w) => w.filter((x) => x.id !== id));
 
