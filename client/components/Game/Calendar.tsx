@@ -87,6 +87,14 @@ export const Calendar = () => {
   // than mirroring response events) can't drift when a superseded response
   // is discarded by the board loader.
   const selected = iteration;
+  // A ranked daily is "in progress" (calendar hidden — no wandering off mid-run)
+  // only until it's finished OR a new daily rolls in past local midnight. Once
+  // rolled over the pinned day is over, so the calendar must show again even
+  // though attemptsRemaining still reflects that stale day — it's the in-app
+  // switch to the new daily, and a board left on a past day (deep-linked while
+  // today's daily was outstanding) would otherwise strand the player with no
+  // way across (see store/dailyRollover.ts).
+  const dailyInProgress = attemptsRemaining !== 0 && !newDailyAvailable.value;
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
   // The very first daily's month — the floor `canPrev` pages back to (from the
@@ -142,23 +150,24 @@ export const Calendar = () => {
   // comes back empty and gets cached. Once the daily is done (their runs now
   // exist), refetch this month so the calendar fills in.
   useEffect(() => {
-    if (attemptsRemaining !== 0) {
+    if (dailyInProgress) {
       // The daily just (re)started — make sure a stale-open picker doesn't linger
       // to reappear when it ends.
       setCalendarOpen(false);
       return;
     }
     refreshMonth(currentIdx);
-  }, [attemptsRemaining]);
+  }, [dailyInProgress]);
 
   // Page back until the earliest shown month reaches the first daily ever.
   const canPrev = oldestIdx === undefined || shownEarliest > oldestIdx;
   const canNext = page > 0;
 
   // Hidden while the daily is in progress (even with an attempt or two spent) —
-  // no wandering off to other days mid-run. Shown once it's done or during free
-  // play (both attemptsRemaining === 0).
-  if (attemptsRemaining !== 0) return null;
+  // no wandering off to other days mid-run. Shown once it's done, during free
+  // play (both attemptsRemaining === 0), or once a new daily has rolled in (the
+  // pinned day is over — this is the switch to the new one).
+  if (dailyInProgress) return null;
   // On mobile the calendar is only the full-screen picker (opened from the header
   // button) — nothing inline. Desktop ignores calendarOpen and always shows it.
   if (mobile && !calendarOpen) return null;
