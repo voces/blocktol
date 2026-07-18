@@ -12,12 +12,12 @@
     "description": "Headline when a daily you played has closed and been ranked. {date} is a short calendar day like \"Jul 6\"."
   },
   "notif.dailyFinal.supreme": {
-    "message": "You finished #1 of {players}. Supreme, untied",
+    "message": "You finished #1 of {players}. Supreme",
     "description": "Daily-final body: sole best of the ranked field, matched by no one in ranked or free play. {players} is the ranked field size. \"#1\" is first place; \"Supreme\" is a celebratory label (keep the tone)."
   },
   "notif.dailyFinal.record": {
-    "message": "You finished #{rank} of {players}. A record held",
-    "description": "Daily-final body: co-top of the ranked field with no free-play build beating it — a held record. {rank} is your standard-competition rank (1 = best), {players} the ranked field size."
+    "message": "You finished #1 of {players}. A record held",
+    "description": "Daily-final body: co-top of the ranked field with no free-play build beating it — a held record. You are always rank 1 here (a record means no one out-ranked you), so #1 is literal. {players} is the ranked field size."
   },
   "notif.dailyFinal.first": {
     "message": "You finished #1 of {players}. Bettered only in free play",

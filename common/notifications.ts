@@ -186,7 +186,7 @@ export const notificationText = (
   const body = d.variant === "supreme"
     ? t(locale, "notif.dailyFinal.supreme", { players: d.players })
     : d.variant === "record"
-    ? t(locale, "notif.dailyFinal.record", { rank: d.rank, players: d.players })
+    ? t(locale, "notif.dailyFinal.record", { players: d.players })
     : d.variant === "first"
     ? t(locale, "notif.dailyFinal.first", { players: d.players })
     : d.variant === "t1"
