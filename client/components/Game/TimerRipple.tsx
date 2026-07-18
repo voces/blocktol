@@ -47,10 +47,11 @@ const PEAK = 0.62;
 // marks are read off the fractional deadline instead.
 const LEAD = 0.25;
 
-// 8-connected so the flood reads as rounded rather than a diamond, but a
-// diagonal step is barred when both orthogonal cells beside it are blocked — the
-// same "can't squeeze through a diagonal gap" rule the runner obeys — so the
-// wave can't leak through a corner-touching wall of pieces.
+// 8-connected, and — unlike the runner — it DELIBERATELY jumps corners: a
+// diagonal step is allowed even between two corner-touching pieces. Obeying the
+// runner's no-squeeze rule would strand the pinched cells dark, and those holes
+// would leak which gaps the runner can't pass — a hint. Water fills them, so the
+// crest closes over every diagonal gap and reveals nothing.
 const STEPS: Array<[number, number, number]> = [
   [1, 0, 1],
   [-1, 0, 1],
@@ -95,8 +96,8 @@ const nearestFree = (ax: number, ay: number, blocked: Set<number>): Point => {
 };
 
 // Dijkstra from the source over free cells, then a render cell per reachable
-// square within REACH. The farthest-launching cell is flagged `last` so its
-// animation end can retire the whole wave without a timer.
+// square. The farthest-launching cell is flagged `last` so its animation end
+// can retire the whole wave without a timer.
 const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
   // Every piece is a 2×2 (see Block's `size`): a block at (x,y) fills the four
   // cells (x,y),(x+1,y),(x,y+1),(x+1,y+1). Mark all four so the crest leaves the
@@ -121,12 +122,6 @@ const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
       const nx = x + dx;
       const ny = y + dy;
       if (!free(nx, ny, blocked)) continue;
-      // No diagonal squeeze between two corner-touching pieces.
-      if (
-        dx && dy && blocked.has(key(x + dx, y)) && blocked.has(key(x, y + dy))
-      ) {
-        continue;
-      }
       const nd = d + w;
       if (nd < (dist.get(key(nx, ny)) ?? Infinity)) {
         dist.set(key(nx, ny), nd);
@@ -191,6 +186,9 @@ export const TimerRipple = () => {
         firedRef.current.clear();
       }
       const remaining = (deadline - Date.now()) / 1000;
+      // Never launch once the window is up — the runner is releasing; a wave
+      // fired now would surface after it.
+      if (remaining <= 0) return;
       const passed = RIPPLE_MARKS.filter((m) => remaining <= m + LEAD);
       if (!passed.some((m) => !firedRef.current.has(m))) return;
       // Mark every passed mark fired (a throttled tab that jumped several at
@@ -212,22 +210,27 @@ export const TimerRipple = () => {
   if (waves.length === 0) return null;
   return (
     <svg class="board-ripple" viewBox="0 0 20 20" aria-hidden="true">
-      {waves.map((wave) =>
-        wave.cells.map((c) => (
-          <rect
-            key={`${wave.id}-${c.x}-${c.y}`}
-            class="board-ripple__cell"
-            x={c.x}
-            y={c.y}
-            width={1}
-            height={1}
-            style={{ "--peak": c.peak, animationDelay: `${c.delay}s` }}
-            // The last-launching cell retires the whole wave when it finishes,
-            // so no cell is cut short and no timer is needed.
-            onAnimationEnd={c.last ? () => remove(wave.id) : undefined}
-          />
-        ))
-      )}
+      {waves.map((wave) => (
+        // Each wave is its own keyed subtree, so adding or retiring one never
+        // makes Preact recycle a sibling wave's animating cells — that recycling
+        // was cutting an in-flight wave short and re-animating stray cells.
+        <g key={wave.id}>
+          {wave.cells.map((c) => (
+            <rect
+              key={`${c.x}-${c.y}`}
+              class="board-ripple__cell"
+              x={c.x}
+              y={c.y}
+              width={1}
+              height={1}
+              style={{ "--peak": c.peak, animationDelay: `${c.delay}s` }}
+              // The last-launching cell retires the whole wave when it finishes,
+              // so no cell is cut short and no timer is needed.
+              onAnimationEnd={c.last ? () => remove(wave.id) : undefined}
+            />
+          ))}
+        </g>
+      ))}
     </svg>
   );
 };
