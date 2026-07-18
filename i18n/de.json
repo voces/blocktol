@@ -79,6 +79,22 @@
     "message": "SUPREME",
     "hash": "5a66bf27169029baa0e110dd15ae875e74c14bdd82a5bdcc47cab859139ee2af"
   },
+  "cal.bestPct": {
+    "message": "beste {pct} %",
+    "hash": "51b2a07dabd9773045f2f192bf6f4528d4949d0b8f015df24ba734ff28c301b2"
+  },
+  "cal.close": {
+    "message": "Kalender schließen",
+    "hash": "294123d1da4268afbd18335d6d61d6a7d94a7e04a3d69632bfdb5cf3182846f3"
+  },
+  "cal.earlierMonths": {
+    "message": "Frühere Monate",
+    "hash": "563de0c1bbe3700eb0b08e7160179262c281b5d7985e8cc253ddf3be6ea79a46"
+  },
+  "cal.laterMonths": {
+    "message": "Spätere Monate",
+    "hash": "845b0b578d891578375e60baab921e3773b5c1731ebb10c7df9fe65bf3c3d884"
+  },
   "cal.newDaily": {
     "message": "Neues Tagesrätsel verfügbar",
     "hash": "ede26f440341ff60ac77f6629d771fc4793ee3ac8c83d748f9f1d09e437acd4f"
@@ -87,9 +103,17 @@
     "message": "Kalender öffnen",
     "hash": "a1ad37d0c5e801d15f528685842e165565a4c01f2ec63607233091823fed37e3"
   },
+  "cal.playCta": {
+    "message": "Spielen →",
+    "hash": "ecb0c48d44ae3bc4eb39d45426402e612196c91926734f1024bf9c6daea4fcad"
+  },
   "cal.previousDays": {
     "message": "Frühere Tage",
     "hash": "5f365295b35374a0f3c87daac1cd7d8a50e8f32c4769fb037b7fca0cdea3fad6"
+  },
+  "cal.rankedP": {
+    "message": "gewertet P{p}",
+    "hash": "6c65ec28956524d9c4f7febfd489bb4d15947eff5b2dd859ce8c389f2ba9110b"
   },
   "common.connecting": {
     "message": "Verbindung wird hergestellt",
