@@ -674,9 +674,17 @@ a:hover {
      the Hud strip) so the mask is symmetric on all sides. Same width + centering
      + rounding as `.board-frame`, anchored to the board at the bottom. */
   bottom: 0;
-  left: 0;
-  right: 0;
-  margin-inline: auto;
+  /* Center off a DEFINITE width (100% capped at --maze-size), not a
+     left:0/right:0 + margin-auto stretch. Safari mis-derives an
+     absolutely-positioned box's aspect-ratio height when the width comes from a
+     left+right stretch: the square renders too short, and since the blurred
+     deco and scrim are both inset:0, the shortfall exposes a sharp strip of the
+     real board above the overlay (the blur "not aligning" at the top). A
+     definite width makes the aspect-ratio height resolve correctly in Safari
+     and is identical in Chromium/Firefox. */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
   max-width: var(--maze-size);
   aspect-ratio: 1;
   z-index: 10;
