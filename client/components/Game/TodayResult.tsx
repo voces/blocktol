@@ -11,6 +11,7 @@ import { api } from "../../api.ts";
 import { showBoard } from "../../store/board.ts";
 import { DailyItem, dailyItems } from "../../store/dailyItems.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
+import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Item = DailyItem;
@@ -100,19 +101,19 @@ export const TodayResult = () => {
 
   return (
     <div class="today-result">
-      <div class="section-title">Today</div>
+      <div class="section-title">{t("today.title")}</div>
       <div class="today-result__chips">
         <div
           class={"today-result__chip band-card" +
             (rankedBest?.supreme ? " today-result__chip--glow" : "") +
             (rankedBest ? " today-result__chip--clickable tapc" : "")}
           style={{ "--chip": rankedBand }}
-          title={rankedBest ? "View this maze" : undefined}
+          title={rankedBest ? t("today.viewMaze") : undefined}
           onClick={rankedBest
             ? () => reviewToday(() => viewMaze(rankedBest.maze))
             : undefined}
         >
-          <span class="today-result__head">Ranked result</span>
+          <span class="today-result__head">{t("today.ranked")}</span>
           <div class="today-result__value mono">
             {rankedBest
               ? `${formatSeconds(rankedBest.duration, { min: 0 })}s`
@@ -120,12 +121,12 @@ export const TodayResult = () => {
           </div>
           <div class="today-result__sub">
             {rankedBest
-              ? `best of ${formatCount(ranked.length)}${
+              ? `${t("today.bestOf", { count: formatCount(ranked.length) })}${
                 typeof rankedBest.percentile === "number"
                   ? ` · p${formatPercentile(rankedBest.percentile)}`
                   : ""
               }`
-              : "not yet played"}
+              : t("today.notPlayed")}
           </div>
         </div>
         <div
@@ -135,10 +136,12 @@ export const TodayResult = () => {
               ? " today-result__chip--clickable tapc"
               : "")}
           style={{ "--chip": personalBand }}
-          title={today && personalBest != null ? "View this maze" : undefined}
+          title={today && personalBest != null
+            ? t("today.viewMaze")
+            : undefined}
           onClick={today && personalBest != null ? reviewBest : undefined}
         >
-          <span class="today-result__head">Personal best</span>
+          <span class="today-result__head">{t("today.personalBest")}</span>
           <div class="today-result__value mono">
             {personalBest != null
               ? `${formatSeconds(personalBest, { min: 0 })}s`
@@ -146,10 +149,10 @@ export const TodayResult = () => {
           </div>
           <div class="today-result__sub">
             {personalBest == null
-              ? "not yet played"
+              ? t("today.notPlayed")
               : `${
                 personalPct == null ? "" : `${formatPercentile(personalPct)}%`
-              }${personalUnranked ? " · unranked run" : ""}`}
+              }${personalUnranked ? ` · ${t("today.unranked")}` : ""}`}
           </div>
         </div>
       </div>

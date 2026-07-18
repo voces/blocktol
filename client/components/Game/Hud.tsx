@@ -4,6 +4,7 @@ import { showBoard, startBoardRun } from "../../store/board.ts";
 import { rankedEndsAtMidnight } from "../../store/dailyRollover.ts";
 import { Timer } from "../Timer.tsx";
 import { clearFreePlay } from "./freePlay.ts";
+import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { RunClock, VerdictPill } from "./RunClock.tsx";
 
@@ -177,8 +178,8 @@ export const Hud = () => {
           <button
             type="button"
             class="hud__reset tapc"
-            aria-label="Reset board"
-            title="Reset — abandon this attempt"
+            aria-label={t("hud.reset")}
+            title={t("hud.resetTitle")}
             onClick={onReset}
           >
             <ResetIcon />
@@ -196,7 +197,7 @@ export const Hud = () => {
             <div class="hud__build hud__build--staged">
               <span class="hud__build-face hud__build-time">
                 <span class="mono">{formatBuild(time)}</span>
-                <span class="hud__build-label">to build</span>
+                <span class="hud__build-label">{t("hud.toBuild")}</span>
               </span>
             </div>
           )
@@ -216,11 +217,13 @@ export const Hud = () => {
                 <span class="mono">{formatBuild(time)}</span>
                 <span class="hud__build-label">
                   {!freePlay && rankedEndsAtMidnight.value
-                    ? "to midnight"
-                    : "to build"}
+                    ? t("hud.toMidnight")
+                    : t("hud.toBuild")}
                 </span>
               </span>
-              <span class="hud__build-face hud__build-ready">Ready?</span>
+              <span class="hud__build-face hud__build-ready">
+                {t("hud.ready")}
+              </span>
             </button>
           )
           : phase === "running" && run
@@ -235,7 +238,7 @@ export const Hud = () => {
                   <span class="mono">
                     <Timer to={run.duration} />
                   </span>
-                  <span class="hud__build-label">seconds</span>
+                  <span class="hud__build-label">{t("hud.seconds")}</span>
                 </div>
               )
           )
@@ -255,10 +258,10 @@ export const Hud = () => {
                   ? (
                     <>
                       <span class="mono">{formatBuild(time)}</span>
-                      <span class="hud__build-label">to build</span>
+                      <span class="hud__build-label">{t("hud.toBuild")}</span>
                     </>
                   )
-                  : "Play"}
+                  : t("hud.play")}
               </span>
             </button>
           )

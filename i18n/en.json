@@ -102,5 +102,165 @@
   "notif.dailyFinal.placed": {
     "message": "You finished #{rank} of {players}",
     "description": "Daily-final body for an ordinary finish (someone out-ranked you). {rank} is your standard-competition rank (1 = best), {players} the ranked field size."
+  },
+  "prestart.eyebrow": {
+    "message": "Daily · {date}",
+    "description": "Small eyebrow label over the start-attempt overlay. \"Daily\" is the game term (see glossary); {date} is a short calendar day like \"Jul 6\". The \"·\" is a separator dot."
+  },
+  "prestart.newDaily.title": {
+    "message": "New daily available",
+    "description": "Start-overlay heading when a fresh daily has rolled in and can be switched to instead of continuing the parked day."
+  },
+  "prestart.newDaily.sub": {
+    "message": "Today's daily is ready to play.",
+    "description": "Start-overlay subtext under \"New daily available\": today's puzzle can be played now."
+  },
+  "prestart.newDaily.play": {
+    "message": "Play today's daily",
+    "description": "Button on the start overlay that switches to and plays today's freshly available daily."
+  },
+  "prestart.attempt": {
+    "message": "Attempt {n} of {total}",
+    "description": "Start-overlay heading showing which ranked attempt is about to be played. {n} is the current attempt number, {total} the total attempts (3)."
+  },
+  "prestart.perAttempt": {
+    "message": "You'll have 60 seconds per attempt.",
+    "description": "Start-overlay subtext: each ranked attempt has a 60-second build window."
+  },
+  "prestart.previous": {
+    "message": "Previous",
+    "description": "Label before the previous attempt's time on the start overlay (followed by a \"·\" and the time)."
+  },
+  "prestart.start": {
+    "message": "Start attempt",
+    "description": "Button that opens the ranked attempt's 60-second window."
+  },
+  "prestart.starting": {
+    "message": "Starting…",
+    "description": "Transient label on the start button while the attempt is opening. Trailing ellipsis."
+  },
+  "today.title": {
+    "message": "Today",
+    "description": "Section title above today's result chips (ranked result + personal best)."
+  },
+  "today.viewMaze": {
+    "message": "View this maze",
+    "description": "Tooltip on a result chip: clicking reviews the maze that produced the time."
+  },
+  "today.ranked": {
+    "message": "Ranked result",
+    "description": "Heading of the chip showing the best of the three ranked attempts. \"Ranked\" is the game term (see glossary)."
+  },
+  "today.personalBest": {
+    "message": "Personal best",
+    "description": "Heading of the chip showing the player's best time for the day, which may be an unranked free-play run."
+  },
+  "today.notPlayed": {
+    "message": "not yet played",
+    "description": "Shown in a result chip when the player has no time yet for that category."
+  },
+  "today.bestOf": {
+    "message": "best of {count}",
+    "description": "Subtext on the ranked chip: the shown time is the best of {count} ranked attempts. {count} is a small pre-formatted number."
+  },
+  "today.unranked": {
+    "message": "unranked run",
+    "description": "Tag appended to the personal-best subtext when the best time came from a free-play (unranked) run rather than a ranked attempt."
+  },
+  "hud.reset": {
+    "message": "Reset board",
+    "description": "Accessible label for the HUD reset button (free play) that abandons the in-progress build."
+  },
+  "hud.resetTitle": {
+    "message": "Reset — abandon this attempt",
+    "description": "Tooltip for the HUD reset button, warning it discards the current build."
+  },
+  "hud.toBuild": {
+    "message": "to build",
+    "description": "Small label under the build countdown clock: time remaining to build the maze."
+  },
+  "hud.toMidnight": {
+    "message": "to midnight",
+    "description": "Small label under the build clock for a ranked attempt that is being cut short at local midnight instead of the full window."
+  },
+  "hud.ready": {
+    "message": "Ready?",
+    "description": "Label the build clock cross-fades to, inviting the player to start the run now."
+  },
+  "hud.seconds": {
+    "message": "seconds",
+    "description": "Unit label under the live daily run stopwatch counting up the runner's time."
+  },
+  "hud.play": {
+    "message": "Play",
+    "description": "Label on the HUD clock slot while reviewing a past maze; returns to a live, playable board."
+  },
+  "notif.panel.filter.all": {
+    "message": "All",
+    "description": "Notifications filter chip showing every notification."
+  },
+  "notif.panel.filter.daily": {
+    "message": "Daily",
+    "description": "Notifications filter chip scoping to daily-final notifications. \"Daily\" is the game term (see glossary)."
+  },
+  "notif.panel.filter.lostTop": {
+    "message": "Lost #1",
+    "description": "Notifications filter chip scoping to lost-top notifications (you were passed for the day's #1 build). \"#1\" is first place."
+  },
+  "notif.panel.detail": {
+    "message": "your {yourTime} · day's best {dayBest}",
+    "description": "Comparison line on a daily-finish card: your time vs the day's best. {yourTime}/{dayBest} are pre-formatted times with a unit like \"30.34s\". \"·\" is a separator."
+  },
+  "notif.panel.opensDay": {
+    "message": "Opens {date}",
+    "description": "Footer link text on a lost-top card: tapping opens that day. {date} is a short calendar day like \"Jul 6\"."
+  },
+  "notif.panel.opensLeaderboard": {
+    "message": "Opens the leaderboard",
+    "description": "Footer link text on a daily-final card: tapping opens the day's leaderboard."
+  },
+  "notif.panel.reclaimed": {
+    "message": "Reclaimed",
+    "description": "Tag on a lost-top card once the player retook the #1 spot."
+  },
+  "notif.panel.close": {
+    "message": "Close notifications",
+    "description": "Accessible label for the notifications panel's close/drag handle."
+  },
+  "notif.panel.markAllRead": {
+    "message": "Mark all read",
+    "description": "Button that marks every notification as read."
+  },
+  "notif.panel.filterGroup": {
+    "message": "Filter notifications",
+    "description": "Accessible group label for the notifications filter chip row."
+  },
+  "notif.panel.hideReclaimed": {
+    "message": "Hide reclaimed",
+    "description": "Toggle that hides reclaimed lost-top cards from the notifications list."
+  },
+  "notif.panel.empty.none": {
+    "message": "No notifications yet",
+    "description": "Empty state when the player has received no notifications at all."
+  },
+  "notif.panel.empty.lostTop": {
+    "message": "No lost-top notifications",
+    "description": "Empty state under the Lost #1 filter."
+  },
+  "notif.panel.empty.daily": {
+    "message": "No daily notifications",
+    "description": "Empty state under the Daily filter."
+  },
+  "notif.panel.empty.filtered": {
+    "message": "Nothing to show",
+    "description": "Generic empty state when the active filter matches no notifications."
+  },
+  "notif.panel.sectionNew": {
+    "message": "New",
+    "description": "Section heading over unread notifications."
+  },
+  "notif.panel.sectionEarlier": {
+    "message": "Earlier",
+    "description": "Section heading over already-read notifications."
   }
 }

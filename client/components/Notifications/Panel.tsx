@@ -6,6 +6,7 @@ import {
   formatNotifTime,
   notificationText,
 } from "../../../common/notifications.ts";
+import type { MessageKey } from "../../../common/i18n.ts";
 import { useDragToClose } from "../../hooks/useDragToClose.ts";
 import { navigateToNotification } from "../../store/notifNav.ts";
 import {
@@ -20,6 +21,7 @@ import {
   setNotifFilter,
 } from "../../store/notifications.ts";
 import { formatAgo } from "../Standings/helpers.ts";
+import { t } from "../../util/t.ts";
 import { Check, Crown, Flag } from "./icons.tsx";
 
 // A daily outcome's accent — the tile hue and the emphasis colour, mirroring the
@@ -32,13 +34,15 @@ const dailyAccent = (v: DailyFinalData["variant"]): string | null =>
     ? "var(--peak)"
     : null;
 
-// The filter chips, in display order.
+// The filter chips, in display order. The label is a catalog key resolved at
+// render time (so a language switch updates it) — mapped by a literal object so
+// every live key stays greppable.
 const FILTERS: NotifFilter[] = ["all", "daily_final", "lost_top"];
-const CHIP_LABEL: Record<NotifFilter, string> = {
-  all: "All",
-  daily_final: "Daily",
-  lost_top: "Lost #1",
-};
+const CHIP_LABEL_KEY = {
+  all: "notif.panel.filter.all",
+  daily_final: "notif.panel.filter.daily",
+  lost_top: "notif.panel.filter.lostTop",
+} as const satisfies Record<NotifFilter, MessageKey>;
 
 // One card. The tile icon + accent come from the kind/outcome; the title/body
 // are the shared copy; a detail line adds the time comparison where it helps. A
@@ -60,15 +64,16 @@ const Item = (
   if (item.kind === "daily_final") {
     const d = item.data as DailyFinalData;
     if (d.variant === "placed") {
-      detail = `your ${formatNotifTime(d.yourTime)} · day's best ${
-        formatNotifTime(d.dayBest)
-      }`;
+      detail = t("notif.panel.detail", {
+        yourTime: formatNotifTime(d.yourTime),
+        dayBest: formatNotifTime(d.dayBest),
+      });
     }
   }
 
   const link = item.kind === "lost_top"
-    ? `Opens ${formatNotifDate(item.day)}`
-    : "Opens the leaderboard";
+    ? t("notif.panel.opensDay", { date: formatNotifDate(item.day) })
+    : t("notif.panel.opensLeaderboard");
 
   // A reclaimed card reads as read even if never opened — it's no longer a live
   // nudge — so it loses the unread accent and dot.
@@ -95,7 +100,7 @@ const Item = (
         {reclaimed && (
           <span class={"notif-card__tag notif-card__tag--" + reclaimed}>
             {reclaimed === "solo" ? <Crown /> : <Check />}
-            Reclaimed
+            {t("notif.panel.reclaimed")}
           </span>
         )}
         <span class="notif-card__foot">
@@ -148,38 +153,38 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
   const anyUnread = items.some((n) => !n.read && !n.reclaimed);
 
   const emptyMsg = items.length === 0
-    ? "No notifications yet"
+    ? t("notif.panel.empty.none")
     : filter === "lost_top"
-    ? "No lost-top notifications"
+    ? t("notif.panel.empty.lostTop")
     : filter === "daily_final"
-    ? "No daily notifications"
-    : "Nothing to show";
+    ? t("notif.panel.empty.daily")
+    : t("notif.panel.empty.filtered");
 
   return (
     <div class="notif-modal" onClick={onClose}>
       <div
         class="notif-sheet"
         role="dialog"
-        aria-label="Notifications"
+        aria-label={t("notif.bell.title")}
         style={offset ? { transform: `translateY(${offset}px)` } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           class="notif-sheet__handle tapc"
-          aria-label="Close notifications"
+          aria-label={t("notif.panel.close")}
           onClick={onClose}
           {...handlers}
         />
         <div class="notif-sheet__head" {...handlers}>
-          <div class="notif-sheet__title">Notifications</div>
+          <div class="notif-sheet__title">{t("notif.bell.title")}</div>
           <button
             type="button"
             class="notif-sheet__mark tapc"
             disabled={!anyUnread}
             onClick={() => markRead()}
           >
-            Mark all read
+            {t("notif.panel.markAllRead")}
           </button>
         </div>
 
@@ -187,7 +192,7 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
           <div
             class="notif-sheet__filters"
             role="group"
-            aria-label="Filter notifications"
+            aria-label={t("notif.panel.filterGroup")}
           >
             {FILTERS.map((f) => (
               <button
@@ -197,7 +202,7 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
                 aria-pressed={filter === f}
                 onClick={() => setNotifFilter(f)}
               >
-                {CHIP_LABEL[f]}
+                {t(CHIP_LABEL_KEY[f])}
                 <span class="notif-chip__count mono">{countFor(f)}</span>
               </button>
             ))}
@@ -208,7 +213,7 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
                 aria-pressed={hideR}
                 onClick={() => setHideReclaimed(!hideR)}
               >
-                Hide reclaimed
+                {t("notif.panel.hideReclaimed")}
               </button>
             )}
           </div>
@@ -220,7 +225,9 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
           )}
           {unread.length > 0 && (
             <>
-              <div class="notif-sheet__section">New</div>
+              <div class="notif-sheet__section">
+                {t("notif.panel.sectionNew")}
+              </div>
               {unread.map((n) => (
                 <Item
                   key={n.id}
@@ -232,7 +239,9 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
           )}
           {read.length > 0 && (
             <>
-              <div class="notif-sheet__section">Earlier</div>
+              <div class="notif-sheet__section">
+                {t("notif.panel.sectionEarlier")}
+              </div>
               {read.map((n) => (
                 <Item
                   key={n.id}
