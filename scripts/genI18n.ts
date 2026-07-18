@@ -17,11 +17,12 @@ type Catalog = Record<string, Entry>;
 const I18N_DIR = new URL("../i18n/", import.meta.url);
 const OUT = new URL("../common/i18n.generated.ts", import.meta.url);
 
-// Locale catalogs are `<code>.json`; glossary.json (translator context, not a
-// catalog) is excluded.
+// Locale catalogs are `<code>.json`; the non-catalog files (glossary.json,
+// config.json) are excluded so they don't become bogus locales.
+const NON_CATALOG = new Set(["glossary.json", "config.json"]);
 const localeFiles: string[] = [];
 for await (const e of Deno.readDir(I18N_DIR)) {
-  if (e.isFile && e.name.endsWith(".json") && e.name !== "glossary.json") {
+  if (e.isFile && e.name.endsWith(".json") && !NON_CATALOG.has(e.name)) {
     localeFiles.push(e.name.slice(0, -".json".length));
   }
 }

@@ -5,16 +5,18 @@ import { parseMessage } from "../scripts/i18nParse.ts";
 
 // An explicit locale is passed so assertions don't depend on the host default.
 
-Deno.test("t renders catalog keys with grouped numbers", () => {
+Deno.test("t renders English source copy with grouped numbers", () => {
   assertEquals(
     t("en-US", "notif.dailyFinal.placed", { rank: 55, players: 2363 }),
     "You finished #55 of 2,363",
   );
-  // German groups thousands with a dot.
-  assertEquals(
-    t("de-DE", "notif.dailyFinal.placed", { rank: 55, players: 2363 }),
-    "You finished #55 of 2.363",
-  );
+});
+
+Deno.test("renderMessage groups numbers per locale", () => {
+  // Number formatting is locale-aware independent of catalog contents.
+  const nodes = parseMessage("{n}");
+  assertEquals(renderMessage(nodes, "en-US", { n: 2363 }), "2,363");
+  assertEquals(renderMessage(nodes, "de-DE", { n: 2363 }), "2.363");
 });
 
 Deno.test("notificationText round-trips a stored notification", () => {
@@ -62,9 +64,9 @@ Deno.test("select picks a branch, falling back to other", () => {
 
 Deno.test("resolveCatalog best-fits to a supported locale", () => {
   assertEquals(resolveCatalog(undefined), "en");
-  assertEquals(resolveCatalog("en-GB"), "en");
-  // No German catalog yet — falls back to en for copy (Intl still formats de).
-  assertEquals(resolveCatalog("de-DE"), "en");
+  assertEquals(resolveCatalog("en-GB"), "en"); // prefix match
+  assertEquals(resolveCatalog("xx"), "en"); // unknown language → fallback
+  assertEquals(resolveCatalog("de-DE"), "de"); // exact-language best fit
 });
 
 Deno.test("a malformed locale falls back instead of throwing", () => {
