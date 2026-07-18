@@ -1,0 +1,34 @@
+{
+  "notif.dailyFinal.first": {
+    "message": "Vous terminez #1 sur {players}. Battu seulement en free play",
+    "hash": "90b1babd3e971e4351dad46894eeb9da55a40e43fe5ec947019f76436f16eda7"
+  },
+  "notif.dailyFinal.placed": {
+    "message": "Vous terminez #{rank} sur {players}",
+    "hash": "cc474ad96f5ff8709990ca5e9f8796272069989a4b74a848e5c9041f0a0ffb8f"
+  },
+  "notif.dailyFinal.record": {
+    "message": "Vous terminez #1 sur {players}. Record tenu",
+    "hash": "5681336713c715734365ad0426f75b96bf2e814faa7c1e69f2ae5fdd3339a96f"
+  },
+  "notif.dailyFinal.supreme": {
+    "message": "Vous terminez #1 sur {players}. Suprême",
+    "hash": "73644d1540850af4f48c4baa1808e10071e8da54e89cbbdfb15dfd46e8ef13df"
+  },
+  "notif.dailyFinal.t1": {
+    "message": "Vous êtes ex æquo #1 sur {players}. Battu seulement en free play",
+    "hash": "73e68414d884551d268f307f1c536163d7ff2836c1b25270d6ca0467d26a9785"
+  },
+  "notif.dailyFinal.title": {
+    "message": "Le daily du {date} est finalisé",
+    "hash": "835e5ce6bf49d448281c3f075667818765c24b85e6bc4e8cf041303bf001b39c"
+  },
+  "notif.lostTop.body": {
+    "message": "{passer} vous a dépassé. {passerTime} contre vos {yourTime}",
+    "hash": "6c50a0607266b9ff0c5ba188f5c710bb3e1a6d7597e6ff764ee719a61ef7e19e"
+  },
+  "notif.lostTop.title": {
+    "message": "Vous avez perdu la #1 le {date}",
+    "hash": "466d33f0c997e684e7a9004413bc38caec6a4c88889e5083aa9f4162017d923d"
+  }
+}
