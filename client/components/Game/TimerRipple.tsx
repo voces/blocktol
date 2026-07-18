@@ -90,7 +90,16 @@ const nearestFree = (ax: number, ay: number, blocked: Set<number>): Point => {
 // square within REACH. The farthest-launching cell is flagged `last` so its
 // animation end can retire the whole wave without a timer.
 const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
-  const blocked = new Set(blocks.map((b) => key(b.x, b.y)));
+  // Every piece is a 2×2 (see Block's `size`): a block at (x,y) fills the four
+  // cells (x,y),(x+1,y),(x,y+1),(x+1,y+1). Mark all four so the crest leaves the
+  // whole piece dark, not just its top-left corner.
+  const blocked = new Set<number>();
+  for (const b of blocks) {
+    blocked.add(key(b.x, b.y));
+    blocked.add(key(b.x + 1, b.y));
+    blocked.add(key(b.x, b.y + 1));
+    blocked.add(key(b.x + 1, b.y + 1));
+  }
   const src = nearestFree(17, 1, blocked);
   const dist = new Map<number, number>([[key(src.x, src.y), 0]]);
   // Small grid (≤324 cells): a linear extract-min is plenty.
