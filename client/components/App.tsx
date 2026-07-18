@@ -4,6 +4,8 @@ import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";
 import { primeSession } from "../boot.ts";
 import { getTimeZone } from "../util/timeZone.ts";
+import { storage, storagePersistent } from "../util/storage.ts";
+import { StorageNotice } from "./StorageNotice.tsx";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
@@ -109,9 +111,9 @@ const Shell = (
 };
 
 export const getHasCompletedOnboarding = () =>
-  localStorage.getItem("hasCompletedOnboarding") === "true";
+  storage.getItem("hasCompletedOnboarding") === "true";
 const setHasCompletedOnboarding = () =>
-  localStorage.setItem("hasCompletedOnboarding", "true");
+  storage.setItem("hasCompletedOnboarding", "true");
 
 export const App = () => {
   // A sign-in link that opened on this device is resolved before anything else —
@@ -274,6 +276,13 @@ export const App = () => {
         board stopped responding). */
       }
       {(disconnected || failures.value >= 2) && <Disconnected />}
+      {
+        /* Storage-blocked heads-up — game view only, never over the tour.
+          A blocked browser also blocks sessionStorage, so the gateToast can't
+          be set/read there; the two toasts are mutually exclusive and never
+          collide. */
+      }
+      {!storagePersistent && <StorageNotice />}
       {toast && (
         <Toast
           title={toast.title}

@@ -1,6 +1,7 @@
 import { signal } from "@preact/signals";
 import { api } from "../api.ts";
 import { keyedQuery } from "./query.ts";
+import { storage } from "../util/storage.ts";
 
 const KEY = "blocktol.discordOnline";
 
@@ -10,7 +11,7 @@ const KEY = "blocktol.discordOnline";
 // and shows a muted placeholder until the first fetch resolves.
 const stored = (): number | null => {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = storage.getItem(KEY);
     if (raw == null) return null;
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
@@ -34,7 +35,7 @@ const fetchOnce = keyedQuery(async () => {
   if (r.online != null) {
     discordOnline.value = r.online;
     try {
-      localStorage.setItem(KEY, String(r.online));
+      storage.setItem(KEY, String(r.online));
     } catch { /* private mode / disabled storage */ }
   }
   return r.online;

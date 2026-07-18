@@ -1,3 +1,5 @@
+import { storage } from "./storage.ts";
+
 const getRandomValues = crypto.getRandomValues.bind(crypto) ??
   ((arr: number[]) => {
     for (let i = 0; i < arr.length; i++) {
@@ -35,7 +37,7 @@ const linkIdFromPath = () => {
 
 export const getId = () => {
   const link = linkIdFromPath();
-  const storedId = localStorage.getItem("id");
+  const storedId = storage.getItem("id");
 
   // A link only auto-adopts on a device that has no id yet handled by the gate,
   // or when it's simply who we already are — never over a *different* existing
@@ -47,7 +49,7 @@ export const getId = () => {
   // No stored id and no link (or a link on a clean device, which the gate
   // confirms first): mint one. The gate calls startFreshId / adoptId to override.
   const id = randomId();
-  localStorage.setItem("id", id);
+  storage.setItem("id", id);
   return id;
 };
 
@@ -56,7 +58,7 @@ export const getId = () => {
 // stored id) or when the link is who we already are; those don't fork.
 export const getPendingLink = () => {
   const link = linkIdFromPath();
-  const storedId = localStorage.getItem("id");
+  const storedId = storage.getItem("id");
   return link && storedId && link !== storedId ? link : null;
 };
 
@@ -65,17 +67,17 @@ export const getPendingLink = () => {
 // there's no link or the device already has an id (that path forks or is normal).
 export const getCleanLink = () => {
   const link = linkIdFromPath();
-  return link && !localStorage.getItem("id") ? link : null;
+  return link && !storage.getItem("id") ? link : null;
 };
 
 // Commit a chosen id as this device's identity — adopting a link (switch/merge
 // into the link) or confirming a clean adopt.
-export const adoptId = (id: string) => localStorage.setItem("id", id);
+export const adoptId = (id: string) => storage.setItem("id", id);
 
 // Start over as a brand-new profile (1d's "not you? start a new game").
 export const startFreshId = () => {
   const id = randomId();
-  localStorage.setItem("id", id);
+  storage.setItem("id", id);
   return id;
 };
 

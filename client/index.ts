@@ -60,7 +60,14 @@ for (const type of ["touchstart", "touchend", "touchcancel"] as const) {
 }
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  // Registration can reject in environments where the browser blocks service
+  // workers — cookies/site-data disabled, some private-browsing modes, or an
+  // extension/enterprise policy. Chrome rejects with a bare "Rejected"
+  // DOMException. That's benign (the app runs fine without the SW — identity is
+  // localStorage, not the SW; we only lose PWA install / offline shell / push)
+  // and not actionable, so swallow it rather than letting it surface as an
+  // unhandled rejection in reportClientError noise.
+  navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
 }
 
 // Don't annoy users with an install banner...

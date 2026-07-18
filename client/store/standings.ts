@@ -1,6 +1,7 @@
 import { signal } from "@preact/signals";
 import { api, MessageMap } from "../api.ts";
 import { getTimeZone } from "../util/timeZone.ts";
+import { storage } from "../util/storage.ts";
 import { keyedQuery } from "./query.ts";
 
 export type StandingsData = MessageMap["standings"];
@@ -46,10 +47,10 @@ export const todayIteration = signal<number | undefined>(undefined);
 // selects a board from an already-fetched response, never triggers a fetch.
 const SORT_KEY = "standingsSort";
 export const standingsSort = signal<StandingsSort>(
-  localStorage.getItem(SORT_KEY) === "pb" ? "pb" : "daily",
+  storage.getItem(SORT_KEY) === "pb" ? "pb" : "daily",
 );
 export const setStandingsSort = (sort: StandingsSort) => {
-  localStorage.setItem(SORT_KEY, sort);
+  storage.setItem(SORT_KEY, sort);
   standingsSort.value = sort;
 };
 
