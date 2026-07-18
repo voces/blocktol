@@ -65,9 +65,18 @@ Three source roots with a strict dependency direction:
   `deno.jsonc` — there is no React.
 
 `public/` holds the static shell (`index.html`, `sw.js`, `styles.css`,
-`manifest.webmanifest`) plus two standalone debug pages, `pathing.html` and
-`distributions.html`, that import the separately-bundled `public/js/pathing.js`
-to visualize the pathfinder and the daily-generation distributions.
+`manifest.webmanifest`), the icon/social assets (`favicon.svg` plus the PNG
+`apple-touch-icon.png`/`icon-192.png`/`icon-512.png` and the `og.png` share
+card, regenerated from `favicon.svg`'s mark), `robots.txt`, and two standalone
+debug pages, `pathing.html` and `distributions.html`, that import the
+separately-bundled `public/js/pathing.js` to visualize the pathfinder and the
+daily-generation distributions. The shell **does** carry Open Graph / Twitter
+tags (the Reddit/search share card points at `og.png`); chat-app unfurls are
+suppressed instead at the crawler level — `robots.txt` disallows
+`Discordbot`/`Slackbot`, which build embeds server-side and honor it — so a
+shared link stays a plain link in chat while a Reddit post still gets a card.
+Don't "fix" the missing-embed-in-Discord by removing the og tags; that's the
+intended split.
 
 ## The pathing engine (`common/pathing.ts`)
 
