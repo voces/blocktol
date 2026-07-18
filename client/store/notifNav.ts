@@ -1,5 +1,6 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
+import { dayIsBefore, localDay } from "../util/dayBoundary.ts";
 import { showBoard } from "./board.ts";
 import { markReadForDay } from "./notifications.ts";
 import {
@@ -27,12 +28,29 @@ export const viewReady = signal(false);
 const entryPath = location.pathname;
 const entrySearch = location.search;
 
-// Whether we booted onto a `/YYYYMMDD` day link — known synchronously at import,
-// so boot-time today-staging (the daily auto-start / resume / finished-board
-// prime) can bow out and let consumeDeepLink stage the linked day without a
-// race. A plain constant, not the effect-set `arrivedViaDeepLink`, so the gate
-// is reliable no matter when each boot path runs.
-export const entryIsDayLink = /^\/(\d{4})(\d{2})(\d{2})$/.test(entryPath);
+// The `/YYYYMMDD` day link we booted onto, if any — parsed synchronously at
+// import so the boot-time today-staging paths can read it before they run. A
+// plain constant, not the effect-set `arrivedViaDeepLink`, so the gate is
+// reliable no matter when each boot path runs.
+const entryDay = entryPath.match(/^\/(\d{4})(\d{2})(\d{2})$/);
+export const entryIsDayLink = entryDay !== null;
+
+// Of those, only the links for a day strictly BEFORE today. This — not the raw
+// `entryIsDayLink` — is what suppresses boot-time today-staging (resume /
+// prestart / finished-board prime): the suppression exists so `consumeDeepLink`
+// can win the board with a PAST day (past boards are ungated and replayable).
+// A link to TODAY has no other day to stage, and a FUTURE day must not be
+// staged at all — tomorrow's puzzle is one you'll rank tomorrow (previewing it
+// is a leak) and next week's doesn't exist yet. Both fall through to today's
+// normal flow instead. Gating on the raw day-link stranded a fresh user on a
+// today-or-future permalink (today's `getBoard` 403s until the three ranked
+// attempts are spent; a future date 400s or, worse, served tomorrow's board),
+// leaving an inert loading board with no way forward.
+export const entryIsPastDayLink = entryDay !== null &&
+  dayIsBefore(
+    [Number(entryDay[1]), Number(entryDay[2]), Number(entryDay[3])],
+    localDay(),
+  );
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -119,10 +137,13 @@ export const consumeDeepLink = async () => {
       return;
     }
     if (sort) setStandingsSort(sort);
-    // Always stage the day's board; only reopen the sheet when the link says it
+    // Stage a PAST day's board here; only reopen the sheet when the link says it
     // was open (the view sync then keeps the URL honest as you interact). Awaited
-    // so the sync gate opens only once the day is actually staged.
-    await showBoard(s.iteration);
+    // so the sync gate opens only once the day is actually staged. A today-link
+    // hands staging to the normal boot flow instead — `useInit` owns today's
+    // resume / prestart, and today's board 403s until the ranked attempts are
+    // spent, so staging it here would 403 to nothing (or race that flow).
+    if (entryIsPastDayLink) await showBoard(s.iteration);
     if (boardParam) {
       requestStandings(s.iteration);
       // Tapping the push counts as reading its notification.

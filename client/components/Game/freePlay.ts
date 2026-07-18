@@ -12,6 +12,7 @@
 // anyway.
 
 import { Point } from "../../../common/types.ts";
+import { storage } from "../../util/storage.ts";
 
 const KEY = "blocktol.freeplay";
 
@@ -46,7 +47,7 @@ export const persistFreePlay = (
   blocks: (Point & { thunder?: boolean; local?: boolean })[],
 ) => {
   try {
-    localStorage.setItem(
+    storage.setItem(
       KEY,
       JSON.stringify(
         {
@@ -82,7 +83,7 @@ export const awaitPendingCommit = () => pendingCommit;
 export const clearFreePlay = () => {
   clientId = null;
   try {
-    localStorage.removeItem(KEY);
+    storage.removeItem(KEY);
   } catch { /* ignore */ }
 };
 
@@ -90,7 +91,7 @@ export const clearFreePlay = () => {
 const readRecord = (): FreePlayState | null => {
   let raw: string | null;
   try {
-    raw = localStorage.getItem(KEY);
+    raw = storage.getItem(KEY);
   } catch {
     return null;
   }

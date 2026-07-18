@@ -65,9 +65,20 @@ Three source roots with a strict dependency direction:
   `deno.jsonc` — there is no React.
 
 `public/` holds the static shell (`index.html`, `sw.js`, `styles.css`,
-`manifest.webmanifest`) plus two standalone debug pages, `pathing.html` and
+`manifest.webmanifest`), the icon/social assets (`favicon.svg` plus PNGs
+regenerated from its mark: transparent `icon-192.png`/`icon-512.png` for the
+manifest's `purpose:"any"`, but opaque brand-bg `icon-maskable-512.png` and
+`apple-touch-icon.png` — maskable icons must be full-bleed, and iOS composites
+the home-screen icon onto black so alpha is pointless there — and the `og.png`
+share card), `robots.txt`, and two standalone debug pages, `pathing.html` and
 `distributions.html`, that import the separately-bundled `public/js/pathing.js`
-to visualize the pathfinder and the daily-generation distributions.
+to visualize the pathfinder and the daily-generation distributions. The shell
+**does** carry Open Graph / Twitter tags (the Reddit/search share card points at
+`og.png`); chat-app unfurls are suppressed instead at the crawler level —
+`robots.txt` disallows `Discordbot`/`Slackbot`, which build embeds server-side
+and honor it — so a shared link stays a plain link in chat while a Reddit post
+still gets a card. Don't "fix" the missing-embed-in-Discord by removing the og
+tags; that's the intended split.
 
 ## The pathing engine (`common/pathing.ts`)
 
@@ -192,8 +203,18 @@ iteration-keyed calls never collide with today's timezone-keyed primes — today
 slices still feed the dock/calendar/summary while the linked day feeds the
 staged board. An unresolvable date (or a linked slice that can't be served)
 throws, so the consumer falls through to its own fetch — the old skip-boot
-day-link path is gone. `entryIsDayLink` still gates today-**staging** so the
-linked day wins the board (`useInit`).
+day-link path is gone. `entryIsPastDayLink` (a `/YYYYMMDD` for a day _strictly
+before_ today) gates today-**staging** so a linked past day wins the board
+(`useInit`). A link to _today_ or a _future_ day is deliberately **not**
+suppressed: today has no other day to stage, and a future day must not be staged
+at all (tomorrow's iteration exists — the gen cron runs a day ahead — so staging
+it would leak the puzzle you'll rank tomorrow; next week's 400s). Both fall
+through to today's normal resume/prestart flow, and `consumeDeepLink` stages
+only for a strictly-past link — so a today/future link lets `useInit` own the
+board. (Gating on the raw day-link stranded a fresh user on a today/future
+permalink — today's `getBoard` 403s until the three ranked attempts are spent,
+so nothing staged _and_ the prestart was suppressed, leaving an inert loading
+board.)
 
 **`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
 `getBoard` (non-soft) + `standings` for a chosen `{ iteration, timeZone }` —

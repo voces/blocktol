@@ -78,7 +78,7 @@ export const Calendar = () => {
   const {
     freePlay,
     staged,
-    attemptsRemaining,
+    dailyInProgress,
     calendarOpen,
     setCalendarOpen,
     iteration,
@@ -142,23 +142,24 @@ export const Calendar = () => {
   // comes back empty and gets cached. Once the daily is done (their runs now
   // exist), refetch this month so the calendar fills in.
   useEffect(() => {
-    if (attemptsRemaining !== 0) {
+    if (dailyInProgress) {
       // The daily just (re)started — make sure a stale-open picker doesn't linger
       // to reappear when it ends.
       setCalendarOpen(false);
       return;
     }
     refreshMonth(currentIdx);
-  }, [attemptsRemaining]);
+  }, [dailyInProgress]);
 
   // Page back until the earliest shown month reaches the first daily ever.
   const canPrev = oldestIdx === undefined || shownEarliest > oldestIdx;
   const canNext = page > 0;
 
-  // Hidden while the daily is in progress (even with an attempt or two spent) —
-  // no wandering off to other days mid-run. Shown once it's done or during free
-  // play (both attemptsRemaining === 0).
-  if (attemptsRemaining !== 0) return null;
+  // Hidden only while mid-run on today's ranked daily (even with an attempt or
+  // two spent) — no wandering off to other days mid-run. Shown once it's done,
+  // during free play, or on a past day (a deep link / a day held across midnight),
+  // where it's the in-app switch back to the daily (see dailyInProgress).
+  if (dailyInProgress) return null;
   // On mobile the calendar is only the full-screen picker (opened from the header
   // button) — nothing inline. Desktop ignores calendarOpen and always shows it.
   if (mobile && !calendarOpen) return null;

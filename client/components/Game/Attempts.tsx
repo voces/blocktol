@@ -1,6 +1,7 @@
 import { h } from "preact";
 import { useContext, useState } from "preact/compat";
 import { formatSeconds } from "../../../common/format.ts";
+import { storage } from "../../util/storage.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import {
   percentileBand,
@@ -35,8 +36,8 @@ type Sort = "best" | "recent";
 const SORT_KEY = "runsSort";
 const DIR_KEY = "runsSortReversed";
 const storedSort = (): Sort =>
-  localStorage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
-const storedReversed = (): boolean => localStorage.getItem(DIR_KEY) === "1";
+  storage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
+const storedReversed = (): boolean => storage.getItem(DIR_KEY) === "1";
 
 // Order-independent key for a maze, so the row whose maze is currently on the
 // board can be matched however its blocks happen to be ordered.
@@ -79,7 +80,7 @@ export const Attempts = () => {
     viewedAttempts,
     setViewedAttempts,
     viewMaze,
-    attemptsRemaining,
+    dailyInProgress,
     blocks,
     viewing,
     iteration,
@@ -93,8 +94,8 @@ export const Attempts = () => {
     // Re-tapping the active sort inverts it; picking a different sort starts
     // from that sort's default direction.
     const nextReversed = mode === sort ? !reversed : false;
-    localStorage.setItem(SORT_KEY, mode);
-    localStorage.setItem(DIR_KEY, nextReversed ? "1" : "0");
+    storage.setItem(SORT_KEY, mode);
+    storage.setItem(DIR_KEY, nextReversed ? "1" : "0");
     setSort(mode);
     setReversed(nextReversed);
   };
@@ -103,9 +104,10 @@ export const Attempts = () => {
   // Mid-daily the list shows in a simplified form — time, when, and which is
   // your best — but WITHOUT the field-relative info (percentile colour, %,
   // SUPREME) that would anchor how players approach their remaining attempts. It
-  // fills in fully once the daily is done (attemptsRemaining === 0). Nothing to
-  // show on a fresh daily with no runs yet.
-  const simplified = attemptsRemaining !== 0;
+  // fills in fully once you're off the live daily (dailyInProgress false): the
+  // daily's done, or the board is a settled past day whose runs belong in full.
+  // Nothing to show on a fresh daily with no runs yet.
+  const simplified = dailyInProgress;
   if (simplified && attempts.length === 0) return null;
 
   // Merge runs with identical maze data (anywhere in the list, not just

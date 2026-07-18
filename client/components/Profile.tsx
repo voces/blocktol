@@ -181,7 +181,7 @@ const ProfileDialog = (
     onDelete: () => void;
   },
 ) => {
-  const { attemptsRemaining, viewMaze } = useContext(GameStateContext);
+  const { dailyInProgress, viewMaze } = useContext(GameStateContext);
   // Signal read: the dialog re-renders as the open-time refetch lands.
   const profile = profileSignal.value;
   const { settings, setSettings } = useSettings();
@@ -223,10 +223,11 @@ const ProfileDialog = (
   };
 
   // Best build opens on the board (a static review), same route the today-result
-  // uses: stage that day's board, then overlay the best maze. Only once the
-  // daily's ranked attempts are spent (free play / replay is unlocked then).
+  // uses: stage that day's board, then overlay the best maze. Available whenever
+  // we're not mid-run on today's live ranked daily (free play / replay / a past
+  // day is unlocked then) — dailyInProgress mirrors the profile button's own gate.
   const bestIteration = profile?.bestBuildIteration ?? null;
-  const canView = attemptsRemaining === 0 && bestIteration != null;
+  const canView = !dailyInProgress && bestIteration != null;
   const viewBest = () => {
     if (!canView) return;
     onClose();
@@ -575,7 +576,7 @@ const ProfileDialog = (
 };
 
 export const Profile = () => {
-  const { attemptsRemaining } = useContext(GameStateContext);
+  const { dailyInProgress } = useContext(GameStateContext);
   const profile = profileSignal.value;
   const [open, setOpen] = useState(false);
   // The move sheet replaces the dialog rather than stacking over it: opening it
@@ -584,9 +585,10 @@ export const Profile = () => {
   const [moving, setMoving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Hidden while a daily is in progress (mirrors the calendar button) — no
-  // wandering off to the profile mid-run.
-  if (attemptsRemaining !== 0) return null;
+  // Hidden only while mid-run on today's ranked daily (mirrors the calendar
+  // button) — no wandering off to the profile mid-run. Available on a past day
+  // (deep link / held across midnight), where the board isn't the live daily.
+  if (dailyInProgress) return null;
 
   const name = profile?.name || "Anonymous";
 
