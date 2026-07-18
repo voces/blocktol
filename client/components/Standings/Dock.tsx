@@ -36,11 +36,15 @@ import { StandingsSheet } from "./Sheet.tsx";
 // uncovers already-fresh standings. Past days are final, so they show
 // unconditionally. The data itself is prefetched from boot.
 export const StandingsDock = () => {
-  const { iteration, attemptsRemaining } = useContext(GameStateContext);
+  const { iteration, dailyInProgress } = useContext(GameStateContext);
   // Until a board (or today's standings) has loaded, treat the view as today.
   const isToday = iteration === undefined ||
     iteration === todayIteration.value;
-  const revealed = isToday ? attemptsRemaining === 0 : true;
+  // Surfacing the field mid-daily would anchor how a player approaches their
+  // remaining attempts, so the dock stays hidden only while mid-run on today's
+  // live ranked daily. Past days are final (and today once its attempts are
+  // spent), so they reveal — see dailyInProgress.
+  const revealed = !dailyInProgress;
 
   const [open, setOpen] = useState(false);
   // The dock reflects whichever sort is active (persisted, shared with the

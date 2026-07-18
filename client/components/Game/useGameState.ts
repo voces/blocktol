@@ -253,7 +253,22 @@ export const useGameState = () => {
     ? "building"
     : "idle";
 
+  // The board is showing an in-progress ranked daily attempt — the player is
+  // mid-run on TODAY's daily (loading / prestart / building / running), not free-
+  // playing or reviewing a past day. This, not `attemptsRemaining` alone, is what
+  // gates the "no wandering off / no spoiling the field mid-run" surfaces — the
+  // calendar and its button, the profile and notifications buttons, the runs-panel
+  // detail, the standings reveal. `attemptsRemaining` belongs to today's daily,
+  // but the board can be showing a PAST day (a /YYYYMMDD deep link, or a day left
+  // open across local midnight), and there those surfaces must stay available so
+  // the player can navigate. Free play is never a ranked attempt, and free play
+  // with ranked attempts still remaining can only be a past day (today's own daily
+  // can't be free-played until its three attempts are spent), so `!freePlay &&
+  // attemptsRemaining !== 0` captures exactly "on today's live ranked daily".
+  const dailyInProgress = !freePlay && attemptsRemaining !== 0;
+
   return {
+    dailyInProgress,
     blocks,
     savedBlocksRef,
     implosions,
