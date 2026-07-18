@@ -3,6 +3,7 @@ on:
   push:
     branches: [prod]
   pull_request:
+  workflow_dispatch:
 
 # This job only checks the code. Deployment: during the EC2 cohost migration two
 # paths coexist — the Deno Deploy GitHub integration (app.deno.com), and

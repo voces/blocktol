@@ -13,6 +13,8 @@ on:
       - i18n/config.json
       - i18n/glossary.json
       - scripts/i18n*.ts
+  # Manual re-translate (e.g. after adding a locale to i18n/config.json).
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
