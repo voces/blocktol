@@ -1679,12 +1679,13 @@ a:hover {
 }
 
 /* Countdown water-ripple (see TimerRipple): at set remaining-time marks
-   (30/15/10/5/3/2/1s) the board's blue surface ripples from its top-right corner
-   — the water nearest the timer button — so a player heads-down on the board
+   (30/15/10/5/3/2/1s) a wave floods across the board's blue surface from the
+   timer button, flowing AROUND the pieces, so a player heads-down on the board
    still senses the 60s window closing. An SVG overlay in the board's own 0–20
-   space, anchored over the board square exactly like the prestart mask, clipped
-   to it and drawn above the pieces at low opacity so it reads as a wave passing
-   over the surface. */
+   space, anchored over the board square exactly like the prestart mask and
+   clipped to it. The flood is one 1×1 cell per free square (pieces get none, so
+   the crest never draws over a block); each lights and fades on a delay set by
+   its distance THROUGH the maze, so the front bends around obstacles. */
 .board-ripple {
   position: absolute;
   bottom: 0;
@@ -1699,41 +1700,43 @@ a:hover {
   border-radius: var(--radius);
 }
 
-/* A ring racing out from the corner (20,0) across the whole board and fading —
-   its crest thinning as it spreads, like a real ripple losing energy. */
-.board-ripple__ring {
-  fill: none;
-  stroke: hsla(222, 78%, 52%, 0.5);
-  stroke-width: 0.35;
+/* A single crest passing over each cell: rise, peak (to its distance-dimmed
+   --peak), then a slightly longer fade for a trailing wake. `animationDelay` and
+   `--peak` are set per cell inline (TimerRipple). */
+.board-ripple__cell {
+  fill: hsl(205, 100%, 90%);
   opacity: 0;
-  animation: boardRipple 2.4s ease-out forwards;
+  animation: floodCell 0.42s ease-out forwards;
 }
 
-/* The closing seconds (<=5s) stir the surface a touch firmer — still soft. */
-.board-ripple__ring--urgent {
-  stroke: hsla(222, 82%, 54%, 0.62);
+@keyframes floodCell {
+  0% { opacity: 0; }
+  24% { opacity: var(--peak); }
+  100% { opacity: 0; }
 }
 
-@keyframes boardRipple {
-  0% { r: 0; opacity: 0; stroke-width: 0.6; }
-  12% { opacity: 0.5; }
-  100% { r: 30; opacity: 0; stroke-width: 0.12; }
-}
-
-/* Respect reduced-motion: a still ring softly fades in and out over the board
-   instead of racing across it. The animation still ends, so the overlay cleans
-   itself up (onAnimationEnd). */
+/* Respect reduced-motion: drop the travelling delay so the flood-shaped region
+   just softly glows and fades in place, no racing front. The animation still
+   ends, so the overlay retires itself (onAnimationEnd on the last cell). */
 @media (prefers-reduced-motion: reduce) {
-  .board-ripple__ring {
-    r: 12;
-    stroke-width: 0.3;
-    animation: boardRippleReduced 0.9s ease-out forwards;
+  .board-ripple__cell {
+    animation-delay: 0s !important;
+    animation-duration: 0.7s;
   }
 }
 
-@keyframes boardRippleReduced {
-  0%, 100% { opacity: 0; }
-  40% { opacity: 0.22; }
+/* The timer button is the source: at each mark it dips into the "water" — a
+   quick up-and-down bob whose fall coincides with the crest launching (see
+   TimerRipple / timerPulse). */
+.hud__build.dropping {
+  animation: buildDrop 0.5s ease;
+}
+
+@keyframes buildDrop {
+  0% { transform: translateY(0) scale(1); }
+  28% { transform: translateY(-5px) scale(1.05); }
+  52% { transform: translateY(2px) scale(0.97); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 @keyframes pbPulse {
