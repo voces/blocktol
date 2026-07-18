@@ -9,6 +9,7 @@ import {
   useState,
 } from "preact/compat";
 import { Point } from "../../common/types.ts";
+import { t } from "../util/t.ts";
 
 // Exported so the daily "Start attempt" overlay (Prestart.tsx) can render this
 // same maze as a purely decorative, blurred backdrop — a real-looking board
@@ -160,8 +161,8 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
         gap: 16,
       }}
     >
-      {!last && <a onClick={onSkip}>Skip</a>}
-      <a onClick={onNext}>{last ? "Play" : "Next"}</a>
+      {!last && <a onClick={onSkip}>{t("intro.skip")}</a>}
+      <a onClick={onNext}>{last ? t("intro.play") : t("intro.next")}</a>
     </div>
   </Tooltip>
 );
@@ -279,11 +280,12 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     }, 100);
   }, []);
 
-  // The HUD chips mirror the game's strip so the "Bricks"/"Snowflakes" tips have
-  // real chips to point at; both counts are derived from the blocks so they move
-  // with the walkthrough. Bricks is the budget minus the blocks placed on top of
-  // the pre-built maze (upgrading swaps a local block for a local thunder one, so
-  // the local count — and thus bricks — is unchanged; only snowflakes drop).
+  // The HUD chips mirror the game's strip so the block/thunder tips have real
+  // chips to point at; both counts are derived from the blocks so they move with
+  // the walkthrough. The block budget is the total minus the blocks placed on top
+  // of the pre-built maze (upgrading swaps a local block for a local thunder one,
+  // so the local count — and thus the block budget — is unchanged; only the
+  // thunder count drops).
   const snowflakes = Math.max(0, 1 - blocks.filter((b) => b.thunder).length);
   const bricks = Math.max(
     0,
@@ -343,37 +345,37 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       >
         {onboardingStep === 0 && (
           <Tip top={-12} left={41} onNext={advance} onSkip={onDone}>
-            Bricks indicate how many blocks you can place.
+            {t("intro.tipBlocks")}
           </Tip>
         )}
         {onboardingStep === 1 && (
           <Tip top={-12} left={107} onNext={advance} onSkip={onDone}>
-            Snowflakes indicate how many blocks you can upgrade.
+            {t("intro.tipThunders")}
           </Tip>
         )}
         {onboardingStep === 2 && (
           <Tip bottom="4.5%" left="47.5%" onNext={advance} onSkip={onDone}>
-            The runner is released from the bottom…
+            {t("intro.tipRunnerBottom")}
           </Tip>
         )}
         {onboardingStep === 3 && (
           <Tip top="29.5%" left="57.5%" onNext={advance} onSkip={onDone}>
-            …heads towards the checkpoint…
+            {t("intro.tipCheckpoint")}
           </Tip>
         )}
         {onboardingStep === 4 && (
           <Tip top="4.5%" left="52.5%" onNext={advance} onSkip={onDone}>
-            …and then out the top.
+            {t("intro.tipTop")}
           </Tip>
         )}
         {onboardingStep === 5 && (
           <Tip bottom="29%" right="15%" onNext={advance} onSkip={onDone}>
-            Place blocks to elongate the runner's path.
+            {t("intro.tipPlace")}
           </Tip>
         )}
         {onboardingStep === 6 && (
           <Tip bottom="39%" right="35%" onNext={advance} onSkip={onDone} last>
-            Upgrade blocks to slow the runner as they pass.
+            {t("intro.tipUpgrade")}
           </Tip>
         )}
       </div>

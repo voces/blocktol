@@ -682,5 +682,45 @@
   "profile.anonymous": {
     "message": "Anonymous",
     "description": "Fallback display name for a player who hasn't set a name."
+  },
+  "intro.skip": {
+    "message": "Skip",
+    "description": "Tutorial tooltip button that skips the rest of the walkthrough."
+  },
+  "intro.next": {
+    "message": "Next",
+    "description": "Tutorial tooltip button that advances to the next tip."
+  },
+  "intro.play": {
+    "message": "Play",
+    "description": "Tutorial tooltip button on the last tip that finishes the walkthrough and starts play."
+  },
+  "intro.tipBlocks": {
+    "message": "Blocks indicate how many you can place.",
+    "description": "Tutorial tip pointing at the block-budget chip. \"Blocks\" is the placeable piece (see glossary block)."
+  },
+  "intro.tipThunders": {
+    "message": "Thunders indicate how many blocks you can upgrade.",
+    "description": "Tutorial tip pointing at the thunder-budget chip. \"Thunders\" is the slow-field piece; upgrading a block turns it into one (see glossary thunder)."
+  },
+  "intro.tipRunnerBottom": {
+    "message": "The runner is released from the bottom…",
+    "description": "Tutorial tip: first of three describing the runner's route. \"runner\" is the game term (see glossary). Trailing ellipsis continues into the next tip."
+  },
+  "intro.tipCheckpoint": {
+    "message": "…heads towards the checkpoint…",
+    "description": "Tutorial tip: second of three describing the runner's route. Leading and trailing ellipsis connect the three tips into one sentence."
+  },
+  "intro.tipTop": {
+    "message": "…and then out the top.",
+    "description": "Tutorial tip: third of three describing the runner's route. Leading ellipsis continues from the previous tip."
+  },
+  "intro.tipPlace": {
+    "message": "Place blocks to elongate the runner's path.",
+    "description": "Tutorial tip: placing blocks lengthens the runner's route. \"blocks\"/\"runner\" are game terms (see glossary)."
+  },
+  "intro.tipUpgrade": {
+    "message": "Upgrade blocks to slow the runner as they pass.",
+    "description": "Tutorial tip: upgrading a block into a thunder slows the runner. \"blocks\"/\"runner\" are game terms (see glossary)."
   }
 }
