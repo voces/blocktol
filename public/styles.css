@@ -1678,45 +1678,62 @@ a:hover {
   opacity: 0.78;
 }
 
-/* Countdown ripple: a soft blue ring spreading out from the timer pill at set
-   remaining-time marks (30/15/10/5/3/2/1s), so a player heads-down on the board
-   still senses the 60s window closing (see TimerRipple). Rendered viewport-fixed
-   over the pill's measured box — like the celebration overlay — so it escapes
-   `.game`'s clipped overflow and can spread past the top-right corner. Scales
-   from the pill's centre outward, fading as it grows; mild by design. */
-.timer-ripple {
-  position: fixed;
-  z-index: 11;
+/* Countdown water-ripple (see TimerRipple): at set remaining-time marks
+   (30/15/10/5/3/2/1s) the board's blue surface ripples from its top-right corner
+   — the water nearest the timer button — so a player heads-down on the board
+   still senses the 60s window closing. An SVG overlay in the board's own 0–20
+   space, anchored over the board square exactly like the prestart mask, clipped
+   to it and drawn above the pieces at low opacity so it reads as a wave passing
+   over the surface. */
+.board-ripple {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--maze-size);
+  aspect-ratio: 1;
+  z-index: 3;
   pointer-events: none;
-  border-radius: 11px;
-  border: 2px solid rgba(79, 131, 230, 0.5);
-  box-shadow: 0 0 12px 2px rgba(79, 131, 230, 0.3);
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+/* A ring racing out from the corner (20,0) across the whole board and fading —
+   its crest thinning as it spreads, like a real ripple losing energy. */
+.board-ripple__ring {
+  fill: none;
+  stroke: hsla(222, 78%, 52%, 0.5);
+  stroke-width: 0.35;
   opacity: 0;
-  animation: timerRipple 1.1s ease-out forwards;
+  animation: boardRipple 2.4s ease-out forwards;
 }
 
-/* The closing seconds (<=5s) ring a touch firmer — still soft, just felt. */
-.timer-ripple--urgent {
-  border-color: rgba(79, 131, 230, 0.68);
-  box-shadow: 0 0 14px 3px rgba(79, 131, 230, 0.4);
+/* The closing seconds (<=5s) stir the surface a touch firmer — still soft. */
+.board-ripple__ring--urgent {
+  stroke: hsla(222, 82%, 54%, 0.62);
 }
 
-@keyframes timerRipple {
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(1.85); opacity: 0; }
+@keyframes boardRipple {
+  0% { r: 0; opacity: 0; stroke-width: 0.6; }
+  12% { opacity: 0.5; }
+  100% { r: 30; opacity: 0; stroke-width: 0.12; }
 }
 
-/* Respect reduced-motion: a quiet fade in place, no expanding ring. The
-   animation still ends, so the element cleans itself up (onAnimationEnd). */
+/* Respect reduced-motion: a still ring softly fades in and out over the board
+   instead of racing across it. The animation still ends, so the overlay cleans
+   itself up (onAnimationEnd). */
 @media (prefers-reduced-motion: reduce) {
-  .timer-ripple {
-    animation: timerRippleReduced 0.7s ease-out forwards;
+  .board-ripple__ring {
+    r: 12;
+    stroke-width: 0.3;
+    animation: boardRippleReduced 0.9s ease-out forwards;
   }
 }
 
-@keyframes timerRippleReduced {
-  0% { opacity: 0.4; }
-  100% { opacity: 0; }
+@keyframes boardRippleReduced {
+  0%, 100% { opacity: 0; }
+  40% { opacity: 0.22; }
 }
 
 @keyframes pbPulse {
