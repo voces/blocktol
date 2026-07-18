@@ -219,6 +219,46 @@
     "message": "hasta medianoche",
     "hash": "18acab6279144094ac6361bf655dcce0cd02d4ede838367fe83b30e4f033ebcd"
   },
+  "intro.next": {
+    "message": "Siguiente",
+    "hash": "1ff57a29d7c9d11bdf61c1b80f2b289b44c1ea844824d4b94a0d52b6ba5fc858"
+  },
+  "intro.play": {
+    "message": "Jugar",
+    "hash": "436e61016e26fcb773b9725745cbbf0afe7f001ea26041a814a7712c2925c442"
+  },
+  "intro.skip": {
+    "message": "Saltar",
+    "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
+  },
+  "intro.tipBlocks": {
+    "message": "Los bloques indican cuántos puedes colocar.",
+    "hash": "3f53b445804256ebe025189fa8a5a4ea5181eb05188a1b0a4c1dc9b79797c9ff"
+  },
+  "intro.tipCheckpoint": {
+    "message": "…se dirige hacia el punto de control…",
+    "hash": "d312bf2dd40ee0aa37f64aecfdc409ead62dc936b4f1e142984314d7bc22a294"
+  },
+  "intro.tipPlace": {
+    "message": "Coloca bloques para alargar el camino del corredor.",
+    "hash": "e82a6713a11d6e1eb5aa055fb7481558760ff530bbde00f63228b3113fe18321"
+  },
+  "intro.tipRunnerBottom": {
+    "message": "El corredor se libera desde abajo…",
+    "hash": "6384caa449827dd9edbdc3b93a24955059b03ef0eba7a93b93824ceb3cf1a0ec"
+  },
+  "intro.tipThunders": {
+    "message": "Los truenos indican cuántos bloques puedes mejorar.",
+    "hash": "051008817b37d7d0330eadafc9fb87776c713fe4d19eceb2b6d632112dd10bee"
+  },
+  "intro.tipTop": {
+    "message": "…y luego sale por arriba.",
+    "hash": "d36572b0edcb81f331ea810becfe1710ff9415a5b0cc7217d2dca9c910852ca6"
+  },
+  "intro.tipUpgrade": {
+    "message": "Mejora bloques para frenar al corredor cuando pase.",
+    "hash": "f2249be52d85d212850711b8fe2bcb4346e518494f42b501b2f9d32abc667072"
+  },
   "move.copied": {
     "message": "¡Copiado!",
     "hash": "ea61bc15688d1e482ae5335e8dc030d8300b1afc07ecc7c2e6af5c43728b1d25"
