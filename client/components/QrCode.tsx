@@ -1,6 +1,7 @@
 import { h } from "preact";
 import { useMemo } from "preact/compat";
 import qrcode from "qrcode-generator";
+import { t } from "../util/t.ts";
 
 /**
  * `value` as a crisp SVG QR — dark modules on a white field, drawn as unit-tall
@@ -37,7 +38,7 @@ export const QrCode = (
       viewBox={`0 0 ${size} ${size}`}
       style={{ width: "100%", display: "block", shapeRendering: "crispEdges" }}
       role="img"
-      aria-label="Sign-in QR code"
+      aria-label={t("a11y.qr")}
     >
       <rect width={size} height={size} fill="#fff" />
       {rows.map((m, i) => (

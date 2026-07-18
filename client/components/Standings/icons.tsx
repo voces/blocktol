@@ -1,4 +1,5 @@
 import { h } from "preact";
+import { t } from "../../util/t.ts";
 
 // The record crown — gold, reserved for a #1 that beat everyone outright.
 export const Crown = () => (
@@ -7,7 +8,7 @@ export const Crown = () => (
     width="14"
     height="14"
     viewBox="0 0 16 16"
-    aria-label="record"
+    aria-label={t("a11y.record")}
   >
     <path d="M2 5l3 3 3-5 3 5 3-3-1 8H3z" fill="var(--gold)" />
   </svg>

@@ -1,7 +1,55 @@
 {
+  "a11y.close": {
+    "message": "Close",
+    "description": "Accessible label for a generic modal/dialog close button."
+  },
+  "a11y.dismiss": {
+    "message": "Dismiss",
+    "description": "Accessible label for the toast dismiss (×) button."
+  },
+  "a11y.qr": {
+    "message": "Sign-in QR code",
+    "description": "Accessible label for the sign-in QR code image."
+  },
+  "a11y.record": {
+    "message": "record",
+    "description": "Accessible label for the gold record-crown icon shown next to a #1 standing."
+  },
+  "badge.pb": {
+    "message": "NEW PERSONAL BEST",
+    "description": "Celebration badge when a free-play run sets a new personal best. All-caps."
+  },
+  "badge.record": {
+    "message": "RECORD",
+    "description": "Badge for a held top build. All-caps; see glossary RECORD."
+  },
+  "badge.supreme": {
+    "message": "SUPREME",
+    "description": "Badge for a sole untied #1. All-caps; see glossary SUPREME."
+  },
+  "cal.newDaily": {
+    "message": "New daily available",
+    "description": "Label/tooltip on the calendar button when a new day's daily has become available."
+  },
+  "cal.open": {
+    "message": "Open calendar",
+    "description": "Accessible label for the header calendar button in its normal state."
+  },
+  "cal.previousDays": {
+    "message": "Previous days",
+    "description": "Tooltip for the header calendar button in its normal state."
+  },
   "common.connecting": {
     "message": "Connecting",
     "description": "Overlay shown while the app is reconnecting to the server (animated dots are appended after this word)."
+  },
+  "storage.blocked.title": {
+    "message": "Progress won't be saved",
+    "description": "Title of the heads-up toast shown when the browser blocks site storage (profile/games can't persist)."
+  },
+  "storage.blocked.body": {
+    "message": "Your browser is blocking site storage — allow cookies / site data for this site to keep your profile and games.",
+    "description": "Body of the storage-blocked toast: how to fix it (allow cookies / site data)."
   },
   "error.crash.title": {
     "message": "Something broke",
