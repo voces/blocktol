@@ -23,13 +23,12 @@ export const BrickIcon = () => (
   </svg>
 );
 
+// A lightning bolt (not the old snowflake asterisk) — the piece is a "thunder"
+// in copy, so the icon reads as one. Same electric blue as the board's thunder
+// tint for continuity.
 export const PowerIcon = () => (
-  <svg width={16} height={16} viewBox="0 0 16 16">
-    <g stroke="#5aa9e6" stroke-width={1.5} stroke-linecap="round">
-      <line x1={8} y1={1.5} x2={8} y2={14.5} />
-      <line x1={2.4} y1={4.75} x2={13.6} y2={11.25} />
-      <line x1={2.4} y1={11.25} x2={13.6} y2={4.75} />
-    </g>
+  <svg width={16} height={16} viewBox="0 0 24 24">
+    <path d="M13 2 L3.5 13.5 H11 L10 22 L20.5 10 H13 Z" fill="#5aa9e6" />
   </svg>
 );
 
