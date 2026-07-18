@@ -7,7 +7,7 @@ import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
 import { regradedIterations } from "../../store/notifications.ts";
-import { entryIsDayLink } from "../../store/notifNav.ts";
+import { entryIsPastDayLink } from "../../store/notifNav.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { nextLocalMidnight } from "../../util/dayBoundary.ts";
@@ -344,10 +344,11 @@ export const useInit = () => {
         // The resumed board seeds the cache too, so post-daily navigation
         // back to today stages instantly.
         ingestBoard({ ...currentRun, attempts });
-        // On a day-link boot, keep the bookkeeping but don't STAGE today's run —
-        // that would steal the board from the linked day. The cache seeded above
-        // lets navigating home resume it instantly.
-        if (!entryIsDayLink) return handleRun(currentRun);
+        // On a PAST-day-link boot, keep the bookkeeping but don't STAGE today's
+        // run — that would steal the board from the linked day. The cache seeded
+        // above lets navigating home resume it instantly. A today-link has no
+        // other day to protect, so it resumes today's run normally.
+        if (!entryIsPastDayLink) return handleRun(currentRun);
         return;
       }
 
@@ -359,10 +360,11 @@ export const useInit = () => {
         // spending the getBoard round trip at the close — and a boot onto a
         // finished daily doesn't sit on an empty board under the card.
         // (`iteration` is set post-attempt; undefined on boot = today.)
-        // Skip when we booted onto a day link: today's card is hidden and
+        // Skip when we booted onto a PAST-day link: today's card is hidden and
         // staging today here would race consumeDeepLink's showBoard and steal
-        // the board (and the URL) back from the linked day.
-        if (!entryIsDayLink) showBoard(iteration);
+        // the board (and the URL) back from the linked day. A today-link stages
+        // today here (consumeDeepLink steps aside for it), which is correct.
+        if (!entryIsPastDayLink) showBoard(iteration);
         return;
       }
 
@@ -371,8 +373,10 @@ export const useInit = () => {
       // attempt" overlay over an inert board (no auto-start). Only on a real
       // boot (time === -2) — a mid-session refresh re-raises it from runFinish,
       // which fires at a safe moment and can't clobber a live build — and never
-      // on a day-link boot, which stages the linked day instead.
-      if (time === -2 && !entryIsDayLink) enterPrestart();
+      // on a PAST-day-link boot, which stages that linked day instead. A
+      // today-link falls through to here: there's no other day to stage, so a
+      // fresh user gets the prestart rather than stranding on an inert board.
+      if (time === -2 && !entryIsPastDayLink) enterPrestart();
     },
   );
 
