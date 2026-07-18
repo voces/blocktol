@@ -4,7 +4,8 @@
 // without a database, and both sides import the same payload shapes so a stored
 // row round-trips with no re-derivation.
 
-import { formatCount, formatSeconds } from "./format.ts";
+import { formatSeconds } from "./format.ts";
+import { t } from "./i18n.ts";
 
 export const notificationKinds = ["lost_top", "daily_final"] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
@@ -157,9 +158,14 @@ export const formatNotifTime = (t: number, locale?: string): string =>
   `${formatSeconds(t, { locale })}s`;
 
 // The single source of a notification's headline + one-line body, shared by the
-// lock-screen push text and the in-app panel so the two never drift. The panel
-// layers icons/colour around the same words (and adds a comparison detail from
-// the raw data); the push sends these verbatim.
+// lock-screen push text and the in-app panel so the two never drift. The words
+// live in the message catalog (i18n/en.json, keys `notif.*`); this maps a stored
+// notification to the right key + params. The panel layers icons/colour around
+// the same words (and adds a comparison detail from the raw data); the push
+// sends these verbatim. `locale` is the recipient's for server-rendered push,
+// omitted on the client so the viewer's own locale renders. The variant enum
+// maps to a key via a literal ternary (never an interpolated key) so every live
+// key stays greppable.
 export const notificationText = (
   n: Pick<Notification, "kind" | "data" | "day">,
   locale?: string,
@@ -168,23 +174,26 @@ export const notificationText = (
   if (n.kind === "lost_top") {
     const d = n.data as LostTopData;
     return {
-      title: `You lost #1 on ${date}`,
-      body: `${d.passer} passed you. ${
-        formatNotifTime(d.passerTime, locale)
-      } vs your ${formatNotifTime(d.yourTime, locale)}`,
+      title: t(locale, "notif.lostTop.title", { date }),
+      body: t(locale, "notif.lostTop.body", {
+        passer: d.passer,
+        passerTime: formatNotifTime(d.passerTime, locale),
+        yourTime: formatNotifTime(d.yourTime, locale),
+      }),
     };
   }
   const d = n.data as DailyFinalData;
-  const of = `of ${formatCount(d.players, locale)}`;
-  const rank = formatCount(d.rank, locale);
   const body = d.variant === "supreme"
-    ? `You finished #1 ${of}. Supreme, untied`
+    ? t(locale, "notif.dailyFinal.supreme", { players: d.players })
     : d.variant === "record"
-    ? `You finished #${rank} ${of}. A record held`
+    ? t(locale, "notif.dailyFinal.record", { rank: d.rank, players: d.players })
     : d.variant === "first"
-    ? `You finished #1 ${of}. Bettered only in free play`
+    ? t(locale, "notif.dailyFinal.first", { players: d.players })
     : d.variant === "t1"
-    ? `You tied #1 ${of}. Bettered only in free play`
-    : `You finished #${rank} ${of}`;
-  return { title: `${date} daily is final`, body };
+    ? t(locale, "notif.dailyFinal.t1", { players: d.players })
+    : t(locale, "notif.dailyFinal.placed", {
+      rank: d.rank,
+      players: d.players,
+    });
+  return { title: t(locale, "notif.dailyFinal.title", { date }), body };
 };

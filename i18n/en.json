@@ -1,0 +1,34 @@
+{
+  "notif.lostTop.title": {
+    "message": "You lost #1 on {date}",
+    "description": "Push + in-app notification headline when another player passes your best build and takes the day's top spot. {date} is a short calendar day like \"Jul 6\". The literal \"#1\" means first place."
+  },
+  "notif.lostTop.body": {
+    "message": "{passer} passed you. {passerTime} vs your {yourTime}",
+    "description": "Body of the lost-#1 notification. {passer} is a player's display name; {passerTime}/{yourTime} are pre-formatted times with a unit, e.g. \"30.34s\"."
+  },
+  "notif.dailyFinal.title": {
+    "message": "{date} daily is final",
+    "description": "Headline when a daily you played has closed and been ranked. {date} is a short calendar day like \"Jul 6\"."
+  },
+  "notif.dailyFinal.supreme": {
+    "message": "You finished #1 of {players}. Supreme, untied",
+    "description": "Daily-final body: sole best of the ranked field, matched by no one in ranked or free play. {players} is the ranked field size. \"#1\" is first place; \"Supreme\" is a celebratory label (keep the tone)."
+  },
+  "notif.dailyFinal.record": {
+    "message": "You finished #{rank} of {players}. A record held",
+    "description": "Daily-final body: co-top of the ranked field with no free-play build beating it — a held record. {rank} is your standard-competition rank (1 = best), {players} the ranked field size."
+  },
+  "notif.dailyFinal.first": {
+    "message": "You finished #1 of {players}. Bettered only in free play",
+    "description": "Daily-final body: sole best of the ranked field, but another player's free-play build later beat your mark. {players} is the ranked field size."
+  },
+  "notif.dailyFinal.t1": {
+    "message": "You tied #1 of {players}. Bettered only in free play",
+    "description": "Daily-final body: tied for best of the ranked field, and a free-play build beat the mark. {players} is the ranked field size."
+  },
+  "notif.dailyFinal.placed": {
+    "message": "You finished #{rank} of {players}",
+    "description": "Daily-final body for an ordinary finish (someone out-ranked you). {rank} is your standard-competition rank (1 = best), {players} the ranked field size."
+  }
+}

@@ -37,6 +37,12 @@ jobs:
         # the build regenerates it anyway). git is present here (checkout).
         run: deno task version
 
+      - name: Generate i18n
+        # common/i18n.generated.ts is gitignored/generated from i18n/*.json; the
+        # type check and tests reach it through common/notifications.ts, so it
+        # must exist first (the build regenerates it anyway).
+        run: deno task i18n
+
       - name: Type check
         run: deno check server/index.ts client/index.ts common/pathing.ts
 
