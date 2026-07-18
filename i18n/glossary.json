@@ -1,0 +1,13 @@
+{
+  "Blocktol": "the game's name — never translate.",
+  "runner": "the entity that travels the maze; a common noun, translate it.",
+  "brick": "a block the player places to lengthen the path; translate it.",
+  "thunder": "a slow-field the player places (also called power); translate it.",
+  "daily": "the day's ranked puzzle; translate as the noun for the daily challenge.",
+  "free play": "unranked replay mode; translate the phrase.",
+  "ranked": "counts toward the daily result; translate it.",
+  "SUPREME": "a celebratory badge for a sole untied #1 — keep it short and punchy; all-caps if the language allows.",
+  "RECORD": "a badge for a held top build — keep it short; all-caps if the language allows.",
+  "BEST": "a badge for a personal best — keep it short; all-caps if the language allows.",
+  "DELETE": "the literal word the user must type to confirm account deletion — keep it as the English word DELETE unless a localized equivalent is unambiguous and standard."
+}

@@ -43,6 +43,14 @@ jobs:
         # must exist first (the build regenerates it anyway).
         run: deno task i18n
 
+      - name: i18n check
+        # The "never deploy untranslated" gate: every target locale must carry a
+        # current, valid translation of every en.json key (i18n:translate + the
+        # Translate workflow heal it). Also fails on any key no code references.
+        run: |
+          deno task i18n:check
+          deno task i18n:unused
+
       - name: Type check
         run: deno check server/index.ts client/index.ts common/pathing.ts
 

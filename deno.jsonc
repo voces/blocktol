@@ -32,6 +32,13 @@
     // catalog runtime type-only, so it must not try to type-check common/i18n.ts,
     // whose generated import is exactly what this task is about to create.
     "i18n": "deno run --no-check --allow-read=i18n --allow-write=common/i18n.generated.ts scripts/genI18n.ts",
+    // The "never deploy untranslated" gate (CI, blocking): every configured
+    // target locale must have a current, valid translation of every en.json key.
+    // Pure/network-free — safe on forks. i18n:translate is the auto-fixer that
+    // heals it; i18n:unused fails the build on a key no code references.
+    "i18n:check": "deno run --no-check --allow-read=i18n scripts/i18nCheck.ts",
+    "i18n:unused": "deno run --no-check --allow-read=i18n,common,server,client scripts/i18nUnused.ts",
+    "i18n:translate": "deno run --no-check --allow-read --allow-write=i18n --allow-env --allow-net --allow-sys scripts/i18nTranslate.ts",
     "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
     "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
     "build": "deno task i18n && deno task version && deno task bundle && deno task bundle:pathing",
