@@ -483,6 +483,14 @@
     "message": "inscrit en {date}",
     "hash": "ae2412fb005b47299128e0e4a9aa89bcc72ae73c04c3c8bc1a8b8a9046ed8b41"
   },
+  "profile.language": {
+    "message": "Langue",
+    "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
+  },
+  "profile.languageSystem": {
+    "message": "Système",
+    "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
+  },
   "profile.medianPercentile": {
     "message": "Centile médian",
     "hash": "5e7ad4b35b400cc7e6ea424e845280a7c50808a1897f73cc06c3687b529995bd"
