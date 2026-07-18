@@ -1,4 +1,44 @@
 {
+  "a11y.close": {
+    "message": "Fermer",
+    "hash": "7d9eb7acb13e24625c404401d8e88b2350e32162455885f18276cf802f7701ed"
+  },
+  "a11y.dismiss": {
+    "message": "Fermer",
+    "hash": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261"
+  },
+  "a11y.qr": {
+    "message": "Code QR de connexion",
+    "hash": "f8c8965916777feebc4fb096094019cbbed9b767208b165f74d039651680c7bc"
+  },
+  "a11y.record": {
+    "message": "record",
+    "hash": "70ce871f8a3d3fb449bc3c3ace6547cef02dfc74ffe48d912532a724bfdbe5b9"
+  },
+  "badge.pb": {
+    "message": "NOUVEAU RECORD PERSONNEL",
+    "hash": "9d1f369cf2d50fb8ec4976f37f54d672b6ef47967aecb7b216b8e5ef3d1c4de5"
+  },
+  "badge.record": {
+    "message": "RECORD",
+    "hash": "1092e2e43a486c0a247743940abb3210d77c912476ac72e4c854ae4f13383125"
+  },
+  "badge.supreme": {
+    "message": "SUPRÊME",
+    "hash": "5a66bf27169029baa0e110dd15ae875e74c14bdd82a5bdcc47cab859139ee2af"
+  },
+  "cal.newDaily": {
+    "message": "Nouveau défi quotidien disponible",
+    "hash": "ede26f440341ff60ac77f6629d771fc4793ee3ac8c83d748f9f1d09e437acd4f"
+  },
+  "cal.open": {
+    "message": "Ouvrir le calendrier",
+    "hash": "a1ad37d0c5e801d15f528685842e165565a4c01f2ec63607233091823fed37e3"
+  },
+  "cal.previousDays": {
+    "message": "Jours précédents",
+    "hash": "5f365295b35374a0f3c87daac1cd7d8a50e8f32c4769fb037b7fca0cdea3fad6"
+  },
   "common.connecting": {
     "message": "Connexion",
     "hash": "d403c686f6a1048014bdd230f59963271b0123ea48245754fc9f264b962a2182"
@@ -54,5 +94,13 @@
   "notif.lostTop.title": {
     "message": "Vous avez perdu la #1 le {date}",
     "hash": "466d33f0c997e684e7a9004413bc38caec6a4c88889e5083aa9f4162017d923d"
+  },
+  "storage.blocked.body": {
+    "message": "Votre navigateur bloque le stockage du site — autorisez les cookies / données de site pour conserver votre profil et vos parties.",
+    "hash": "02f9131ab2c5aaf1e8cd05bd2efef8be231d1489f3c4accc5b843fcc12526e93"
+  },
+  "storage.blocked.title": {
+    "message": "La progression ne sera pas enregistrée",
+    "hash": "55087af7266c1b09bb217f393f91c64f57bd8439495cd6b20ee1ee7b887ef4b9"
   }
 }
