@@ -136,6 +136,23 @@ export const useInit = () => {
     }).catch(() => {});
   }, [regrade.nonce]);
 
+  // Landing on a past day's board (a /YYYYMMDD permalink or a notification deep
+  // link) while today's OWN daily is still outstanding parks you on a day that
+  // isn't the daily you should be playing — the same bind as a midnight
+  // rollover. Reuse the rollover state so the switch-to-today affordances appear
+  // (the calendar, its mobile button, and the "New daily available" banner whose
+  // Play → runs playNewDaily into today's prestart); otherwise those surfaces
+  // stay hidden — gated on attemptsRemaining === 0 — and there's no in-app way
+  // back to the daily. Free play with attempts still remaining can only be a
+  // past day: today's daily can't be free-played until its ranked attempts are
+  // spent, so this never fires on today's board. Cleared by playNewDaily (the
+  // switch) or a fresh boot's session pin.
+  useEffect(() => {
+    if (freePlay && iteration !== undefined && attemptsRemaining > 0) {
+      newDailyAvailable.value = true;
+    }
+  }, [freePlay, iteration, attemptsRemaining]);
+
   // Lay the iteration's fixed pieces onto a fresh grid (a started run and a
   // staged free-play board share this reset).
   const layout = useCallback(

@@ -99,14 +99,15 @@ export const Prestart = () => {
         <Logo size={44} />
         {newDailyAvailable.value
           ? (
-            // Local midnight passed: the opened day's ranked play is over. Offer
-            // the fresh daily instead of a start — switching re-boots the day
-            // (playNewDaily) with no manual refresh.
+            // Parked off today's daily — local midnight rolled a fresh one in,
+            // or a past day was deep-linked while today's was still outstanding.
+            // Either way offer today's daily instead of a start; switching
+            // re-boots the day (playNewDaily) with no manual refresh.
             <Fragment>
               <div class="prestart__eyebrow">Daily · {displayDate}</div>
               <h2 class="prestart__title">New daily available</h2>
               <p class="prestart__sub">
-                Yesterday's daily has ended. A fresh puzzle is ready.
+                Today's daily is ready to play.
               </p>
               <Button class="prestart__btn" onClick={() => playNewDaily()}>
                 Play today's daily
