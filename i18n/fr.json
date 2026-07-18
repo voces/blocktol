@@ -15,6 +15,10 @@
     "message": "record",
     "hash": "70ce871f8a3d3fb449bc3c3ace6547cef02dfc74ffe48d912532a724bfdbe5b9"
   },
+  "badge.best": {
+    "message": "MEILLEUR",
+    "hash": "16b7940e30c20d40fbf33678ab8eba9d289148d7932dd3fa8c6d92cdf9947b17"
+  },
   "badge.pb": {
     "message": "NOUVEAU RECORD PERSONNEL",
     "hash": "9d1f369cf2d50fb8ec4976f37f54d672b6ef47967aecb7b216b8e5ef3d1c4de5"
@@ -42,6 +46,34 @@
   "common.connecting": {
     "message": "Connexion",
     "hash": "d403c686f6a1048014bdd230f59963271b0123ea48245754fc9f264b962a2182"
+  },
+  "daily.attempt": {
+    "message": "Tentative {n}",
+    "hash": "745e174edc29d95b47f6da04092209c6d91197d34d2d6db8c5e9bb2191c51302"
+  },
+  "daily.beat": {
+    "message": "Vous avez battu {pct} des joueurs aujourd'hui",
+    "hash": "47e1c6fba528c75475126edc30c511a2f36e9553ae1b5afc67eea4bc155e1e6e"
+  },
+  "daily.copied": {
+    "message": "Copié !",
+    "hash": "ea61bc15688d1e482ae5335e8dc030d8300b1afc07ecc7c2e6af5c43728b1d25"
+  },
+  "daily.keepPlaying": {
+    "message": "Continuer à jouer",
+    "hash": "b0b47d01a0675d287fea18f8d0ee6e4f933989aacd11ce4510a4e3265f1d8318"
+  },
+  "daily.median": {
+    "message": "médiane",
+    "hash": "7896a617a785dd968b580c61a2b418ae7ea28ecb713a3650178971519c566c4e"
+  },
+  "daily.resultTitle": {
+    "message": "Blocktol · {date}",
+    "hash": "a0dddfb034bb685e599a732ce14547a1f617e9f0a369c8046704d61d13be4ce0"
+  },
+  "daily.share": {
+    "message": "Partager le résultat",
+    "hash": "50036274c12a288fdccb8ca6e4c2d184a3dde0b509eec987b3a88266a3a8d410"
   },
   "error.crash.body": {
     "message": "L'erreur a été signalée. Recharger règle souvent le problème — vos parties sont enregistrées sur le serveur.",
