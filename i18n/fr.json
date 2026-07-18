@@ -1,4 +1,8 @@
 {
+  "a11y.back": {
+    "message": "Retour",
+    "hash": "76900f1bfd16c8d4dd3d25e6f46638d7165aee23883ccea6bfe071c514421769"
+  },
   "a11y.close": {
     "message": "Fermer",
     "hash": "7d9eb7acb13e24625c404401d8e88b2350e32162455885f18276cf802f7701ed"
@@ -147,6 +151,34 @@
     "message": "Partager le résultat",
     "hash": "50036274c12a288fdccb8ca6e4c2d184a3dde0b509eec987b3a88266a3a8d410"
   },
+  "del.confirmLabel": {
+    "message": "Tapez {word} pour confirmer",
+    "hash": "bc6f3eccd8399d316f939e2433c5747ae7d6527dce645f49454368bcd5c5d61b"
+  },
+  "del.deleteBtn": {
+    "message": "Tout supprimer",
+    "hash": "71eb8a08ffd768d767e234e8a480571817f01d8a05e0da6f2e5e7670f511b4a2"
+  },
+  "del.deleting": {
+    "message": "Suppression…",
+    "hash": "43b5894c3e4e2b24f13c935f4fae0a0a8fbe7d7792750a09b88c2097fd9a32b8"
+  },
+  "del.error": {
+    "message": "Une erreur est survenue — vos données n'ont pas été supprimées. Veuillez réessayer.",
+    "hash": "85fbde94423f3d4914e15d5b0a95c154ee521d5b18c972f60bf3777d26a27ea8"
+  },
+  "del.lead": {
+    "message": "Ceci supprime définitivement votre profil, votre nom, vos préférences et vos abonnements aux notifications de ce jeu, et dissocie de vous tous les labyrinthes que vous avez construits. Vos constructions restent dans les classements passés en tant que joueur anonyme. Cette action est irréversible, et cet appareil repartira de zéro comme nouveau joueur.",
+    "hash": "e986cdca91f51c003ee266961645c27639010bc298d85eb100a181036092e639"
+  },
+  "del.moveHint": {
+    "message": "Vous préférez conserver vos constructions mais changer d'appareil ? Utilisez {move} depuis votre profil.",
+    "hash": "c4017741b3d2e6b05aa9c53046d3a10aea30b68e81f08988527083035be013ab"
+  },
+  "del.title": {
+    "message": "Supprimer mes données",
+    "hash": "5c4653236b30f9f0327a501425564b24d51082bb04e46a0f621be746bc9e8b7a"
+  },
   "error.crash.body": {
     "message": "L'erreur a été signalée. Recharger règle souvent le problème — vos parties sont enregistrées sur le serveur.",
     "hash": "3f4334fbfee7f5b0368f0a39cf4d56da32c2a92b78db45192c2225bbbe8d5d9c"
@@ -186,6 +218,26 @@
   "hud.toMidnight": {
     "message": "avant minuit",
     "hash": "18acab6279144094ac6361bf655dcce0cd02d4ede838367fe83b30e4f033ebcd"
+  },
+  "move.copied": {
+    "message": "Copié !",
+    "hash": "ea61bc15688d1e482ae5335e8dc030d8300b1afc07ecc7c2e6af5c43728b1d25"
+  },
+  "move.copy": {
+    "message": "Copier",
+    "hash": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+  },
+  "move.lead": {
+    "message": "Scannez ce code avec l'appareil photo de votre autre appareil, ou copiez le lien ci-dessous et ouvrez-le là-bas.",
+    "hash": "90d25941e2e56234095ca1c1cadd60d0ddaab1da9d19a00eb3b50c6661f377fd"
+  },
+  "move.safety": {
+    "message": "Toute personne disposant de ce lien peut se connecter en tant que {name}. Il n'expire pas, gardez-le donc confidentiel.",
+    "hash": "41203c028787d156b9c00dc5c4c0e1b4b7dfb5b0a0b3ddbcd4a97a54f316b264"
+  },
+  "move.title": {
+    "message": "Transférer vers un autre appareil",
+    "hash": "4a8d4cabb39bbc535e63173fddeb719ca2b6325e7280af6ca06625cc3cd36e44"
   },
   "notif.bell.title": {
     "message": "Notifications",
