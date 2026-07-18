@@ -694,6 +694,11 @@ a:hover {
   padding: 24px;
   overflow: hidden;
   border-radius: var(--radius);
+  /* Safari's overflow:hidden + border-radius does NOT clip a child with a
+     `filter` (the blurred .prestart__deco), so its square corners poke past the
+     rounded card. clip-path clips the whole subtree — filtered descendants
+     included — in both engines, so round the corners here. */
+  clip-path: inset(0 round var(--radius));
   /* New stacking context so the deco/scrim/content z-indexes below order
      against each other, not the rest of the board. */
   isolation: isolate;
