@@ -259,6 +259,90 @@
     "message": "Iniciando…",
     "hash": "bbe5fc3b9ef39f994c259eaf233d625a500b5219784c82f73b50808d4f79d5dc"
   },
+  "standings.between": {
+    "message": "{count} en medio",
+    "hash": "ffbf828e0451b93a1d13bd008db4eb72ef217c7f0080f9717a8b00d6856873d3"
+  },
+  "standings.closeHandle": {
+    "message": "Cerrar clasificación",
+    "hash": "4b23e8be4de93bd9f4d87afd2216850191e40825a3cce598265daf8d6a8d89f5"
+  },
+  "standings.dateLine": {
+    "message": "{day} · {count} jugadores",
+    "hash": "a4a542e56f5d776411939a6d028044f35c03b4959dc5a99d8ff4af4c84238232"
+  },
+  "standings.emptyDaily": {
+    "message": "Sin partidas este día",
+    "hash": "f04c04e4265b08a184d493f950099d773ee64d392b21777a0aaffac7235451bc"
+  },
+  "standings.emptyPb": {
+    "message": "Aún no hay partidas",
+    "hash": "306b45db20163464c2774564e0d61aaabdcf961067fcddb3a14cbc29e65fd0f7"
+  },
+  "standings.leadOther": {
+    "message": "{name} lidera",
+    "hash": "eefee81781d45b802a29f24f192a3bdd4ba06fe8cd2c58628e0f804caf20160c"
+  },
+  "standings.leadOtherPb": {
+    "message": "{name} lidera la MP",
+    "hash": "0379828faec77e64f29ee8b664ac9e2205e00b2f61d51b6719a2607415d4a8b6"
+  },
+  "standings.leadYou": {
+    "message": "lideras",
+    "hash": "34f6c4056d87f6df6f001edd3372f37331641f597084a06e7f05b0dd3adc0cd8"
+  },
+  "standings.leadYouPb": {
+    "message": "lideras la MP",
+    "hash": "96395459231d1ac2df705cec2c2063d156710894205f2bc2219ddf2734e8b421"
+  },
+  "standings.noRunsDay": {
+    "message": "sin partidas ese día",
+    "hash": "b50455eda14f2c63c764c881683798ba5c6b251bb4e3dc67c5d1ff00a52a96df"
+  },
+  "standings.noRunsToday": {
+    "message": "aún no hay partidas hoy",
+    "hash": "7eb5c7249a0726558e4db6e9f83dcae6990691829903f83786d41e374e0e0e3f"
+  },
+  "standings.open": {
+    "message": "Abrir clasificación",
+    "hash": "0855329c126f1d995ac6d4c6251732bddf9e6b058162dce78c56ce447e672a58"
+  },
+  "standings.rowDay": {
+    "message": "día",
+    "hash": "944c27e5b97ab7793e4b6e9ff29384890ece0c7c04d2e2bf81c5f763469cc66b"
+  },
+  "standings.rowPb": {
+    "message": "MP",
+    "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
+  },
+  "standings.sortByLabel": {
+    "message": "ORDENAR POR",
+    "hash": "730913d83a8ef7e72e6ac5875ee8b36e65ad16610c52bdb14f59f79bc82ad88f"
+  },
+  "standings.sortDaily": {
+    "message": "DIARIO",
+    "hash": "915f3942e1bbdb301830ed1faef13addefdced371a3944bb037339ee02e3ba7a"
+  },
+  "standings.sortGroup": {
+    "message": "Ordenar clasificación",
+    "hash": "09e99f786f87c484502f0ebf63ccc3b5fb46daa4fff7b58a6b0958a69918ed61"
+  },
+  "standings.sortPb": {
+    "message": "MP",
+    "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
+  },
+  "standings.title": {
+    "message": "Clasificación",
+    "hash": "c7342049e69be4aad2ccaf5eeb2e767dc3907bb2f83dcf1323c9ad378ec0b7ee"
+  },
+  "standings.untilRanked": {
+    "message": "para el ranking",
+    "hash": "e3aaf6422b37a6adb7be8302488d082b4191f19c0b2199622891ab5d61f86f86"
+  },
+  "standings.youSub": {
+    "message": "tú · {ago}",
+    "hash": "8d389249b2395678137010935b4097f26f50d1a615db9c7fa90b2540224a4c71"
+  },
   "storage.blocked.body": {
     "message": "Tu navegador está bloqueando el almacenamiento del sitio: permite las cookies o los datos del sitio para conservar tu perfil y tus partidas.",
     "hash": "02f9131ab2c5aaf1e8cd05bd2efef8be231d1489f3c4accc5b843fcc12526e93"
