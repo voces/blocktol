@@ -1,0 +1,22 @@
+# Chat-app link-preview crawlers: don't unfurl. A shared Blocktol link should
+# post as a plain link in chat, not a static embed card — the game's own
+# result posts are richer than anything the crawler would build, and a static
+# unfurl on top of them is just noise. There is no standard "never embed"
+# meta directive, so the reliable lever is refusing the crawler at robots.txt;
+# these bots generate embeds server-side and honor this file. Search engines
+# and Reddit's scraper are NOT listed, so they still read the page's title,
+# description, and og:image for a normal search snippet / post card.
+#
+# Slack expands links under two agents; block both.
+User-agent: Discordbot
+Disallow: /
+
+User-agent: Slackbot
+Disallow: /
+
+User-agent: Slackbot-LinkExpanding
+Disallow: /
+
+# Everyone else (Googlebot, Bingbot, Redditbot, browsers) — full access.
+User-agent: *
+Allow: /

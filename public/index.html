@@ -23,13 +23,37 @@
     name="description"
     content="A daily maze puzzle — place blocks to build the longest path and outlast the runner. Three ranked attempts a day, then free play."
   />
-  <!-- Deliberately no Open Graph / Twitter Card tags. Unfurlers (Discord, Slack,
-       Twitter/X) build their link embed from og:* / twitter:*; there is no
-       standard "don't embed" directive, so the way to suppress the embed while
-       keeping the browser-tab title is to omit those tags. <title> and the
-       description above are for the tab and search results, not the embed. -->
+  <!-- Open Graph / Twitter Card: these drive the link preview on Reddit, search,
+       and social. We WANT a card there (the launch storefront). Chat apps are
+       silenced instead at the crawler level — public/robots.txt disallows
+       Discordbot/Slackbot, which build embeds server-side and honor robots.txt —
+       so a shared link posts as a plain link in chat while a Reddit post still
+       gets a full card. og:image is an absolute URL (scrapers don't resolve
+       relative refs). -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Blocktol" />
+  <meta property="og:title" content="Blocktol" />
+  <meta
+    property="og:description"
+    content="A daily maze puzzle. Place blocks to build the longest path and outlast the runner. Three ranked attempts a day, then free play."
+  />
+  <meta property="og:url" content="https://blocktol.com/" />
+  <meta property="og:image" content="https://blocktol.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Blocktol: a daily maze puzzle" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Blocktol" />
+  <meta
+    name="twitter:description"
+    content="A daily maze puzzle. Build the longest path and outlast the runner."
+  />
+  <meta name="twitter:image" content="https://blocktol.com/og.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <!-- iOS ignores SVG favicons and manifest icons for home-screen installs;
+       it uses this PNG (and falls back to a page screenshot without it). -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
