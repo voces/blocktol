@@ -378,5 +378,85 @@
   "standings.noRunsDay": {
     "message": "no runs that day",
     "description": "Dock sub-line when a past day's board has no runs."
+  },
+  "attempts.title": {
+    "message": "Runs",
+    "description": "Section title over the list of the player's runs on the viewed maze."
+  },
+  "attempts.sortRuns": {
+    "message": "Sort runs",
+    "description": "Accessible group label for the runs-list sort toggle."
+  },
+  "attempts.sortNewest": {
+    "message": "Newest",
+    "description": "Runs sort tab: most recent first. Tapping it again flips to oldest-first."
+  },
+  "attempts.sortOldest": {
+    "message": "Oldest",
+    "description": "Runs sort tab label when the recent sort is reversed to oldest-first."
+  },
+  "attempts.sortLongest": {
+    "message": "Longest",
+    "description": "Runs sort tab: longest (best) time first. Tapping it again flips to shortest-first."
+  },
+  "attempts.sortShortest": {
+    "message": "Shortest",
+    "description": "Runs sort tab label when the best sort is reversed to shortest-first."
+  },
+  "attempts.reverseHint": {
+    "message": "Tap to reverse order",
+    "description": "Tooltip on the active runs sort tab: tapping it inverts the order."
+  },
+  "attempts.dailyTag": {
+    "message": "Daily",
+    "description": "Small tag on a runs-list row marking it as a ranked daily attempt (vs a free-play run). \"Daily\" is the game term (see glossary)."
+  },
+  "attempts.viewing": {
+    "message": "viewing",
+    "description": "Tag on the runs-list row whose maze is currently shown on the board."
+  },
+  "attempts.pinToTop": {
+    "message": "Pin run to top",
+    "description": "Label/tooltip for the per-row pin button (unpinned state) that floats a run to the top of the list."
+  },
+  "attempts.unpin": {
+    "message": "Unpin run",
+    "description": "Label/tooltip for the per-row pin button (pinned state) that removes the pin."
+  },
+  "attempts.empty": {
+    "message": "No runs yet",
+    "description": "Empty state for the runs list when the viewed maze has no runs."
+  },
+  "time.now": {
+    "message": "now",
+    "description": "Relative time for something that just happened (under a minute ago)."
+  },
+  "time.secondsAgo": {
+    "message": "{s}s ago",
+    "description": "Relative time in seconds. {s} is a whole number; \"s\" abbreviates seconds — use your locale's short form."
+  },
+  "time.minsAgo": {
+    "message": "{m}m ago",
+    "description": "Relative time in minutes. {m} is a whole number; \"m\" abbreviates minutes — use your locale's short form."
+  },
+  "time.hoursAgo": {
+    "message": "{h}h ago",
+    "description": "Relative time in hours. {h} is a whole number; \"h\" abbreviates hours — use your locale's short form."
+  },
+  "time.daysAgo": {
+    "message": "{d}d ago",
+    "description": "Relative time in days. {d} is a whole number; \"d\" abbreviates days — use your locale's short form."
+  },
+  "time.soon": {
+    "message": "soon",
+    "description": "Countdown label once the deadline has passed but the result isn't finalized yet."
+  },
+  "time.countdownHm": {
+    "message": "{h}h {m}m",
+    "description": "A countdown of hours and minutes remaining, e.g. \"9h 41m\". {h}/{m} are whole numbers; \"h\"/\"m\" abbreviate hours/minutes."
+  },
+  "time.countdownM": {
+    "message": "{m}m",
+    "description": "A countdown of minutes remaining, e.g. \"41m\". {m} is a whole number; \"m\" abbreviates minutes."
   }
 }

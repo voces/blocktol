@@ -1,7 +1,10 @@
-// Pure formatting for the standings dock/sheet, split out for unit tests.
-// Each takes `now` so tests don't race the clock.
+// Formatting for the standings dock/sheet, split out for unit tests. Each takes
+// `now` so tests don't race the clock. The relative-time / countdown words route
+// through the catalog (`time.*`) so they localize; English renders byte-for-byte
+// the same, so the unit tests are unchanged.
 
 import { formatDecimal } from "../../../common/format.ts";
+import { t } from "../../util/t.ts";
 
 // "T2" when the rank is shared, plain "2" otherwise. Large ranks (the PB
 // board's thousands) collapse to an approximate "~1.9k" — exact digits there
@@ -21,12 +24,12 @@ export const formatRank = (rank: number, tied: boolean) => {
 // so second precision and date fallbacks would just add noise.
 export const formatAgo = (at: number, now = Date.now()) => {
   const s = Math.max(0, Math.floor((now - at) / 1000));
-  if (s < 60) return "now";
+  if (s < 60) return t("time.now");
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t("time.minsAgo", { m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return t("time.hoursAgo", { h });
+  return t("time.daysAgo", { d: Math.floor(h / 24) });
 };
 
 // Time left until the field closes and the day gets ranked — "9h 41m", then
@@ -34,9 +37,11 @@ export const formatAgo = (at: number, now = Date.now()) => {
 // swept it yet.
 export const formatCountdown = (closesAt: number, now = Date.now()) => {
   const m = Math.ceil((closesAt - now) / 60_000);
-  if (m <= 0) return "soon";
+  if (m <= 0) return t("time.soon");
   const h = Math.floor(m / 60);
-  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+  return h > 0
+    ? t("time.countdownHm", { h, m: m % 60 })
+    : t("time.countdownM", { m });
 };
 
 // The sheet's header date ("Jul 7") from the server's [y, m, d] day tuple.
