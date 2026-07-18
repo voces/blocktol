@@ -13,7 +13,13 @@ import { GameStateContext } from "./Game/useGameState.ts";
 export const CalendarButton = () => {
   const { attemptsRemaining, setCalendarOpen } = useContext(GameStateContext);
   const alert = newDailyAvailable.value;
-  if (attemptsRemaining !== 0) return null;
+  // Shown once the daily's done or free play begins (attemptsRemaining === 0) —
+  // and also once a new daily has rolled in, when the pinned day is over so this
+  // (the in-app switch to it) must stay reachable. Otherwise a stale board with
+  // attempts still nominally remaining — e.g. a past day deep-linked while
+  // today's daily was outstanding — hides it, stranding the player after
+  // midnight with no way to switch (see store/dailyRollover.ts).
+  if (attemptsRemaining !== 0 && !alert) return null;
 
   return (
     <button
