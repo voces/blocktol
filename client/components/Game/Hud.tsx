@@ -10,16 +10,17 @@ import { RunClock, VerdictPill } from "./RunClock.tsx";
 
 const IDLE_MS = 5_000;
 
+// The block budget: a single isometric cube (not the old brick-wall) — the piece
+// is a "block" in copy, so the icon is one block. Cool blue to balance the warm
+// gold thunder bolt; the board pieces keep their own gameplay tints.
 export const BrickIcon = () => (
-  <svg width={16} height={16} viewBox="0 0 16 16">
-    <rect x={0} y={0} width={16} height={16} rx={2} fill="#c0553a" />
-    <g stroke="#7d331f" stroke-width={1}>
-      <line x1={0} y1={5.3} x2={16} y2={5.3} />
-      <line x1={0} y1={10.6} x2={16} y2={10.6} />
-      <line x1={5.3} y1={0} x2={5.3} y2={5.3} />
-      <line x1={10.6} y1={5.3} x2={10.6} y2={10.6} />
-      <line x1={5.3} y1={10.6} x2={5.3} y2={16} />
-    </g>
+  <svg width={16} height={16} viewBox="0 0 24 24">
+    {/* top face (lightest) */}
+    <path d="M12 2.5 L20.5 7.25 L12 12 L3.5 7.25 Z" fill="#6ea8e6" />
+    {/* left face */}
+    <path d="M3.5 7.25 L12 12 L12 21.5 L3.5 16.75 Z" fill="#3f7fcc" />
+    {/* right face (darkest) */}
+    <path d="M20.5 7.25 L12 12 L12 21.5 L20.5 16.75 Z" fill="#2f63aa" />
   </svg>
 );
 

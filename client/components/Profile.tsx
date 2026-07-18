@@ -1,5 +1,5 @@
 import { Fragment, h } from "preact";
-import { useContext, useEffect, useState } from "preact/compat";
+import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { formatDecimal, formatSeconds } from "../../common/format.ts";
 import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
@@ -50,6 +50,90 @@ const endonym = (tag: string): string => {
     endonymCache.set(tag, v);
   }
   return v;
+};
+
+// A compact custom language dropdown. A native <select> sizes to its widest
+// option (so the chevron floats far right of a short value like "System") and
+// its popup is OS-rendered/misaligned; this sizes the trigger to the current
+// value and positions the menu itself. Closes on outside-click or Escape.
+const LanguageSelect = (
+  { value, onChange }: { value: string; onChange: (v: string) => void },
+) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const options = [
+    { v: "system", label: t("profile.languageSystem") },
+    ...locales.map((l) => ({ v: l, label: endonym(l) })),
+  ];
+  const current = options.find((o) => o.v === value) ?? options[0];
+
+  return (
+    <div class="lang-select" ref={ref}>
+      <button
+        type="button"
+        class="lang-select__btn tapc"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("profile.language")}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{current.label}</span>
+        <svg
+          class="lang-select__chev"
+          width={12}
+          height={12}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+        >
+          <path
+            d="M4 6l4 4 4-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width={1.7}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+      {open && (
+        <ul class="lang-select__menu" role="listbox">
+          {options.map((o) => (
+            <li
+              key={o.v}
+              role="option"
+              aria-selected={o.v === value}
+              class={"lang-select__opt tapc" +
+                (o.v === value ? " lang-select__opt--on" : "")}
+              onClick={() => {
+                onChange(o.v);
+                setOpen(false);
+              }}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 };
 
 // Theme value → catalog key, mapped by a literal object so every live key stays
@@ -492,21 +576,13 @@ const ProfileDialog = (
         <div class="pref__row">
           <div class="pref__label">{t("profile.language")}</div>
           {
-            /* A native select: 7 locales + System is too many for a segmented
-              control. Each option is the language's endonym so it stays
-              recognizable whatever language the UI is currently in. */
+            /* Custom dropdown (not a native select): each option is an endonym
+              so it stays recognizable whatever language the UI is in. */
           }
-          <select
-            class="pref__select tapc"
+          <LanguageSelect
             value={settings.language}
-            aria-label={t("profile.language")}
-            onChange={(e) => setSettings({ language: e.currentTarget.value })}
-          >
-            <option value="system">{t("profile.languageSystem")}</option>
-            {locales.map((loc) => (
-              <option key={loc} value={loc}>{endonym(loc)}</option>
-            ))}
-          </select>
+            onChange={(v) => setSettings({ language: v })}
+          />
         </div>
 
         {(touch || settings.zoom !== ZOOM_DEFAULT) && (
