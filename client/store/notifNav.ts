@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
-import { localDay, sameDay } from "../util/dayBoundary.ts";
+import { dayIsBefore, localDay } from "../util/dayBoundary.ts";
 import { showBoard } from "./board.ts";
 import { markReadForDay } from "./notifications.ts";
 import {
@@ -35,21 +35,22 @@ const entrySearch = location.search;
 const entryDay = entryPath.match(/^\/(\d{4})(\d{2})(\d{2})$/);
 export const entryIsDayLink = entryDay !== null;
 
-// Of those, the links pointing at a day OTHER than today. This — not
+// Of those, only the links for a day strictly BEFORE today. This — not the raw
 // `entryIsDayLink` — is what suppresses boot-time today-staging (resume /
 // prestart / finished-board prime): the suppression exists so `consumeDeepLink`
-// can win the board with a *different* day, but when the link IS today there's
-// no other day and today's normal flow is exactly right. Gating on the raw
-// day-link instead stranded a fresh user on a today permalink: today's
-// `getBoard` 403s until the three ranked attempts are spent, so nothing staged
-// AND the prestart was suppressed, leaving an inert loading board with no way
-// forward. A today-link now falls through to the normal today flow.
-export const entryDayLinkIsToday = entryDay !== null &&
-  sameDay(
+// can win the board with a PAST day (past boards are ungated and replayable).
+// A link to TODAY has no other day to stage, and a FUTURE day must not be
+// staged at all — tomorrow's puzzle is one you'll rank tomorrow (previewing it
+// is a leak) and next week's doesn't exist yet. Both fall through to today's
+// normal flow instead. Gating on the raw day-link stranded a fresh user on a
+// today-or-future permalink (today's `getBoard` 403s until the three ranked
+// attempts are spent; a future date 400s or, worse, served tomorrow's board),
+// leaving an inert loading board with no way forward.
+export const entryIsPastDayLink = entryDay !== null &&
+  dayIsBefore(
     [Number(entryDay[1]), Number(entryDay[2]), Number(entryDay[3])],
     localDay(),
   );
-export const entryIsPastDayLink = entryIsDayLink && !entryDayLinkIsToday;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 

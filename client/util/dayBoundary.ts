@@ -23,3 +23,12 @@ export const sameDay = (
   a: [number, number, number],
   b: [number, number, number],
 ): boolean => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+
+// True when calendar day `a` falls strictly before `b`. Tuple order is date
+// order (year, then month, then day), so a lexicographic compare is the date
+// compare.
+export const dayIsBefore = (
+  a: [number, number, number],
+  b: [number, number, number],
+): boolean =>
+  a[0] !== b[0] ? a[0] < b[0] : a[1] !== b[1] ? a[1] < b[1] : a[2] < b[2];

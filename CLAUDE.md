@@ -203,15 +203,18 @@ iteration-keyed calls never collide with today's timezone-keyed primes — today
 slices still feed the dock/calendar/summary while the linked day feeds the
 staged board. An unresolvable date (or a linked slice that can't be served)
 throws, so the consumer falls through to its own fetch — the old skip-boot
-day-link path is gone. `entryIsPastDayLink` (a `/YYYYMMDD` for a day _other_
-than today) gates today-**staging** so a linked past day wins the board
-(`useInit`). A link to _today_ is deliberately **not** suppressed: there's no
-other day to stage, so it falls through to today's normal resume/prestart flow.
-(Gating on the raw day-link stranded a fresh user on a today permalink — today's
-`getBoard` 403s until the three ranked attempts are spent, so nothing staged
-_and_ the prestart was suppressed, leaving an inert loading board;
-`consumeDeepLink` likewise steps aside for a today-link and lets `useInit` own
-it.)
+day-link path is gone. `entryIsPastDayLink` (a `/YYYYMMDD` for a day _strictly
+before_ today) gates today-**staging** so a linked past day wins the board
+(`useInit`). A link to _today_ or a _future_ day is deliberately **not**
+suppressed: today has no other day to stage, and a future day must not be staged
+at all (tomorrow's iteration exists — the gen cron runs a day ahead — so staging
+it would leak the puzzle you'll rank tomorrow; next week's 400s). Both fall
+through to today's normal resume/prestart flow, and `consumeDeepLink` stages
+only for a strictly-past link — so a today/future link lets `useInit` own the
+board. (Gating on the raw day-link stranded a fresh user on a today/future
+permalink — today's `getBoard` 403s until the three ranked attempts are spent,
+so nothing staged _and_ the prestart was suppressed, leaving an inert loading
+board.)
 
 **`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
 `getBoard` (non-soft) + `standings` for a chosen `{ iteration, timeZone }` —
