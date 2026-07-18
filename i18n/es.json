@@ -1,4 +1,28 @@
 {
+  "common.connecting": {
+    "message": "Conectando",
+    "hash": "d403c686f6a1048014bdd230f59963271b0123ea48245754fc9f264b962a2182"
+  },
+  "error.crash.body": {
+    "message": "El error se ha reportado. Recargar suele solucionarlo — tus partidas están guardadas en el servidor.",
+    "hash": "3f4334fbfee7f5b0368f0a39cf4d56da32c2a92b78db45192c2225bbbe8d5d9c"
+  },
+  "error.crash.reload": {
+    "message": "Recargar",
+    "hash": "bdc090ec61e3fcfc65f469951dfe00f3f2ecfc6003c44deac8e05b7237092de6"
+  },
+  "error.crash.title": {
+    "message": "Algo falló",
+    "hash": "bc05fe58e90941c3b1db780ae63f8c18542e645e4f66af659c7400592943e18c"
+  },
+  "notif.bell.title": {
+    "message": "Notificaciones",
+    "hash": "788011833a5a0f22db90c91e8eb7bd8e9f5cd423354ff5ef8c338e7895f44ba9"
+  },
+  "notif.bell.unread": {
+    "message": "Notificaciones ({count, plural, one {# sin leer} many {# sin leer} other {# sin leer}})",
+    "hash": "5fcc8b108731313c807abb2dc9decc27dae6dbacbf9d7491348c5df38305cc7d"
+  },
   "notif.dailyFinal.first": {
     "message": "Terminaste #1 de {players}. Superado solo en juego libre",
     "hash": "90b1babd3e971e4351dad46894eeb9da55a40e43fe5ec947019f76436f16eda7"
