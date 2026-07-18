@@ -534,5 +534,153 @@
   "time.countdownM": {
     "message": "{m}m",
     "description": "A countdown of minutes remaining, e.g. \"41m\". {m} is a whole number; \"m\" abbreviates minutes."
+  },
+  "profile.open": {
+    "message": "Open profile",
+    "description": "Accessible label for the header profile/avatar button that opens the profile dialog."
+  },
+  "profile.title": {
+    "message": "Profile",
+    "description": "Tooltip for the header profile button."
+  },
+  "profile.close": {
+    "message": "Close profile",
+    "description": "Accessible label for the profile dialog's close button."
+  },
+  "profile.editName": {
+    "message": "Edit name",
+    "description": "Accessible label for the pencil button that starts editing the player's display name."
+  },
+  "profile.save": {
+    "message": "Save",
+    "description": "Button that saves the edited display name."
+  },
+  "profile.cancel": {
+    "message": "Cancel",
+    "description": "Button that cancels editing the display name."
+  },
+  "profile.joinedLabel": {
+    "message": "joined {date}",
+    "description": "Line under the player's name showing when they started. {date} is a short month-year like \"Jul 2025\"."
+  },
+  "profile.rating": {
+    "message": "Rating",
+    "description": "Label under the player's numeric rating in the profile header."
+  },
+  "profile.played": {
+    "message": "Played",
+    "description": "Profile stat label: number of dailies the player has played."
+  },
+  "profile.records": {
+    "message": "Records",
+    "description": "Profile stat label: number of days the player holds/held a record. See glossary RECORD."
+  },
+  "profile.medianPercentile": {
+    "message": "Median percentile",
+    "description": "Profile stat label: the player's median field percentile across dailies."
+  },
+  "profile.bestBuild": {
+    "message": "Best build",
+    "description": "Label on the profile's best-build tile (the player's longest time ever); tapping reviews that maze."
+  },
+  "profile.pushNotifications": {
+    "message": "Push notifications",
+    "description": "Section title for the push-notification preference toggles."
+  },
+  "profile.notifLostTopTitle": {
+    "message": "Lost the top spot",
+    "description": "Push-preference row title: notify me when I lose the day's #1 build. \"#1\" is first place."
+  },
+  "profile.notifLostTopSub": {
+    "message": "Someone passes your #1",
+    "description": "Push-preference row subtext for losing the top spot. \"#1\" is first place."
+  },
+  "profile.notifDailyTitle": {
+    "message": "Daily finalized",
+    "description": "Push-preference row title: notify me when a day I played is ranked. \"Daily\" is the game term (see glossary)."
+  },
+  "profile.notifDailySub": {
+    "message": "A day you played locks its ranks",
+    "description": "Push-preference row subtext for daily finalization."
+  },
+  "profile.preferences": {
+    "message": "Preferences",
+    "description": "Section title for the appearance/zoom preferences."
+  },
+  "profile.appearance": {
+    "message": "Appearance",
+    "description": "Label (and group aria-label) for the light/dark/system theme selector."
+  },
+  "profile.themeSystem": {
+    "message": "System",
+    "description": "Theme option that follows the device's light/dark setting."
+  },
+  "profile.themeLight": {
+    "message": "Light",
+    "description": "Light theme option."
+  },
+  "profile.themeDark": {
+    "message": "Dark",
+    "description": "Dark theme option."
+  },
+  "profile.zoom": {
+    "message": "Zoom when placing",
+    "description": "Preference label (and slider aria-label) for the touch board magnification."
+  },
+  "profile.zoomSub": {
+    "message": "Magnifies the board on touch.",
+    "description": "Subtext explaining the zoom-when-placing preference."
+  },
+  "profile.zoomOff": {
+    "message": "Off",
+    "description": "Shown as the zoom value when magnification is disabled (1×)."
+  },
+  "profile.community": {
+    "message": "Community",
+    "description": "Section title for the Discord community card."
+  },
+  "profile.discordTitle": {
+    "message": "Join the Discord",
+    "description": "Title of the community card linking to the game's Discord server. \"Discord\" is a product name — keep it."
+  },
+  "profile.discordSub": {
+    "message": "Chat about the daily maze, report bugs, and share ideas.",
+    "description": "Subtext of the Discord community card."
+  },
+  "profile.online": {
+    "message": "{count} online",
+    "description": "Live Discord presence count on the community card. {count} is a whole number."
+  },
+  "profile.account": {
+    "message": "Account",
+    "description": "Section title for the account actions (move device, export, delete)."
+  },
+  "profile.moveSub": {
+    "message": "Scan a code or copy your login link",
+    "description": "Subtext of the move-to-device account action."
+  },
+  "profile.exporting": {
+    "message": "Preparing…",
+    "description": "Transient title on the export action while the data export is being assembled. Trailing ellipsis."
+  },
+  "profile.exportData": {
+    "message": "Export my data",
+    "description": "Title of the account action that downloads all the player's data (GDPR export)."
+  },
+  "profile.exportSub": {
+    "message": "Download everything we hold about you",
+    "description": "Subtext of the export-my-data account action."
+  },
+  "profile.deleteSub": {
+    "message": "Erase your profile and unlink your builds",
+    "description": "Subtext of the delete-my-data account action."
+  },
+  "profile.privacy": {
+    "message": "Privacy & the data we collect",
+    "description": "Link to the static privacy disclosure page. The \"&\" is a literal ampersand."
+  },
+  "profile.anonymous": {
+    "message": "Anonymous",
+    "description": "Fallback display name for a player who hasn't set a name."
   }
 }
