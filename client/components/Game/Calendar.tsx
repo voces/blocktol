@@ -20,25 +20,11 @@ import {
 } from "../../store/dailyItems.ts";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
 import { clearFreePlay } from "./freePlay.ts";
+import { t, uiLocale } from "../../util/t.ts";
+import { narrowWeekdays } from "../../util/dateNames.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 type Item = DailyItem;
-
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 // Show the previous month in full only when we're early in the current one —
 // otherwise the current month is tall enough on its own.
@@ -87,6 +73,11 @@ export const Calendar = () => {
   // than mirroring response events) can't drift when a superseded response
   // is discarded by the board loader.
   const selected = iteration;
+  // Weekday initials + the month/day labels below follow the UI locale (reading
+  // .value re-renders on a language switch); English renders exactly the old
+  // hardcoded arrays.
+  const locale = uiLocale.value;
+  const weekdays = narrowWeekdays(locale);
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
   // The very first daily's month — the floor `canPrev` pages back to (from the
@@ -229,11 +220,15 @@ export const Calendar = () => {
         style={bg ? { background: bg, color: readableInk(bg) } : undefined}
         onClick={() => pick(item)}
         title={[
-          `${MONTHS[month0]} ${day}`,
+          new Date(year, month0, day).toLocaleDateString(locale, {
+            month: "long",
+            day: "numeric",
+          }),
           // Cell is the overall best as a percentage of the way to the field's
           // best — XX%; the dot is the ranked (daily) percentile — pXX.
-          percent != null && `best ${formatPercentile(percent)}%`,
-          dot != null && `ranked p${formatPercentile(dot)}`,
+          percent != null &&
+          t("cal.bestPct", { pct: formatPercentile(percent) }),
+          dot != null && t("cal.rankedP", { p: formatPercentile(dot) }),
         ].filter(Boolean).join(" · ")}
       >
         {pct != null
@@ -266,8 +261,8 @@ export const Calendar = () => {
         onClick={() => playNewDaily()}
       >
         <span class="calendar__new-daily-dot" aria-hidden="true" />
-        <span class="calendar__new-daily-text">New daily available</span>
-        <span class="calendar__new-daily-cta">Play →</span>
+        <span class="calendar__new-daily-text">{t("cal.newDaily")}</span>
+        <span class="calendar__new-daily-cta">{t("cal.playCta")}</span>
       </button>
     )
     : null;
@@ -277,7 +272,7 @@ export const Calendar = () => {
       <button
         type="button"
         class="calendar__arrow tapc"
-        aria-label="Earlier months"
+        aria-label={t("cal.earlierMonths")}
         disabled={!canPrev}
         onClick={() => setPage((p) => p + 1)}
       >
@@ -286,7 +281,7 @@ export const Calendar = () => {
       <button
         type="button"
         class="calendar__arrow tapc"
-        aria-label="Later months"
+        aria-label={t("cal.laterMonths")}
         disabled={!canNext}
         onClick={() => setPage((p) => Math.max(0, p - 1))}
       >
@@ -298,7 +293,7 @@ export const Calendar = () => {
   const grids = (
     <>
       <div class="calendar__grid calendar__grid--weekdays">
-        {WEEKDAYS.map((wd, i) => (
+        {weekdays.map((wd, i) => (
           <div class="calendar__weekday" key={`wd${i}`}>{wd}</div>
         ))}
       </div>
@@ -309,7 +304,12 @@ export const Calendar = () => {
         const firstDow = new Date(year, month0, 1).getDay();
         return (
           <Fragment key={seg.idx}>
-            <div class="calendar__label">{MONTHS[month0]} {year}</div>
+            <div class="calendar__label">
+              {new Date(year, month0).toLocaleDateString(locale, {
+                month: "long",
+                year: "numeric",
+              })}
+            </div>
             <div class="calendar__grid">
               {Array.from(
                 { length: firstDow },
@@ -336,13 +336,13 @@ export const Calendar = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <div class="calendar-modal__header">
-            <span class="section-title">Previous days</span>
+            <span class="section-title">{t("cal.previousDays")}</span>
             <div class="calendar-modal__tools">
               {pager}
               <button
                 type="button"
                 class="calendar-modal__close tapc"
-                aria-label="Close calendar"
+                aria-label={t("cal.close")}
                 onClick={() => setCalendarOpen(false)}
               >
                 ×
@@ -360,7 +360,7 @@ export const Calendar = () => {
   return (
     <div class="calendar">
       <div class="calendar__head">
-        <span class="section-title">Previous days</span>
+        <span class="section-title">{t("cal.previousDays")}</span>
         {pager}
       </div>
       {newDaily}

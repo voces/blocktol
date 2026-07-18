@@ -41,7 +41,31 @@
   },
   "cal.previousDays": {
     "message": "Previous days",
-    "description": "Tooltip for the header calendar button in its normal state."
+    "description": "Tooltip for the header calendar button in its normal state; also the calendar panel's section title."
+  },
+  "cal.playCta": {
+    "message": "Play →",
+    "description": "Call-to-action on the calendar's new-daily banner. The \"→\" is a decorative arrow — keep or drop per the language's convention."
+  },
+  "cal.earlierMonths": {
+    "message": "Earlier months",
+    "description": "Accessible label for the calendar's back-paging arrow (older months)."
+  },
+  "cal.laterMonths": {
+    "message": "Later months",
+    "description": "Accessible label for the calendar's forward-paging arrow (more recent months)."
+  },
+  "cal.close": {
+    "message": "Close calendar",
+    "description": "Accessible label for the mobile calendar picker's close button."
+  },
+  "cal.bestPct": {
+    "message": "best {pct}%",
+    "description": "Part of a calendar cell's tooltip: the day's overall standing. {pct} is a pre-formatted percentage number (the \"%\" is separate)."
+  },
+  "cal.rankedP": {
+    "message": "ranked p{p}",
+    "description": "Part of a calendar cell's tooltip: the day's ranked percentile. {p} is a pre-formatted percentile number; \"p\" is the percentile marker."
   },
   "common.connecting": {
     "message": "Connecting",
