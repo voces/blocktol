@@ -15,6 +15,54 @@
     "message": "record",
     "hash": "70ce871f8a3d3fb449bc3c3ace6547cef02dfc74ffe48d912532a724bfdbe5b9"
   },
+  "attempts.dailyTag": {
+    "message": "Quotidien",
+    "hash": "b36c2611dcdfa190ede846948d9aba8f39581de0177cbd98586506019f979b75"
+  },
+  "attempts.empty": {
+    "message": "Aucune partie",
+    "hash": "306b45db20163464c2774564e0d61aaabdcf961067fcddb3a14cbc29e65fd0f7"
+  },
+  "attempts.pinToTop": {
+    "message": "Épingler en haut",
+    "hash": "d8b3e8d855fbe40d6e309779042fbd163431b2e314ae45cfdd33293ac17a1d1e"
+  },
+  "attempts.reverseHint": {
+    "message": "Toucher pour inverser l'ordre",
+    "hash": "2fbcc71aab31132aa5e3c19a39c28dc2765a1de084996f8cce81bf3cb6152e75"
+  },
+  "attempts.sortLongest": {
+    "message": "Plus longues",
+    "hash": "802803c7888480fc3a394d9c3060e509a76ff29c9e223246060a734b88a80f41"
+  },
+  "attempts.sortNewest": {
+    "message": "Récentes",
+    "hash": "d15efa178cf65ae16596a270671aa320bc9d2a5f18d78ecc5d479f73b3ffd51e"
+  },
+  "attempts.sortOldest": {
+    "message": "Anciennes",
+    "hash": "505dc450753e546ecbef6830acea257dc35d0d5303d8e76d0d605a7997a10a42"
+  },
+  "attempts.sortRuns": {
+    "message": "Trier les parties",
+    "hash": "50adc7a105635d261af32e8e049f4de1decc668ba36d2669aa27ddd3e5a0d888"
+  },
+  "attempts.sortShortest": {
+    "message": "Plus courtes",
+    "hash": "3be807632d673d43c530cad23427dfd19fa1edbca5f148738a1e8ac943f126ef"
+  },
+  "attempts.title": {
+    "message": "Parties",
+    "hash": "848f54e89660cea4357644039ac5d7146f76c8e85df5c04076e08feb7e7547f0"
+  },
+  "attempts.unpin": {
+    "message": "Désépingler",
+    "hash": "78c0b1bd34779337d4ed4a478cac70a034b061bead7ead7bee2932c150d04694"
+  },
+  "attempts.viewing": {
+    "message": "affiché",
+    "hash": "094cc176f5f18334d1da293fdca2569385c158fed3705d2ceb62ff822d5335bc"
+  },
   "badge.best": {
     "message": "MEILLEUR",
     "hash": "16b7940e30c20d40fbf33678ab8eba9d289148d7932dd3fa8c6d92cdf9947b17"
@@ -350,6 +398,38 @@
   "storage.blocked.title": {
     "message": "La progression ne sera pas enregistrée",
     "hash": "55087af7266c1b09bb217f393f91c64f57bd8439495cd6b20ee1ee7b887ef4b9"
+  },
+  "time.countdownHm": {
+    "message": "{h}h {m}min",
+    "hash": "8726ff1aab2a4e6914279915324443eb3573c148199acb66b23a19a74ba27577"
+  },
+  "time.countdownM": {
+    "message": "{m}min",
+    "hash": "7998930982af2136cb5d57fa7b9a82fec97b0084ccd027acd26a3bd6d81cbeb9"
+  },
+  "time.daysAgo": {
+    "message": "il y a {d}j",
+    "hash": "18bb766fcc18ee05561610c102177f848fc469d5f353dd8843f329d2b9acb78d"
+  },
+  "time.hoursAgo": {
+    "message": "il y a {h}h",
+    "hash": "c037caa52a752ae69df3c531d64a1c3109e93f91e692a450ebe71177dcad4d8c"
+  },
+  "time.minsAgo": {
+    "message": "il y a {m}min",
+    "hash": "7e5eb4f5807907dc86259352177a3e2b8df738e4f05d052c63ea90733a4e7199"
+  },
+  "time.now": {
+    "message": "maintenant",
+    "hash": "ed5eb9a37e2d8231af3388319b941995f6dc8755c56043d0cc52b5fe405a87de"
+  },
+  "time.secondsAgo": {
+    "message": "il y a {s}s",
+    "hash": "2e961e51ba82509076836c9af2e6d833066ca31ae2c4e578121bfb2d7aee5f17"
+  },
+  "time.soon": {
+    "message": "bientôt",
+    "hash": "4a754148b88a68e18df1a02489950666d187e904cd88d2dc0aa16c103b94045f"
   },
   "today.bestOf": {
     "message": "meilleur sur {count}",
