@@ -7,6 +7,7 @@ import { clearFreePlay } from "./freePlay.ts";
 import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { RunClock, VerdictPill } from "./RunClock.tsx";
+import { TimerRipple } from "./TimerRipple.tsx";
 
 const IDLE_MS = 5_000;
 
@@ -174,6 +175,7 @@ export const Hud = () => {
           </div>
         )}
       </div>
+      <TimerRipple />
       <div class="hud__controls">
         {showReset && (
           <button
