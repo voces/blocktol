@@ -12,6 +12,7 @@ import {
   startFreshId,
 } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
+import { t, tJsx } from "../util/t.ts";
 
 // A sign-in link opened on a device that already has a profile is a fork, not a
 // sign-in (see getPendingLink). This gate resolves it before the app boots —
@@ -59,9 +60,12 @@ const Avatar = (
   </div>
 );
 
-const runs = (n: number) => `${n} run${n === 1 ? "" : "s"}`;
+const runs = (n: number) => t("mg.runs", { count: n });
 const joinedLabel = (ms: number) =>
-  new Date(ms).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  new Date(ms).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
 
 // ── icons (small, inline; stroke follows currentColor) ──────────────────────
 const svg = (children: h.JSX.Element, size = 20) => (
@@ -257,8 +261,10 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         return reloadAs(linkId, {
           adoptedRuns: o.runs,
           toast: {
-            title: `Signed in as ${o.name ?? "your other profile"}`,
-            sub: `${runs(selfRuns)} from this device came along.`,
+            title: t("mg.signedInAs", {
+              name: o.name ?? t("mg.fbOtherProfile"),
+            }),
+            sub: t("mg.cameAlong", { runs: runs(selfRuns) }),
           },
         });
       }
@@ -304,7 +310,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
           <button
             type="button"
             class="mg-headback tapc"
-            aria-label="Back"
+            aria-label={t("a11y.back")}
             onClick={() => setMode("fork")}
           >
             ‹
@@ -317,7 +323,9 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   );
 
   if (mode === "loading" || mode === "working") {
-    return brandFrame(<div class="mg-spinner" aria-label="Loading" />);
+    return brandFrame(
+      <div class="mg-spinner" aria-label={t("a11y.loading")} />,
+    );
   }
 
   // 1d — clean adopt confirm.
@@ -325,11 +333,15 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     return brandFrame(
       <div class="mg-inner">
         <div class="mg-confirm">
-          <div class="mg-confirm-label">Continue on this device as…</div>
+          <div class="mg-confirm-label">{t("mg.confirmLabel")}</div>
           <div class="mg-profile--solo">
             <Avatar id={other.id} name={other.name} size={72} glow />
-            <div class="mg-name mg-name--lg">{other.name ?? "Player"}</div>
-            <div class="mg-sub mono">joined {joinedLabel(other.joined)}</div>
+            <div class="mg-name mg-name--lg">
+              {other.name ?? t("mg.fbPlayer")}
+            </div>
+            <div class="mg-sub mono">
+              {t("profile.joinedLabel", { date: joinedLabel(other.joined) })}
+            </div>
           </div>
           <div class="mg-actions mg-actions--inset">
             <button
@@ -337,7 +349,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
               class="mg-btn mg-btn--primary tapc"
               onClick={() => reloadAs(linkId, { adoptedRuns: other.runs })}
             >
-              Continue as {other.name ?? "this player"}
+              {t("mg.continueAs", { name: other.name ?? t("mg.fbThisPlayer") })}
             </button>
             <button
               type="button"
@@ -347,7 +359,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
                 proceed();
               }}
             >
-              Not you? Start a new game
+              {t("mg.startNewGame")}
             </button>
           </div>
         </div>
@@ -358,25 +370,25 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   // 2a — the fork.
   if (mode === "fork" && self && other) {
     const sub = (s: NonNullable<Side>) =>
-      `joined ${joinedLabel(s.joined)} · ${runs(s.runs)}`;
+      t("mg.sideSub", { date: joinedLabel(s.joined), runs: runs(s.runs) });
     return brandFrame(
       <div class="mg-inner">
         <div class="mg-pair">
-          <div class="mg-lbl">On this device</div>
+          <div class="mg-lbl">{t("mg.onThisDevice")}</div>
           <div class="mg-row">
             <Avatar id={self.id} name={self.name} />
             <div class="mg-rowtext">
-              <div class="mg-name">{self.name ?? "Player"}</div>
+              <div class="mg-name">{self.name ?? t("mg.fbPlayer")}</div>
               <div class="mg-sub mono">{sub(self)}</div>
             </div>
           </div>
           <div class="mg-divider">
-            <span>THE LINK SIGNS IN AS</span>
+            <span>{t("mg.linkSignsInAs")}</span>
           </div>
           <div class="mg-row">
             <Avatar id={other.id} name={other.name} glow />
             <div class="mg-rowtext">
-              <div class="mg-name">{other.name ?? "Player"}</div>
+              <div class="mg-name">{other.name ?? t("mg.fbPlayer")}</div>
               <div class="mg-sub mono">{sub(other)}</div>
             </div>
           </div>
@@ -391,9 +403,9 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
               <MergeIcon />
             </span>
             <span class="mg-opt-body">
-              <span class="mg-opt-title">Merge the two</span>
+              <span class="mg-opt-title">{t("mg.mergeTitle")}</span>
               <span class="mg-opt-sub">
-                Keep one profile with everything from both
+                {t("mg.mergeSub")}
               </span>
             </span>
             <span class="mg-opt-chev">
@@ -409,9 +421,13 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
               <SwitchIcon />
             </span>
             <span class="mg-opt-body">
-              <span class="mg-opt-title">Switch to {other.name ?? "it"}</span>
+              <span class="mg-opt-title">
+                {t("mg.switchTo", { name: other.name ?? t("mg.fbIt") })}
+              </span>
               <span class="mg-opt-sub">
-                Leave {self.name ?? "this profile"}; reachable only by its link
+                {t("mg.switchSub", {
+                  name: self.name ?? t("mg.fbThisProfile"),
+                })}
               </span>
             </span>
             <span class="mg-opt-chev">
@@ -423,7 +439,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             class="mg-btn mg-btn--ghost tapc"
             onClick={proceed}
           >
-            Keep playing as {self.name ?? "you"}
+            {t("mg.keepPlayingAs", { name: self.name ?? t("mg.fbYou") })}
           </button>
         </div>
       </div>,
@@ -446,10 +462,12 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
           <Avatar id={s.id} name={s.name} size={42} />
           <div class="mg-rowtext">
             <div class="mg-pickname">
-              <span class="mg-name">{s.name ?? "Player"}</span>
-              {hasMore && <span class="mg-badge">MORE DATA</span>}
+              <span class="mg-name">{s.name ?? t("mg.fbPlayer")}</span>
+              {hasMore && <span class="mg-badge">{t("mg.moreData")}</span>}
             </div>
-            <div class="mg-sub mono">rating {s.rating} · {runs(s.runs)}</div>
+            <div class="mg-sub mono">
+              {t("mg.pickSub", { rating: s.rating, runs: runs(s.runs) })}
+            </div>
           </div>
           <span
             class={"mg-radio" + (on ? " mg-radio--on" : "")}
@@ -460,29 +478,31 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         </button>
       );
     };
-    const primaryName = (primaryIsSelf ? self.name : other.name) ?? "profile";
+    const primaryName = (primaryIsSelf ? self.name : other.name) ??
+      t("mg.fbProfile");
     return sheetFrame(
-      "Merge accounts",
+      t("mg.mergeAccounts"),
       <div class="mg-body">
-        <div class="mg-section-lbl">Keep as primary</div>
+        <div class="mg-section-lbl">{t("mg.keepAsPrimary")}</div>
         <div class="mg-desc">
-          The primary sets the name, colour and rating you keep going forward.
+          {t("mg.primaryDesc")}
         </div>
         <div class="mg-picklist">
           {pickRow(true)}
           {pickRow(false)}
         </div>
-        <div class="mg-section-lbl">What we'll combine</div>
+        <div class="mg-section-lbl">{t("mg.whatCombine")}</div>
         <div class="mg-combine">
           <div class="mg-combine-row">
             <span class="mg-combine-icon">
               <ClockIcon />
             </span>
             <div>
-              <div class="mg-combine-title">Daily maze attempts</div>
+              <div class="mg-combine-title">{t("mg.dailyAttempts")}</div>
               <div class="mg-combine-sub">
-                For any day you played on both, we keep whichever attempt{" "}
-                <b>came first</b>.
+                {tJsx("mg.combineDailySub", {
+                  first: <b>{t("mg.cameFirst")}</b>,
+                })}
               </div>
             </div>
           </div>
@@ -491,12 +511,19 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
               <StackIcon />
             </span>
             <div>
-              <div class="mg-combine-title">Everything else</div>
+              <div class="mg-combine-title">{t("mg.everythingElse")}</div>
               <div class="mg-combine-sub">
-                Your other runs from both accounts all carry over.{" "}
-                <span class="mono">
-                  {self.runs} + {other.runs} becomes {self.runs + other.runs}
-                </span>.
+                {tJsx("mg.combineElseSub", {
+                  math: (
+                    <span class="mono">
+                      {t("mg.combineMath", {
+                        a: self.runs,
+                        b: other.runs,
+                        sum: self.runs + other.runs,
+                      })}
+                    </span>
+                  ),
+                })}
               </div>
             </div>
           </div>
@@ -504,8 +531,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         <div class="mg-note">
           <InfoIcon />
           <span>
-            The first attempt stands, so a merge can't cherry-pick a faster
-            time.
+            {t("mg.mergeNote")}
           </span>
         </div>
         <button
@@ -513,7 +539,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
           class="mg-btn mg-btn--primary tapc mg-body-btn"
           onClick={() => doMerge(primaryIsSelf ? "self" : "other")}
         >
-          Merge into {primaryName}
+          {t("mg.mergeInto", { name: primaryName })}
         </button>
       </div>,
     );
@@ -523,17 +549,17 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   if (mode === "switch" && self && other) {
     const url = new URL("/l/" + localId, location.origin).href;
     return sheetFrame(
-      `Switch to ${other.name ?? "it"}?`,
+      t("mg.switchToTitle", { name: other.name ?? t("mg.fbIt") }),
       <div class="mg-body">
         <div class="mg-switch-avatars">
           <div class="mg-switch-one">
             <Avatar id={self.id} name={self.name} size={56} />
-            <div class="mg-switch-name">{self.name ?? "Player"}</div>
+            <div class="mg-switch-name">{self.name ?? t("mg.fbPlayer")}</div>
           </div>
           <span class="mg-switch-arrow" aria-hidden="true">→</span>
           <div class="mg-switch-one">
             <Avatar id={other.id} name={other.name} size={56} glow />
-            <div class="mg-switch-name">{other.name ?? "Player"}</div>
+            <div class="mg-switch-name">{other.name ?? t("mg.fbPlayer")}</div>
           </div>
         </div>
         <div class="mg-warn">
@@ -541,26 +567,25 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             <WarnIcon />
           </span>
           <div>
-            This device will play as <b>{other.name ?? "the other profile"}</b>
-            {" "}
-            from now on. <b>{self.name ?? "This profile"}</b>{" "}
-            won't be here anymore; its {runs(self.runs)}{" "}
-            live only behind its login link.
+            {tJsx("mg.switchWarn", {
+              other: <b>{other.name ?? t("mg.fbTheOtherProfile")}</b>,
+              self: <b>{self.name ?? t("mg.fbThisProfileCap")}</b>,
+              runs: runs(self.runs),
+            })}
           </div>
         </div>
         <div class="mg-section-lbl">
-          Save {self.name ?? "your"}'s link first
+          {t("mg.saveLinkFirst", { name: self.name ?? t("mg.fbYour") })}
         </div>
         <div class="mg-link">
           <div class="mg-url mono">{url.replace(/^https?:\/\//, "")}</div>
           <button type="button" class="mg-copy tapc" onClick={copyLink}>
             <CopyIcon />
-            {copied ? "Copied!" : "Copy"}
+            {copied ? t("move.copied") : t("move.copy")}
           </button>
         </div>
         <div class="mg-caption">
-          Anyone with this link can sign back in as{" "}
-          {self.name ?? "this profile"} on any device.
+          {t("mg.caption", { name: self.name ?? t("mg.fbThisProfile") })}
         </div>
         <button
           type="button"
@@ -568,11 +593,9 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
           disabled={!linkSaved}
           onClick={() => reloadAs(linkId, { adoptedRuns: other.runs })}
         >
-          Switch to {other.name ?? "it"}
+          {t("mg.switchTo", { name: other.name ?? t("mg.fbIt") })}
         </button>
-        {!linkSaved && (
-          <div class="mg-note-center">Copy the link to enable this</div>
-        )}
+        {!linkSaved && <div class="mg-note-center">{t("mg.copyToEnable")}</div>}
       </div>,
     );
   }

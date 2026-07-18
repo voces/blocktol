@@ -7,6 +7,10 @@
     "message": "Back",
     "description": "Accessible label for a sheet's back (‹) button that returns to the previous view."
   },
+  "a11y.loading": {
+    "message": "Loading",
+    "description": "Accessible label for a loading spinner."
+  },
   "a11y.dismiss": {
     "message": "Dismiss",
     "description": "Accessible label for the toast dismiss (×) button."
@@ -690,6 +694,178 @@
   "profile.anonymous": {
     "message": "Anonymous",
     "description": "Fallback display name for a player who hasn't set a name."
+  },
+  "mg.runs": {
+    "message": "{count, plural, one {# run} other {# runs}}",
+    "description": "A run count, e.g. \"1 run\" / \"12 runs\". \"run\" = one played game (see glossary)."
+  },
+  "mg.fbPlayer": {
+    "message": "Player",
+    "description": "Fallback shown in place of a display name when a profile has none, standing on its own (a heading/name slot)."
+  },
+  "mg.fbProfile": {
+    "message": "profile",
+    "description": "Fallback for a nameless profile inside a sentence (e.g. \"Merge into profile\")."
+  },
+  "mg.fbIt": {
+    "message": "it",
+    "description": "Fallback pronoun for a nameless other profile after \"Switch to …\" (e.g. \"Switch to it?\")."
+  },
+  "mg.fbYou": {
+    "message": "you",
+    "description": "Fallback for your own nameless profile after \"Keep playing as …\" (e.g. \"Keep playing as you\")."
+  },
+  "mg.fbThisPlayer": {
+    "message": "this player",
+    "description": "Fallback for a nameless other profile after \"Continue as …\" (e.g. \"Continue as this player\")."
+  },
+  "mg.fbOtherProfile": {
+    "message": "your other profile",
+    "description": "Fallback for a nameless other profile in the silent sign-in toast (e.g. \"Signed in as your other profile\")."
+  },
+  "mg.fbThisProfile": {
+    "message": "this profile",
+    "description": "Fallback for your own nameless profile inside a sentence (e.g. \"Leave this profile; …\")."
+  },
+  "mg.fbThisProfileCap": {
+    "message": "This profile",
+    "description": "Fallback for your own nameless profile at the START of a sentence in the switch warning (\"This profile won't be here anymore\"). Capitalized."
+  },
+  "mg.fbTheOtherProfile": {
+    "message": "the other profile",
+    "description": "Fallback for a nameless other profile inside the switch warning (a bold name slot)."
+  },
+  "mg.fbYour": {
+    "message": "your",
+    "description": "Fallback possessive for your own nameless profile (e.g. \"Save your's link first\" — precedes an apostrophe-s)."
+  },
+  "mg.confirmLabel": {
+    "message": "Continue on this device as…",
+    "description": "Heading on the clean-device adopt screen, above the profile being adopted. Trailing ellipsis."
+  },
+  "mg.continueAs": {
+    "message": "Continue as {name}",
+    "description": "Button that adopts the link's profile on this device. {name} is a display name (or the \"this player\" fallback)."
+  },
+  "mg.startNewGame": {
+    "message": "Not you? Start a new game",
+    "description": "Ghost button that discards the link and starts a fresh profile instead of adopting it."
+  },
+  "mg.onThisDevice": {
+    "message": "On this device",
+    "description": "Label over the profile currently on this device in the account-fork screen."
+  },
+  "mg.linkSignsInAs": {
+    "message": "THE LINK SIGNS IN AS",
+    "description": "Divider label in the account-fork screen, above the profile the opened link would sign in as. All-caps."
+  },
+  "mg.sideSub": {
+    "message": "joined {date} · {runs}",
+    "description": "Sub-line for a profile in the fork screen. {date} is a short month-year like \"Jul 2025\"; {runs} is a run count like \"12 runs\"; \"·\" is a separator."
+  },
+  "mg.mergeTitle": {
+    "message": "Merge the two",
+    "description": "Fork option title: combine both profiles into one."
+  },
+  "mg.mergeSub": {
+    "message": "Keep one profile with everything from both",
+    "description": "Fork option subtext for merging."
+  },
+  "mg.switchTo": {
+    "message": "Switch to {name}",
+    "description": "Fork option title (and the switch screen's confirm button): become the link's profile. {name} is a display name (or the \"it\" fallback)."
+  },
+  "mg.switchSub": {
+    "message": "Leave {name}; reachable only by its link",
+    "description": "Fork option subtext for switching. {name} is your current profile's name (or the \"this profile\" fallback)."
+  },
+  "mg.keepPlayingAs": {
+    "message": "Keep playing as {name}",
+    "description": "Ghost button that dismisses the fork and keeps the current profile. {name} is your name (or the \"you\" fallback)."
+  },
+  "mg.mergeAccounts": {
+    "message": "Merge accounts",
+    "description": "Title of the merge sub-screen (picking the primary profile)."
+  },
+  "mg.keepAsPrimary": {
+    "message": "Keep as primary",
+    "description": "Section label above the primary-profile picker in the merge screen."
+  },
+  "mg.primaryDesc": {
+    "message": "The primary sets the name, colour and rating you keep going forward.",
+    "description": "Explanation of what the primary profile determines after a merge."
+  },
+  "mg.moreData": {
+    "message": "MORE DATA",
+    "description": "Badge on whichever profile has more runs in the merge picker. All-caps."
+  },
+  "mg.pickSub": {
+    "message": "rating {rating} · {runs}",
+    "description": "Sub-line for a profile in the merge picker. {rating} is a whole-number rating; {runs} is a run count; \"·\" is a separator."
+  },
+  "mg.whatCombine": {
+    "message": "What we'll combine",
+    "description": "Section label above the explanation of how a merge combines the two profiles."
+  },
+  "mg.dailyAttempts": {
+    "message": "Daily maze attempts",
+    "description": "Merge-combine row title, about ranked daily attempts. \"Daily\" is the game term (see glossary)."
+  },
+  "mg.combineDailySub": {
+    "message": "For any day you played on both, we keep whichever attempt {first}.",
+    "description": "Merge-combine row subtext. {first} is the bold phrase \"came first\" — the earlier attempt wins on a shared day."
+  },
+  "mg.cameFirst": {
+    "message": "came first",
+    "description": "The bold phrase inside the daily-merge explanation: the earlier of two attempts is kept."
+  },
+  "mg.everythingElse": {
+    "message": "Everything else",
+    "description": "Merge-combine row title, about all non-daily runs."
+  },
+  "mg.combineElseSub": {
+    "message": "Your other runs from both accounts all carry over. {math}.",
+    "description": "Merge-combine row subtext. {math} is a bold monospace sum like \"5 + 8 becomes 13\"."
+  },
+  "mg.combineMath": {
+    "message": "{a} + {b} becomes {sum}",
+    "description": "The run-count arithmetic shown when merging: {a}/{b} are each profile's run count, {sum} their total."
+  },
+  "mg.mergeNote": {
+    "message": "The first attempt stands, so a merge can't cherry-pick a faster time.",
+    "description": "Reassurance under the merge explanation: merging can't game the leaderboard."
+  },
+  "mg.mergeInto": {
+    "message": "Merge into {name}",
+    "description": "Button that performs the merge, keeping {name} as the primary profile (or the \"profile\" fallback)."
+  },
+  "mg.switchToTitle": {
+    "message": "Switch to {name}?",
+    "description": "Title of the switch confirmation screen. {name} is the other profile's name (or the \"it\" fallback)."
+  },
+  "mg.switchWarn": {
+    "message": "This device will play as {other} from now on. {self} won't be here anymore; its {runs} live only behind its login link.",
+    "description": "Warning on the switch screen. {other}/{self} are bold display names (or fallbacks); {runs} is a run count like \"12 runs\"."
+  },
+  "mg.saveLinkFirst": {
+    "message": "Save {name}'s link first",
+    "description": "Section label prompting the user to save the current profile's link before switching away. {name} is your name (or the \"your\" fallback, giving \"Save your's link first\")."
+  },
+  "mg.caption": {
+    "message": "Anyone with this link can sign back in as {name} on any device.",
+    "description": "Caption under the copyable link on the switch screen. {name} is your current profile's name (or the \"this profile\" fallback)."
+  },
+  "mg.copyToEnable": {
+    "message": "Copy the link to enable this",
+    "description": "Hint shown while the switch button is disabled until the link has been copied."
+  },
+  "mg.signedInAs": {
+    "message": "Signed in as {name}",
+    "description": "Title of the silent sign-in toast (a nearly-empty device adopting a real link). {name} is the adopted profile's name (or the \"your other profile\" fallback)."
+  },
+  "mg.cameAlong": {
+    "message": "{runs} from this device came along.",
+    "description": "Subtext of the silent sign-in toast: the few runs from this device were merged in. {runs} is a run count like \"2 runs\"."
   },
   "intro.skip": {
     "message": "Skip",
