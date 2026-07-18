@@ -8,7 +8,17 @@ import {
   standingColor,
 } from "../../../common/percentileColor.ts";
 import { api, MessageMap } from "../../api.ts";
+import type { MessageKey } from "../../../common/i18n.ts";
+import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
+
+// Best-run badge → catalog key, mapped by a literal object so every live key
+// stays greppable (see the i18n conventions).
+const BADGE_KEY = {
+  supreme: "badge.supreme",
+  record: "badge.record",
+  best: "badge.best",
+} as const satisfies Record<"supreme" | "record" | "best", MessageKey>;
 
 type Attempt = MessageMap["getDailySummary"]["attempts"][number];
 
@@ -62,10 +72,10 @@ const formatWhen = (created: number) => {
 
   if (today || diff < 8 * 3_600_000) {
     const s = Math.max(0, Math.floor(diff / 1000));
-    if (s < 60) return `${s}s ago`;
+    if (s < 60) return t("time.secondsAgo", { s });
     const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m ago`;
-    return `${Math.floor(m / 60)}h ago`;
+    if (m < 60) return t("time.minsAgo", { m });
+    return t("time.hoursAgo", { h: Math.floor(m / 60) });
   }
   return when.toLocaleDateString(undefined, { dateStyle: "medium" });
 };
@@ -221,9 +231,13 @@ export const Attempts = () => {
   return (
     <div class="attempts">
       <div class="attempts__head">
-        <div class="section-title">Runs</div>
+        <div class="section-title">{t("attempts.title")}</div>
         {groups.length > 1 && (
-          <div class="attempts__sort" role="group" aria-label="Sort runs">
+          <div
+            class="attempts__sort"
+            role="group"
+            aria-label={t("attempts.sortRuns")}
+          >
             {(["recent", "best"] as const).map((mode) => {
               const active = sort === mode;
               // Each tab IS its direction: the word alone says what's on top and
@@ -235,8 +249,10 @@ export const Attempts = () => {
               // sort), so tapping it starts fresh from that default.
               const rev = active && reversed;
               const label = mode === "recent"
-                ? (rev ? "Oldest" : "Newest")
-                : (rev ? "Shortest" : "Longest");
+                ? (rev ? t("attempts.sortOldest") : t("attempts.sortNewest"))
+                : (rev
+                  ? t("attempts.sortShortest")
+                  : t("attempts.sortLongest"));
               return (
                 <button
                   key={mode}
@@ -244,7 +260,7 @@ export const Attempts = () => {
                   class={"attempts__sort-btn tapc" +
                     (active ? " attempts__sort-btn--active" : "")}
                   aria-pressed={active}
-                  title={active ? "Tap to reverse order" : undefined}
+                  title={active ? t("attempts.reverseHint") : undefined}
                   onClick={() => pickSort(mode)}
                 >
                   {label}
@@ -291,7 +307,7 @@ export const Attempts = () => {
                     (group.pinned ? " attempts__row--pinned" : "")}
                   key={group.id}
                   style={{ "--band": band }}
-                  title={clickable ? "View this maze" : undefined}
+                  title={clickable ? t("today.viewMaze") : undefined}
                   onClick={clickable
                     ? () => {
                       viewMaze(attempt.maze);
@@ -316,11 +332,17 @@ export const Attempts = () => {
                         <span class="attempts__count">×{group.count}</span>
                       )}
                       {!simplified && group.ranked && (
-                        <span class="attempts__daily">Daily</span>
+                        <span class="attempts__daily">
+                          {t("attempts.dailyTag")}
+                        </span>
                       )}
                       {isBest && (!simplified || groups.length > 1) && (
                         <span class="attempts__badge">
-                          {supreme ? "SUPREME" : peak ? "RECORD" : "BEST"}
+                          {t(
+                            BADGE_KEY[
+                              supreme ? "supreme" : peak ? "record" : "best"
+                            ],
+                          )}
                         </span>
                       )}
                     </div>
@@ -350,15 +372,23 @@ export const Attempts = () => {
                       </div>
                     )}
                   </div>
-                  {isViewing && <span class="attempts__viewing">viewing</span>}
+                  {isViewing && (
+                    <span class="attempts__viewing">
+                      {t("attempts.viewing")}
+                    </span>
+                  )}
                   {clickable && (
                     <button
                       type="button"
                       class={"attempts__pin tapc" +
                         (group.pinned ? " attempts__pin--active" : "")}
                       aria-pressed={group.pinned}
-                      title={group.pinned ? "Unpin run" : "Pin run to top"}
-                      aria-label={group.pinned ? "Unpin run" : "Pin run to top"}
+                      title={group.pinned
+                        ? t("attempts.unpin")
+                        : t("attempts.pinToTop")}
+                      aria-label={group.pinned
+                        ? t("attempts.unpin")
+                        : t("attempts.pinToTop")}
                       onClick={(e) => {
                         // Don't let the pin toggle also trigger the row's
                         // view-this-maze click.
@@ -374,7 +404,7 @@ export const Attempts = () => {
             })}
           </div>
         )
-        : <div class="attempts__empty">No runs yet</div>}
+        : <div class="attempts__empty">{t("attempts.empty")}</div>}
     </div>
   );
 };

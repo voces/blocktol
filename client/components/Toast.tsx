@@ -1,4 +1,5 @@
 import { ComponentChildren, h } from "preact";
+import { t } from "../util/t.ts";
 
 // A status toast, bottom-centered over the board. Used after a silent profile
 // adopt (the move/merge gate stashes it in sessionStorage; App renders it on the
@@ -38,7 +39,7 @@ export const Toast = (
     <button
       type="button"
       class="toast__close tapc"
-      aria-label="Dismiss"
+      aria-label={t("a11y.dismiss")}
       onClick={onClose}
     >
       ×

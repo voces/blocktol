@@ -7,6 +7,7 @@ import { initialBlocks, introCheckpoint } from "../IntroBoard.tsx";
 import { formatSeconds } from "../../../common/format.ts";
 import { startBoardRun } from "../../store/board.ts";
 import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
+import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 const ATTEMPTS = 3;
@@ -104,21 +105,27 @@ export const Prestart = () => {
             // Either way offer today's daily instead of a start; switching
             // re-boots the day (playNewDaily) with no manual refresh.
             <Fragment>
-              <div class="prestart__eyebrow">Daily · {displayDate}</div>
-              <h2 class="prestart__title">New daily available</h2>
+              <div class="prestart__eyebrow">
+                {t("prestart.eyebrow", { date: displayDate })}
+              </div>
+              <h2 class="prestart__title">{t("prestart.newDaily.title")}</h2>
               <p class="prestart__sub">
-                Today's daily is ready to play.
+                {t("prestart.newDaily.sub")}
               </p>
               <Button class="prestart__btn" onClick={() => playNewDaily()}>
-                Play today's daily
+                {t("prestart.newDaily.play")}
               </Button>
             </Fragment>
           )
           : (
             <Fragment>
-              <div class="prestart__eyebrow">Daily · {displayDate}</div>
-              <h2 class="prestart__title">Attempt {attemptNo} of {ATTEMPTS}</h2>
-              <p class="prestart__sub">You'll have 60 seconds per attempt.</p>
+              <div class="prestart__eyebrow">
+                {t("prestart.eyebrow", { date: displayDate })}
+              </div>
+              <h2 class="prestart__title">
+                {t("prestart.attempt", { n: attemptNo, total: ATTEMPTS })}
+              </h2>
+              <p class="prestart__sub">{t("prestart.perAttempt")}</p>
               <div class="prestart__dots" aria-hidden="true">
                 {Array.from({ length: ATTEMPTS }, (_, i) => (
                   <span
@@ -134,7 +141,7 @@ export const Prestart = () => {
               </div>
               {previous && (
                 <div class="prestart__prev">
-                  Previous ·{" "}
+                  {t("prestart.previous")} ·{" "}
                   <span class="mono">
                     {formatSeconds(previous.duration)}s
                   </span>
@@ -158,7 +165,7 @@ export const Prestart = () => {
                 onClick={start}
                 disabled={starting}
               >
-                {starting ? "Starting…" : "Start attempt"}
+                {starting ? t("prestart.starting") : t("prestart.start")}
               </Button>
             </Fragment>
           )}

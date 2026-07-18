@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/compat";
 import { h } from "preact";
+import { t } from "../util/t.ts";
 
 export const Disconnected = () => {
   const [ellipse, setEllipse] = useState(1);
@@ -29,7 +30,8 @@ export const Disconnected = () => {
         alignItems: "center",
       }}
     >
-      Connecting<span
+      {t("common.connecting")}
+      <span
         style={{ display: "inline-block", width: 0 }}
       >
         {".".repeat(ellipse)}

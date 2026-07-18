@@ -2,7 +2,9 @@ import { Fragment, h, JSX } from "preact";
 import { createPortal, useLayoutEffect, useRef, useState } from "preact/compat";
 import { formatSeconds } from "../../../common/format.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
+import type { MessageKey } from "../../../common/i18n.ts";
 import { readableInk } from "../../../common/percentileColor.ts";
+import { t } from "../../util/t.ts";
 import { climbColor, scorePercent, Verdict } from "./verdict.ts";
 
 /**
@@ -113,12 +115,16 @@ const CrownIcon = () => (
   </svg>
 );
 
-const BADGE: Record<Verdict["outcome"], { label: string; icon: JSX.Element }> =
-  {
-    pb: { label: "NEW PERSONAL BEST", icon: <StarIcon /> },
-    record: { label: "RECORD", icon: <CheckIcon /> },
-    supreme: { label: "SUPREME", icon: <CrownIcon /> },
-  };
+// Label is a catalog key resolved at render time (so a language switch updates
+// it); the icon is a static element built once.
+const BADGE = {
+  pb: { labelKey: "badge.pb", icon: <StarIcon /> },
+  record: { labelKey: "badge.record", icon: <CheckIcon /> },
+  supreme: { labelKey: "badge.supreme", icon: <CrownIcon /> },
+} as const satisfies Record<
+  Verdict["outcome"],
+  { labelKey: MessageKey; icon: JSX.Element }
+>;
 
 // A personal best throws multi-hued confetti (little squares); a supreme keeps
 // to golds (little sparks), matching the badge. Record ripples the pill instead,
@@ -180,7 +186,7 @@ const SPARKS = [
 const CelebrationOverlay = (
   { verdict, rect }: { verdict: Verdict; rect: DOMRect },
 ) => {
-  const { label, icon } = BADGE[verdict.outcome];
+  const { labelKey, icon } = BADGE[verdict.outcome];
   return (
     <div
       class="celebrate"
@@ -203,7 +209,7 @@ const CelebrationOverlay = (
       )}
       <div class={`celebrate__badge celebrate__badge--${verdict.outcome}`}>
         {icon}
-        <span class="celebrate__label">{label}</span>
+        <span class="celebrate__label">{t(labelKey)}</span>
       </div>
       {verdict.outcome !== "record" &&
         SPARKS.map((s, i) => (

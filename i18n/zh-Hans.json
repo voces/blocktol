@@ -1,0 +1,910 @@
+{
+  "a11y.back": {
+    "message": "返回",
+    "hash": "76900f1bfd16c8d4dd3d25e6f46638d7165aee23883ccea6bfe071c514421769"
+  },
+  "a11y.close": {
+    "message": "关闭",
+    "hash": "7d9eb7acb13e24625c404401d8e88b2350e32162455885f18276cf802f7701ed"
+  },
+  "a11y.dismiss": {
+    "message": "关闭",
+    "hash": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261"
+  },
+  "a11y.loading": {
+    "message": "加载中",
+    "hash": "dc380888c4e2c7762212480ff86eb39150ec70b45009c33bc6adcbd0041384b1"
+  },
+  "a11y.qr": {
+    "message": "登录二维码",
+    "hash": "f8c8965916777feebc4fb096094019cbbed9b767208b165f74d039651680c7bc"
+  },
+  "a11y.record": {
+    "message": "纪录",
+    "hash": "70ce871f8a3d3fb449bc3c3ace6547cef02dfc74ffe48d912532a724bfdbe5b9"
+  },
+  "attempts.dailyTag": {
+    "message": "每日",
+    "hash": "b36c2611dcdfa190ede846948d9aba8f39581de0177cbd98586506019f979b75"
+  },
+  "attempts.empty": {
+    "message": "暂无记录",
+    "hash": "306b45db20163464c2774564e0d61aaabdcf961067fcddb3a14cbc29e65fd0f7"
+  },
+  "attempts.pinToTop": {
+    "message": "置顶记录",
+    "hash": "d8b3e8d855fbe40d6e309779042fbd163431b2e314ae45cfdd33293ac17a1d1e"
+  },
+  "attempts.reverseHint": {
+    "message": "点击反转顺序",
+    "hash": "2fbcc71aab31132aa5e3c19a39c28dc2765a1de084996f8cce81bf3cb6152e75"
+  },
+  "attempts.sortLongest": {
+    "message": "最长",
+    "hash": "802803c7888480fc3a394d9c3060e509a76ff29c9e223246060a734b88a80f41"
+  },
+  "attempts.sortNewest": {
+    "message": "最新",
+    "hash": "d15efa178cf65ae16596a270671aa320bc9d2a5f18d78ecc5d479f73b3ffd51e"
+  },
+  "attempts.sortOldest": {
+    "message": "最早",
+    "hash": "505dc450753e546ecbef6830acea257dc35d0d5303d8e76d0d605a7997a10a42"
+  },
+  "attempts.sortRuns": {
+    "message": "排序记录",
+    "hash": "50adc7a105635d261af32e8e049f4de1decc668ba36d2669aa27ddd3e5a0d888"
+  },
+  "attempts.sortShortest": {
+    "message": "最短",
+    "hash": "3be807632d673d43c530cad23427dfd19fa1edbca5f148738a1e8ac943f126ef"
+  },
+  "attempts.title": {
+    "message": "记录",
+    "hash": "848f54e89660cea4357644039ac5d7146f76c8e85df5c04076e08feb7e7547f0"
+  },
+  "attempts.unpin": {
+    "message": "取消置顶",
+    "hash": "78c0b1bd34779337d4ed4a478cac70a034b061bead7ead7bee2932c150d04694"
+  },
+  "attempts.viewing": {
+    "message": "查看中",
+    "hash": "094cc176f5f18334d1da293fdca2569385c158fed3705d2ceb62ff822d5335bc"
+  },
+  "badge.best": {
+    "message": "最佳",
+    "hash": "16b7940e30c20d40fbf33678ab8eba9d289148d7932dd3fa8c6d92cdf9947b17"
+  },
+  "badge.pb": {
+    "message": "个人最佳纪录",
+    "hash": "9d1f369cf2d50fb8ec4976f37f54d672b6ef47967aecb7b216b8e5ef3d1c4de5"
+  },
+  "badge.record": {
+    "message": "纪录",
+    "hash": "1092e2e43a486c0a247743940abb3210d77c912476ac72e4c854ae4f13383125"
+  },
+  "badge.supreme": {
+    "message": "至尊",
+    "hash": "5a66bf27169029baa0e110dd15ae875e74c14bdd82a5bdcc47cab859139ee2af"
+  },
+  "cal.bestPct": {
+    "message": "最佳 {pct}%",
+    "hash": "51b2a07dabd9773045f2f192bf6f4528d4949d0b8f015df24ba734ff28c301b2"
+  },
+  "cal.close": {
+    "message": "关闭日历",
+    "hash": "294123d1da4268afbd18335d6d61d6a7d94a7e04a3d69632bfdb5cf3182846f3"
+  },
+  "cal.earlierMonths": {
+    "message": "更早的月份",
+    "hash": "563de0c1bbe3700eb0b08e7160179262c281b5d7985e8cc253ddf3be6ea79a46"
+  },
+  "cal.laterMonths": {
+    "message": "更晚的月份",
+    "hash": "845b0b578d891578375e60baab921e3773b5c1731ebb10c7df9fe65bf3c3d884"
+  },
+  "cal.newDaily": {
+    "message": "有新每日挑战",
+    "hash": "ede26f440341ff60ac77f6629d771fc4793ee3ac8c83d748f9f1d09e437acd4f"
+  },
+  "cal.open": {
+    "message": "打开日历",
+    "hash": "a1ad37d0c5e801d15f528685842e165565a4c01f2ec63607233091823fed37e3"
+  },
+  "cal.playCta": {
+    "message": "开始 →",
+    "hash": "ecb0c48d44ae3bc4eb39d45426402e612196c91926734f1024bf9c6daea4fcad"
+  },
+  "cal.previousDays": {
+    "message": "往日挑战",
+    "hash": "5f365295b35374a0f3c87daac1cd7d8a50e8f32c4769fb037b7fca0cdea3fad6"
+  },
+  "cal.rankedP": {
+    "message": "排名 p{p}",
+    "hash": "6c65ec28956524d9c4f7febfd489bb4d15947eff5b2dd859ce8c389f2ba9110b"
+  },
+  "common.connecting": {
+    "message": "连接中",
+    "hash": "d403c686f6a1048014bdd230f59963271b0123ea48245754fc9f264b962a2182"
+  },
+  "daily.attempt": {
+    "message": "第 {n} 次尝试",
+    "hash": "745e174edc29d95b47f6da04092209c6d91197d34d2d6db8c5e9bb2191c51302"
+  },
+  "daily.beat": {
+    "message": "今天你击败了 {pct} 的玩家",
+    "hash": "47e1c6fba528c75475126edc30c511a2f36e9553ae1b5afc67eea4bc155e1e6e"
+  },
+  "daily.copied": {
+    "message": "已复制！",
+    "hash": "ea61bc15688d1e482ae5335e8dc030d8300b1afc07ecc7c2e6af5c43728b1d25"
+  },
+  "daily.keepPlaying": {
+    "message": "继续玩",
+    "hash": "b0b47d01a0675d287fea18f8d0ee6e4f933989aacd11ce4510a4e3265f1d8318"
+  },
+  "daily.median": {
+    "message": "中位数",
+    "hash": "7896a617a785dd968b580c61a2b418ae7ea28ecb713a3650178971519c566c4e"
+  },
+  "daily.resultTitle": {
+    "message": "Blocktol · {date}",
+    "hash": "a0dddfb034bb685e599a732ce14547a1f617e9f0a369c8046704d61d13be4ce0"
+  },
+  "daily.share": {
+    "message": "分享成绩",
+    "hash": "50036274c12a288fdccb8ca6e4c2d184a3dde0b509eec987b3a88266a3a8d410"
+  },
+  "del.confirmLabel": {
+    "message": "输入 {word} 以确认",
+    "hash": "bc6f3eccd8399d316f939e2433c5747ae7d6527dce645f49454368bcd5c5d61b"
+  },
+  "del.deleteBtn": {
+    "message": "删除全部",
+    "hash": "71eb8a08ffd768d767e234e8a480571817f01d8a05e0da6f2e5e7670f511b4a2"
+  },
+  "del.deleting": {
+    "message": "正在删除…",
+    "hash": "43b5894c3e4e2b24f13c935f4fae0a0a8fbe7d7792750a09b88c2097fd9a32b8"
+  },
+  "del.error": {
+    "message": "出错了——你的数据未被删除。请重试。",
+    "hash": "85fbde94423f3d4914e15d5b0a95c154ee521d5b18c972f60bf3777d26a27ea8"
+  },
+  "del.lead": {
+    "message": "此操作将从本游戏永久删除你的个人资料、名称、偏好设置和推送订阅，并将你搭建的每个迷宫与你解除关联。你的作品会以匿名玩家身份保留在过往排行榜上。此操作无法撤销，且本设备将作为新玩家重新开始。",
+    "hash": "e986cdca91f51c003ee266961645c27639010bc298d85eb100a181036092e639"
+  },
+  "del.moveHint": {
+    "message": "想保留作品但换到新设备？请在个人资料中使用 {move}。",
+    "hash": "c4017741b3d2e6b05aa9c53046d3a10aea30b68e81f08988527083035be013ab"
+  },
+  "del.title": {
+    "message": "删除我的数据",
+    "hash": "5c4653236b30f9f0327a501425564b24d51082bb04e46a0f621be746bc9e8b7a"
+  },
+  "error.crash.body": {
+    "message": "错误已上报。重新加载通常即可解决——你的记录已保存在服务器上。",
+    "hash": "3f4334fbfee7f5b0368f0a39cf4d56da32c2a92b78db45192c2225bbbe8d5d9c"
+  },
+  "error.crash.reload": {
+    "message": "重新加载",
+    "hash": "bdc090ec61e3fcfc65f469951dfe00f3f2ecfc6003c44deac8e05b7237092de6"
+  },
+  "error.crash.title": {
+    "message": "出错了",
+    "hash": "bc05fe58e90941c3b1db780ae63f8c18542e645e4f66af659c7400592943e18c"
+  },
+  "hud.play": {
+    "message": "游玩",
+    "hash": "436e61016e26fcb773b9725745cbbf0afe7f001ea26041a814a7712c2925c442"
+  },
+  "hud.ready": {
+    "message": "准备好了？",
+    "hash": "c75befc64765c13ec62f9db96a3bbe70e39f62d23915b6896d4363a90b2a543f"
+  },
+  "hud.reset": {
+    "message": "重置面板",
+    "hash": "9e1fb9010476abab6018a33ddd8e8e8aab6b13e1f3326a19fd79924ef968d65a"
+  },
+  "hud.resetTitle": {
+    "message": "重置 — 放弃本次尝试",
+    "hash": "27c54dc19533703525126748a528b30b67d2004aae3e15e36ad1e342064c9b52"
+  },
+  "hud.seconds": {
+    "message": "秒",
+    "hash": "59f006d63bd009b7f1f1d7bd7e29e1f3b9db6505ce784ca3216ea90c6d6dcb11"
+  },
+  "hud.toBuild": {
+    "message": "建造剩余",
+    "hash": "0fdabe9846bba059250d9d7bfd437524686e0c7191f0f26083639b27797d3bb3"
+  },
+  "hud.toMidnight": {
+    "message": "至午夜",
+    "hash": "18acab6279144094ac6361bf655dcce0cd02d4ede838367fe83b30e4f033ebcd"
+  },
+  "intro.next": {
+    "message": "下一步",
+    "hash": "1ff57a29d7c9d11bdf61c1b80f2b289b44c1ea844824d4b94a0d52b6ba5fc858"
+  },
+  "intro.play": {
+    "message": "开始",
+    "hash": "436e61016e26fcb773b9725745cbbf0afe7f001ea26041a814a7712c2925c442"
+  },
+  "intro.skip": {
+    "message": "跳过",
+    "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
+  },
+  "intro.tipBlocks": {
+    "message": "方块数量表示你可以放置多少个。",
+    "hash": "3f53b445804256ebe025189fa8a5a4ea5181eb05188a1b0a4c1dc9b79797c9ff"
+  },
+  "intro.tipCheckpoint": {
+    "message": "……前往检查点……",
+    "hash": "d312bf2dd40ee0aa37f64aecfdc409ead62dc936b4f1e142984314d7bc22a294"
+  },
+  "intro.tipPlace": {
+    "message": "放置方块来延长奔跑者的路径。",
+    "hash": "e82a6713a11d6e1eb5aa055fb7481558760ff530bbde00f63228b3113fe18321"
+  },
+  "intro.tipRunnerBottom": {
+    "message": "奔跑者从底部出发……",
+    "hash": "6384caa449827dd9edbdc3b93a24955059b03ef0eba7a93b93824ceb3cf1a0ec"
+  },
+  "intro.tipThunders": {
+    "message": "雷电数量表示你可以升级多少个方块。",
+    "hash": "051008817b37d7d0330eadafc9fb87776c713fe4d19eceb2b6d632112dd10bee"
+  },
+  "intro.tipTop": {
+    "message": "……然后从顶部离开。",
+    "hash": "d36572b0edcb81f331ea810becfe1710ff9415a5b0cc7217d2dca9c910852ca6"
+  },
+  "intro.tipUpgrade": {
+    "message": "升级方块，让奔跑者经过时减速。",
+    "hash": "f2249be52d85d212850711b8fe2bcb4346e518494f42b501b2f9d32abc667072"
+  },
+  "mg.cameAlong": {
+    "message": "此设备的 {runs} 已一并带入。",
+    "hash": "6d74ee8d2ed44a85a36835399822c6671c434001a78a693b06f10a682f24481e"
+  },
+  "mg.cameFirst": {
+    "message": "更早",
+    "hash": "ffccb6f9767adfe1b5069ad652a0b15da7c69d84b7788ac62d105db0f0e4d871"
+  },
+  "mg.caption": {
+    "message": "任何拥有此链接的人都可在任意设备上以 {name} 身份重新登录。",
+    "hash": "33febf0fee3731ea9cbfa2aa23ce7658a673204be24a6691b53e7d0e270fcb74"
+  },
+  "mg.combineDailySub": {
+    "message": "对于你在两边都游玩过的任意一天，我们保留{first}的尝试。",
+    "hash": "2f88c8373dae8209b4894a5aa94e777d47e23ecca542ba5ddca17e3053edfd8a"
+  },
+  "mg.combineElseSub": {
+    "message": "两个账号的其他对局都会一并保留。{math}。",
+    "hash": "d4928bd5628a5fa216b1af69d6c7ca557f0dc33669bdbe9b746b0877faba2b73"
+  },
+  "mg.combineMath": {
+    "message": "{a} + {b} 变为 {sum}",
+    "hash": "68a873c89c95275bb462cd6e810ffc67365cd8b1168308e80165e3be679aad39"
+  },
+  "mg.confirmLabel": {
+    "message": "在此设备上继续，身份为…",
+    "hash": "f61e214b845656e2173f96ccbdb57cacbf74a2cc0c78820086feaa2fe4739a50"
+  },
+  "mg.continueAs": {
+    "message": "以 {name} 继续",
+    "hash": "860e0716370eaf82ebece660b0873b389a61248232013bd3ce8aba535e79da0c"
+  },
+  "mg.copyToEnable": {
+    "message": "复制链接以启用此功能",
+    "hash": "e9a75731e81f4e604bc424cbf27a898791be87e17223acdb109e86e70f645c32"
+  },
+  "mg.dailyAttempts": {
+    "message": "每日迷宫尝试",
+    "hash": "986eebf45d3552cc64027397f2c072546ab5615fb0724b946f1d16739a896ca8"
+  },
+  "mg.everythingElse": {
+    "message": "其他所有内容",
+    "hash": "cd6c5f59d15c09f42e1ee255d96ae1f7ed672eeac71f1e352432c96512b5584c"
+  },
+  "mg.fbIt": {
+    "message": "它",
+    "hash": "2ad8a7049d7c5511ac254f5f51fe70a046ebd884729056f0fe57f5160d467153"
+  },
+  "mg.fbOtherProfile": {
+    "message": "你的另一个档案",
+    "hash": "80567250f728903049bad941e90ded53a1fb87b0916ff38032358e26335a1409"
+  },
+  "mg.fbPlayer": {
+    "message": "玩家",
+    "hash": "64aee8c6cbd026d9ea9221661f7632351d9a741198cd01ca017450b56f78a206"
+  },
+  "mg.fbProfile": {
+    "message": "档案",
+    "hash": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+  },
+  "mg.fbTheOtherProfile": {
+    "message": "另一个档案",
+    "hash": "3a0cffffce57c53560103215b73de9b18a1211e1690a915cb870622d0f69aa15"
+  },
+  "mg.fbThisPlayer": {
+    "message": "该玩家",
+    "hash": "bd9bad48cdb82c1a323382a0c6d0caf24e095051a09aba52c593ba36bfae6a05"
+  },
+  "mg.fbThisProfile": {
+    "message": "此档案",
+    "hash": "f119e4acc42ef1cddf66f0fd7afb7cefe58a9e4b801a806dde836eafe4960fac"
+  },
+  "mg.fbThisProfileCap": {
+    "message": "此档案",
+    "hash": "dd074a217c09afb3b6ffe82b192121926ce0105e74c7b9e61cb1704e82932e21"
+  },
+  "mg.fbYou": {
+    "message": "你",
+    "hash": "bb0347a468d97e98a9c00e37cebec1ab930f6f1221cae0f1fbb92b07e1900ba2"
+  },
+  "mg.fbYour": {
+    "message": "你的",
+    "hash": "4d040d3f6466018c568aadf69a666d4257e5bb350a8e06f7198aedb6b12386fe"
+  },
+  "mg.keepAsPrimary": {
+    "message": "设为主档案",
+    "hash": "7e46cc9b2dc7b6a22b9e8558c39edb48981cf72d00203ad9faaf45e125ea12f2"
+  },
+  "mg.keepPlayingAs": {
+    "message": "继续以 {name} 游玩",
+    "hash": "7f93e08a988e255bf32d7b0ff60200e02a524bb5151a6e89473e2a12526920ce"
+  },
+  "mg.linkSignsInAs": {
+    "message": "此链接登录为",
+    "hash": "403a7f5da9c401aeed5103f975d4afe890461ca922395234ff6a96cda1c06522"
+  },
+  "mg.mergeAccounts": {
+    "message": "合并账号",
+    "hash": "3f284252b3814ab3851453421aa97477d336068d7a357199e36cef19fca0cd79"
+  },
+  "mg.mergeInto": {
+    "message": "合并到 {name}",
+    "hash": "72790ccba9b648242b2c1cf5fa60403e0ce8e9505639ade5c3270b6888894f0e"
+  },
+  "mg.mergeNote": {
+    "message": "首次尝试有效，因此合并无法挑选更快的成绩。",
+    "hash": "57d7886d3d346398b1848e1beca8df75fc6a526e3c3ea11aa1cdd10328d10941"
+  },
+  "mg.mergeSub": {
+    "message": "保留一个档案，汇集两者的全部内容",
+    "hash": "9d54dadb412a3e05e577b7244bab45683b2c46f0ee50a9564cf18bdff00130a5"
+  },
+  "mg.mergeTitle": {
+    "message": "合并两者",
+    "hash": "33c71113aade69ad97e9b8e035f261a5a0bedf45c2256d30be19261e5003dbb8"
+  },
+  "mg.moreData": {
+    "message": "数据更多",
+    "hash": "bfd953e56edc832dd765a49c9e498fbcd1061ad831c660dc79b72a5f24efa7a7"
+  },
+  "mg.onThisDevice": {
+    "message": "在此设备上",
+    "hash": "38b9d88c1fdbee4f0ea76524cfaad211ef2c0a94d13a91a65a8c2831d749367d"
+  },
+  "mg.pickSub": {
+    "message": "评分 {rating} · {runs}",
+    "hash": "c23418e5ba7c61381fcd3501291d60ae441ab0843d9e000595e9c2706277262b"
+  },
+  "mg.primaryDesc": {
+    "message": "主档案决定你今后保留的名称、颜色和评分。",
+    "hash": "e891e70f72a45460b073c2553bcfe6eed273acc018f9a86f4494dc48b45a6937"
+  },
+  "mg.runs": {
+    "message": "{count, plural, other {# 局}}",
+    "hash": "e1c5a73ba72f7c18ced44777ea6b07c623b61294a412a2e26af23bc9605e1e48"
+  },
+  "mg.saveLinkFirst": {
+    "message": "请先保存 {name} 的链接",
+    "hash": "5cb82c912b54526125fc0ea7b0f784607777882c56f1e5aea9e8609ef9419b5e"
+  },
+  "mg.sideSub": {
+    "message": "加入于 {date} · {runs}",
+    "hash": "3250187aba2d32ef3ef40862cd5c6e1b52ad6801400c3a14865ea2033e286377"
+  },
+  "mg.signedInAs": {
+    "message": "已登录为 {name}",
+    "hash": "599a82d9808993c5c461f162f0fdb10090df39fdbb4ef22fd3faf827968f3034"
+  },
+  "mg.startNewGame": {
+    "message": "不是你？开始新游戏",
+    "hash": "deb83638d2123a356416d3ddf57d7734aed4a536cda1db4dcbe0f85c7b7008ec"
+  },
+  "mg.switchSub": {
+    "message": "离开 {name}；仅能通过其链接访问",
+    "hash": "9140e958efa7aca847e23b5733435bdfd152adb1f00fc01b98496328293f9b8c"
+  },
+  "mg.switchTo": {
+    "message": "切换到 {name}",
+    "hash": "f6d893e24f3c3d2f5209b0b66739979a81d30738415c7b6f33b0dfab7ee6fd59"
+  },
+  "mg.switchToTitle": {
+    "message": "切换到 {name}？",
+    "hash": "c0fa6ef1a7cf72c4e579b1a860a6743dc306d376c92650dd44cf987e76cf19b3"
+  },
+  "mg.switchWarn": {
+    "message": "此设备今后将以 {other} 身份游玩。{self} 将不再存在；其 {runs} 仅保留在其登录链接背后。",
+    "hash": "099f1536a8d36be40b2288975a5038901872ccc10364c067abf44b4df294ab40"
+  },
+  "mg.whatCombine": {
+    "message": "我们将合并的内容",
+    "hash": "a3b2a73f4adb535c3f9612c2b2b10d231a89c04f3afd880d30c04b6db408aa93"
+  },
+  "move.copied": {
+    "message": "已复制！",
+    "hash": "ea61bc15688d1e482ae5335e8dc030d8300b1afc07ecc7c2e6af5c43728b1d25"
+  },
+  "move.copy": {
+    "message": "复制",
+    "hash": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c"
+  },
+  "move.lead": {
+    "message": "用另一台设备的相机扫描此二维码，或复制下方链接并在该设备上打开。",
+    "hash": "90d25941e2e56234095ca1c1cadd60d0ddaab1da9d19a00eb3b50c6661f377fd"
+  },
+  "move.safety": {
+    "message": "任何人只要拥有此链接，都能以 {name} 的身份登录。链接永不过期，请妥善保管。",
+    "hash": "41203c028787d156b9c00dc5c4c0e1b4b7dfb5b0a0b3ddbcd4a97a54f316b264"
+  },
+  "move.title": {
+    "message": "迁移到其他设备",
+    "hash": "4a8d4cabb39bbc535e63173fddeb719ca2b6325e7280af6ca06625cc3cd36e44"
+  },
+  "notif.bell.title": {
+    "message": "通知",
+    "hash": "788011833a5a0f22db90c91e8eb7bd8e9f5cd423354ff5ef8c338e7895f44ba9"
+  },
+  "notif.bell.unread": {
+    "message": "通知（{count, plural, other {# 条未读}}）",
+    "hash": "5fcc8b108731313c807abb2dc9decc27dae6dbacbf9d7491348c5df38305cc7d"
+  },
+  "notif.dailyFinal.first": {
+    "message": "你在 {players} 人中排名 #1。仅在自由模式中被超越",
+    "hash": "90b1babd3e971e4351dad46894eeb9da55a40e43fe5ec947019f76436f16eda7"
+  },
+  "notif.dailyFinal.placed": {
+    "message": "你在 {players} 人中排名 #{rank}",
+    "hash": "cc474ad96f5ff8709990ca5e9f8796272069989a4b74a848e5c9041f0a0ffb8f"
+  },
+  "notif.dailyFinal.record": {
+    "message": "你在 {players} 人中排名 #1。纪录保持",
+    "hash": "5681336713c715734365ad0426f75b96bf2e814faa7c1e69f2ae5fdd3339a96f"
+  },
+  "notif.dailyFinal.supreme": {
+    "message": "你在 {players} 人中排名 #1。至尊",
+    "hash": "73644d1540850af4f48c4baa1808e10071e8da54e89cbbdfb15dfd46e8ef13df"
+  },
+  "notif.dailyFinal.t1": {
+    "message": "你在 {players} 人中并列 #1。仅在自由模式中被超越",
+    "hash": "73e68414d884551d268f307f1c536163d7ff2836c1b25270d6ca0467d26a9785"
+  },
+  "notif.dailyFinal.title": {
+    "message": "{date} 每日挑战已结算",
+    "hash": "835e5ce6bf49d448281c3f075667818765c24b85e6bc4e8cf041303bf001b39c"
+  },
+  "notif.lostTop.body": {
+    "message": "{passer} 超越了你。{passerTime} 对你的 {yourTime}",
+    "hash": "6c50a0607266b9ff0c5ba188f5c710bb3e1a6d7597e6ff764ee719a61ef7e19e"
+  },
+  "notif.lostTop.title": {
+    "message": "你在 {date} 失去了 #1",
+    "hash": "466d33f0c997e684e7a9004413bc38caec6a4c88889e5083aa9f4162017d923d"
+  },
+  "notif.panel.close": {
+    "message": "关闭通知",
+    "hash": "25c57a5641632b2d0554f14882b405d8e314e5a8c68e889144ef9b1e5021cf90"
+  },
+  "notif.panel.detail": {
+    "message": "你的 {yourTime} · 当日最佳 {dayBest}",
+    "hash": "be14fe5838578a9d23cfd571e951dead8b3a65c16563935bb79178b7d1ee7dde"
+  },
+  "notif.panel.empty.daily": {
+    "message": "暂无每日挑战通知",
+    "hash": "90519323f294a3d0e9eaa1d3fbf49aa98172321f4e87f3eab3bc4d9baef6cd31"
+  },
+  "notif.panel.empty.filtered": {
+    "message": "没有可显示的内容",
+    "hash": "bf083e34bc669d86161f3146a8e99073a16bebeea3ecbf199fdecefe5561b8e9"
+  },
+  "notif.panel.empty.lostTop": {
+    "message": "暂无失去榜首的通知",
+    "hash": "6075f04a64d65029b3f19859dbf19dfd85ef9d1231aed7e3f633e6f3c81f6557"
+  },
+  "notif.panel.empty.none": {
+    "message": "暂无通知",
+    "hash": "37ecf3603dbfc2ca4b34413c1b0abc3fa34867681c68549596a14c80dcf48306"
+  },
+  "notif.panel.filter.all": {
+    "message": "全部",
+    "hash": "a52ace420f2175d08b1577a1bea5445e36801229c074ef9ed6c55a73401fd9c2"
+  },
+  "notif.panel.filter.daily": {
+    "message": "每日挑战",
+    "hash": "b36c2611dcdfa190ede846948d9aba8f39581de0177cbd98586506019f979b75"
+  },
+  "notif.panel.filter.lostTop": {
+    "message": "失去 #1",
+    "hash": "90dddd1e2a444129a9654b5f13f7e0c30a2c8f4b19fcda773410f776336a3fa7"
+  },
+  "notif.panel.filterGroup": {
+    "message": "筛选通知",
+    "hash": "653434dfadb7c6f480eaa86dd92ea861e4ffa5380a60c0e3e1ee2f3c1ac24f96"
+  },
+  "notif.panel.hideReclaimed": {
+    "message": "隐藏已夺回",
+    "hash": "a697935c7e6206fefb5725cf723dc1e4d2541497b553517da6fad398e0d5bf2e"
+  },
+  "notif.panel.markAllRead": {
+    "message": "全部标为已读",
+    "hash": "3bc62a9e6a39484a62a5d651ad0f3908f172f4bbcfea8f21f8876a644e3c2153"
+  },
+  "notif.panel.opensDay": {
+    "message": "打开 {date}",
+    "hash": "37a51bf7a5fbed284136fc9ea8a1d4f45a41660192929fbc89fc45e2b05871ad"
+  },
+  "notif.panel.opensLeaderboard": {
+    "message": "打开排行榜",
+    "hash": "d9d5e934683f7e8dc18c1ae3b69b1fa788bf280dca3c4ef4a28c87e5b308e8d7"
+  },
+  "notif.panel.reclaimed": {
+    "message": "已夺回",
+    "hash": "ebda9fa993e36a4bf0b0533539e3c37f7f1b514a508b0c4fd5f17c0638a64132"
+  },
+  "notif.panel.sectionEarlier": {
+    "message": "更早",
+    "hash": "e10ae990740118886b011c218c7d0777c5c203954e0038747965ddbe5aea1744"
+  },
+  "notif.panel.sectionNew": {
+    "message": "新",
+    "hash": "18fdd549b2ed367ac0c74cbec1214644728515b30edbcb78e7d322757a7c8359"
+  },
+  "prestart.attempt": {
+    "message": "第 {n} / {total} 次尝试",
+    "hash": "719a4597e683a1d95a6d9f1afb8c0f7a2eb0e0553f54662db79831e2fad68228"
+  },
+  "prestart.eyebrow": {
+    "message": "每日挑战 · {date}",
+    "hash": "0fe59acb7b32bce4bd96e8f83cf8221215616fcbf212d97f85a24c05a641165e"
+  },
+  "prestart.newDaily.play": {
+    "message": "开始今天的每日挑战",
+    "hash": "69b4043e2d41fe9fcae46df0e05ff8bd53a982108c06ba368a18735a47c6f15b"
+  },
+  "prestart.newDaily.sub": {
+    "message": "今天的每日挑战已可开始。",
+    "hash": "54da4ab6897cae6dba3b83bd4ceac706cdbadaee7fc567613e45a74311218279"
+  },
+  "prestart.newDaily.title": {
+    "message": "新的每日挑战已开放",
+    "hash": "ede26f440341ff60ac77f6629d771fc4793ee3ac8c83d748f9f1d09e437acd4f"
+  },
+  "prestart.perAttempt": {
+    "message": "每次尝试有 60 秒时间。",
+    "hash": "1281860d903b7488c663aec515560b3b616cb61c94159568c8e1fa0b5e7a2af8"
+  },
+  "prestart.previous": {
+    "message": "上次",
+    "hash": "a57b08a480b822a0a572b993391c292ede593bf8000b406675b180bbb16260fa"
+  },
+  "prestart.start": {
+    "message": "开始尝试",
+    "hash": "5439bc9c6f0728be511c5fa2eebd909f4ca00448360fa80f0b14d9fb5a7a9c17"
+  },
+  "prestart.starting": {
+    "message": "启动中…",
+    "hash": "bbe5fc3b9ef39f994c259eaf233d625a500b5219784c82f73b50808d4f79d5dc"
+  },
+  "profile.account": {
+    "message": "账户",
+    "hash": "7e1b0d5641f2640ce9a953ec231eea2c27a2a7633f7d3c273e5735e2b30c10b7"
+  },
+  "profile.anonymous": {
+    "message": "匿名",
+    "hash": "e7a8aa2df7e5d0b233da615af4e7fef148bec39aef1709da0a80391ad0316563"
+  },
+  "profile.appearance": {
+    "message": "外观",
+    "hash": "3907fa7f80722a6fc58cd8c1bd30abf7638095d6774f183b6e831b7093957d1b"
+  },
+  "profile.bestBuild": {
+    "message": "最佳搭建",
+    "hash": "676049cef880921948d99c5638210b3cd6c39a41b733da353891d9076c06136b"
+  },
+  "profile.cancel": {
+    "message": "取消",
+    "hash": "19766ed6ccb2f4a32778eed80d1928d2c87a18d7c275ccb163ec6709d3eb2e27"
+  },
+  "profile.close": {
+    "message": "关闭个人资料",
+    "hash": "402eed09289ba7c12cf4eedfd4095bc5311a02fa81a6cafdab1679cdd6b059c9"
+  },
+  "profile.community": {
+    "message": "社区",
+    "hash": "bb501d7877eb7ddbd40baf7990e8058212e8140a2e6ceaaf2d54a6412b770bfd"
+  },
+  "profile.deleteSub": {
+    "message": "删除你的个人资料并解除搭建关联",
+    "hash": "fc0926dfcd84d8e2f7d58c7209665f0541001702bb341a34054b44c127a6c75e"
+  },
+  "profile.discordSub": {
+    "message": "畅聊每日迷宫、反馈问题并分享创意。",
+    "hash": "5921b62930113452b7aa6da1f750fa6b88a6efee7c34151de737d5430bede7a8"
+  },
+  "profile.discordTitle": {
+    "message": "加入 Discord",
+    "hash": "895e7564fa79441e107135d4140b0b81cd63b051530c4f36a90a13ba89f63e26"
+  },
+  "profile.editName": {
+    "message": "编辑名称",
+    "hash": "308b88fcc3dffe504d196e7e9d5e1e30563df75511cb09d41513625ad00c93ec"
+  },
+  "profile.exportData": {
+    "message": "导出我的数据",
+    "hash": "fddb7f9c69fed4ad9beacb19b8a170b3957ce369fdbd06841c29303f0959f905"
+  },
+  "profile.exportSub": {
+    "message": "下载我们保存的关于你的所有数据",
+    "hash": "0838dfb1403683d74ae9e7ceb9fb08dac14386e78d147411c681dc08e90e430a"
+  },
+  "profile.exporting": {
+    "message": "准备中…",
+    "hash": "5d1fa38bcf0d88ca03d187718fd6cf8ad128f288f66d402d331476a85774d08d"
+  },
+  "profile.joinedLabel": {
+    "message": "加入于 {date}",
+    "hash": "ae2412fb005b47299128e0e4a9aa89bcc72ae73c04c3c8bc1a8b8a9046ed8b41"
+  },
+  "profile.language": {
+    "message": "语言",
+    "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
+  },
+  "profile.languageSystem": {
+    "message": "系统",
+    "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
+  },
+  "profile.medianPercentile": {
+    "message": "中位百分位",
+    "hash": "5e7ad4b35b400cc7e6ea424e845280a7c50808a1897f73cc06c3687b529995bd"
+  },
+  "profile.moveSub": {
+    "message": "扫描二维码或复制你的登录链接",
+    "hash": "0337b8438ebaa15ee6c289d75049f7af7caa88a1c896f8a02d9af6d4e0db80e7"
+  },
+  "profile.notifDailySub": {
+    "message": "你参与的某天已锁定排名",
+    "hash": "b99801ebe12b3138a79c06536778c3c02d8fefe6b3a27eca87f96887e7dc1a50"
+  },
+  "profile.notifDailyTitle": {
+    "message": "每日挑战已结算",
+    "hash": "8ef35eea9c542c91671ed0c50e176c4a29274ab5afa53f38f48fc22d3e19d02b"
+  },
+  "profile.notifLostTopSub": {
+    "message": "有人超越了你的 #1",
+    "hash": "715b9bb5c22572facdea02d6383bc9378ed1d50ab8ecd0c517c03380db22793e"
+  },
+  "profile.notifLostTopTitle": {
+    "message": "失去榜首",
+    "hash": "e0e368df0f182850bfd5eb5d34e9ebfb9ee92703d68cdfbe25bfa43a97a18c0e"
+  },
+  "profile.online": {
+    "message": "{count} 人在线",
+    "hash": "12dd108ecbbc58747f8d3aaf271f1964529890aebe3e8c3939e6a166b7c07ce8"
+  },
+  "profile.open": {
+    "message": "打开个人资料",
+    "hash": "7234213a42c2635bb19176b6ec3c8d639e0d5db2b8ceb4e01f5f0d1c29d46b81"
+  },
+  "profile.played": {
+    "message": "已参与",
+    "hash": "900b1e4c46b4edab74897019997447324dd8c0b529bb7a61eb5b4d90907340f0"
+  },
+  "profile.preferences": {
+    "message": "偏好设置",
+    "hash": "66962f72a08883733c35df6f82a049b929f9579f19c4bc083ac99bead602eab3"
+  },
+  "profile.privacy": {
+    "message": "隐私与我们收集的数据",
+    "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "profile.pushNotifications": {
+    "message": "推送通知",
+    "hash": "a1fa4443fe4abe63d6a29c433e4e8f23604c6bda89d6cec04bc261b5021f74e4"
+  },
+  "profile.rating": {
+    "message": "评分",
+    "hash": "9f29530464f730bd28f137cfc9ea941af137187b57c21e8ff5fefed520764d99"
+  },
+  "profile.records": {
+    "message": "纪录",
+    "hash": "47a84e92d5b225ee185aff8a30bafb3240a41b84c740bcaeac43772dd7f2fd37"
+  },
+  "profile.save": {
+    "message": "保存",
+    "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
+  },
+  "profile.themeDark": {
+    "message": "深色",
+    "hash": "60acc53f13a5d1bf115878c4a785e9a43e8286c4139a8402a6ac7d23966f9153"
+  },
+  "profile.themeLight": {
+    "message": "浅色",
+    "hash": "dbcd5e7bb7a0f538810de44c3efbd813037ee3fa358747bb71fa58e157af45f7"
+  },
+  "profile.themeSystem": {
+    "message": "跟随系统",
+    "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
+  },
+  "profile.title": {
+    "message": "个人资料",
+    "hash": "d696a35bdd1883da07a8d6c41bb7a3153381b23aa197629ee273479a6eaa5a9c"
+  },
+  "profile.zoom": {
+    "message": "放置时缩放",
+    "hash": "fa7175faa2861ab5a2cd848aee1843a9705ec4282aae139dfa147edfda5b8893"
+  },
+  "profile.zoomOff": {
+    "message": "关闭",
+    "hash": "ca7981b46ecf2c1787b6d76d81d9fd7fa0ca95842e2fcc2a452869891a9334d1"
+  },
+  "profile.zoomSub": {
+    "message": "触摸时放大棋盘。",
+    "hash": "ae679914ecf9d1786f752e9b5ccf4f3f747a0287255450bb36a870499b1fce03"
+  },
+  "standings.between": {
+    "message": "相隔 {count} 名",
+    "hash": "ffbf828e0451b93a1d13bd008db4eb72ef217c7f0080f9717a8b00d6856873d3"
+  },
+  "standings.closeHandle": {
+    "message": "关闭排名",
+    "hash": "4b23e8be4de93bd9f4d87afd2216850191e40825a3cce598265daf8d6a8d89f5"
+  },
+  "standings.dateLine": {
+    "message": "{day} · {count} 名玩家",
+    "hash": "a4a542e56f5d776411939a6d028044f35c03b4959dc5a99d8ff4af4c84238232"
+  },
+  "standings.emptyDaily": {
+    "message": "当日暂无成绩",
+    "hash": "f04c04e4265b08a184d493f950099d773ee64d392b21777a0aaffac7235451bc"
+  },
+  "standings.emptyPb": {
+    "message": "暂无成绩",
+    "hash": "306b45db20163464c2774564e0d61aaabdcf961067fcddb3a14cbc29e65fd0f7"
+  },
+  "standings.leadOther": {
+    "message": "{name} 领先",
+    "hash": "eefee81781d45b802a29f24f192a3bdd4ba06fe8cd2c58628e0f804caf20160c"
+  },
+  "standings.leadOtherPb": {
+    "message": "{name} 最佳居首",
+    "hash": "0379828faec77e64f29ee8b664ac9e2205e00b2f61d51b6719a2607415d4a8b6"
+  },
+  "standings.leadYou": {
+    "message": "你领先",
+    "hash": "34f6c4056d87f6df6f001edd3372f37331641f597084a06e7f05b0dd3adc0cd8"
+  },
+  "standings.leadYouPb": {
+    "message": "你的最佳居首",
+    "hash": "96395459231d1ac2df705cec2c2063d156710894205f2bc2219ddf2734e8b421"
+  },
+  "standings.noRunsDay": {
+    "message": "当日无成绩",
+    "hash": "b50455eda14f2c63c764c881683798ba5c6b251bb4e3dc67c5d1ff00a52a96df"
+  },
+  "standings.noRunsToday": {
+    "message": "今日暂无成绩",
+    "hash": "7eb5c7249a0726558e4db6e9f83dcae6990691829903f83786d41e374e0e0e3f"
+  },
+  "standings.open": {
+    "message": "打开排名",
+    "hash": "0855329c126f1d995ac6d4c6251732bddf9e6b058162dce78c56ce447e672a58"
+  },
+  "standings.rowDay": {
+    "message": "当日",
+    "hash": "944c27e5b97ab7793e4b6e9ff29384890ece0c7c04d2e2bf81c5f763469cc66b"
+  },
+  "standings.rowPb": {
+    "message": "最佳",
+    "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
+  },
+  "standings.sortByLabel": {
+    "message": "排序",
+    "hash": "730913d83a8ef7e72e6ac5875ee8b36e65ad16610c52bdb14f59f79bc82ad88f"
+  },
+  "standings.sortDaily": {
+    "message": "每日",
+    "hash": "915f3942e1bbdb301830ed1faef13addefdced371a3944bb037339ee02e3ba7a"
+  },
+  "standings.sortGroup": {
+    "message": "排序方式",
+    "hash": "09e99f786f87c484502f0ebf63ccc3b5fb46daa4fff7b58a6b0958a69918ed61"
+  },
+  "standings.sortPb": {
+    "message": "最佳",
+    "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
+  },
+  "standings.title": {
+    "message": "排名",
+    "hash": "c7342049e69be4aad2ccaf5eeb2e767dc3907bb2f83dcf1323c9ad378ec0b7ee"
+  },
+  "standings.untilRanked": {
+    "message": "后结算排名",
+    "hash": "e3aaf6422b37a6adb7be8302488d082b4191f19c0b2199622891ab5d61f86f86"
+  },
+  "standings.youSub": {
+    "message": "你 · {ago}",
+    "hash": "8d389249b2395678137010935b4097f26f50d1a615db9c7fa90b2540224a4c71"
+  },
+  "storage.blocked.body": {
+    "message": "你的浏览器正在阻止网站存储——请允许本站使用 Cookie / 网站数据，以保留你的档案和游戏。",
+    "hash": "02f9131ab2c5aaf1e8cd05bd2efef8be231d1489f3c4accc5b843fcc12526e93"
+  },
+  "storage.blocked.title": {
+    "message": "进度将无法保存",
+    "hash": "55087af7266c1b09bb217f393f91c64f57bd8439495cd6b20ee1ee7b887ef4b9"
+  },
+  "time.countdownHm": {
+    "message": "{h}时{m}分",
+    "hash": "8726ff1aab2a4e6914279915324443eb3573c148199acb66b23a19a74ba27577"
+  },
+  "time.countdownM": {
+    "message": "{m}分",
+    "hash": "7998930982af2136cb5d57fa7b9a82fec97b0084ccd027acd26a3bd6d81cbeb9"
+  },
+  "time.daysAgo": {
+    "message": "{d}天前",
+    "hash": "18bb766fcc18ee05561610c102177f848fc469d5f353dd8843f329d2b9acb78d"
+  },
+  "time.hoursAgo": {
+    "message": "{h}小时前",
+    "hash": "c037caa52a752ae69df3c531d64a1c3109e93f91e692a450ebe71177dcad4d8c"
+  },
+  "time.minsAgo": {
+    "message": "{m}分钟前",
+    "hash": "7e5eb4f5807907dc86259352177a3e2b8df738e4f05d052c63ea90733a4e7199"
+  },
+  "time.now": {
+    "message": "刚刚",
+    "hash": "ed5eb9a37e2d8231af3388319b941995f6dc8755c56043d0cc52b5fe405a87de"
+  },
+  "time.secondsAgo": {
+    "message": "{s}秒前",
+    "hash": "2e961e51ba82509076836c9af2e6d833066ca31ae2c4e578121bfb2d7aee5f17"
+  },
+  "time.soon": {
+    "message": "即将",
+    "hash": "4a754148b88a68e18df1a02489950666d187e904cd88d2dc0aa16c103b94045f"
+  },
+  "today.bestOf": {
+    "message": "{count} 次中最佳",
+    "hash": "2f24c82be3f96fb0913317d34ceaf795a0d7e1208dc9545792383328d592b719"
+  },
+  "today.notPlayed": {
+    "message": "尚未游玩",
+    "hash": "482e8bac929dec0f9b68540053758e43c2bdef93b6f0122181e57e56c4cff108"
+  },
+  "today.personalBest": {
+    "message": "个人最佳",
+    "hash": "786663cb0ee5e66ba6e55eccc89dc681c0c5790a6cad2333339f91d616c70247"
+  },
+  "today.ranked": {
+    "message": "排名成绩",
+    "hash": "ce670e20e904a31e1c7443d32890c3799883512085e2626de0c5a1fc835b06e4"
+  },
+  "today.title": {
+    "message": "今天",
+    "hash": "2b065c7c9ce466e5ebcad757987d5d660ee4c9ea708bc62c43444b53334738ba"
+  },
+  "today.unranked": {
+    "message": "非排名成绩",
+    "hash": "e8ab4f8c514fb7250ff295442d64a962f98df5d85f6519386c0a9e3b594fb96c"
+  },
+  "today.viewMaze": {
+    "message": "查看此迷宫",
+    "hash": "957d90494a2978266d6804c6d1fa19f436efc05783b6c4cb49a21967d23e4e3a"
+  }
+}

@@ -21,6 +21,7 @@ import { formatSeconds } from "../../../common/format.ts";
 import { Chevron, Crown } from "./icons.tsx";
 import { formatRank } from "./helpers.ts";
 import { StandingsSheet } from "./Sheet.tsx";
+import { t } from "../../util/t.ts";
 
 // The collapsed standings sliver: your rank and the current leader on
 // whichever day the board is showing — a pinned bottom dock on mobile, a peek
@@ -139,7 +140,7 @@ export const StandingsDock = () => {
         type="button"
         class={"standings-dock tapc" +
           (revealed ? "" : " standings-dock--hidden")}
-        aria-label="Open standings"
+        aria-label={t("standings.open")}
         onClick={() => {
           setOpen(true);
           // The sheet is opening onto possibly-stale ranks; refresh behind it.
@@ -151,7 +152,7 @@ export const StandingsDock = () => {
         </span>
         <span class="standings-dock__text">
           <span class="standings-dock__title">
-            Standings
+            {t("standings.title")}
             {me && (
               <>
                 {" · "}
@@ -170,8 +171,12 @@ export const StandingsDock = () => {
                 <>
                   {leader.record === "beat" && <Crown />}
                   {sort === "pb"
-                    ? (leader.you ? "you top PB" : `${leader.name} tops PB`)
-                    : (leader.you ? "you lead" : `${leader.name} leads`)}
+                    ? (leader.you
+                      ? t("standings.leadYouPb")
+                      : t("standings.leadOtherPb", { name: leader.name }))
+                    : (leader.you
+                      ? t("standings.leadYou")
+                      : t("standings.leadOther", { name: leader.name }))}
                   {" · "}
                   <span
                     class={"mono" +
@@ -186,8 +191,8 @@ export const StandingsDock = () => {
                 </>
               )
               : isToday
-              ? "no runs yet today"
-              : "no runs that day"}
+              ? t("standings.noRunsToday")
+              : t("standings.noRunsDay")}
           </span>
         </span>
       </button>

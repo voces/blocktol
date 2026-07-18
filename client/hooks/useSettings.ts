@@ -1,11 +1,14 @@
 import { useEffect, useState } from "preact/compat";
 import {
   defaultSettings,
+  type Language,
   parseSettings,
   Settings,
   SettingsPatch,
   Theme,
 } from "../../common/settings.ts";
+import { resolveCatalog } from "../../common/i18n.ts";
+import { uiLocale } from "../util/t.ts";
 import { api } from "../api.ts";
 import { storage } from "../util/storage.ts";
 
@@ -57,6 +60,21 @@ export const applyTheme = (theme: Theme) => {
   applyThemeColor(theme);
 };
 
+/**
+ * Apply the chosen UI language: point the `uiLocale` signal (which every `t`
+ * call reads, so this re-renders live) at the resolved tag, and mirror the
+ * actually-rendered catalog locale onto `<html lang>`. "system" (or empty)
+ * follows the device/browser language; an explicit choice wins. An unsupported
+ * tag still renders — the catalog resolves it to English.
+ */
+export const applyLanguage = (language: Language) => {
+  const tag = language && language !== "system"
+    ? language
+    : (globalThis.navigator?.language || "en");
+  uiLocale.value = tag;
+  document.documentElement.lang = resolveCatalog(tag);
+};
+
 // In "system" mode the bar follows the OS live, so re-sync when the OS flips
 // (an explicit light/dark bar is pinned and ignores this).
 globalThis.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.(
@@ -72,11 +90,18 @@ const publish = (next: Settings) => {
     storage.setItem(KEY, JSON.stringify(next));
   } catch { /* private mode / disabled storage */ }
   applyTheme(next.theme);
+  applyLanguage(next.language);
   for (const sub of subscribers) sub(next);
 };
 
-/** Apply the cached theme as early as possible (boot), before first paint. */
-export const initSettings = () => applyTheme(current.theme);
+/**
+ * Apply the cached theme + language as early as possible (boot), before first
+ * paint, so copy renders in the chosen language and there's no theme flash.
+ */
+export const initSettings = () => {
+  applyTheme(current.theme);
+  applyLanguage(current.language);
+};
 
 /** Non-reactive read (e.g. one-off lookups). Components should use useSettings. */
 export const getSettings = () => current;
@@ -91,6 +116,7 @@ export const adoptServerSettings = (settings: Settings) => {
   const c = current.notifications;
   if (
     settings.theme === current.theme && settings.zoom === current.zoom &&
+    settings.language === current.language &&
     n.lostTop === c.lostTop && n.dailyFinal === c.dailyFinal
   ) {
     return;

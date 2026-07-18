@@ -21,13 +21,25 @@ Deno.test("parseSettings: reads a JSON string or a plain object", () => {
   assertEquals(parseSettings('{"theme":"dark","zoom":1.5}'), {
     theme: "dark",
     zoom: 1.5,
+    language: "system",
     notifications: notifs(),
   });
   assertEquals(parseSettings({ theme: "light", zoom: 2 }), {
     theme: "light",
     zoom: 2,
+    language: "system",
     notifications: notifs(),
   });
+});
+
+Deno.test("parseSettings: language rides through as a string, else system", () => {
+  // Any string is kept (the catalog resolves an unsupported tag to English).
+  assertEquals(parseSettings({ language: "fr" }).language, "fr");
+  assertEquals(parseSettings({ language: "zh-Hans" }).language, "zh-Hans");
+  assertEquals(parseSettings({ language: "system" }).language, "system");
+  // Absent or non-string → the follow-the-device default.
+  assertEquals(parseSettings({}).language, "system");
+  assertEquals(parseSettings({ language: 5 }).language, "system");
 });
 
 Deno.test("parseSettings: each invalid field falls back independently", () => {
@@ -35,18 +47,21 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
   assertEquals(parseSettings({ theme: "neon", zoom: 5 }), {
     theme: "system",
     zoom: 2.5,
+    language: "system",
     notifications: notifs(),
   });
   // Too-low zoom clamps; missing theme defaults.
   assertEquals(parseSettings({ zoom: 0.2 }), {
     theme: "system",
     zoom: 1,
+    language: "system",
     notifications: notifs(),
   });
   // Valid theme, missing zoom.
   assertEquals(parseSettings({ theme: "dark" }), {
     theme: "dark",
     zoom: 2,
+    language: "system",
     notifications: notifs(),
   });
 });

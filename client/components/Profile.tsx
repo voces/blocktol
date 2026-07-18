@@ -1,5 +1,5 @@
 import { Fragment, h } from "preact";
-import { useContext, useEffect, useState } from "preact/compat";
+import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { formatDecimal, formatSeconds } from "../../common/format.ts";
 import { formatPercentile } from "../../common/formatPercentile.ts";
 import { percentileBand } from "../../common/percentileColor.ts";
@@ -29,7 +29,120 @@ import { MoveDevice } from "./MoveDevice.tsx";
 import { DeleteAccount } from "./DeleteAccount.tsx";
 import { Crown, Flag } from "./Notifications/icons.tsx";
 import { pushPermission, requestPushPermission } from "../util/push.ts";
-import type { NotificationPrefs } from "../../common/settings.ts";
+import type { NotificationPrefs, Theme } from "../../common/settings.ts";
+import { locales, type MessageKey } from "../../common/i18n.ts";
+import { t } from "../util/t.ts";
+
+// A language's name in its own tongue (endonym), for the picker — "Español",
+// "日本語", "Português (Brasil)". DisplayNames can lowercase some (French,
+// Spanish), so uppercase the first letter. Cached; Intl constructors aren't free.
+const endonymCache = new Map<string, string>();
+const endonym = (tag: string): string => {
+  let v = endonymCache.get(tag);
+  if (v === undefined) {
+    try {
+      const name = new Intl.DisplayNames(tag, { type: "language" }).of(tag) ??
+        tag;
+      v = name.charAt(0).toUpperCase() + name.slice(1);
+    } catch {
+      v = tag;
+    }
+    endonymCache.set(tag, v);
+  }
+  return v;
+};
+
+// A compact custom language dropdown. A native <select> sizes to its widest
+// option (so the chevron floats far right of a short value like "System") and
+// its popup is OS-rendered/misaligned; this sizes the trigger to the current
+// value and positions the menu itself. Closes on outside-click or Escape.
+const LanguageSelect = (
+  { value, onChange }: { value: string; onChange: (v: string) => void },
+) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const options = [
+    { v: "system", label: t("profile.languageSystem") },
+    ...locales.map((l) => ({ v: l, label: endonym(l) })),
+  ];
+  const current = options.find((o) => o.v === value) ?? options[0];
+
+  return (
+    <div class="lang-select" ref={ref}>
+      <button
+        type="button"
+        class="lang-select__btn tapc"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={t("profile.language")}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span>{current.label}</span>
+        <svg
+          class="lang-select__chev"
+          width={12}
+          height={12}
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+        >
+          <path
+            d="M4 6l4 4 4-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width={1.7}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+      {open && (
+        <ul class="lang-select__menu" role="listbox">
+          {options.map((o) => (
+            <li
+              key={o.v}
+              role="option"
+              aria-selected={o.v === value}
+              class={"lang-select__opt tapc" +
+                (o.v === value ? " lang-select__opt--on" : "")}
+              onClick={() => {
+                onChange(o.v);
+                setOpen(false);
+              }}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+// Theme value → catalog key, mapped by a literal object so every live key stays
+// greppable (see the i18n conventions).
+const THEME_KEY = {
+  system: "profile.themeSystem",
+  light: "profile.themeLight",
+  dark: "profile.themeDark",
+} as const satisfies Record<Theme, MessageKey>;
 
 const joinedLabel = (joined: number | null) =>
   joined == null ? null : new Date(joined).toLocaleDateString(undefined, {
@@ -276,7 +389,7 @@ const ProfileDialog = (
     if (turnedOn && pushPermission() !== "granted") requestPushPermission();
   };
 
-  const name = profile?.name || "Anonymous";
+  const name = profile?.name || t("profile.anonymous");
   const initial = avatarInitial(profile?.name);
   const color = avatarColor(getId());
   const joined = joinedLabel(profile?.joined ?? null);
@@ -287,7 +400,7 @@ const ProfileDialog = (
       <button
         type="button"
         class="modal__icon modal__close-x profile-modal__close tapc"
-        aria-label="Close profile"
+        aria-label={t("profile.close")}
         onClick={onClose}
       >
         ×
@@ -324,14 +437,14 @@ const ProfileDialog = (
                 class="profile-rename__save tapc"
                 disabled={saving || !nameInput.trim()}
               >
-                Save
+                {t("profile.save")}
               </button>
               <button
                 type="button"
                 class="profile-rename__cancel tapc"
                 onClick={() => setEditing(false)}
               >
-                Cancel
+                {t("profile.cancel")}
               </button>
             </form>
           )
@@ -353,38 +466,45 @@ const ProfileDialog = (
                   <button
                     type="button"
                     class="profile-head__edit tapc"
-                    aria-label="Edit name"
+                    aria-label={t("profile.editName")}
                     onClick={startEdit}
                   >
                     <EditIcon />
                   </button>
                 </div>
                 {joined && (
-                  <div class="profile-head__joined mono">joined {joined}</div>
+                  <div class="profile-head__joined mono">
+                    {t("profile.joinedLabel", { date: joined })}
+                  </div>
                 )}
               </div>
               <div class="profile-head__rating">
                 <div class="profile-head__rating-value mono">
                   {profile ? Math.round(profile.rating) : "—"}
                 </div>
-                <div class="profile-head__rating-label">Rating</div>
+                <div class="profile-head__rating-label">
+                  {t("profile.rating")}
+                </div>
               </div>
             </>
           )}
       </div>
 
       <div class="profile-stats">
-        <Stat value={profile ? String(profile.played) : "—"} label="Played" />
+        <Stat
+          value={profile ? String(profile.played) : "—"}
+          label={t("profile.played")}
+        />
         <Stat
           value={profile ? String(profile.hundreds) : "—"}
-          label="Records"
+          label={t("profile.records")}
           color={profile && profile.hundreds > 0 ? "var(--peak)" : undefined}
         />
         <Stat
           value={typeof median === "number"
             ? `p${formatPercentile(median)}`
             : "—"}
-          label="Median percentile"
+          label={t("profile.medianPercentile")}
           color={typeof median === "number"
             ? percentileBand(median)
             : undefined}
@@ -398,7 +518,7 @@ const ProfileDialog = (
         onClick={canView ? viewBest : undefined}
         disabled={!canView}
       >
-        <div class="profile-best__label">Best build</div>
+        <div class="profile-best__label">{t("profile.bestBuild")}</div>
         <div class="profile-best__value mono">
           {profile?.bestBuild != null
             ? `${formatSeconds(profile.bestBuild, { min: 0 })}s`
@@ -407,56 +527,74 @@ const ProfileDialog = (
       </button>
 
       <div class="pref">
-        <div class="section-title">Push notifications</div>
+        <div class="section-title">{t("profile.pushNotifications")}</div>
         <NotifRow
           icon={<Crown />}
           accent="var(--gold)"
-          title="Lost the top spot"
-          sub="Someone passes your #1"
+          title={t("profile.notifLostTopTitle")}
+          sub={t("profile.notifLostTopSub")}
           on={settings.notifications.lostTop}
           onChange={(v) => setNotif({ lostTop: v })}
         />
         <NotifRow
           icon={<Flag />}
           accent="var(--accent)"
-          title="Daily finalized"
-          sub="A day you played locks its ranks"
+          title={t("profile.notifDailyTitle")}
+          sub={t("profile.notifDailySub")}
           on={settings.notifications.dailyFinal}
           onChange={(v) => setNotif({ dailyFinal: v })}
         />
       </div>
 
       <div class="pref">
-        <div class="section-title">Preferences</div>
+        <div class="section-title">{t("profile.preferences")}</div>
 
         <div class="pref__row">
-          <div class="pref__label">Appearance</div>
-          <div class="pref__seg" role="group" aria-label="Appearance">
-            {themes.map((t) => (
+          <div class="pref__label">{t("profile.appearance")}</div>
+          <div
+            class="pref__seg"
+            role="group"
+            aria-label={t("profile.appearance")}
+          >
+            {themes.map((themeName) => (
               <button
-                key={t}
+                key={themeName}
                 type="button"
                 class={"pref__seg-btn tapc" +
-                  (settings.theme === t ? " pref__seg-btn--active" : "")}
-                aria-pressed={settings.theme === t}
-                onClick={() => setSettings({ theme: t })}
+                  (settings.theme === themeName
+                    ? " pref__seg-btn--active"
+                    : "")}
+                aria-pressed={settings.theme === themeName}
+                onClick={() => setSettings({ theme: themeName })}
               >
-                {t[0].toUpperCase() + t.slice(1)}
+                {t(THEME_KEY[themeName])}
               </button>
             ))}
           </div>
+        </div>
+
+        <div class="pref__row">
+          <div class="pref__label">{t("profile.language")}</div>
+          {
+            /* Custom dropdown (not a native select): each option is an endonym
+              so it stays recognizable whatever language the UI is in. */
+          }
+          <LanguageSelect
+            value={settings.language}
+            onChange={(v) => setSettings({ language: v })}
+          />
         </div>
 
         {(touch || settings.zoom !== ZOOM_DEFAULT) && (
           <div class="pref__row pref__row--stack">
             <div class="pref__head">
               <div>
-                <div class="pref__label">Zoom when placing</div>
-                <div class="pref__sub">Magnifies the board on touch.</div>
+                <div class="pref__label">{t("profile.zoom")}</div>
+                <div class="pref__sub">{t("profile.zoomSub")}</div>
               </div>
               <div class="pref__value mono">
                 {settings.zoom <= ZOOM_MIN
-                  ? "Off"
+                  ? t("profile.zoomOff")
                   : `${formatDecimal(settings.zoom, { min: 1, max: 1 })}×`}
               </div>
             </div>
@@ -467,7 +605,7 @@ const ProfileDialog = (
               max={ZOOM_MAX}
               step={0.1}
               value={settings.zoom}
-              aria-label="Zoom when placing"
+              aria-label={t("profile.zoom")}
               onInput={(e) =>
                 setSettings({ zoom: Number(e.currentTarget.value) })}
             />
@@ -476,7 +614,7 @@ const ProfileDialog = (
       </div>
 
       <div class="pref">
-        <div class="section-title">Community</div>
+        <div class="section-title">{t("profile.community")}</div>
         <a
           class="community-card tapc"
           href={`https://discord.gg/${DISCORD_INVITE}`}
@@ -487,9 +625,9 @@ const ProfileDialog = (
             <DiscordIcon />
           </span>
           <div class="community-card__text">
-            <div class="community-card__title">Join the Discord</div>
+            <div class="community-card__title">{t("profile.discordTitle")}</div>
             <div class="community-card__sub">
-              Chat about the daily maze, report bugs, and share ideas.
+              {t("profile.discordSub")}
             </div>
             {
               /* Always rendered so the card's height is stable whether or not
@@ -503,7 +641,7 @@ const ProfileDialog = (
                   (online ? "" : " community-card__dot--idle")}
                 aria-hidden="true"
               />
-              {online == null ? " " : `${online} online`}
+              {online == null ? " " : t("profile.online", { count: online })}
             </div>
           </div>
           <span class="community-card__ext" aria-hidden="true">
@@ -513,7 +651,7 @@ const ProfileDialog = (
       </div>
 
       <div class="pref">
-        <div class="section-title">Account</div>
+        <div class="section-title">{t("profile.account")}</div>
         <button
           type="button"
           class="profile-action profile-action--row tapc"
@@ -521,9 +659,9 @@ const ProfileDialog = (
         >
           <LinkIcon />
           <div class="profile-action__text">
-            <div class="profile-action__title">Move to another device</div>
+            <div class="profile-action__title">{t("move.title")}</div>
             <div class="profile-action__sub">
-              Scan a code or copy your login link
+              {t("profile.moveSub")}
             </div>
           </div>
           <span class="profile-action__chev" aria-hidden="true">›</span>
@@ -538,10 +676,10 @@ const ProfileDialog = (
           <DownloadIcon />
           <div class="profile-action__text">
             <div class="profile-action__title">
-              {exporting ? "Preparing…" : "Export my data"}
+              {exporting ? t("profile.exporting") : t("profile.exportData")}
             </div>
             <div class="profile-action__sub">
-              Download everything we hold about you
+              {t("profile.exportSub")}
             </div>
           </div>
           <span class="profile-action__chev" aria-hidden="true">›</span>
@@ -554,9 +692,9 @@ const ProfileDialog = (
         >
           <TrashIcon />
           <div class="profile-action__text">
-            <div class="profile-action__title">Delete my data</div>
+            <div class="profile-action__title">{t("del.title")}</div>
             <div class="profile-action__sub">
-              Erase your profile and unlink your builds
+              {t("profile.deleteSub")}
             </div>
           </div>
           <span class="profile-action__chev" aria-hidden="true">›</span>
@@ -568,7 +706,7 @@ const ProfileDialog = (
           target="_blank"
           rel="noopener noreferrer"
         >
-          Privacy &amp; the data we collect
+          {t("profile.privacy")}
         </a>
       </div>
     </Modal>
@@ -590,7 +728,7 @@ export const Profile = () => {
   // (deep link / held across midnight), where the board isn't the live daily.
   if (dailyInProgress) return null;
 
-  const name = profile?.name || "Anonymous";
+  const name = profile?.name || t("profile.anonymous");
 
   // Once the (prefetched) profile is loaded, the button is the coloured letter
   // avatar; until then, the neutral person glyph.
@@ -613,8 +751,8 @@ export const Profile = () => {
           fetchProfile();
           fetchDiscordOnline();
         }}
-        title="Profile"
-        aria-label="Open profile"
+        title={t("profile.title")}
+        aria-label={t("profile.open")}
       >
         {profile
           ? (

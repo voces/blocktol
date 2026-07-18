@@ -4,31 +4,33 @@ import { showBoard, startBoardRun } from "../../store/board.ts";
 import { rankedEndsAtMidnight } from "../../store/dailyRollover.ts";
 import { Timer } from "../Timer.tsx";
 import { clearFreePlay } from "./freePlay.ts";
+import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { RunClock, VerdictPill } from "./RunClock.tsx";
 
 const IDLE_MS = 5_000;
 
+// The block budget: a single isometric cube (not the old brick-wall) — the piece
+// is a "block" in copy, so the icon is one block. Cool blue to balance the warm
+// gold thunder bolt; the board pieces keep their own gameplay tints.
 export const BrickIcon = () => (
-  <svg width={16} height={16} viewBox="0 0 16 16">
-    <rect x={0} y={0} width={16} height={16} rx={2} fill="#c0553a" />
-    <g stroke="#7d331f" stroke-width={1}>
-      <line x1={0} y1={5.3} x2={16} y2={5.3} />
-      <line x1={0} y1={10.6} x2={16} y2={10.6} />
-      <line x1={5.3} y1={0} x2={5.3} y2={5.3} />
-      <line x1={10.6} y1={5.3} x2={10.6} y2={10.6} />
-      <line x1={5.3} y1={10.6} x2={5.3} y2={16} />
-    </g>
+  <svg width={16} height={16} viewBox="0 0 24 24">
+    {/* top face (lightest) */}
+    <path d="M12 2.5 L20.5 7.25 L12 12 L3.5 7.25 Z" fill="#6ea8e6" />
+    {/* left face */}
+    <path d="M3.5 7.25 L12 12 L12 21.5 L3.5 16.75 Z" fill="#3f7fcc" />
+    {/* right face (darkest) */}
+    <path d="M20.5 7.25 L12 12 L12 21.5 L20.5 16.75 Z" fill="#2f63aa" />
   </svg>
 );
 
+// A lightning bolt (not the old snowflake asterisk) — the piece is a "thunder"
+// in copy, so the icon reads as one. Gold, its iconic lightning colour — the
+// same "use the thing's own colour" logic as the terracotta brick icon (the
+// board pieces carry their own gameplay tints separately).
 export const PowerIcon = () => (
-  <svg width={16} height={16} viewBox="0 0 16 16">
-    <g stroke="#5aa9e6" stroke-width={1.5} stroke-linecap="round">
-      <line x1={8} y1={1.5} x2={8} y2={14.5} />
-      <line x1={2.4} y1={4.75} x2={13.6} y2={11.25} />
-      <line x1={2.4} y1={11.25} x2={13.6} y2={4.75} />
-    </g>
+  <svg width={16} height={16} viewBox="0 0 24 24">
+    <path d="M13 2 L3.5 13.5 H11 L10 22 L20.5 10 H13 Z" fill="#f2b134" />
   </svg>
 );
 
@@ -177,8 +179,8 @@ export const Hud = () => {
           <button
             type="button"
             class="hud__reset tapc"
-            aria-label="Reset board"
-            title="Reset — abandon this attempt"
+            aria-label={t("hud.reset")}
+            title={t("hud.resetTitle")}
             onClick={onReset}
           >
             <ResetIcon />
@@ -196,7 +198,7 @@ export const Hud = () => {
             <div class="hud__build hud__build--staged">
               <span class="hud__build-face hud__build-time">
                 <span class="mono">{formatBuild(time)}</span>
-                <span class="hud__build-label">to build</span>
+                <span class="hud__build-label">{t("hud.toBuild")}</span>
               </span>
             </div>
           )
@@ -216,11 +218,13 @@ export const Hud = () => {
                 <span class="mono">{formatBuild(time)}</span>
                 <span class="hud__build-label">
                   {!freePlay && rankedEndsAtMidnight.value
-                    ? "to midnight"
-                    : "to build"}
+                    ? t("hud.toMidnight")
+                    : t("hud.toBuild")}
                 </span>
               </span>
-              <span class="hud__build-face hud__build-ready">Ready?</span>
+              <span class="hud__build-face hud__build-ready">
+                {t("hud.ready")}
+              </span>
             </button>
           )
           : phase === "running" && run
@@ -235,7 +239,7 @@ export const Hud = () => {
                   <span class="mono">
                     <Timer to={run.duration} />
                   </span>
-                  <span class="hud__build-label">seconds</span>
+                  <span class="hud__build-label">{t("hud.seconds")}</span>
                 </div>
               )
           )
@@ -255,10 +259,10 @@ export const Hud = () => {
                   ? (
                     <>
                       <span class="mono">{formatBuild(time)}</span>
-                      <span class="hud__build-label">to build</span>
+                      <span class="hud__build-label">{t("hud.toBuild")}</span>
                     </>
                   )
-                  : "Play"}
+                  : t("hud.play")}
               </span>
             </button>
           )

@@ -443,9 +443,12 @@ executes normally — committed, runner released. `useClock`/`RunClock` run the
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy
-and the in-app panel never drift). In-app notifications are always written; push
-delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys set.
-`public/sw.js` is the service worker.
+and the in-app panel never drift). `notificationText` no longer hardcodes
+English — it maps a stored notification's `kind` + `DailyVariant` to `notif.*`
+catalog keys and renders through `t(...)` (see Localization below), so push and
+in-app copy localize from one source. In-app notifications are always written;
+push delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys
+set. `public/sw.js` is the service worker.
 
 **Discord results webhook (`util/discordResults.ts`):** a player-facing channel
 mirror, separate from `adminAlert`'s operator pings. Two posts, both rich embeds
@@ -481,6 +484,61 @@ title link to the day's `/YYYYMMDD?board=` permalink:
 
 Both are best-effort (never throw, awaited so this Deploy doesn't kill them mid
 flight) and no-op without a webhook configured. See the `DISCORD_*` env vars.
+
+## Localization (i18n)
+
+User-facing copy lives in **ICU MessageFormat catalogs** under `i18n/`, not
+inline in code. `i18n/en.json` is the source of truth
+(`{ key: { message,
+description } }`); it defines the key set and, through the
+ICU args, the params each message takes. `scripts/genI18n.ts` (the `i18n` task,
+run first in `build`/`dev`/`test` and in CI before `deno check`) compiles every
+`i18n/<locale>.json` into **`common/i18n.generated.ts`** — gitignored and
+generated exactly like `common/version.ts`. The generated module pre-parses each
+message to an `I18nNode[]` AST (so **no ICU parser ships in the client bundle**
+— the parser is `scripts/i18nParse.ts`, build-only) and derives `MessageKey` + a
+per-key `MessageParams` type map from `en.json`, so a missing key or wrong
+argument at a `t(...)` call site is a **compile error** (the `BlocktolApi`
+type-derivation move).
+
+`common/i18n.ts` is the one runtime, pure and framework-free so server and
+client share it: `t(locale, key, params)` resolves the BCP-47 `locale` to a
+supported catalog locale (exact tag → language prefix → `en`; the full tag still
+drives `Intl` number/plural formatting) and walks the AST — `{arg}`
+substitution, `{count, plural, …}` via `Intl.PluralRules` with `#`,
+`{sel, select, …}`. `locale` is omitted on the client (viewer's own locale) and
+set to the recipient's `user.locale` for server-rendered push copy — the same
+convention `common/format.ts` already uses. A locale missing a key falls back to
+the English AST. **Conventions:** keys are stable and namespaced by surface
+(`notif.`, …), never encode the English text; **never interpolate a key** — map
+an enum to its key with a literal object/ternary so every live key is greppable
+(see `notificationText`). Rich-text copy — a message that wraps part of the
+sentence in markup (a `<b>`, a link) — uses `tJsx` (`client/util/t.ts`), which
+returns a `(string | VNode)[]` instead of a string: the catalog keeps one arg
+per wrapped span (`"You beat {pct} of players today"` with `pct={<b>84%</b>}`)
+so a locale can move the emphasis where its grammar wants; plain `t` covers
+everything else. **User-facing piece names are `block` and `thunder`** — the
+internal `bricks`/`power`/`slow` names never appear in copy (see
+`i18n/glossary.json`, which the translator reads).
+
+Adding/altering copy: edit `i18n/en.json`, run `deno task i18n` (or any
+`build`/`dev`/`test`), and call `t(...)`. Remaining migration work is tracked in
+`docs/localization.md`.
+
+**Picking the language.** `settings.language` (`common/settings.ts`) holds the
+choice — `"system"` (the default) or a BCP-47 tag; the tolerant parser keeps any
+string (the catalog resolves an unsupported tag to English). `applyLanguage`
+(`client/hooks/useSettings.ts`, run at `initSettings` boot and on every settings
+change, mirroring `applyTheme`) points the `uiLocale` signal at the tag —
+`"system"` resolves to `navigator.language`, so **an un-overridden user gets
+their browser language**, falling back to English — and stamps
+`document.documentElement.lang` with the resolved catalog locale. Because every
+`t(...)` reads `uiLocale`, a switch re-renders live. The Profile → Preferences
+picker is a native `<select>` of `locales` (endonyms via `Intl.DisplayNames`)
+plus a System option. An **explicit** choice also rides to the server
+(`setSettings` → `updateUserLocale`) so push copy — rendered in `user.locale` —
+matches; `"system"` leaves `user.locale` as the browser tag captured passively
+at push-subscribe, so the two stay in step.
 
 ## Environment variables
 

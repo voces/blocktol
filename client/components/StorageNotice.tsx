@@ -1,6 +1,7 @@
 import { h } from "preact";
 import { useState } from "preact/compat";
 import { Toast } from "./Toast.tsx";
+import { t } from "../util/t.ts";
 
 // A quiet heads-up shown when the browser is blocking site storage (see
 // util/storage.ts): the app is on the in-memory fallback, so the per-device
@@ -33,8 +34,8 @@ export const StorageNotice = () => {
   return (
     <Toast
       icon={<InfoCircle />}
-      title="Progress won't be saved"
-      sub="Your browser is blocking site storage — allow cookies / site data for this site to keep your profile and games."
+      title={t("storage.blocked.title")}
+      sub={t("storage.blocked.body")}
       onClose={() => setDismissed(true)}
     />
   );

@@ -21,6 +21,7 @@ import {
   formatDay,
   formatRank,
 } from "./helpers.ts";
+import { t } from "../../util/t.ts";
 
 type Row = NonNullable<ReturnType<typeof boardOf>>["rows"][number];
 
@@ -47,8 +48,12 @@ const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
     : state === "lime"
     ? "var(--peak)"
     : avatarColorFromHue(row.hue);
-  const sub = row.you ? `you · ${formatAgo(row.at)}` : formatAgo(row.at);
-  const smallLabel = sort === "daily" ? "PB" : "day";
+  const sub = row.you
+    ? t("standings.youSub", { ago: formatAgo(row.at) })
+    : formatAgo(row.at);
+  const smallLabel = sort === "daily"
+    ? t("standings.rowPb")
+    : t("standings.rowDay");
   return (
     <div
       class={"standings-row band-card" +
@@ -154,23 +159,26 @@ export const StandingsSheet = (
       <div
         class="standings-sheet"
         role="dialog"
-        aria-label="Standings"
+        aria-label={t("standings.title")}
         style={offset ? { transform: `translateY(${offset}px)` } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           class="standings-sheet__handle tapc"
-          aria-label="Close standings"
+          aria-label={t("standings.closeHandle")}
           onClick={onClose}
           {...handlers}
         />
         <div class="standings-sheet__head" {...handlers}>
           <div>
-            <div class="standings-sheet__title">Standings</div>
+            <div class="standings-sheet__title">{t("standings.title")}</div>
             <div class="standings-sheet__date">
               {s && b
-                ? `${formatDay(s.day)} · ${formatCount(b.players)} players`
+                ? t("standings.dateLine", {
+                  day: formatDay(s.day),
+                  count: formatCount(b.players),
+                })
                 : ""}
             </div>
           </div>
@@ -179,23 +187,29 @@ export const StandingsSheet = (
             {sort === "daily" && s?.closesAt != null && (
               <span class="standings-sheet__timer">
                 <span class="mono">{formatCountdown(s.closesAt)}</span>
-                <span>until ranked</span>
+                <span>{t("standings.untilRanked")}</span>
               </span>
             )}
             <button
               type="button"
               class="modal__icon standings-sheet__close"
-              aria-label="Close"
+              aria-label={t("a11y.close")}
               onClick={onClose}
             >
               ×
             </button>
           </div>
         </div>
-        <div class="standings-sortby" role="group" aria-label="Sort standings">
-          <span class="standings-sortby__label mono">SORT BY</span>
-          <SortTab value="daily" label="DAILY" />
-          <SortTab value="pb" label="PB" />
+        <div
+          class="standings-sortby"
+          role="group"
+          aria-label={t("standings.sortGroup")}
+        >
+          <span class="standings-sortby__label mono">
+            {t("standings.sortByLabel")}
+          </span>
+          <SortTab value="daily" label={t("standings.sortDaily")} />
+          <SortTab value="pb" label={t("standings.sortPb")} />
         </div>
         <div class="standings-sheet__list">
           {(b?.rows ?? []).map((row) => (
@@ -203,7 +217,11 @@ export const StandingsSheet = (
               {row.gapBefore > 0 && (
                 <div class="standings-gap">
                   <span />
-                  <span class="mono">{formatCount(row.gapBefore)} between</span>
+                  <span class="mono">
+                    {t("standings.between", {
+                      count: formatCount(row.gapBefore),
+                    })}
+                  </span>
                   <span />
                 </div>
               )}
@@ -212,7 +230,9 @@ export const StandingsSheet = (
           ))}
           {b && b.rows.length === 0 && (
             <div class="standings-sheet__empty">
-              {sort === "daily" ? "No runs this day" : "No runs yet"}
+              {sort === "daily"
+                ? t("standings.emptyDaily")
+                : t("standings.emptyPb")}
             </div>
           )}
         </div>

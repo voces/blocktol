@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useContext } from "preact/compat";
 import { newDailyAvailable } from "../store/dailyRollover.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
+import { t } from "../util/t.ts";
 
 // Mobile-only entry point to the calendar: a header icon (next to the profile)
 // that opens the full-screen picker. Desktop keeps the calendar inline in the
@@ -26,8 +27,8 @@ export const CalendarButton = () => {
       type="button"
       class={"cal-button icon-button tapc" +
         (alert ? " cal-button--alert" : "")}
-      aria-label={alert ? "New daily available" : "Open calendar"}
-      title={alert ? "New daily available" : "Previous days"}
+      aria-label={alert ? t("cal.newDaily") : t("cal.open")}
+      title={alert ? t("cal.newDaily") : t("cal.previousDays")}
       onClick={() => setCalendarOpen(true)}
     >
       <svg

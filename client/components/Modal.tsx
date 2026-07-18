@@ -1,5 +1,6 @@
 import { ComponentChildren, h } from "preact";
 import { useDragToClose } from "../hooks/useDragToClose.ts";
+import { t } from "../util/t.ts";
 
 /**
  * A dismissible overlay: a bottom sheet on mobile, a centered card on desktop
@@ -28,7 +29,7 @@ export const Modal = (
         <button
           type="button"
           class="modal__handle tapc"
-          aria-label="Close"
+          aria-label={t("a11y.close")}
           onClick={onClose}
           {...handlers}
         />

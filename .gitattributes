@@ -1,0 +1,10 @@
+# Machine-written translation catalogs (scripts/i18nTranslate.ts) — collapse in
+# diffs and exclude from language stats. en.json / config.json / glossary.json
+# are human-authored, so they stay normal.
+i18n/*.json linguist-generated=true
+i18n/en.json linguist-generated=false
+i18n/config.json linguist-generated=false
+i18n/glossary.json linguist-generated=false
+
+# Dependency lockfile.
+deno.lock linguist-generated=true

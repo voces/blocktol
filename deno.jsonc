@@ -25,9 +25,23 @@
     // stale client (see scripts/genVersion.ts). Runs first in build/dev so the
     // file exists before the bundle and the server import resolve.
     "version": "deno run --allow-run=git --allow-env=GIT_SHA --allow-write=common/version.ts scripts/genVersion.ts",
+    // Compile the message catalogs (i18n/*.json) into common/i18n.generated.ts —
+    // gitignored/generated like common/version.ts, so it must run before the
+    // bundle and before `deno check`/`deno test` resolve the import graph (both
+    // reach it through common/notifications.ts). --no-check: genI18n imports the
+    // catalog runtime type-only, so it must not try to type-check common/i18n.ts,
+    // whose generated import is exactly what this task is about to create.
+    "i18n": "deno run --no-check --allow-read=i18n --allow-write=common/i18n.generated.ts scripts/genI18n.ts",
+    // The "never deploy untranslated" gate (CI, blocking): every configured
+    // target locale must have a current, valid translation of every en.json key.
+    // Pure/network-free — safe on forks. i18n:translate is the auto-fixer that
+    // heals it; i18n:unused fails the build on a key no code references.
+    "i18n:check": "deno run --no-check --allow-read=i18n scripts/i18nCheck.ts",
+    "i18n:unused": "deno run --no-check --allow-read=i18n,common,server,client scripts/i18nUnused.ts",
+    "i18n:translate": "deno run --no-check --allow-read --allow-write=i18n --allow-env --allow-net --allow-sys scripts/i18nTranslate.ts",
     "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
     "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
-    "build": "deno task version && deno task bundle && deno task bundle:pathing",
+    "build": "deno task i18n && deno task version && deno task bundle && deno task bundle:pathing",
     // --no-check (not =remote): skip type-checking at start entirely. CI's
     // `deno check` and `deno task test` are the type gate, so re-checking the
     // local graph on every boot is redundant work on the cold-start critical
@@ -37,13 +51,15 @@
     // opens a connection. Harmless on the proxy transport (the driver never
     // loads). SQL_TRANSPORT/HOST/PORT/USER/DATABASE configure that connector.
     "start": "deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL,DISCORD_RESULTS_WEBHOOK_URL --allow-read server/index.ts",
-    "dev": "deno task version && deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL,DISCORD_RESULTS_WEBHOOK_URL --allow-read --watch server/index.ts",
+    "dev": "deno task i18n && deno task version && deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL,DISCORD_RESULTS_WEBHOOK_URL --allow-read --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
     "migrate": "deno run --no-check=remote --allow-net --allow-sys --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit
     // the (dev) database through the SQL proxy; they self-skip when
     // SQL_PASSWORD isn't set, and the pure tests need no permissions.
-    "test": "deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE"
+    // i18n first: the pure tests import common/notifications.ts, which imports the
+    // generated catalog — so a fresh checkout must compile it before testing.
+    "test": "deno task i18n && deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE"
   },
   "deploy": {
     "build": "deno task build",
@@ -64,8 +80,8 @@
     }
   },
   "fmt": {
-    // common/version.ts is generated (scripts/genVersion.ts) — exclude it so a
-    // build never trips `deno fmt --check` on machine-written output.
-    "exclude": ["public", "common/version.ts"]
+    // common/version.ts and common/i18n.generated.ts are generated — exclude them
+    // so a build never trips `deno fmt --check` on machine-written output.
+    "exclude": ["public", "common/version.ts", "common/i18n.generated.ts"]
   }
 }

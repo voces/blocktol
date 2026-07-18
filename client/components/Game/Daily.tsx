@@ -9,6 +9,16 @@ import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
 import { showBoard } from "../../store/board.ts";
 import { arrivedViaDeepLink } from "../../store/notifNav.ts";
+import type { MessageKey } from "../../../common/i18n.ts";
+import { t, tJsx } from "../../util/t.ts";
+
+// Best-attempt badge → catalog key, mapped by a literal object so every live
+// key stays greppable (see the i18n conventions).
+const BADGE_KEY = {
+  supreme: "badge.supreme",
+  record: "badge.record",
+  best: "badge.best",
+} as const satisfies Record<"supreme" | "record" | "best", MessageKey>;
 
 const ShareIcon = () => (
   <svg width={15} height={15} viewBox="0 0 16 16">
@@ -146,7 +156,9 @@ export const Daily = () => {
       <div class="result__card">
         <div class="result__header">
           <Logo size={18} />
-          <h2 class="result__title">Blocktol · {displayDate}</h2>
+          <h2 class="result__title">
+            {t("daily.resultTitle", { date: displayDate })}
+          </h2>
         </div>
 
         <div class="result__rows">
@@ -160,10 +172,14 @@ export const Daily = () => {
               style={i === bestIdx ? { "--accent": accent } : undefined}
             >
               <span class="result__label">
-                Attempt {i + 1}
+                {t("daily.attempt", { n: i + 1 })}
                 {i === bestIdx && (
                   <span class="result__badge" style={{ "--badge": accent }}>
-                    {isSupreme ? "SUPREME" : isPeak ? "RECORD" : "BEST"}
+                    {t(
+                      BADGE_KEY[
+                        isSupreme ? "supreme" : isPeak ? "record" : "best"
+                      ],
+                    )}
                   </span>
                 )}
               </span>
@@ -194,7 +210,7 @@ export const Daily = () => {
           >
             <BeatIcon kind={beatKind} />
             <span>
-              You beat <b>{beatPct}%</b> of players today
+              {tJsx("daily.beat", { pct: <b>{beatPct}%</b> })}
             </span>
           </div>
         )}
@@ -211,7 +227,7 @@ export const Daily = () => {
               <div class="result__stat-value mono">
                 {formatSeconds(stats.median, { min: 0 })}s
               </div>
-              <div class="result__stat-label">median</div>
+              <div class="result__stat-label">{t("daily.median")}</div>
             </div>
             <div class="result__stat">
               <div class="result__stat-value mono">
@@ -225,7 +241,7 @@ export const Daily = () => {
         <div class="result__actions">
           <Button class="result__btn" onClick={share}>
             <ShareIcon />
-            {copied ? "Copied!" : "Share result"}
+            {copied ? t("daily.copied") : t("daily.share")}
           </Button>
           <Button
             class="result__btn result__btn--keep"
@@ -241,7 +257,7 @@ export const Daily = () => {
               setHideDailyResult(true);
             }}
           >
-            Keep playing
+            {t("daily.keepPlaying")}
           </Button>
         </div>
       </div>

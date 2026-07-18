@@ -1,0 +1,56 @@
+# Auto-translate: on any non-prod push that changes the source catalog (or the
+# pipeline), fill/prune the target catalogs and commit them back to the branch —
+# so "edit en.json, push" is all a developer does; the PR translates itself. The
+# i18n:check gate in ci.yml enforces independently, so a broken run fails loudly
+# rather than shipping English. No-ops when there are no target locales or no
+# ANTHROPIC_API_KEY (forks). See docs/localization.md.
+name: Translate
+on:
+  push:
+    branches-ignore: [prod]
+    paths:
+      - i18n/en.json
+      - i18n/config.json
+      - i18n/glossary.json
+      - scripts/i18n*.ts
+  # Manual re-translate (e.g. after adding a locale to i18n/config.json).
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  translate:
+    # Secrets aren't exposed to fork pushes; skip there (the gate still runs).
+    if: ${{ github.event.repository.fork == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Translate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # TRANSLATE_MODEL: optional override; defaults to claude-opus-4-8.
+        run: deno task i18n:translate
+
+      - name: Commit catalogs
+        run: |
+          if [ -n "$(git status --porcelain i18n)" ]; then
+            git config user.name "blocktol-i18n[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add i18n
+            git commit -m "i18n: auto-translate catalogs"
+            git push
+          else
+            echo "no catalog changes"
+          fi
+
+      - name: Verify
+        # Fail the run if the freshly-written catalogs don't satisfy the gate.
+        run: deno task i18n:check

@@ -1,0 +1,910 @@
+{
+  "a11y.close": {
+    "message": "Close",
+    "description": "Accessible label for a generic modal/dialog close button."
+  },
+  "a11y.back": {
+    "message": "Back",
+    "description": "Accessible label for a sheet's back (‹) button that returns to the previous view."
+  },
+  "a11y.loading": {
+    "message": "Loading",
+    "description": "Accessible label for a loading spinner."
+  },
+  "a11y.dismiss": {
+    "message": "Dismiss",
+    "description": "Accessible label for the toast dismiss (×) button."
+  },
+  "a11y.qr": {
+    "message": "Sign-in QR code",
+    "description": "Accessible label for the sign-in QR code image."
+  },
+  "a11y.record": {
+    "message": "record",
+    "description": "Accessible label for the gold record-crown icon shown next to a #1 standing."
+  },
+  "badge.pb": {
+    "message": "NEW PERSONAL BEST",
+    "description": "Celebration badge when a free-play run sets a new personal best. All-caps."
+  },
+  "badge.record": {
+    "message": "RECORD",
+    "description": "Badge for a held top build. All-caps; see glossary RECORD."
+  },
+  "badge.supreme": {
+    "message": "SUPREME",
+    "description": "Badge for a sole untied #1. All-caps; see glossary SUPREME."
+  },
+  "badge.best": {
+    "message": "BEST",
+    "description": "Badge on the player's best of their three ranked attempts (not a field record). All-caps; see glossary BEST."
+  },
+  "cal.newDaily": {
+    "message": "New daily available",
+    "description": "Label/tooltip on the calendar button when a new day's daily has become available."
+  },
+  "cal.open": {
+    "message": "Open calendar",
+    "description": "Accessible label for the header calendar button in its normal state."
+  },
+  "cal.previousDays": {
+    "message": "Previous days",
+    "description": "Tooltip for the header calendar button in its normal state; also the calendar panel's section title."
+  },
+  "cal.playCta": {
+    "message": "Play →",
+    "description": "Call-to-action on the calendar's new-daily banner. The \"→\" is a decorative arrow — keep or drop per the language's convention."
+  },
+  "cal.earlierMonths": {
+    "message": "Earlier months",
+    "description": "Accessible label for the calendar's back-paging arrow (older months)."
+  },
+  "cal.laterMonths": {
+    "message": "Later months",
+    "description": "Accessible label for the calendar's forward-paging arrow (more recent months)."
+  },
+  "cal.close": {
+    "message": "Close calendar",
+    "description": "Accessible label for the mobile calendar picker's close button."
+  },
+  "cal.bestPct": {
+    "message": "best {pct}%",
+    "description": "Part of a calendar cell's tooltip: the day's overall standing. {pct} is a pre-formatted percentage number (the \"%\" is separate)."
+  },
+  "cal.rankedP": {
+    "message": "ranked p{p}",
+    "description": "Part of a calendar cell's tooltip: the day's ranked percentile. {p} is a pre-formatted percentile number; \"p\" is the percentile marker."
+  },
+  "move.title": {
+    "message": "Move to another device",
+    "description": "Title of the move-to-device sheet (and the phrase referenced from the delete sheet); transfers the account to a new device via a sign-in link/QR."
+  },
+  "move.lead": {
+    "message": "Scan this code with your other device's camera, or copy the link below and open it there.",
+    "description": "Intro text on the move-to-device sheet explaining the QR code + copyable link."
+  },
+  "move.copy": {
+    "message": "Copy",
+    "description": "Button that copies the sign-in link to the clipboard."
+  },
+  "move.copied": {
+    "message": "Copied!",
+    "description": "Transient confirmation on the copy button after the link is copied."
+  },
+  "move.safety": {
+    "message": "Anyone with this link can sign in as {name}. It doesn't expire, so keep it private.",
+    "description": "Warning on the move-to-device sheet. {name} is the player's display name shown in bold; the link is a permanent bearer credential."
+  },
+  "del.title": {
+    "message": "Delete my data",
+    "description": "Title of the account-deletion confirmation sheet."
+  },
+  "del.lead": {
+    "message": "This permanently removes your profile, name, preferences, and push subscriptions from this game, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player. This can't be undone, and this device will start over as a new player.",
+    "description": "Explanation of what account deletion does (anonymize-in-place: profile removed, builds kept but unlinked, irreversible)."
+  },
+  "del.confirmLabel": {
+    "message": "Type {word} to confirm",
+    "description": "Label over the delete confirmation input. {word} is the literal confirmation word (the English word DELETE, shown in bold monospace) the user must type — see glossary DELETE; keep {word} itself untranslated."
+  },
+  "del.error": {
+    "message": "Something went wrong — your data was not deleted. Please try again.",
+    "description": "Error shown when the delete request fails; reassures that nothing was deleted."
+  },
+  "del.deleting": {
+    "message": "Deleting…",
+    "description": "Transient label on the delete button while the request is in flight. Trailing ellipsis."
+  },
+  "del.deleteBtn": {
+    "message": "Delete everything",
+    "description": "The button that performs the irreversible account deletion."
+  },
+  "del.moveHint": {
+    "message": "Prefer to keep your builds but move to a new device instead? Use {move} from your profile.",
+    "description": "Footnote on the delete sheet pointing to the non-destructive alternative. {move} is the bold phrase \"Move to another device\" (the move sheet's title)."
+  },
+  "common.connecting": {
+    "message": "Connecting",
+    "description": "Overlay shown while the app is reconnecting to the server (animated dots are appended after this word)."
+  },
+  "storage.blocked.title": {
+    "message": "Progress won't be saved",
+    "description": "Title of the heads-up toast shown when the browser blocks site storage (profile/games can't persist)."
+  },
+  "storage.blocked.body": {
+    "message": "Your browser is blocking site storage — allow cookies / site data for this site to keep your profile and games.",
+    "description": "Body of the storage-blocked toast: how to fix it (allow cookies / site data)."
+  },
+  "error.crash.title": {
+    "message": "Something broke",
+    "description": "Headline of the crash screen shown when the app hits an unrecoverable render error."
+  },
+  "error.crash.body": {
+    "message": "The error has been reported. Reloading usually fixes it — your runs are saved on the server.",
+    "description": "Reassurance on the crash screen: the error was reported automatically and the player's data is safe."
+  },
+  "error.crash.reload": {
+    "message": "Reload",
+    "description": "Button on the crash screen that reloads the page."
+  },
+  "notif.bell.title": {
+    "message": "Notifications",
+    "description": "Label/tooltip for the notifications bell button in the header."
+  },
+  "notif.bell.unread": {
+    "message": "Notifications ({count, plural, one {# unread} other {# unread}})",
+    "description": "Accessible label for the bell when there are unread notifications; {count} is the unread count."
+  },
+  "notif.lostTop.title": {
+    "message": "You lost #1 on {date}",
+    "description": "Push + in-app notification headline when another player passes your best build and takes the day's top spot. {date} is a short calendar day like \"Jul 6\". The literal \"#1\" means first place."
+  },
+  "notif.lostTop.body": {
+    "message": "{passer} passed you. {passerTime} vs your {yourTime}",
+    "description": "Body of the lost-#1 notification. {passer} is a player's display name; {passerTime}/{yourTime} are pre-formatted times with a unit, e.g. \"30.34s\"."
+  },
+  "notif.dailyFinal.title": {
+    "message": "{date} daily is final",
+    "description": "Headline when a daily you played has closed and been ranked. {date} is a short calendar day like \"Jul 6\"."
+  },
+  "notif.dailyFinal.supreme": {
+    "message": "You finished #1 of {players}. Supreme",
+    "description": "Daily-final body: sole best of the ranked field, matched by no one in ranked or free play. {players} is the ranked field size. \"#1\" is first place; \"Supreme\" is a celebratory label (keep the tone)."
+  },
+  "notif.dailyFinal.record": {
+    "message": "You finished #1 of {players}. A record held",
+    "description": "Daily-final body: co-top of the ranked field with no free-play build beating it — a held record. You are always rank 1 here (a record means no one out-ranked you), so #1 is literal. {players} is the ranked field size."
+  },
+  "notif.dailyFinal.first": {
+    "message": "You finished #1 of {players}. Bettered only in free play",
+    "description": "Daily-final body: sole best of the ranked field, but another player's free-play build later beat your mark. {players} is the ranked field size."
+  },
+  "notif.dailyFinal.t1": {
+    "message": "You tied #1 of {players}. Bettered only in free play",
+    "description": "Daily-final body: tied for best of the ranked field, and a free-play build beat the mark. {players} is the ranked field size."
+  },
+  "notif.dailyFinal.placed": {
+    "message": "You finished #{rank} of {players}",
+    "description": "Daily-final body for an ordinary finish (someone out-ranked you). {rank} is your standard-competition rank (1 = best), {players} the ranked field size."
+  },
+  "prestart.eyebrow": {
+    "message": "Daily · {date}",
+    "description": "Small eyebrow label over the start-attempt overlay. \"Daily\" is the game term (see glossary); {date} is a short calendar day like \"Jul 6\". The \"·\" is a separator dot."
+  },
+  "prestart.newDaily.title": {
+    "message": "New daily available",
+    "description": "Start-overlay heading when a fresh daily has rolled in and can be switched to instead of continuing the parked day."
+  },
+  "prestart.newDaily.sub": {
+    "message": "Today's daily is ready to play.",
+    "description": "Start-overlay subtext under \"New daily available\": today's puzzle can be played now."
+  },
+  "prestart.newDaily.play": {
+    "message": "Play today's daily",
+    "description": "Button on the start overlay that switches to and plays today's freshly available daily."
+  },
+  "prestart.attempt": {
+    "message": "Attempt {n} of {total}",
+    "description": "Start-overlay heading showing which ranked attempt is about to be played. {n} is the current attempt number, {total} the total attempts (3)."
+  },
+  "prestart.perAttempt": {
+    "message": "You'll have 60 seconds per attempt.",
+    "description": "Start-overlay subtext: each ranked attempt has a 60-second build window."
+  },
+  "prestart.previous": {
+    "message": "Previous",
+    "description": "Label before the previous attempt's time on the start overlay (followed by a \"·\" and the time)."
+  },
+  "prestart.start": {
+    "message": "Start attempt",
+    "description": "Button that opens the ranked attempt's 60-second window."
+  },
+  "prestart.starting": {
+    "message": "Starting…",
+    "description": "Transient label on the start button while the attempt is opening. Trailing ellipsis."
+  },
+  "today.title": {
+    "message": "Today",
+    "description": "Section title above today's result chips (ranked result + personal best)."
+  },
+  "today.viewMaze": {
+    "message": "View this maze",
+    "description": "Tooltip on a result chip: clicking reviews the maze that produced the time."
+  },
+  "today.ranked": {
+    "message": "Ranked result",
+    "description": "Heading of the chip showing the best of the three ranked attempts. \"Ranked\" is the game term (see glossary)."
+  },
+  "today.personalBest": {
+    "message": "Personal best",
+    "description": "Heading of the chip showing the player's best time for the day, which may be an unranked free-play run."
+  },
+  "today.notPlayed": {
+    "message": "not yet played",
+    "description": "Shown in a result chip when the player has no time yet for that category."
+  },
+  "today.bestOf": {
+    "message": "best of {count}",
+    "description": "Subtext on the ranked chip: the shown time is the best of {count} ranked attempts. {count} is a small pre-formatted number."
+  },
+  "today.unranked": {
+    "message": "unranked run",
+    "description": "Tag appended to the personal-best subtext when the best time came from a free-play (unranked) run rather than a ranked attempt."
+  },
+  "hud.reset": {
+    "message": "Reset board",
+    "description": "Accessible label for the HUD reset button (free play) that abandons the in-progress build."
+  },
+  "hud.resetTitle": {
+    "message": "Reset — abandon this attempt",
+    "description": "Tooltip for the HUD reset button, warning it discards the current build."
+  },
+  "hud.toBuild": {
+    "message": "to build",
+    "description": "Small label under the build countdown clock: time remaining to build the maze."
+  },
+  "hud.toMidnight": {
+    "message": "to midnight",
+    "description": "Small label under the build clock for a ranked attempt that is being cut short at local midnight instead of the full window."
+  },
+  "hud.ready": {
+    "message": "Ready?",
+    "description": "Label the build clock cross-fades to, inviting the player to start the run now."
+  },
+  "hud.seconds": {
+    "message": "seconds",
+    "description": "Unit label under the live daily run stopwatch counting up the runner's time."
+  },
+  "hud.play": {
+    "message": "Play",
+    "description": "Label on the HUD clock slot while reviewing a past maze; returns to a live, playable board."
+  },
+  "notif.panel.filter.all": {
+    "message": "All",
+    "description": "Notifications filter chip showing every notification."
+  },
+  "notif.panel.filter.daily": {
+    "message": "Daily",
+    "description": "Notifications filter chip scoping to daily-final notifications. \"Daily\" is the game term (see glossary)."
+  },
+  "notif.panel.filter.lostTop": {
+    "message": "Lost #1",
+    "description": "Notifications filter chip scoping to lost-top notifications (you were passed for the day's #1 build). \"#1\" is first place."
+  },
+  "notif.panel.detail": {
+    "message": "your {yourTime} · day's best {dayBest}",
+    "description": "Comparison line on a daily-finish card: your time vs the day's best. {yourTime}/{dayBest} are pre-formatted times with a unit like \"30.34s\". \"·\" is a separator."
+  },
+  "notif.panel.opensDay": {
+    "message": "Opens {date}",
+    "description": "Footer link text on a lost-top card: tapping opens that day. {date} is a short calendar day like \"Jul 6\"."
+  },
+  "notif.panel.opensLeaderboard": {
+    "message": "Opens the leaderboard",
+    "description": "Footer link text on a daily-final card: tapping opens the day's leaderboard."
+  },
+  "notif.panel.reclaimed": {
+    "message": "Reclaimed",
+    "description": "Tag on a lost-top card once the player retook the #1 spot."
+  },
+  "notif.panel.close": {
+    "message": "Close notifications",
+    "description": "Accessible label for the notifications panel's close/drag handle."
+  },
+  "notif.panel.markAllRead": {
+    "message": "Mark all read",
+    "description": "Button that marks every notification as read."
+  },
+  "notif.panel.filterGroup": {
+    "message": "Filter notifications",
+    "description": "Accessible group label for the notifications filter chip row."
+  },
+  "notif.panel.hideReclaimed": {
+    "message": "Hide reclaimed",
+    "description": "Toggle that hides reclaimed lost-top cards from the notifications list."
+  },
+  "notif.panel.empty.none": {
+    "message": "No notifications yet",
+    "description": "Empty state when the player has received no notifications at all."
+  },
+  "notif.panel.empty.lostTop": {
+    "message": "No lost-top notifications",
+    "description": "Empty state under the Lost #1 filter."
+  },
+  "notif.panel.empty.daily": {
+    "message": "No daily notifications",
+    "description": "Empty state under the Daily filter."
+  },
+  "notif.panel.empty.filtered": {
+    "message": "Nothing to show",
+    "description": "Generic empty state when the active filter matches no notifications."
+  },
+  "notif.panel.sectionNew": {
+    "message": "New",
+    "description": "Section heading over unread notifications."
+  },
+  "notif.panel.sectionEarlier": {
+    "message": "Earlier",
+    "description": "Section heading over already-read notifications."
+  },
+  "daily.resultTitle": {
+    "message": "Blocktol · {date}",
+    "description": "Title of the daily result card. \"Blocktol\" is the app name — keep it verbatim (see glossary). {date} is a short calendar day like \"Jul 6\"; \"·\" is a separator."
+  },
+  "daily.attempt": {
+    "message": "Attempt {n}",
+    "description": "Row label in the daily result card for one of the three ranked attempts. {n} is the attempt number."
+  },
+  "daily.beat": {
+    "message": "You beat {pct} of players today",
+    "description": "Banner on the daily result card. {pct} is a bold percentage span like \"84%\" (the emphasis is markup — position it where the sentence reads naturally)."
+  },
+  "daily.median": {
+    "message": "median",
+    "description": "Label under the median time in the daily result card's stat row (shown beside the symbolic p25/p75 markers)."
+  },
+  "daily.share": {
+    "message": "Share result",
+    "description": "Button that copies a shareable summary of the day's result to the clipboard."
+  },
+  "daily.copied": {
+    "message": "Copied!",
+    "description": "Transient confirmation shown on the share button after the result is copied to the clipboard."
+  },
+  "daily.keepPlaying": {
+    "message": "Keep playing",
+    "description": "Button that dismisses the daily result card and returns to a free-play board for the day."
+  },
+  "standings.title": {
+    "message": "Standings",
+    "description": "Title of the standings/leaderboard (the sheet header, its accessible label, and the collapsed dock title)."
+  },
+  "standings.open": {
+    "message": "Open standings",
+    "description": "Accessible label for the collapsed standings dock button that opens the full sheet."
+  },
+  "standings.closeHandle": {
+    "message": "Close standings",
+    "description": "Accessible label for the standings sheet's drag/close handle."
+  },
+  "standings.dateLine": {
+    "message": "{day} · {count} players",
+    "description": "Sub-line under the standings title: the viewed day and the field size. {day} is a short calendar day like \"Jul 7\"; {count} is the pre-formatted player count; \"·\" is a separator."
+  },
+  "standings.untilRanked": {
+    "message": "until ranked",
+    "description": "Label beside the countdown timer showing how long until the day's daily closes and is ranked."
+  },
+  "standings.sortGroup": {
+    "message": "Sort standings",
+    "description": "Accessible group label for the standings sort toggle (daily vs personal-best board)."
+  },
+  "standings.sortByLabel": {
+    "message": "SORT BY",
+    "description": "Small label before the standings sort toggle. All-caps."
+  },
+  "standings.sortDaily": {
+    "message": "DAILY",
+    "description": "Standings sort tab for the ranked daily board. All-caps. \"Daily\" is the game term (see glossary)."
+  },
+  "standings.sortPb": {
+    "message": "PB",
+    "description": "Standings sort tab for the personal-best board. All-caps. \"PB\" = personal best; keep the abbreviation if it's understood, else a short local equivalent."
+  },
+  "standings.rowPb": {
+    "message": "PB",
+    "description": "Prefix on a daily-board row's small secondary line showing that player's personal-best time. \"PB\" = personal best."
+  },
+  "standings.rowDay": {
+    "message": "day",
+    "description": "Prefix on a PB-board row's small secondary line showing that player's ranked daily time."
+  },
+  "standings.between": {
+    "message": "{count} between",
+    "description": "Separator row in the standings list where the window skips ranks: how many players sit between the rows above and below. {count} is a pre-formatted number."
+  },
+  "standings.emptyDaily": {
+    "message": "No runs this day",
+    "description": "Empty state on the daily standings board when no one has a ranked run for the day."
+  },
+  "standings.emptyPb": {
+    "message": "No runs yet",
+    "description": "Empty state on the personal-best standings board when no builds exist yet."
+  },
+  "standings.youSub": {
+    "message": "you · {ago}",
+    "description": "Sub-line on your own standings row: marks it as yours plus when your time was set. {ago} is a relative time like \"5m ago\"; \"·\" is a separator."
+  },
+  "standings.leadYouPb": {
+    "message": "you top PB",
+    "description": "Dock leader line when you hold the top of the personal-best board. \"PB\" = personal best."
+  },
+  "standings.leadOtherPb": {
+    "message": "{name} tops PB",
+    "description": "Dock leader line when another player holds the top of the personal-best board. {name} is a display name; \"PB\" = personal best."
+  },
+  "standings.leadYou": {
+    "message": "you lead",
+    "description": "Dock leader line when you hold the top of the daily board."
+  },
+  "standings.leadOther": {
+    "message": "{name} leads",
+    "description": "Dock leader line when another player holds the top of the daily board. {name} is a display name."
+  },
+  "standings.noRunsToday": {
+    "message": "no runs yet today",
+    "description": "Dock sub-line when today's board has no runs yet."
+  },
+  "standings.noRunsDay": {
+    "message": "no runs that day",
+    "description": "Dock sub-line when a past day's board has no runs."
+  },
+  "attempts.title": {
+    "message": "Runs",
+    "description": "Section title over the list of the player's runs on the viewed maze."
+  },
+  "attempts.sortRuns": {
+    "message": "Sort runs",
+    "description": "Accessible group label for the runs-list sort toggle."
+  },
+  "attempts.sortNewest": {
+    "message": "Newest",
+    "description": "Runs sort tab: most recent first. Tapping it again flips to oldest-first."
+  },
+  "attempts.sortOldest": {
+    "message": "Oldest",
+    "description": "Runs sort tab label when the recent sort is reversed to oldest-first."
+  },
+  "attempts.sortLongest": {
+    "message": "Longest",
+    "description": "Runs sort tab: longest (best) time first. Tapping it again flips to shortest-first."
+  },
+  "attempts.sortShortest": {
+    "message": "Shortest",
+    "description": "Runs sort tab label when the best sort is reversed to shortest-first."
+  },
+  "attempts.reverseHint": {
+    "message": "Tap to reverse order",
+    "description": "Tooltip on the active runs sort tab: tapping it inverts the order."
+  },
+  "attempts.dailyTag": {
+    "message": "Daily",
+    "description": "Small tag on a runs-list row marking it as a ranked daily attempt (vs a free-play run). \"Daily\" is the game term (see glossary)."
+  },
+  "attempts.viewing": {
+    "message": "viewing",
+    "description": "Tag on the runs-list row whose maze is currently shown on the board."
+  },
+  "attempts.pinToTop": {
+    "message": "Pin run to top",
+    "description": "Label/tooltip for the per-row pin button (unpinned state) that floats a run to the top of the list."
+  },
+  "attempts.unpin": {
+    "message": "Unpin run",
+    "description": "Label/tooltip for the per-row pin button (pinned state) that removes the pin."
+  },
+  "attempts.empty": {
+    "message": "No runs yet",
+    "description": "Empty state for the runs list when the viewed maze has no runs."
+  },
+  "time.now": {
+    "message": "now",
+    "description": "Relative time for something that just happened (under a minute ago)."
+  },
+  "time.secondsAgo": {
+    "message": "{s}s ago",
+    "description": "Relative time in seconds. {s} is a whole number; \"s\" abbreviates seconds — use your locale's short form."
+  },
+  "time.minsAgo": {
+    "message": "{m}m ago",
+    "description": "Relative time in minutes. {m} is a whole number; \"m\" abbreviates minutes — use your locale's short form."
+  },
+  "time.hoursAgo": {
+    "message": "{h}h ago",
+    "description": "Relative time in hours. {h} is a whole number; \"h\" abbreviates hours — use your locale's short form."
+  },
+  "time.daysAgo": {
+    "message": "{d}d ago",
+    "description": "Relative time in days. {d} is a whole number; \"d\" abbreviates days — use your locale's short form."
+  },
+  "time.soon": {
+    "message": "soon",
+    "description": "Countdown label once the deadline has passed but the result isn't finalized yet."
+  },
+  "time.countdownHm": {
+    "message": "{h}h {m}m",
+    "description": "A countdown of hours and minutes remaining, e.g. \"9h 41m\". {h}/{m} are whole numbers; \"h\"/\"m\" abbreviate hours/minutes."
+  },
+  "time.countdownM": {
+    "message": "{m}m",
+    "description": "A countdown of minutes remaining, e.g. \"41m\". {m} is a whole number; \"m\" abbreviates minutes."
+  },
+  "profile.open": {
+    "message": "Open profile",
+    "description": "Accessible label for the header profile/avatar button that opens the profile dialog."
+  },
+  "profile.title": {
+    "message": "Profile",
+    "description": "Tooltip for the header profile button."
+  },
+  "profile.close": {
+    "message": "Close profile",
+    "description": "Accessible label for the profile dialog's close button."
+  },
+  "profile.editName": {
+    "message": "Edit name",
+    "description": "Accessible label for the pencil button that starts editing the player's display name."
+  },
+  "profile.save": {
+    "message": "Save",
+    "description": "Button that saves the edited display name."
+  },
+  "profile.cancel": {
+    "message": "Cancel",
+    "description": "Button that cancels editing the display name."
+  },
+  "profile.joinedLabel": {
+    "message": "joined {date}",
+    "description": "Line under the player's name showing when they started. {date} is a short month-year like \"Jul 2025\"."
+  },
+  "profile.rating": {
+    "message": "Rating",
+    "description": "Label under the player's numeric rating in the profile header."
+  },
+  "profile.played": {
+    "message": "Played",
+    "description": "Profile stat label: number of dailies the player has played."
+  },
+  "profile.records": {
+    "message": "Records",
+    "description": "Profile stat label: number of days the player holds/held a record. See glossary RECORD."
+  },
+  "profile.medianPercentile": {
+    "message": "Median percentile",
+    "description": "Profile stat label: the player's median field percentile across dailies."
+  },
+  "profile.bestBuild": {
+    "message": "Best build",
+    "description": "Label on the profile's best-build tile (the player's longest time ever); tapping reviews that maze."
+  },
+  "profile.pushNotifications": {
+    "message": "Push notifications",
+    "description": "Section title for the push-notification preference toggles."
+  },
+  "profile.notifLostTopTitle": {
+    "message": "Lost the top spot",
+    "description": "Push-preference row title: notify me when I lose the day's #1 build. \"#1\" is first place."
+  },
+  "profile.notifLostTopSub": {
+    "message": "Someone passes your #1",
+    "description": "Push-preference row subtext for losing the top spot. \"#1\" is first place."
+  },
+  "profile.notifDailyTitle": {
+    "message": "Daily finalized",
+    "description": "Push-preference row title: notify me when a day I played is ranked. \"Daily\" is the game term (see glossary)."
+  },
+  "profile.notifDailySub": {
+    "message": "A day you played locks its ranks",
+    "description": "Push-preference row subtext for daily finalization."
+  },
+  "profile.preferences": {
+    "message": "Preferences",
+    "description": "Section title for the appearance/zoom preferences."
+  },
+  "profile.appearance": {
+    "message": "Appearance",
+    "description": "Label (and group aria-label) for the light/dark/system theme selector."
+  },
+  "profile.language": {
+    "message": "Language",
+    "description": "Label for the UI language selector in Preferences."
+  },
+  "profile.languageSystem": {
+    "message": "System",
+    "description": "The language option that follows the device/browser language (falling back to English if it isn't supported)."
+  },
+  "profile.themeSystem": {
+    "message": "System",
+    "description": "Theme option that follows the device's light/dark setting."
+  },
+  "profile.themeLight": {
+    "message": "Light",
+    "description": "Light theme option."
+  },
+  "profile.themeDark": {
+    "message": "Dark",
+    "description": "Dark theme option."
+  },
+  "profile.zoom": {
+    "message": "Zoom when placing",
+    "description": "Preference label (and slider aria-label) for the touch board magnification."
+  },
+  "profile.zoomSub": {
+    "message": "Magnifies the board on touch.",
+    "description": "Subtext explaining the zoom-when-placing preference."
+  },
+  "profile.zoomOff": {
+    "message": "Off",
+    "description": "Shown as the zoom value when magnification is disabled (1×)."
+  },
+  "profile.community": {
+    "message": "Community",
+    "description": "Section title for the Discord community card."
+  },
+  "profile.discordTitle": {
+    "message": "Join the Discord",
+    "description": "Title of the community card linking to the game's Discord server. \"Discord\" is a product name — keep it."
+  },
+  "profile.discordSub": {
+    "message": "Chat about the daily maze, report bugs, and share ideas.",
+    "description": "Subtext of the Discord community card."
+  },
+  "profile.online": {
+    "message": "{count} online",
+    "description": "Live Discord presence count on the community card. {count} is a whole number."
+  },
+  "profile.account": {
+    "message": "Account",
+    "description": "Section title for the account actions (move device, export, delete)."
+  },
+  "profile.moveSub": {
+    "message": "Scan a code or copy your login link",
+    "description": "Subtext of the move-to-device account action."
+  },
+  "profile.exporting": {
+    "message": "Preparing…",
+    "description": "Transient title on the export action while the data export is being assembled. Trailing ellipsis."
+  },
+  "profile.exportData": {
+    "message": "Export my data",
+    "description": "Title of the account action that downloads all the player's data (GDPR export)."
+  },
+  "profile.exportSub": {
+    "message": "Download everything we hold about you",
+    "description": "Subtext of the export-my-data account action."
+  },
+  "profile.deleteSub": {
+    "message": "Erase your profile and unlink your builds",
+    "description": "Subtext of the delete-my-data account action."
+  },
+  "profile.privacy": {
+    "message": "Privacy & the data we collect",
+    "description": "Link to the static privacy disclosure page. The \"&\" is a literal ampersand."
+  },
+  "profile.anonymous": {
+    "message": "Anonymous",
+    "description": "Fallback display name for a player who hasn't set a name."
+  },
+  "mg.runs": {
+    "message": "{count, plural, one {# run} other {# runs}}",
+    "description": "A run count, e.g. \"1 run\" / \"12 runs\". \"run\" = one played game (see glossary)."
+  },
+  "mg.fbPlayer": {
+    "message": "Player",
+    "description": "Fallback shown in place of a display name when a profile has none, standing on its own (a heading/name slot)."
+  },
+  "mg.fbProfile": {
+    "message": "profile",
+    "description": "Fallback for a nameless profile inside a sentence (e.g. \"Merge into profile\")."
+  },
+  "mg.fbIt": {
+    "message": "it",
+    "description": "Fallback pronoun for a nameless other profile after \"Switch to …\" (e.g. \"Switch to it?\")."
+  },
+  "mg.fbYou": {
+    "message": "you",
+    "description": "Fallback for your own nameless profile after \"Keep playing as …\" (e.g. \"Keep playing as you\")."
+  },
+  "mg.fbThisPlayer": {
+    "message": "this player",
+    "description": "Fallback for a nameless other profile after \"Continue as …\" (e.g. \"Continue as this player\")."
+  },
+  "mg.fbOtherProfile": {
+    "message": "your other profile",
+    "description": "Fallback for a nameless other profile in the silent sign-in toast (e.g. \"Signed in as your other profile\")."
+  },
+  "mg.fbThisProfile": {
+    "message": "this profile",
+    "description": "Fallback for your own nameless profile inside a sentence (e.g. \"Leave this profile; …\")."
+  },
+  "mg.fbThisProfileCap": {
+    "message": "This profile",
+    "description": "Fallback for your own nameless profile at the START of a sentence in the switch warning (\"This profile won't be here anymore\"). Capitalized."
+  },
+  "mg.fbTheOtherProfile": {
+    "message": "the other profile",
+    "description": "Fallback for a nameless other profile inside the switch warning (a bold name slot)."
+  },
+  "mg.fbYour": {
+    "message": "your",
+    "description": "Fallback possessive for your own nameless profile (e.g. \"Save your's link first\" — precedes an apostrophe-s)."
+  },
+  "mg.confirmLabel": {
+    "message": "Continue on this device as…",
+    "description": "Heading on the clean-device adopt screen, above the profile being adopted. Trailing ellipsis."
+  },
+  "mg.continueAs": {
+    "message": "Continue as {name}",
+    "description": "Button that adopts the link's profile on this device. {name} is a display name (or the \"this player\" fallback)."
+  },
+  "mg.startNewGame": {
+    "message": "Not you? Start a new game",
+    "description": "Ghost button that discards the link and starts a fresh profile instead of adopting it."
+  },
+  "mg.onThisDevice": {
+    "message": "On this device",
+    "description": "Label over the profile currently on this device in the account-fork screen."
+  },
+  "mg.linkSignsInAs": {
+    "message": "THE LINK SIGNS IN AS",
+    "description": "Divider label in the account-fork screen, above the profile the opened link would sign in as. All-caps."
+  },
+  "mg.sideSub": {
+    "message": "joined {date} · {runs}",
+    "description": "Sub-line for a profile in the fork screen. {date} is a short month-year like \"Jul 2025\"; {runs} is a run count like \"12 runs\"; \"·\" is a separator."
+  },
+  "mg.mergeTitle": {
+    "message": "Merge the two",
+    "description": "Fork option title: combine both profiles into one."
+  },
+  "mg.mergeSub": {
+    "message": "Keep one profile with everything from both",
+    "description": "Fork option subtext for merging."
+  },
+  "mg.switchTo": {
+    "message": "Switch to {name}",
+    "description": "Fork option title (and the switch screen's confirm button): become the link's profile. {name} is a display name (or the \"it\" fallback)."
+  },
+  "mg.switchSub": {
+    "message": "Leave {name}; reachable only by its link",
+    "description": "Fork option subtext for switching. {name} is your current profile's name (or the \"this profile\" fallback)."
+  },
+  "mg.keepPlayingAs": {
+    "message": "Keep playing as {name}",
+    "description": "Ghost button that dismisses the fork and keeps the current profile. {name} is your name (or the \"you\" fallback)."
+  },
+  "mg.mergeAccounts": {
+    "message": "Merge accounts",
+    "description": "Title of the merge sub-screen (picking the primary profile)."
+  },
+  "mg.keepAsPrimary": {
+    "message": "Keep as primary",
+    "description": "Section label above the primary-profile picker in the merge screen."
+  },
+  "mg.primaryDesc": {
+    "message": "The primary sets the name, colour and rating you keep going forward.",
+    "description": "Explanation of what the primary profile determines after a merge."
+  },
+  "mg.moreData": {
+    "message": "MORE DATA",
+    "description": "Badge on whichever profile has more runs in the merge picker. All-caps."
+  },
+  "mg.pickSub": {
+    "message": "rating {rating} · {runs}",
+    "description": "Sub-line for a profile in the merge picker. {rating} is a whole-number rating; {runs} is a run count; \"·\" is a separator."
+  },
+  "mg.whatCombine": {
+    "message": "What we'll combine",
+    "description": "Section label above the explanation of how a merge combines the two profiles."
+  },
+  "mg.dailyAttempts": {
+    "message": "Daily maze attempts",
+    "description": "Merge-combine row title, about ranked daily attempts. \"Daily\" is the game term (see glossary)."
+  },
+  "mg.combineDailySub": {
+    "message": "For any day you played on both, we keep whichever attempt {first}.",
+    "description": "Merge-combine row subtext. {first} is the bold phrase \"came first\" — the earlier attempt wins on a shared day."
+  },
+  "mg.cameFirst": {
+    "message": "came first",
+    "description": "The bold phrase inside the daily-merge explanation: the earlier of two attempts is kept."
+  },
+  "mg.everythingElse": {
+    "message": "Everything else",
+    "description": "Merge-combine row title, about all non-daily runs."
+  },
+  "mg.combineElseSub": {
+    "message": "Your other runs from both accounts all carry over. {math}.",
+    "description": "Merge-combine row subtext. {math} is a bold monospace sum like \"5 + 8 becomes 13\"."
+  },
+  "mg.combineMath": {
+    "message": "{a} + {b} becomes {sum}",
+    "description": "The run-count arithmetic shown when merging: {a}/{b} are each profile's run count, {sum} their total."
+  },
+  "mg.mergeNote": {
+    "message": "The first attempt stands, so a merge can't cherry-pick a faster time.",
+    "description": "Reassurance under the merge explanation: merging can't game the leaderboard."
+  },
+  "mg.mergeInto": {
+    "message": "Merge into {name}",
+    "description": "Button that performs the merge, keeping {name} as the primary profile (or the \"profile\" fallback)."
+  },
+  "mg.switchToTitle": {
+    "message": "Switch to {name}?",
+    "description": "Title of the switch confirmation screen. {name} is the other profile's name (or the \"it\" fallback)."
+  },
+  "mg.switchWarn": {
+    "message": "This device will play as {other} from now on. {self} won't be here anymore; its {runs} live only behind its login link.",
+    "description": "Warning on the switch screen. {other}/{self} are bold display names (or fallbacks); {runs} is a run count like \"12 runs\"."
+  },
+  "mg.saveLinkFirst": {
+    "message": "Save {name}'s link first",
+    "description": "Section label prompting the user to save the current profile's link before switching away. {name} is your name (or the \"your\" fallback, giving \"Save your's link first\")."
+  },
+  "mg.caption": {
+    "message": "Anyone with this link can sign back in as {name} on any device.",
+    "description": "Caption under the copyable link on the switch screen. {name} is your current profile's name (or the \"this profile\" fallback)."
+  },
+  "mg.copyToEnable": {
+    "message": "Copy the link to enable this",
+    "description": "Hint shown while the switch button is disabled until the link has been copied."
+  },
+  "mg.signedInAs": {
+    "message": "Signed in as {name}",
+    "description": "Title of the silent sign-in toast (a nearly-empty device adopting a real link). {name} is the adopted profile's name (or the \"your other profile\" fallback)."
+  },
+  "mg.cameAlong": {
+    "message": "{runs} from this device came along.",
+    "description": "Subtext of the silent sign-in toast: the few runs from this device were merged in. {runs} is a run count like \"2 runs\"."
+  },
+  "intro.skip": {
+    "message": "Skip",
+    "description": "Tutorial tooltip button that skips the rest of the walkthrough."
+  },
+  "intro.next": {
+    "message": "Next",
+    "description": "Tutorial tooltip button that advances to the next tip."
+  },
+  "intro.play": {
+    "message": "Play",
+    "description": "Tutorial tooltip button on the last tip that finishes the walkthrough and starts play."
+  },
+  "intro.tipBlocks": {
+    "message": "Blocks indicate how many you can place.",
+    "description": "Tutorial tip pointing at the block-budget chip. \"Blocks\" is the placeable piece (see glossary block)."
+  },
+  "intro.tipThunders": {
+    "message": "Thunders indicate how many blocks you can upgrade.",
+    "description": "Tutorial tip pointing at the thunder-budget chip. \"Thunders\" is the slow-field piece; upgrading a block turns it into one (see glossary thunder)."
+  },
+  "intro.tipRunnerBottom": {
+    "message": "The runner is released from the bottom…",
+    "description": "Tutorial tip: first of three describing the runner's route. \"runner\" is the game term (see glossary). Trailing ellipsis continues into the next tip."
+  },
+  "intro.tipCheckpoint": {
+    "message": "…heads towards the checkpoint…",
+    "description": "Tutorial tip: second of three describing the runner's route. Leading and trailing ellipsis connect the three tips into one sentence."
+  },
+  "intro.tipTop": {
+    "message": "…and then out the top.",
+    "description": "Tutorial tip: third of three describing the runner's route. Leading ellipsis continues from the previous tip."
+  },
+  "intro.tipPlace": {
+    "message": "Place blocks to elongate the runner's path.",
+    "description": "Tutorial tip: placing blocks lengthens the runner's route. \"blocks\"/\"runner\" are game terms (see glossary)."
+  },
+  "intro.tipUpgrade": {
+    "message": "Upgrade blocks to slow the runner as they pass.",
+    "description": "Tutorial tip: upgrading a block into a thunder slows the runner. \"blocks\"/\"runner\" are game terms (see glossary)."
+  }
+}
