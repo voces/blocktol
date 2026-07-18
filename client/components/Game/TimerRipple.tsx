@@ -36,10 +36,10 @@ const HI = 18;
 // (0.4 → the far wall still gets 60%), so it visibly reaches the whole board
 // instead of dying mid-way. Every reachable cell is drawn; a longer maze just
 // takes proportionally longer to fill, which is intended.
-const DELAY_PER_UNIT = 0.03;
+const DELAY_PER_UNIT = 0.025;
 const BASE_DELAY = 0.14;
 const DIM = 0.4;
-const PEAK = 0.62;
+const PEAK = 0.5;
 
 // Fire each mark this many seconds EARLY — the cue leads the clock so the "1s"
 // ripple kicks off at 1.25s left, giving the wave room to sweep out before the
