@@ -1,6 +1,7 @@
 import { h } from "preact";
 import { useEffect, useState } from "preact/compat";
 import { api } from "../api.ts";
+import { storage } from "../util/storage.ts";
 import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import {
   adoptId,
@@ -207,7 +208,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     opts?: { adoptedRuns?: number; toast?: { title: string; sub: string } },
   ) => {
     if ((opts?.adoptedRuns ?? 0) > 0) {
-      localStorage.setItem("hasCompletedOnboarding", "true");
+      storage.setItem("hasCompletedOnboarding", "true");
     }
     if (opts?.toast) {
       sessionStorage.setItem("gateToast", JSON.stringify(opts.toast));

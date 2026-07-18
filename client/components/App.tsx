@@ -4,6 +4,8 @@ import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";
 import { primeSession } from "../boot.ts";
 import { getTimeZone } from "../util/timeZone.ts";
+import { storage, storagePersistent } from "../util/storage.ts";
+import { StorageNotice } from "./StorageNotice.tsx";
 import { Disconnected } from "./Disconnected.tsx";
 import { Game } from "./Game/index.tsx";
 import { GameStateContext, useGameState } from "./Game/useGameState.ts";
@@ -57,6 +59,11 @@ const Shell = (
     <GameStateContext.Provider value={gameState}>
       <div style={{ textAlign: "center" }}>
         {
+          /* Storage-blocked heads-up (in-memory fallback — util/storage.ts). In
+          Shell so it shows over both onboarding and the game. */
+        }
+        {!storagePersistent && <StorageNotice />}
+        {
           /* Always mounted (invisible at rest) so the release can EASE back —
             unmounting would cut the transition. */
         }
@@ -109,9 +116,9 @@ const Shell = (
 };
 
 export const getHasCompletedOnboarding = () =>
-  localStorage.getItem("hasCompletedOnboarding") === "true";
+  storage.getItem("hasCompletedOnboarding") === "true";
 const setHasCompletedOnboarding = () =>
-  localStorage.setItem("hasCompletedOnboarding", "true");
+  storage.setItem("hasCompletedOnboarding", "true");
 
 export const App = () => {
   // A sign-in link that opened on this device is resolved before anything else —

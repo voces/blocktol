@@ -7,12 +7,13 @@ import {
   Theme,
 } from "../../common/settings.ts";
 import { api } from "../api.ts";
+import { storage } from "../util/storage.ts";
 
 const KEY = "settings";
 
 const load = (): Settings => {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = storage.getItem(KEY);
     return raw ? parseSettings(raw) : defaultSettings();
   } catch {
     return defaultSettings();
@@ -68,7 +69,7 @@ globalThis.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.(
 const publish = (next: Settings) => {
   current = next;
   try {
-    localStorage.setItem(KEY, JSON.stringify(next));
+    storage.setItem(KEY, JSON.stringify(next));
   } catch { /* private mode / disabled storage */ }
   applyTheme(next.theme);
   for (const sub of subscribers) sub(next);

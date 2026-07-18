@@ -1,6 +1,7 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
 import { api, MessageMap } from "../api.ts";
+import { storage } from "../util/storage.ts";
 import { refreshMonth } from "./dailyItems.ts";
 import { keyedQuery } from "./query.ts";
 import { refreshStandings, todayIteration } from "./standings.ts";
@@ -15,19 +16,19 @@ export type NotifFilter = "all" | NotificationKind;
 const FILTER_KEY = "notifFilter";
 const HIDE_KEY = "notifHideReclaimed";
 const readFilter = (): NotifFilter => {
-  const v = localStorage.getItem(FILTER_KEY);
+  const v = storage.getItem(FILTER_KEY);
   return v === "lost_top" || v === "daily_final" ? v : "all";
 };
 export const notifFilter = signal<NotifFilter>(readFilter());
 export const setNotifFilter = (f: NotifFilter) => {
-  localStorage.setItem(FILTER_KEY, f);
+  storage.setItem(FILTER_KEY, f);
   notifFilter.value = f;
 };
 export const hideReclaimed = signal<boolean>(
-  localStorage.getItem(HIDE_KEY) === "1",
+  storage.getItem(HIDE_KEY) === "1",
 );
 export const setHideReclaimed = (v: boolean) => {
-  localStorage.setItem(HIDE_KEY, v ? "1" : "0");
+  storage.setItem(HIDE_KEY, v ? "1" : "0");
   hideReclaimed.value = v;
 };
 
