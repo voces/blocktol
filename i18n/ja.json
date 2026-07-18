@@ -383,6 +383,154 @@
     "message": "開始中…",
     "hash": "bbe5fc3b9ef39f994c259eaf233d625a500b5219784c82f73b50808d4f79d5dc"
   },
+  "profile.account": {
+    "message": "アカウント",
+    "hash": "7e1b0d5641f2640ce9a953ec231eea2c27a2a7633f7d3c273e5735e2b30c10b7"
+  },
+  "profile.anonymous": {
+    "message": "匿名",
+    "hash": "e7a8aa2df7e5d0b233da615af4e7fef148bec39aef1709da0a80391ad0316563"
+  },
+  "profile.appearance": {
+    "message": "外観",
+    "hash": "3907fa7f80722a6fc58cd8c1bd30abf7638095d6774f183b6e831b7093957d1b"
+  },
+  "profile.bestBuild": {
+    "message": "ベストビルド",
+    "hash": "676049cef880921948d99c5638210b3cd6c39a41b733da353891d9076c06136b"
+  },
+  "profile.cancel": {
+    "message": "キャンセル",
+    "hash": "19766ed6ccb2f4a32778eed80d1928d2c87a18d7c275ccb163ec6709d3eb2e27"
+  },
+  "profile.close": {
+    "message": "プロフィールを閉じる",
+    "hash": "402eed09289ba7c12cf4eedfd4095bc5311a02fa81a6cafdab1679cdd6b059c9"
+  },
+  "profile.community": {
+    "message": "コミュニティ",
+    "hash": "bb501d7877eb7ddbd40baf7990e8058212e8140a2e6ceaaf2d54a6412b770bfd"
+  },
+  "profile.deleteSub": {
+    "message": "プロフィールを削除しビルドのリンクを解除",
+    "hash": "fc0926dfcd84d8e2f7d58c7209665f0541001702bb341a34054b44c127a6c75e"
+  },
+  "profile.discordSub": {
+    "message": "デイリー迷路について話したり、バグを報告したり、アイデアを共有しよう。",
+    "hash": "5921b62930113452b7aa6da1f750fa6b88a6efee7c34151de737d5430bede7a8"
+  },
+  "profile.discordTitle": {
+    "message": "Discordに参加",
+    "hash": "895e7564fa79441e107135d4140b0b81cd63b051530c4f36a90a13ba89f63e26"
+  },
+  "profile.editName": {
+    "message": "名前を編集",
+    "hash": "308b88fcc3dffe504d196e7e9d5e1e30563df75511cb09d41513625ad00c93ec"
+  },
+  "profile.exportData": {
+    "message": "データをエクスポート",
+    "hash": "fddb7f9c69fed4ad9beacb19b8a170b3957ce369fdbd06841c29303f0959f905"
+  },
+  "profile.exportSub": {
+    "message": "保存されているすべてのデータをダウンロード",
+    "hash": "0838dfb1403683d74ae9e7ceb9fb08dac14386e78d147411c681dc08e90e430a"
+  },
+  "profile.exporting": {
+    "message": "準備中…",
+    "hash": "5d1fa38bcf0d88ca03d187718fd6cf8ad128f288f66d402d331476a85774d08d"
+  },
+  "profile.joinedLabel": {
+    "message": "{date} に開始",
+    "hash": "ae2412fb005b47299128e0e4a9aa89bcc72ae73c04c3c8bc1a8b8a9046ed8b41"
+  },
+  "profile.medianPercentile": {
+    "message": "中央パーセンタイル",
+    "hash": "5e7ad4b35b400cc7e6ea424e845280a7c50808a1897f73cc06c3687b529995bd"
+  },
+  "profile.moveSub": {
+    "message": "コードをスキャンするかログインリンクをコピー",
+    "hash": "0337b8438ebaa15ee6c289d75049f7af7caa88a1c896f8a02d9af6d4e0db80e7"
+  },
+  "profile.notifDailySub": {
+    "message": "プレイした日の順位が確定",
+    "hash": "b99801ebe12b3138a79c06536778c3c02d8fefe6b3a27eca87f96887e7dc1a50"
+  },
+  "profile.notifDailyTitle": {
+    "message": "デイリー確定",
+    "hash": "8ef35eea9c542c91671ed0c50e176c4a29274ab5afa53f38f48fc22d3e19d02b"
+  },
+  "profile.notifLostTopSub": {
+    "message": "誰かがあなたの#1を抜いた",
+    "hash": "715b9bb5c22572facdea02d6383bc9378ed1d50ab8ecd0c517c03380db22793e"
+  },
+  "profile.notifLostTopTitle": {
+    "message": "首位を失った",
+    "hash": "e0e368df0f182850bfd5eb5d34e9ebfb9ee92703d68cdfbe25bfa43a97a18c0e"
+  },
+  "profile.online": {
+    "message": "{count} 人オンライン",
+    "hash": "12dd108ecbbc58747f8d3aaf271f1964529890aebe3e8c3939e6a166b7c07ce8"
+  },
+  "profile.open": {
+    "message": "プロフィールを開く",
+    "hash": "7234213a42c2635bb19176b6ec3c8d639e0d5db2b8ceb4e01f5f0d1c29d46b81"
+  },
+  "profile.played": {
+    "message": "プレイ数",
+    "hash": "900b1e4c46b4edab74897019997447324dd8c0b529bb7a61eb5b4d90907340f0"
+  },
+  "profile.preferences": {
+    "message": "設定",
+    "hash": "66962f72a08883733c35df6f82a049b929f9579f19c4bc083ac99bead602eab3"
+  },
+  "profile.privacy": {
+    "message": "プライバシーと収集するデータ",
+    "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "profile.pushNotifications": {
+    "message": "プッシュ通知",
+    "hash": "a1fa4443fe4abe63d6a29c433e4e8f23604c6bda89d6cec04bc261b5021f74e4"
+  },
+  "profile.rating": {
+    "message": "レーティング",
+    "hash": "9f29530464f730bd28f137cfc9ea941af137187b57c21e8ff5fefed520764d99"
+  },
+  "profile.records": {
+    "message": "記録",
+    "hash": "47a84e92d5b225ee185aff8a30bafb3240a41b84c740bcaeac43772dd7f2fd37"
+  },
+  "profile.save": {
+    "message": "保存",
+    "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
+  },
+  "profile.themeDark": {
+    "message": "ダーク",
+    "hash": "60acc53f13a5d1bf115878c4a785e9a43e8286c4139a8402a6ac7d23966f9153"
+  },
+  "profile.themeLight": {
+    "message": "ライト",
+    "hash": "dbcd5e7bb7a0f538810de44c3efbd813037ee3fa358747bb71fa58e157af45f7"
+  },
+  "profile.themeSystem": {
+    "message": "システム",
+    "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
+  },
+  "profile.title": {
+    "message": "プロフィール",
+    "hash": "d696a35bdd1883da07a8d6c41bb7a3153381b23aa197629ee273479a6eaa5a9c"
+  },
+  "profile.zoom": {
+    "message": "配置時にズーム",
+    "hash": "fa7175faa2861ab5a2cd848aee1843a9705ec4282aae139dfa147edfda5b8893"
+  },
+  "profile.zoomOff": {
+    "message": "オフ",
+    "hash": "ca7981b46ecf2c1787b6d76d81d9fd7fa0ca95842e2fcc2a452869891a9334d1"
+  },
+  "profile.zoomSub": {
+    "message": "タッチ時に盤面を拡大します。",
+    "hash": "ae679914ecf9d1786f752e9b5ccf4f3f747a0287255450bb36a870499b1fce03"
+  },
   "standings.between": {
     "message": "間に{count}人",
     "hash": "ffbf828e0451b93a1d13bd008db4eb72ef217c7f0080f9717a8b00d6856873d3"
