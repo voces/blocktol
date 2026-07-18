@@ -11,6 +11,10 @@
     "message": "Descartar",
     "hash": "48845bff334a50a59aaecf499f28a7a24c3b4b891b8b18a9f1169ad8e8a6b261"
   },
+  "a11y.loading": {
+    "message": "Cargando",
+    "hash": "dc380888c4e2c7762212480ff86eb39150ec70b45009c33bc6adcbd0041384b1"
+  },
   "a11y.qr": {
     "message": "Código QR de inicio de sesión",
     "hash": "f8c8965916777feebc4fb096094019cbbed9b767208b165f74d039651680c7bc"
@@ -258,6 +262,178 @@
   "intro.tipUpgrade": {
     "message": "Mejora bloques para frenar al corredor cuando pase.",
     "hash": "f2249be52d85d212850711b8fe2bcb4346e518494f42b501b2f9d32abc667072"
+  },
+  "mg.cameAlong": {
+    "message": "{runs} de este dispositivo se incluyeron.",
+    "hash": "6d74ee8d2ed44a85a36835399822c6671c434001a78a693b06f10a682f24481e"
+  },
+  "mg.cameFirst": {
+    "message": "fue primero",
+    "hash": "ffccb6f9767adfe1b5069ad652a0b15da7c69d84b7788ac62d105db0f0e4d871"
+  },
+  "mg.caption": {
+    "message": "Cualquiera con este enlace puede volver a iniciar sesión como {name} en cualquier dispositivo.",
+    "hash": "33febf0fee3731ea9cbfa2aa23ce7658a673204be24a6691b53e7d0e270fcb74"
+  },
+  "mg.combineDailySub": {
+    "message": "Para cualquier día que jugaras en ambos, conservamos el intento que {first}.",
+    "hash": "2f88c8373dae8209b4894a5aa94e777d47e23ecca542ba5ddca17e3053edfd8a"
+  },
+  "mg.combineElseSub": {
+    "message": "Tus otras partidas de ambas cuentas se conservan. {math}.",
+    "hash": "d4928bd5628a5fa216b1af69d6c7ca557f0dc33669bdbe9b746b0877faba2b73"
+  },
+  "mg.combineMath": {
+    "message": "{a} + {b} se convierte en {sum}",
+    "hash": "68a873c89c95275bb462cd6e810ffc67365cd8b1168308e80165e3be679aad39"
+  },
+  "mg.confirmLabel": {
+    "message": "Continuar en este dispositivo como…",
+    "hash": "f61e214b845656e2173f96ccbdb57cacbf74a2cc0c78820086feaa2fe4739a50"
+  },
+  "mg.continueAs": {
+    "message": "Continuar como {name}",
+    "hash": "860e0716370eaf82ebece660b0873b389a61248232013bd3ce8aba535e79da0c"
+  },
+  "mg.copyToEnable": {
+    "message": "Copia el enlace para habilitar esto",
+    "hash": "e9a75731e81f4e604bc424cbf27a898791be87e17223acdb109e86e70f645c32"
+  },
+  "mg.dailyAttempts": {
+    "message": "Intentos del laberinto diario",
+    "hash": "986eebf45d3552cc64027397f2c072546ab5615fb0724b946f1d16739a896ca8"
+  },
+  "mg.everythingElse": {
+    "message": "Todo lo demás",
+    "hash": "cd6c5f59d15c09f42e1ee255d96ae1f7ed672eeac71f1e352432c96512b5584c"
+  },
+  "mg.fbIt": {
+    "message": "él",
+    "hash": "2ad8a7049d7c5511ac254f5f51fe70a046ebd884729056f0fe57f5160d467153"
+  },
+  "mg.fbOtherProfile": {
+    "message": "tu otro perfil",
+    "hash": "80567250f728903049bad941e90ded53a1fb87b0916ff38032358e26335a1409"
+  },
+  "mg.fbPlayer": {
+    "message": "Jugador",
+    "hash": "64aee8c6cbd026d9ea9221661f7632351d9a741198cd01ca017450b56f78a206"
+  },
+  "mg.fbProfile": {
+    "message": "perfil",
+    "hash": "1900eab6c028483d7126599ee6f50de0d27907b5c65fa90524580b4b0f9852b0"
+  },
+  "mg.fbTheOtherProfile": {
+    "message": "el otro perfil",
+    "hash": "3a0cffffce57c53560103215b73de9b18a1211e1690a915cb870622d0f69aa15"
+  },
+  "mg.fbThisPlayer": {
+    "message": "este jugador",
+    "hash": "bd9bad48cdb82c1a323382a0c6d0caf24e095051a09aba52c593ba36bfae6a05"
+  },
+  "mg.fbThisProfile": {
+    "message": "este perfil",
+    "hash": "f119e4acc42ef1cddf66f0fd7afb7cefe58a9e4b801a806dde836eafe4960fac"
+  },
+  "mg.fbThisProfileCap": {
+    "message": "Este perfil",
+    "hash": "dd074a217c09afb3b6ffe82b192121926ce0105e74c7b9e61cb1704e82932e21"
+  },
+  "mg.fbYou": {
+    "message": "ti",
+    "hash": "bb0347a468d97e98a9c00e37cebec1ab930f6f1221cae0f1fbb92b07e1900ba2"
+  },
+  "mg.fbYour": {
+    "message": "tu",
+    "hash": "4d040d3f6466018c568aadf69a666d4257e5bb350a8e06f7198aedb6b12386fe"
+  },
+  "mg.keepAsPrimary": {
+    "message": "Conservar como principal",
+    "hash": "7e46cc9b2dc7b6a22b9e8558c39edb48981cf72d00203ad9faaf45e125ea12f2"
+  },
+  "mg.keepPlayingAs": {
+    "message": "Seguir jugando como {name}",
+    "hash": "7f93e08a988e255bf32d7b0ff60200e02a524bb5151a6e89473e2a12526920ce"
+  },
+  "mg.linkSignsInAs": {
+    "message": "EL ENLACE INICIA SESIÓN COMO",
+    "hash": "403a7f5da9c401aeed5103f975d4afe890461ca922395234ff6a96cda1c06522"
+  },
+  "mg.mergeAccounts": {
+    "message": "Fusionar cuentas",
+    "hash": "3f284252b3814ab3851453421aa97477d336068d7a357199e36cef19fca0cd79"
+  },
+  "mg.mergeInto": {
+    "message": "Fusionar en {name}",
+    "hash": "72790ccba9b648242b2c1cf5fa60403e0ce8e9505639ade5c3270b6888894f0e"
+  },
+  "mg.mergeNote": {
+    "message": "El primer intento se mantiene, así que una fusión no puede elegir un tiempo más rápido.",
+    "hash": "57d7886d3d346398b1848e1beca8df75fc6a526e3c3ea11aa1cdd10328d10941"
+  },
+  "mg.mergeSub": {
+    "message": "Conserva un perfil con todo de ambos",
+    "hash": "9d54dadb412a3e05e577b7244bab45683b2c46f0ee50a9564cf18bdff00130a5"
+  },
+  "mg.mergeTitle": {
+    "message": "Fusionar los dos",
+    "hash": "33c71113aade69ad97e9b8e035f261a5a0bedf45c2256d30be19261e5003dbb8"
+  },
+  "mg.moreData": {
+    "message": "MÁS DATOS",
+    "hash": "bfd953e56edc832dd765a49c9e498fbcd1061ad831c660dc79b72a5f24efa7a7"
+  },
+  "mg.onThisDevice": {
+    "message": "En este dispositivo",
+    "hash": "38b9d88c1fdbee4f0ea76524cfaad211ef2c0a94d13a91a65a8c2831d749367d"
+  },
+  "mg.pickSub": {
+    "message": "puntuación {rating} · {runs}",
+    "hash": "c23418e5ba7c61381fcd3501291d60ae441ab0843d9e000595e9c2706277262b"
+  },
+  "mg.primaryDesc": {
+    "message": "El principal define el nombre, el color y la puntuación que conservas de aquí en adelante.",
+    "hash": "e891e70f72a45460b073c2553bcfe6eed273acc018f9a86f4494dc48b45a6937"
+  },
+  "mg.runs": {
+    "message": "{count, plural, one {# partida} many {# partidas} other {# partidas}}",
+    "hash": "e1c5a73ba72f7c18ced44777ea6b07c623b61294a412a2e26af23bc9605e1e48"
+  },
+  "mg.saveLinkFirst": {
+    "message": "Guarda primero el enlace de {name}",
+    "hash": "5cb82c912b54526125fc0ea7b0f784607777882c56f1e5aea9e8609ef9419b5e"
+  },
+  "mg.sideSub": {
+    "message": "se unió en {date} · {runs}",
+    "hash": "3250187aba2d32ef3ef40862cd5c6e1b52ad6801400c3a14865ea2033e286377"
+  },
+  "mg.signedInAs": {
+    "message": "Sesión iniciada como {name}",
+    "hash": "599a82d9808993c5c461f162f0fdb10090df39fdbb4ef22fd3faf827968f3034"
+  },
+  "mg.startNewGame": {
+    "message": "¿No eres tú? Empieza una partida nueva",
+    "hash": "deb83638d2123a356416d3ddf57d7734aed4a536cda1db4dcbe0f85c7b7008ec"
+  },
+  "mg.switchSub": {
+    "message": "Deja {name}; solo accesible por su enlace",
+    "hash": "9140e958efa7aca847e23b5733435bdfd152adb1f00fc01b98496328293f9b8c"
+  },
+  "mg.switchTo": {
+    "message": "Cambiar a {name}",
+    "hash": "f6d893e24f3c3d2f5209b0b66739979a81d30738415c7b6f33b0dfab7ee6fd59"
+  },
+  "mg.switchToTitle": {
+    "message": "¿Cambiar a {name}?",
+    "hash": "c0fa6ef1a7cf72c4e579b1a860a6743dc306d376c92650dd44cf987e76cf19b3"
+  },
+  "mg.switchWarn": {
+    "message": "Este dispositivo jugará como {other} de ahora en adelante. {self} ya no estará aquí; sus {runs} viven solo tras su enlace de inicio de sesión.",
+    "hash": "099f1536a8d36be40b2288975a5038901872ccc10364c067abf44b4df294ab40"
+  },
+  "mg.whatCombine": {
+    "message": "Qué combinaremos",
+    "hash": "a3b2a73f4adb535c3f9612c2b2b10d231a89c04f3afd880d30c04b6db408aa93"
   },
   "move.copied": {
     "message": "¡Copiado!",
