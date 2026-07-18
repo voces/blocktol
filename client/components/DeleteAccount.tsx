@@ -4,6 +4,7 @@ import { api } from "../api.ts";
 import { clearFreePlay } from "./Game/freePlay.ts";
 import { startFreshId } from "../util/id.ts";
 import { Modal } from "./Modal.tsx";
+import { t, tJsx } from "../util/t.ts";
 
 const TrashIcon = () => (
   <svg width={18} height={18} viewBox="0 0 18 18" aria-hidden="true">
@@ -73,28 +74,23 @@ export const DeleteAccount = (
         <button
           type="button"
           class="modal__icon tapc"
-          aria-label="Back"
+          aria-label={t("a11y.back")}
           onClick={onBack}
         >
           ‹
         </button>
-        <span class="move__title">Delete my data</span>
+        <span class="move__title">{t("del.title")}</span>
         <button
           type="button"
           class="modal__icon modal__close-x tapc"
-          aria-label="Close"
+          aria-label={t("a11y.close")}
           onClick={onClose}
         >
           ×
         </button>
       </div>
       <div class="move__body">
-        <p class="move__lead">
-          This permanently removes your profile, name, preferences, and push
-          subscriptions from this game, and unlinks every maze you've built from
-          you. Your builds stay on past leaderboards as an anonymous player.
-          This can't be undone, and this device will start over as a new player.
-        </p>
+        <p class="move__lead">{t("del.lead")}</p>
 
         <form
           class="delete-confirm"
@@ -104,7 +100,9 @@ export const DeleteAccount = (
           }}
         >
           <label class="delete-confirm__label" htmlFor="delete-confirm-input">
-            Type <b class="mono">{CONFIRM_WORD}</b> to confirm
+            {tJsx("del.confirmLabel", {
+              word: <b class="mono">{CONFIRM_WORD}</b>,
+            })}
           </label>
           <input
             id="delete-confirm-input"
@@ -122,7 +120,7 @@ export const DeleteAccount = (
 
         {failed && (
           <div class="delete-error" role="alert">
-            Something went wrong — your data was not deleted. Please try again.
+            {t("del.error")}
           </div>
         )}
 
@@ -132,15 +130,13 @@ export const DeleteAccount = (
           disabled={!armed}
           onClick={remove}
         >
-          {busy ? "Deleting…" : "Delete everything"}
+          {busy ? t("del.deleting") : t("del.deleteBtn")}
         </button>
 
         <div class="move__safety delete-safety">
           <TrashIcon />
           <div>
-            Prefer to keep your builds but move to a new device instead? Use
-            {" "}
-            <b>Move to another device</b> from your profile.
+            {tJsx("del.moveHint", { move: <b>{t("move.title")}</b> })}
           </div>
         </div>
       </div>

@@ -3,6 +3,10 @@
     "message": "Close",
     "description": "Accessible label for a generic modal/dialog close button."
   },
+  "a11y.back": {
+    "message": "Back",
+    "description": "Accessible label for a sheet's back (‹) button that returns to the previous view."
+  },
   "a11y.dismiss": {
     "message": "Dismiss",
     "description": "Accessible label for the toast dismiss (×) button."
@@ -66,6 +70,54 @@
   "cal.rankedP": {
     "message": "ranked p{p}",
     "description": "Part of a calendar cell's tooltip: the day's ranked percentile. {p} is a pre-formatted percentile number; \"p\" is the percentile marker."
+  },
+  "move.title": {
+    "message": "Move to another device",
+    "description": "Title of the move-to-device sheet (and the phrase referenced from the delete sheet); transfers the account to a new device via a sign-in link/QR."
+  },
+  "move.lead": {
+    "message": "Scan this code with your other device's camera, or copy the link below and open it there.",
+    "description": "Intro text on the move-to-device sheet explaining the QR code + copyable link."
+  },
+  "move.copy": {
+    "message": "Copy",
+    "description": "Button that copies the sign-in link to the clipboard."
+  },
+  "move.copied": {
+    "message": "Copied!",
+    "description": "Transient confirmation on the copy button after the link is copied."
+  },
+  "move.safety": {
+    "message": "Anyone with this link can sign in as {name}. It doesn't expire, so keep it private.",
+    "description": "Warning on the move-to-device sheet. {name} is the player's display name shown in bold; the link is a permanent bearer credential."
+  },
+  "del.title": {
+    "message": "Delete my data",
+    "description": "Title of the account-deletion confirmation sheet."
+  },
+  "del.lead": {
+    "message": "This permanently removes your profile, name, preferences, and push subscriptions from this game, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player. This can't be undone, and this device will start over as a new player.",
+    "description": "Explanation of what account deletion does (anonymize-in-place: profile removed, builds kept but unlinked, irreversible)."
+  },
+  "del.confirmLabel": {
+    "message": "Type {word} to confirm",
+    "description": "Label over the delete confirmation input. {word} is the literal confirmation word (the English word DELETE, shown in bold monospace) the user must type — see glossary DELETE; keep {word} itself untranslated."
+  },
+  "del.error": {
+    "message": "Something went wrong — your data was not deleted. Please try again.",
+    "description": "Error shown when the delete request fails; reassures that nothing was deleted."
+  },
+  "del.deleting": {
+    "message": "Deleting…",
+    "description": "Transient label on the delete button while the request is in flight. Trailing ellipsis."
+  },
+  "del.deleteBtn": {
+    "message": "Delete everything",
+    "description": "The button that performs the irreversible account deletion."
+  },
+  "del.moveHint": {
+    "message": "Prefer to keep your builds but move to a new device instead? Use {move} from your profile.",
+    "description": "Footnote on the delete sheet pointing to the non-destructive alternative. {move} is the bold phrase \"Move to another device\" (the move sheet's title)."
   },
   "common.connecting": {
     "message": "Connecting",

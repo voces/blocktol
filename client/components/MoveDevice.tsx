@@ -4,6 +4,7 @@ import { getId } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
 import { Modal } from "./Modal.tsx";
 import { QrCode } from "./QrCode.tsx";
+import { t, tJsx } from "../util/t.ts";
 
 const CopyIcon = () => (
   <svg width={15} height={15} viewBox="0 0 16 16" aria-hidden="true">
@@ -73,26 +74,23 @@ export const MoveDevice = (
         <button
           type="button"
           class="modal__icon tapc"
-          aria-label="Back"
+          aria-label={t("a11y.back")}
           onClick={onBack}
         >
           ‹
         </button>
-        <span class="move__title">Move to another device</span>
+        <span class="move__title">{t("move.title")}</span>
         <button
           type="button"
           class="modal__icon modal__close-x tapc"
-          aria-label="Close"
+          aria-label={t("a11y.close")}
           onClick={onClose}
         >
           ×
         </button>
       </div>
       <div class="move__body">
-        <p class="move__lead">
-          Scan this code with your other device's camera, or copy the link below
-          and open it there.
-        </p>
+        <p class="move__lead">{t("move.lead")}</p>
         <div class="move__qr">
           <QrCode value={url} />
           <div class="move__qr-logo">
@@ -103,15 +101,15 @@ export const MoveDevice = (
           <div class="move__url mono">{display}</div>
           <button type="button" class="move__copy tapc" onClick={copy}>
             <CopyIcon />
-            {copied ? "Copied!" : "Copy"}
+            {copied ? t("move.copied") : t("move.copy")}
           </button>
         </div>
         <div class="move__safety">
           <ShieldIcon />
           <div>
-            Anyone with this link can sign in as{" "}
-            <b class="move__name">{name}</b>. It doesn't expire, so keep it
-            private.
+            {tJsx("move.safety", {
+              name: <b class="move__name">{name}</b>,
+            })}
           </div>
         </div>
       </div>
