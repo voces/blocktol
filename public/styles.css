@@ -2515,6 +2515,9 @@ a:hover {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-dim);
+  /* Keep a two-token value (e.g. "175 ms") on one line rather than wrapping the
+     unit under the number in the narrow value column. */
+  white-space: nowrap;
 }
 
 /* Segmented System / Light / Dark — same shape as the runs sort toggle. */
