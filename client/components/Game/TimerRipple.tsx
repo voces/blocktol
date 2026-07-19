@@ -25,7 +25,7 @@ import { timerPulse } from "./timerPulse.ts";
  */
 // Remaining-seconds marks that fire a wave → the crest's peak brightness at
 // each. It dims as the clock winds down, so the cue softens toward the end.
-const MARK_PEAK: Record<number, number> = { 10: 0.4, 3: 0.3, 2: 0.2, 1: 0.1 };
+const MARK_PEAK: Record<number, number> = { 10: 0.4, 3: 0.3, 2: 0.3, 1: 0.3 };
 const RIPPLE_MARKS = Object.keys(MARK_PEAK).map(Number).sort((a, b) => b - a);
 
 const N = 20; // board is 20×20; interior play area is cells 1..18.
