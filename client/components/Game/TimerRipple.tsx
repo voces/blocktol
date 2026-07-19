@@ -19,10 +19,10 @@ import { timerPulse } from "./timerPulse.ts";
  * dimming with distance until it dies before the far wall.
  *
  * Marks descend so a single pass down the clock fires each once; the closing
- * seconds cluster (5/3/2/1) so the surface stirs more as the window runs out.
+ * seconds cluster (3/2/1) so the surface stirs more as the window runs out.
  * Only during a live `building` countdown — staged/viewing/running are inert.
  */
-const RIPPLE_MARKS = [30, 15, 10, 5, 3, 2, 1];
+const RIPPLE_MARKS = [10, 3, 2, 1];
 
 const N = 20; // board is 20×20; interior play area is cells 1..18.
 const LO = 1;
@@ -36,7 +36,7 @@ const HI = 18;
 // (0.4 → the far wall still gets 60%), so it visibly reaches the whole board
 // instead of dying mid-way. Every reachable cell is drawn; a longer maze just
 // takes proportionally longer to fill, which is intended.
-const DELAY_PER_UNIT = 0.025;
+const DELAY_PER_UNIT = 0.02;
 const BASE_DELAY = 0.14;
 const DIM = 0.4;
 const PEAK = 0.5;
