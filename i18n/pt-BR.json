@@ -756,8 +756,8 @@
     "hash": "e2861894f065ab75433a07f7a17a9b8df3ffdc01ff29e8723ba0d9ff8c2ec437"
   },
   "profile.zoomDelaySub": {
-    "message": "Um toque rápido pula o zoom.",
-    "hash": "a71a03237dcb6b6075c520059e024463340d3b36d5880ab2ee1910f57799d57a"
+    "message": "Adia a ampliação ao tocar.",
+    "hash": "0459b41d5146acf369f54cbcf88094d323b4ee2ce737a271ec9510c47d0085d2"
   },
   "profile.zoomDelayValue": {
     "message": "{ms} ms",

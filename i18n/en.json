@@ -652,7 +652,7 @@
     "description": "Preference label (and slider aria-label) for the delay before the touch placing zoom starts."
   },
   "profile.zoomDelaySub": {
-    "message": "A quick tap skips the zoom.",
+    "message": "Delays magnifying on touch.",
     "description": "Subtext explaining the zoom-delay preference."
   },
   "profile.zoomDelayInstant": {
