@@ -4,6 +4,15 @@
 # i18n:check gate in ci.yml enforces independently, so a broken run fails loudly
 # rather than shipping English. No-ops when there are no target locales or no
 # ANTHROPIC_API_KEY (forks). See docs/localization.md.
+#
+# The catalog commit is pushed with a GitHub App installation token, NOT the
+# built-in GITHUB_TOKEN: pushes made with GITHUB_TOKEN can't trigger further
+# workflows (GitHub's recursion guard), so CI on the auto-translate commit lands
+# in "action_required" and needs a manual approve. An App push is a real
+# write-identity, so ci.yml runs automatically. Requires two repo secrets —
+# I18N_BOT_APP_ID and I18N_BOT_PRIVATE_KEY — from a GitHub App (Contents: write)
+# installed on the repo; the job is fork-gated below (secrets aren't exposed to
+# forks anyway), so only the first-party repo reaches the token step.
 name: Translate
 on:
   push:
@@ -23,10 +32,22 @@ jobs:
     if: ${{ github.event.repository.fork == false }}
     runs-on: ubuntu-latest
     steps:
+      # Mint a short-lived installation token so the catalog push is attributed
+      # to the App (a real write-identity) and therefore triggers ci.yml, rather
+      # than the GITHUB_TOKEN push that GitHub gates behind manual approval.
+      - name: App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.I18N_BOT_APP_ID }}
+          private-key: ${{ secrets.I18N_BOT_PRIVATE_KEY }}
+
       - name: Clone
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
+          # Persist the App token as the push credential (default is GITHUB_TOKEN).
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Install Deno
         uses: denoland/setup-deno@v2
@@ -42,8 +63,13 @@ jobs:
       - name: Commit catalogs
         run: |
           if [ -n "$(git status --porcelain i18n)" ]; then
-            git config user.name "blocktol-i18n[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            # Attribute the commit to the App's bot user so author and pusher
+            # match. (For a fully avatar-linked commit, use the
+            # <bot-user-id>+<slug>[bot]@users.noreply.github.com form — the id is
+            # `gh api /users/<slug>[bot] --jq .id`; the slug-only address below
+            # pushes fine and just doesn't link the avatar.)
+            git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+            git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
             git add i18n
             git commit -m "i18n: auto-translate catalogs"
             git push
