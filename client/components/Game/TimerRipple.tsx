@@ -18,11 +18,15 @@ import { timerPulse } from "./timerPulse.ts";
  * dark (never drawn over a piece), and dissipates as it travels — its crest
  * dimming with distance until it dies before the far wall.
  *
- * Marks descend so a single pass down the clock fires each once; the closing
- * seconds cluster (3/2/1) so the surface stirs more as the window runs out.
+ * Marks descend so a single pass down the clock fires each once; the crest
+ * gets *quieter* the closer the window is to closing (see MARK_PEAK) — a
+ * fainter nudge as the seconds run out, not a louder alarm.
  * Only during a live `building` countdown — staged/viewing/running are inert.
  */
-const RIPPLE_MARKS = [10, 3, 2, 1];
+// Remaining-seconds marks that fire a wave → the crest's peak brightness at
+// each. It dims as the clock winds down, so the cue softens toward the end.
+const MARK_PEAK: Record<number, number> = { 10: 0.4, 3: 0.3, 2: 0.3, 1: 0.3 };
+const RIPPLE_MARKS = Object.keys(MARK_PEAK).map(Number).sort((a, b) => b - a);
 
 const N = 20; // board is 20×20; interior play area is cells 1..18.
 const LO = 1;
@@ -39,7 +43,6 @@ const HI = 18;
 const DELAY_PER_UNIT = 0.02;
 const BASE_DELAY = 0.14;
 const DIM = 0.4;
-const PEAK = 0.5;
 
 // Fire each mark this many seconds EARLY — the cue leads the clock so the "1s"
 // ripple kicks off at 1.25s left, giving the wave room to sweep out before the
@@ -96,9 +99,10 @@ const nearestFree = (ax: number, ay: number, blocked: Set<number>): Point => {
 };
 
 // Dijkstra from the source over free cells, then a render cell per reachable
-// square. The farthest-launching cell is flagged `last` so its animation end
-// can retire the whole wave without a timer.
-const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
+// square. `peak` is this wave's crest brightness (per mark, see MARK_PEAK); the
+// farthest-launching cell is flagged `last` so its animation end can retire the
+// whole wave without a timer.
+const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
   // Every piece is a 2×2 (see Block's `size`): a block at (x,y) fills the four
   // cells (x,y),(x+1,y),(x,y+1),(x+1,y+1). Mark all four so the crest leaves the
   // whole piece dark, not just its top-left corner.
@@ -145,7 +149,7 @@ const floodCells = (blocks: ReadonlyArray<Point>): Cell[] => {
     cells.push({
       x: k % N,
       y: Math.floor(k / N),
-      peak: PEAK * (1 - DIM * (d / norm)),
+      peak: peak * (1 - DIM * (d / norm)),
       delay,
       last: false,
     });
@@ -195,7 +199,10 @@ export const TimerRipple = () => {
       // once must not later replay the ones it skipped), but launch just one
       // wave — the surface stirs once per crossing, never a burst.
       for (const m of passed) firedRef.current.add(m);
-      const cells = floodCells(blocksRef.current);
+      // The most urgent mark reached sets the crest's intensity (dimmer the
+      // closer to the end).
+      const mark = Math.min(...passed);
+      const cells = floodCells(blocksRef.current, MARK_PEAK[mark]);
       if (!cells.length) return;
       setWaves((w) => [...w, { id: nextId.current++, cells }]);
       // Cue the button's drop, in sync (it is the source).
