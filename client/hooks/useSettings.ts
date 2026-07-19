@@ -116,6 +116,7 @@ export const adoptServerSettings = (settings: Settings) => {
   const c = current.notifications;
   if (
     settings.theme === current.theme && settings.zoom === current.zoom &&
+    settings.zoomDelay === current.zoomDelay &&
     settings.language === current.language &&
     n.lostTop === c.lostTop && n.dailyFinal === c.dailyFinal
   ) {

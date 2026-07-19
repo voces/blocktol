@@ -647,6 +647,22 @@
     "message": "Off",
     "description": "Shown as the zoom value when magnification is disabled (1×)."
   },
+  "profile.zoomDelay": {
+    "message": "Zoom delay",
+    "description": "Preference label (and slider aria-label) for the delay before the touch placing zoom starts."
+  },
+  "profile.zoomDelaySub": {
+    "message": "Wait before magnifying, so a quick tap places without zooming.",
+    "description": "Subtext explaining the zoom-delay preference."
+  },
+  "profile.zoomDelayInstant": {
+    "message": "Instant",
+    "description": "Shown as the zoom-delay value when there's no delay (zoom starts immediately)."
+  },
+  "profile.zoomDelayValue": {
+    "message": "{ms} ms",
+    "description": "Zoom-delay value in milliseconds. {ms} is the number of milliseconds."
+  },
   "profile.community": {
     "message": "Community",
     "description": "Section title for the Discord community card."

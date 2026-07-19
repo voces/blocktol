@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import {
   clampZoom,
+  clampZoomDelay,
   defaultNotificationPrefs,
   defaultSettings,
   parseSettings,
@@ -21,12 +22,14 @@ Deno.test("parseSettings: reads a JSON string or a plain object", () => {
   assertEquals(parseSettings('{"theme":"dark","zoom":1.5}'), {
     theme: "dark",
     zoom: 1.5,
+    zoomDelay: 0,
     language: "system",
     notifications: notifs(),
   });
   assertEquals(parseSettings({ theme: "light", zoom: 2 }), {
     theme: "light",
     zoom: 2,
+    zoomDelay: 0,
     language: "system",
     notifications: notifs(),
   });
@@ -47,6 +50,7 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
   assertEquals(parseSettings({ theme: "neon", zoom: 5 }), {
     theme: "system",
     zoom: 2.5,
+    zoomDelay: 0,
     language: "system",
     notifications: notifs(),
   });
@@ -54,6 +58,7 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
   assertEquals(parseSettings({ zoom: 0.2 }), {
     theme: "system",
     zoom: 1,
+    zoomDelay: 0,
     language: "system",
     notifications: notifs(),
   });
@@ -61,6 +66,7 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
   assertEquals(parseSettings({ theme: "dark" }), {
     theme: "dark",
     zoom: 2,
+    zoomDelay: 0,
     language: "system",
     notifications: notifs(),
   });
@@ -93,4 +99,21 @@ Deno.test("clampZoom clamps to [1, 2.5] and defaults NaN", () => {
   assertEquals(clampZoom(3), 2.5);
   assertEquals(clampZoom(1.7), 1.7);
   assertEquals(clampZoom(NaN), 2);
+});
+
+Deno.test("clampZoomDelay clamps to [0, 500] and defaults NaN", () => {
+  assertEquals(clampZoomDelay(-100), 0);
+  assertEquals(clampZoomDelay(1000), 500);
+  assertEquals(clampZoomDelay(250), 250);
+  assertEquals(clampZoomDelay(NaN), 0);
+});
+
+Deno.test("parseSettings: zoomDelay reads/clamps, else defaults to 0", () => {
+  assertEquals(parseSettings({ zoomDelay: 250 }).zoomDelay, 250);
+  // Out of range clamps to the nearest bound.
+  assertEquals(parseSettings({ zoomDelay: 5000 }).zoomDelay, 500);
+  assertEquals(parseSettings({ zoomDelay: -1 }).zoomDelay, 0);
+  // Absent / non-numeric → the no-delay default.
+  assertEquals(parseSettings({}).zoomDelay, 0);
+  assertEquals(parseSettings({ zoomDelay: "soon" }).zoomDelay, 0);
 });

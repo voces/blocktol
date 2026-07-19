@@ -5,11 +5,11 @@ import { Point } from "../../../common/types.ts";
 import { MessageMap } from "../../api.ts";
 import {
   BoardBlock,
+  clearTouchZoom,
   dragMoved,
   invalid,
   placingBlock,
   thunderHover,
-  touching,
   transitionBlock,
 } from "./interaction.ts";
 import { Verdict } from "./verdict.ts";
@@ -157,7 +157,7 @@ export const useGameState = () => {
     setPower(-1);
     setTime(-1);
     setDate(NaN);
-    touching.value = false;
+    clearTouchZoom();
     invalid.value = false;
     transitionBlock.value = undefined;
     placingBlock.value = { ...placingBlock.value, placing: false };
@@ -193,7 +193,7 @@ export const useGameState = () => {
     setPower(-1);
     setTime(-1);
     deadlineRef.current = null;
-    touching.value = false;
+    clearTouchZoom();
     invalid.value = false;
     transitionBlock.value = undefined;
     placingBlock.value = { ...placingBlock.value, placing: false };
@@ -227,7 +227,7 @@ export const useGameState = () => {
     const usedPower = maze.filter((b) => b.thunder).length;
     setBricks(bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - usedBricks));
     setPower(powerTotal < 0 ? -1 : Math.max(0, powerTotal - usedPower));
-    touching.value = false;
+    clearTouchZoom();
     invalid.value = false;
     transitionBlock.value = undefined;
     thunderHover.value = undefined;

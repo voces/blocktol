@@ -41,3 +41,32 @@ export const dragMoved = signal(false);
 
 // A touch gesture is in progress (drives the placing zoom).
 export const touching = signal(false);
+
+// The placing zoom is armed on a delay (settings.zoomDelay) so a quick
+// tap-to-place can finish before the board magnifies — a plain tap then never
+// triggers the disorienting zoom-in/zoom-out. `armTouchZoom` schedules the zoom
+// (immediately when the delay is 0, the default); `clearTouchZoom` both cancels
+// a still-pending arm and turns the zoom off, so every gesture-end / reset path
+// routes through it rather than poking `touching` directly (a lingering timer
+// would otherwise re-zoom after release).
+let zoomTimer: ReturnType<typeof setTimeout> | undefined;
+
+export const armTouchZoom = (delayMs: number) => {
+  clearTouchZoom();
+  if (delayMs <= 0) {
+    touching.value = true;
+    return;
+  }
+  zoomTimer = setTimeout(() => {
+    zoomTimer = undefined;
+    touching.value = true;
+  }, delayMs);
+};
+
+export const clearTouchZoom = () => {
+  if (zoomTimer !== undefined) {
+    clearTimeout(zoomTimer);
+    zoomTimer = undefined;
+  }
+  touching.value = false;
+};

@@ -7,14 +7,15 @@ import {
   solvable,
 } from "./helpers.ts";
 import {
+  armTouchZoom,
   dragMoved,
   invalid as invalidSignal,
   placingBlock,
   thunderHover,
-  touching,
   transitionBlock,
 } from "./interaction.ts";
 import { GameStateContext } from "./useGameState.ts";
+import { getSettings } from "../../hooks/useSettings.ts";
 
 // How far (in screen pixels) a grabbed block's pointer must travel before the
 // grab becomes a move rather than a tap. A tap upgrades to thunder or deletes
@@ -206,7 +207,10 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // An inert reviewed maze doesn't zoom either (`touching` drives the
       // placing zoom, which keys off time > 0 — live during a view now).
       if (viewing) return;
-      touching.value = true;
+      // Arm the zoom on the player's configured delay (read non-reactively so
+      // the listeners don't re-register per setting change) — 0 zooms at once,
+      // a larger value lets a quick tap-to-place land before the board magnifies.
+      armTouchZoom(getSettings().zoomDelay);
       callback(touch.clientX, touch.clientY, true);
       e.preventDefault();
     };

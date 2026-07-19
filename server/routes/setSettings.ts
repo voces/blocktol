@@ -4,7 +4,12 @@ import {
   updateUserLocale,
   updateUserSettings,
 } from "../db/user.ts";
-import { ZOOM_MAX, ZOOM_MIN } from "../../common/settings.ts";
+import {
+  ZOOM_DELAY_MAX,
+  ZOOM_DELAY_MIN,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "../../common/settings.ts";
 import { method } from "./apiHelpers.ts";
 
 // A partial patch — the client sends only what changed. Merged onto the stored
@@ -14,6 +19,7 @@ import { method } from "./apiHelpers.ts";
 const settingsBody = z.object({
   theme: z.enum(["system", "light", "dark"]).optional(),
   zoom: z.number().min(ZOOM_MIN).max(ZOOM_MAX).optional(),
+  zoomDelay: z.number().min(ZOOM_DELAY_MIN).max(ZOOM_DELAY_MAX).optional(),
   // A BCP-47 tag or the "system" sentinel; bounded so a junk value can't bloat
   // the row. The catalog tolerates an unsupported tag (resolves to English), so
   // we don't pin it to the current locale set here.
