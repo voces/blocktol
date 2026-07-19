@@ -7,6 +7,8 @@ import { clearFreePlay } from "./freePlay.ts";
 import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { RunClock, VerdictPill } from "./RunClock.tsx";
+import { TimerRipple } from "./TimerRipple.tsx";
+import { timerPulse } from "./timerPulse.ts";
 
 const IDLE_MS = 5_000;
 
@@ -158,6 +160,17 @@ export const Hud = () => {
   const outOfResources = bricks <= 0 && power <= 0;
   const flashing = (outOfResources || idle) && !pressing;
 
+  // The build clock is the source of the countdown water-ripple (see
+  // TimerRipple): each mark it crossed bumps timerPulse, and the button plays a
+  // quick "drop" (dip into the water) in sync so the wave reads as flung from
+  // it. State-driven (not a DOM class toggle) so the per-second re-render can't
+  // clobber the class mid-animation; onAnimationEnd clears it.
+  const pulse = timerPulse.value;
+  const [dropping, setDropping] = useState(false);
+  useEffect(() => {
+    if (pulse > 0) setDropping(true);
+  }, [pulse]);
+
   return (
     <div class="hud">
       <div class="hud__chips">
@@ -174,6 +187,7 @@ export const Hud = () => {
           </div>
         )}
       </div>
+      <TimerRipple />
       <div class="hud__controls">
         {showReset && (
           <button
@@ -207,12 +221,15 @@ export const Hud = () => {
             <button
               type="button"
               class={"hud__build tapc" + (flashing ? " flashing" : "") +
-                (pressing ? " pressing" : "")}
+                (pressing ? " pressing" : "") + (dropping ? " dropping" : "")}
               onClick={() => setTime(0)}
               onPointerDown={onPointerDown}
               onPointerUp={endPress}
               onPointerLeave={endPress}
               onPointerCancel={endPress}
+              onAnimationEnd={(e) => {
+                if (e.animationName === "buildDrop") setDropping(false);
+              }}
             >
               <span class="hud__build-face hud__build-time">
                 <span class="mono">{formatBuild(time)}</span>
