@@ -1679,7 +1679,7 @@ a:hover {
 }
 
 /* Countdown water-ripple (see TimerRipple): at set remaining-time marks
-   (30/15/10/5/3/2/1s) a wave floods across the board's blue surface from the
+   (10/3/2/1s) a wave floods across the board's blue surface from the
    timer button, flowing AROUND the pieces, so a player heads-down on the board
    still senses the 60s window closing. An SVG overlay in the board's own 0–20
    space, anchored over the board square exactly like the prestart mask and
