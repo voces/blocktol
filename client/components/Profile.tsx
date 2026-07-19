@@ -636,7 +636,7 @@ const ProfileDialog = (
               type="range"
               min={ZOOM_DELAY_MIN}
               max={ZOOM_DELAY_MAX}
-              step={50}
+              step={25}
               value={settings.zoomDelay}
               aria-label={t("profile.zoomDelay")}
               onInput={(e) =>

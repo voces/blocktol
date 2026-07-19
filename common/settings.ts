@@ -12,13 +12,13 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 2.5;
 export const ZOOM_DEFAULT = 2;
 
-// Delay (ms) before the placing zoom kicks in on a touch. 0 (the default) keeps
-// the old behaviour — zoom the instant a finger lands. A larger value lets a
+// Delay (ms) before the placing zoom kicks in on a touch. The default lets a
 // quick tap-to-place finish before the board magnifies, so a plain tap never
-// triggers the (disorienting) zoom-in/zoom-out.
+// triggers the (disorienting) zoom-in/zoom-out; 0 restores the old behaviour of
+// zooming the instant a finger lands.
 export const ZOOM_DELAY_MIN = 0;
 export const ZOOM_DELAY_MAX = 500;
-export const ZOOM_DELAY_DEFAULT = 0;
+export const ZOOM_DELAY_DEFAULT = 175;
 
 // The user-toggleable PUSH notification kinds (see common/notifications.ts).
 // These gate PUSH delivery ONLY — in-app notifications are always generated
