@@ -12,6 +12,14 @@ export const ZOOM_MIN = 1;
 export const ZOOM_MAX = 2.5;
 export const ZOOM_DEFAULT = 2;
 
+// Delay (ms) before the placing zoom kicks in on a touch. The default lets a
+// quick tap-to-place finish before the board magnifies, so a plain tap never
+// triggers the (disorienting) zoom-in/zoom-out; 0 restores the old behaviour of
+// zooming the instant a finger lands.
+export const ZOOM_DELAY_MIN = 0;
+export const ZOOM_DELAY_MAX = 500;
+export const ZOOM_DELAY_DEFAULT = 175;
+
 // The user-toggleable PUSH notification kinds (see common/notifications.ts).
 // These gate PUSH delivery ONLY — in-app notifications are always generated
 // regardless. Each is opted OUT by default (explicit opt-in), since turning one
@@ -29,6 +37,7 @@ export type Language = "system" | string;
 export type Settings = {
   theme: Theme;
   zoom: number;
+  zoomDelay: number;
   language: Language;
   notifications: NotificationPrefs;
 };
@@ -36,6 +45,11 @@ export type SettingsPatch = Partial<Settings>;
 
 export const clampZoom = (n: number) =>
   Number.isFinite(n) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n)) : ZOOM_DEFAULT;
+
+export const clampZoomDelay = (n: number) =>
+  Number.isFinite(n)
+    ? Math.min(ZOOM_DELAY_MAX, Math.max(ZOOM_DELAY_MIN, n))
+    : ZOOM_DELAY_DEFAULT;
 
 export const defaultNotificationPrefs = (): NotificationPrefs => ({
   lostTop: false,
@@ -45,6 +59,7 @@ export const defaultNotificationPrefs = (): NotificationPrefs => ({
 export const defaultSettings = (): Settings => ({
   theme: "system",
   zoom: ZOOM_DEFAULT,
+  zoomDelay: ZOOM_DELAY_DEFAULT,
   language: "system",
   notifications: defaultNotificationPrefs(),
 });
@@ -89,6 +104,7 @@ export const parseSettings = (raw: unknown): Settings => {
       ? (src.theme as Theme)
       : "system",
     zoom: clampZoom(Number(src.zoom)),
+    zoomDelay: clampZoomDelay(Number(src.zoomDelay)),
     // Tolerant: any string rides through (the catalog resolves an unsupported
     // tag to English); anything else is the follow-the-device default.
     language: typeof src.language === "string" ? src.language : "system",

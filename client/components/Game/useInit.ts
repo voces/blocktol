@@ -35,9 +35,9 @@ import {
   setPendingCommit,
 } from "./freePlay.ts";
 import {
+  clearTouchZoom,
   placingBlock,
   thunderHover,
-  touching,
   transitionBlock,
 } from "./interaction.ts";
 import {
@@ -578,7 +578,7 @@ export const useInit = () => {
     // Leave bricks/power as they were — the HUD keeps showing the leftover
     // counts through the run animation rather than blanking them out. The next
     // board (startRun / getBoard) resets them for the following build.
-    touching.value = false;
+    clearTouchZoom();
     thunderHover.value = undefined;
   }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
 

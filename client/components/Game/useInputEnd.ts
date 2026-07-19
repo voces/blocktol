@@ -3,9 +3,9 @@ import { offsets } from "../../../common/constants.ts";
 import { Point } from "../../../common/types.ts";
 import { claimBoard } from "../../store/board.ts";
 import {
+  clearTouchZoom,
   placingBlock,
   thunderHover,
-  touching,
   transitionBlock,
 } from "./interaction.ts";
 import { DEBOUNCE_MS, saveRun } from "./runSaver.ts";
@@ -201,7 +201,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     const touchendCallback = (e: TouchEvent) => {
       const touch = e.changedTouches[0];
       const target = touch.target;
-      touching.value = false;
+      // Turn the zoom off and cancel any still-pending arm (a tap released
+      // before the delay elapsed must not zoom after the finger is gone).
+      clearTouchZoom();
       const onBoard = target instanceof SVGElement &&
         !(target instanceof SVGTextElement) &&
         !isBorderPoint(svg, touch.clientX, touch.clientY);

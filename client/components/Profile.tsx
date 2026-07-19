@@ -14,7 +14,8 @@ import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { useSettings } from "../hooks/useSettings.ts";
 import {
   themes,
-  ZOOM_DEFAULT,
+  ZOOM_DELAY_MAX,
+  ZOOM_DELAY_MIN,
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../common/settings.ts";
@@ -298,8 +299,8 @@ const ProfileDialog = (
   // Signal read: the dialog re-renders as the open-time refetch lands.
   const profile = profileSignal.value;
   const { settings, setSettings } = useSettings();
-  // The zoom setting only matters on touch, so it's hidden on non-touch pointers
-  // unless the user has moved it off the default (so a set value stays editable).
+  // The zoom settings only affect touch placement, so they're hidden entirely on
+  // non-touch (mouse) pointers — there's nothing they'd change there.
   const touch = useMediaQuery("(pointer: coarse)");
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -585,7 +586,7 @@ const ProfileDialog = (
           />
         </div>
 
-        {(touch || settings.zoom !== ZOOM_DEFAULT) && (
+        {touch && (
           <div class="pref__row pref__row--stack">
             <div class="pref__head">
               <div>
@@ -608,6 +609,38 @@ const ProfileDialog = (
               aria-label={t("profile.zoom")}
               onInput={(e) =>
                 setSettings({ zoom: Number(e.currentTarget.value) })}
+            />
+          </div>
+        )}
+
+        {
+          /* Delay before the placing zoom kicks in, so a quick tap-to-place
+             finishes before the board magnifies. Touch-only, and moot when the
+             zoom itself is off (1×) — hidden then. */
+        }
+        {touch && settings.zoom > ZOOM_MIN && (
+          <div class="pref__row pref__row--stack">
+            <div class="pref__head">
+              <div>
+                <div class="pref__label">{t("profile.zoomDelay")}</div>
+                <div class="pref__sub">{t("profile.zoomDelaySub")}</div>
+              </div>
+              <div class="pref__value mono">
+                {settings.zoomDelay <= ZOOM_DELAY_MIN
+                  ? t("profile.zoomDelayInstant")
+                  : t("profile.zoomDelayValue", { ms: settings.zoomDelay })}
+              </div>
+            </div>
+            <input
+              class="pref__slider"
+              type="range"
+              min={ZOOM_DELAY_MIN}
+              max={ZOOM_DELAY_MAX}
+              step={25}
+              value={settings.zoomDelay}
+              aria-label={t("profile.zoomDelay")}
+              onInput={(e) =>
+                setSettings({ zoomDelay: Number(e.currentTarget.value) })}
             />
           </div>
         )}

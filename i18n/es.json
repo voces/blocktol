@@ -747,6 +747,22 @@
     "message": "Zoom al colocar",
     "hash": "fa7175faa2861ab5a2cd848aee1843a9705ec4282aae139dfa147edfda5b8893"
   },
+  "profile.zoomDelay": {
+    "message": "Retardo de zoom",
+    "hash": "3cbce3ca2bf20dcd8ff256b0b74ff479e5c303d277ab09597760a96462e2eadf"
+  },
+  "profile.zoomDelayInstant": {
+    "message": "Instantáneo",
+    "hash": "e2861894f065ab75433a07f7a17a9b8df3ffdc01ff29e8723ba0d9ff8c2ec437"
+  },
+  "profile.zoomDelaySub": {
+    "message": "Retrasa la ampliación al tocar.",
+    "hash": "0459b41d5146acf369f54cbcf88094d323b4ee2ce737a271ec9510c47d0085d2"
+  },
+  "profile.zoomDelayValue": {
+    "message": "{ms} ms",
+    "hash": "ca62b4f70fb34389570b4b3f1a56bac03ea306bdec787d1d1a3163e0de5b0288"
+  },
   "profile.zoomOff": {
     "message": "Desactivado",
     "hash": "ca7981b46ecf2c1787b6d76d81d9fd7fa0ca95842e2fcc2a452869891a9334d1"
