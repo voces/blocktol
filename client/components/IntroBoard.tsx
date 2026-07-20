@@ -207,7 +207,10 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       ? 3
       : undefined;
     if (board === undefined) return;
-    const timer = setTimeout(() => setAttemptStep(board), 500);
+    // A beat so the tip is read before its demo plays — and, for the refund,
+    // long enough that the block being reclaimed is on screen when the tip
+    // appears, then visibly disappears.
+    const timer = setTimeout(() => setAttemptStep(board), 1100);
     return () => clearTimeout(timer);
   }, [onboardingStep]);
 
@@ -404,17 +407,17 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </Tip>
         )}
         {onboardingStep === 6 && (
-          <Tip bottom="39.5%" right="35%" onNext={advance} onSkip={onDone}>
+          <Tip bottom="39.5%" right="40%" onNext={advance} onSkip={onDone}>
             {t("intro.tipUpgrade")}
           </Tip>
         )}
         {onboardingStep === 7 && (
-          <Tip top="29.5%" left="15%" onNext={advance} onSkip={onDone}>
+          <Tip top="39.5%" left="15%" onNext={advance} onSkip={onDone}>
             {t("intro.tipRefund")}
           </Tip>
         )}
         {onboardingStep === 8 && (
-          <Tip top="24.5%" left="15%" onNext={advance} onSkip={onDone} last>
+          <Tip top="34.5%" left="15%" onNext={advance} onSkip={onDone} last>
             {t("intro.tipMove")}
           </Tip>
         )}
