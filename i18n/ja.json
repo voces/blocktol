@@ -243,9 +243,17 @@
     "message": "…チェックポイントへ向かい…",
     "hash": "d312bf2dd40ee0aa37f64aecfdc409ead62dc936b4f1e142984314d7bc22a294"
   },
+  "intro.tipMove": {
+    "message": "またはブロックをドラッグして移動できます。",
+    "hash": "20048da553b10bfb38381f5a9a288f58cf49c5503cf03cf1f19e2a4e496b6e91"
+  },
   "intro.tipPlace": {
     "message": "ブロックを配置してランナーの経路を延ばしましょう。",
     "hash": "e82a6713a11d6e1eb5aa055fb7481558760ff530bbde00f63228b3113fe18321"
+  },
+  "intro.tipRefund": {
+    "message": "ブロックをもう一度タップすると払い戻せます。",
+    "hash": "07ba15b34ec4f93728ea15385ab4e7bfd0159af6fee59b3ac2fa8ce40e26ff1e"
   },
   "intro.tipRunnerBottom": {
     "message": "ランナーは下から放たれ…",
