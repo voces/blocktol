@@ -906,5 +906,13 @@
   "intro.tipUpgrade": {
     "message": "Upgrade blocks to slow the runner as they pass.",
     "description": "Tutorial tip: upgrading a block into a thunder slows the runner. \"blocks\"/\"runner\" are game terms (see glossary)."
+  },
+  "intro.tipRefund": {
+    "message": "Tap a block again to refund it.",
+    "description": "Tutorial tip: tapping a placed block once more removes it and refunds its budget (the block, plus the thunder if it had been upgraded). Follows the upgrade tip in the tap cycle. \"block\"/\"thunder\" are game terms (see glossary)."
+  },
+  "intro.tipMove": {
+    "message": "Or drag a block to move it.",
+    "description": "Tutorial tip: a placed block can be dragged to a different cell. Reads as a continuation of the refund tip (\"Or …\"). \"block\" is a game term (see glossary)."
   }
 }

@@ -170,7 +170,7 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
 export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [blocks, setBlocks] = useState(initialBlocks);
-  const [time, setTime] = useState(7);
+  const [time, setTime] = useState(9);
   const [run, setRun] = useState<
     {
       path: Point[];
@@ -182,13 +182,37 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   const [attemptStep, setAttemptStep] = useState(0);
   const lastAttemptStepRef = useRef(0);
 
+  // Drive the "drag to move" demo through the real drag machinery the game uses:
+  // `transition` is the grabbed block (its origin is drawn hidden), and `placing`
+  // is the overlay block that glides to the target (the overlay already animates
+  // its x/y in Board). `dragMoved` suppresses the thunder-radius preview that a
+  // real drag shows before it moves. Latest blocks via a ref so the choreography's
+  // deferred steps read past the refund that ran just before it.
+  const [placing, setPlacing] = useState<Point & { placing: boolean }>({
+    x: 0,
+    y: 0,
+    placing: false,
+  });
+  const [transition, setTransition] = useState<
+    | (Point & { local?: boolean; thunder?: boolean; active?: boolean })
+    | undefined
+  >();
+  const [dragMoved, setDragMoved] = useState(false);
+  const blocksRef = useRef(blocks);
+
   const advance = useCallback(() => {
     setOnboardingStep((step) => {
       step++;
 
-      if (step === 6) setAttemptStep(7);
-      else if (step === 7) setAttemptStep(9);
-      else if (step === 8) onDone();
+      // Each hop force-completes the demo the previous tip was auto-playing (in
+      // case the reader clicked Next before its interval finished), then the
+      // interval for the new step plays that step's demo. The final tip's "Play"
+      // (step 9) releases the runner; a stray click afterwards ends the tour.
+      if (step === 6) setAttemptStep(7); // placements done → upgrade
+      else if (step === 7) setAttemptStep(8); // upgrade done → refund
+      else if (step === 8) setAttemptStep(9); // refund done → move
+      else if (step === 9) setAttemptStep(10); // Play → release the runner
+      else if (step === 10) onDone();
 
       return step;
     });
@@ -211,6 +235,17 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       interval = setInterval(() => {
         setAttemptStep((step) => {
           if (step > 7) {
+            clearInterval(interval);
+            return step;
+          }
+          return step + 1;
+        });
+      }, 750);
+    } else if (onboardingStep === 7) {
+      // tipRefund: play the refund (board step 8) after a beat.
+      interval = setInterval(() => {
+        setAttemptStep((step) => {
+          if (step > 8) {
             clearInterval(interval);
             return step;
           }
@@ -245,7 +280,14 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           thunder: true,
         }]);
       }
+      // Refund demo: remove the lower-left block (added at step 6). Removed by
+      // coordinate, not index, so it survives edits to the placement demo above;
+      // the brick chip ticks back up, showing the budget being reclaimed. This
+      // also clears (2,4) as the landing cell for the move demo that follows.
       if (step === 8) {
+        setBlocks((b) => b.filter((x) => !(x.x === 2 && x.y === 4 && x.local)));
+      }
+      if (step === 9) {
         setTime(-1);
         setRun(storedRun);
       }
@@ -255,6 +297,53 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
 
     lastAttemptStepRef.current = attemptStep;
   }, [attemptStep]);
+
+  // Keep the latest blocks reachable from the move choreography's deferred steps.
+  useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
+
+  // tipMove: animate the upper-left block (2,2) sliding into the gap the refund
+  // just opened at (2,4), reusing the real drag path — lift (origin hidden,
+  // overlay at origin), glide the overlay to the target, then commit the block
+  // and drop the overlay. Reads the block by coordinate off the ref so it picks
+  // up the post-refund board; if it isn't there the demo simply no-ops.
+  useEffect(() => {
+    if (onboardingStep !== 8) return;
+    let lifted = false;
+    // Land the block at the target and drop the drag overlay.
+    const commit = () => {
+      setBlocks((b) =>
+        b.map((x) =>
+          x.x === 2 && x.y === 2 && x.local ? { ...x, x: 2, y: 4 } : x
+        )
+      );
+      setTransition(undefined);
+      setDragMoved(false);
+      setPlacing({ x: 2, y: 4, placing: false });
+    };
+    const timers = [
+      setTimeout(() => {
+        const mover = blocksRef.current.find(
+          (b) => b.x === 2 && b.y === 2 && b.local,
+        );
+        if (!mover) return;
+        lifted = true;
+        setTransition(mover);
+        setDragMoved(true);
+        setPlacing({ x: 2, y: 2, placing: true });
+      }, 300),
+      setTimeout(() => setPlacing({ x: 2, y: 4, placing: true }), 700),
+      setTimeout(commit, 1200),
+    ];
+    return () => {
+      timers.forEach(clearTimeout);
+      // If "Play" was hit mid-glide, finish the move so the runner never plays
+      // over a lifted block. Only if the lift ran — a fast skip leaves the block
+      // untouched rather than teleporting it with no animation.
+      if (lifted) commit();
+    };
+  }, [onboardingStep]);
 
   const onSlow = useCallback((thunder: Point) => {
     // Animate thunder tower
@@ -307,11 +396,11 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         </div>
       </div>
       <Board
-        placingBlock={{ x: 0, y: 0, placing: false }}
+        placingBlock={placing}
         touching={false}
         time={Math.round(time)}
         svgRef={svgRef}
-        transitionBlock={undefined}
+        transitionBlock={transition}
         power={run ? -1 : 1 - blocks.filter((b) => b.thunder).length}
         thunderHover={undefined}
         blocks={blocks}
@@ -322,7 +411,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         grid={[]}
         onSlow={onSlow}
         date={NaN}
-        dragMoved={false}
+        dragMoved={dragMoved}
       />
       <div
         style={{
@@ -335,7 +424,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           position: "relative",
           fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
-          backgroundColor: onboardingStep < 7 ? "#0001" : undefined,
+          backgroundColor: onboardingStep < 9 ? "#0001" : undefined,
           // Match the board's rounded corners so the mask doesn't square off
           // over them (--radius is a fixed length, so it tracks at any board
           // size the same way the SVG's own rounding does).
@@ -374,8 +463,18 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </Tip>
         )}
         {onboardingStep === 6 && (
-          <Tip bottom="39%" right="35%" onNext={advance} onSkip={onDone} last>
+          <Tip bottom="39%" right="35%" onNext={advance} onSkip={onDone}>
             {t("intro.tipUpgrade")}
+          </Tip>
+        )}
+        {onboardingStep === 7 && (
+          <Tip top="32%" left="9%" onNext={advance} onSkip={onDone}>
+            {t("intro.tipRefund")}
+          </Tip>
+        )}
+        {onboardingStep === 8 && (
+          <Tip top="32%" left="9%" onNext={advance} onSkip={onDone} last>
+            {t("intro.tipMove")}
           </Tip>
         )}
       </div>
