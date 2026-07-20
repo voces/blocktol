@@ -59,6 +59,7 @@ export const initialBlocks: (Point & {
   // dropped from the starting maze to clear room for them. The one block the
   // "place" demo adds — (16,14) — is deliberately NOT here: the preloaded maze is
   // the full board minus that single piece, so the walkthrough places exactly one.
+  { x: 2, y: 2, local: true },
   { x: 2, y: 6, local: true },
   { x: 2, y: 4, local: true },
 ];
@@ -182,15 +183,12 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       step++;
 
       // Each hop force-completes the demo the previous tip was auto-playing (in
-      // case the reader clicked Next before its interval finished), then the
-      // interval for the new step plays that step's demo. tipMove (step 8) has no
-      // board step — the move is choreographed below and committed on cleanup.
-      // Its "Play" (step 9) releases the runner; a stray click afterwards ends it.
+      // case the reader clicked Next before its interval finished). tipMove
+      // (step 8) is the last tip: its move is choreographed below and it then
+      // auto-releases the runner — no further step. "Play" finishes onboarding.
       if (step === 6) setAttemptStep(1); // place done → upgrade
       else if (step === 7) setAttemptStep(2); // upgrade done → refund
       else if (step === 8) setAttemptStep(3); // refund done → move
-      else if (step === 9) setAttemptStep(4); // Play → release the runner
-      else if (step === 10) onDone();
 
       return step;
     });
@@ -218,9 +216,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     for (let step = lastAttemptStepRef.current; step < attemptStep; step++) {
       // 0: place the one missing block (path lengthens); 1: upgrade a block to a
       // thunder in place (path slows); 2: refund a top-left block (brick chip
-      // ticks back up); 3: release the runner along the live path for the maze as
-      // it now stands — computed with the same solver the game uses, so it can
-      // never drift from what the walkthrough built.
+      // ticks back up). The runner is released later, by the move choreography.
       if (step === 0) setBlocks((b) => [...b, { x: 16, y: 14, local: true }]);
       if (step === 1) {
         setBlocks((b) =>
@@ -232,14 +228,8 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       if (step === 2) {
         setBlocks((b) => b.filter((x) => !(x.x === 2 && x.y === 6 && x.local)));
       }
-      if (step === 3) {
-        setTime(-1);
-        const r = localRun(blocksRef.current, introCheckpoint);
-        if (r) setRun(r);
-      } else {
-        // Cosmetic countdown, ticking only while the maze is being built.
-        setTime((t) => t - 0.75);
-      }
+      // Cosmetic countdown, ticking while the maze is being built.
+      setTime((t) => t - 0.75);
     }
 
     lastAttemptStepRef.current = attemptStep;
@@ -256,7 +246,6 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   // Reads the block by coordinate off the ref; if it isn't there the demo no-ops.
   useEffect(() => {
     if (onboardingStep !== 8) return;
-    let lifted = false;
     // Land the block at the target and drop the drag overlay.
     const commit = () => {
       setBlocks((b) =>
@@ -266,27 +255,30 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       setDragMoved(false);
       setPlacing({ x: 2, y: 5, placing: false });
     };
+    // Once the move has landed, release the runner automatically along the live
+    // path for the maze as it now stands (same solver the game uses, so it can
+    // never drift from what the walkthrough built). This is the finale — the
+    // player watches, or taps "Play" to drop straight into the game.
+    const release = () => {
+      setTime(-1);
+      const r = localRun(blocksRef.current, introCheckpoint);
+      if (r) setRun(r);
+    };
     const timers = [
       setTimeout(() => {
         const mover = blocksRef.current.find(
           (b) => b.x === 2 && b.y === 4 && b.local,
         );
         if (!mover) return;
-        lifted = true;
         setTransition(mover);
         setDragMoved(true);
         setPlacing({ x: 2, y: 4, placing: true });
       }, 300),
       setTimeout(() => setPlacing({ x: 2, y: 5, placing: true }), 700),
       setTimeout(commit, 1200),
+      setTimeout(release, 1700),
     ];
-    return () => {
-      timers.forEach(clearTimeout);
-      // If "Play" was hit mid-glide, finish the move so the runner never plays
-      // over a lifted block. Only if the lift ran — a fast skip leaves the block
-      // untouched rather than teleporting it with no animation.
-      if (lifted) commit();
-    };
+    return () => timers.forEach(clearTimeout);
   }, [onboardingStep]);
 
   const onSlow = useCallback((thunder: Point) => {
@@ -368,13 +360,17 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           position: "relative",
           fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
-          backgroundColor: onboardingStep < 9 ? "#0001" : undefined,
+          // Dim the board so the tips pop; undim once the runner is released so
+          // the finale plays clear.
+          backgroundColor: run ? undefined : "#0001",
           // Match the board's rounded corners so the mask doesn't square off
           // over them (--radius is a fixed length, so it tracks at any board
           // size the same way the SVG's own rounding does).
           borderRadius: "var(--radius)",
         }}
-        onClick={advance}
+        // Tap anywhere to proceed through the tips; on the last tip, tapping
+        // (like "Play") drops straight into the game.
+        onClick={onboardingStep < 8 ? advance : onDone}
       >
         {onboardingStep === 0 && (
           <Tip top={-12} left={41} onNext={advance} onSkip={onDone}>
@@ -417,7 +413,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </Tip>
         )}
         {onboardingStep === 8 && (
-          <Tip top="34.5%" left="15%" onNext={advance} onSkip={onDone} last>
+          <Tip top="34.5%" left="15%" onNext={onDone} onSkip={onDone} last>
             {t("intro.tipMove")}
           </Tip>
         )}
