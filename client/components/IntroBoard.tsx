@@ -9,6 +9,7 @@ import {
   useState,
 } from "preact/compat";
 import { Point } from "../../common/types.ts";
+import { localRun } from "./Game/helpers.ts";
 import { t } from "../util/t.ts";
 
 // Exported so the daily "Start attempt" overlay (Prestart.tsx) can render this
@@ -53,7 +54,13 @@ export const initialBlocks: (Point & {
   { x: 16, y: 9, local: true },
   { x: 2, y: 11, local: true },
   { x: 11, y: 12, local: true },
-  { x: 3, y: 2, local: true },
+  // Top-left player blocks the refund/move demos act on: the walkthrough removes
+  // (2,6) to show a refund and slides (2,4) down a tile to show a move. (3,2) was
+  // dropped from the starting maze to clear room for them. The one block the
+  // "place" demo adds — (16,14) — is deliberately NOT here: the preloaded maze is
+  // the full board minus that single piece, so the walkthrough places exactly one.
+  { x: 2, y: 6, local: true },
+  { x: 2, y: 4, local: true },
 ];
 
 // Local blocks pre-placed in the starting maze — the baseline the brick budget
@@ -63,57 +70,6 @@ const INITIAL_LOCAL = initialBlocks.filter((b) => b.local).length;
 // The tutorial maze's checkpoint, shared with the decorative Start-attempt
 // backdrop (Prestart.tsx).
 export const introCheckpoint: Point = { x: 10.5, y: 4.5 };
-
-const storedRun = {
-  path: [
-    { x: 9, y: 19 },
-    { x: 10, y: 18 },
-    { x: 14, y: 18 },
-    { x: 14, y: 16 },
-    { x: 18, y: 16 },
-    { x: 18, y: 13 },
-    { x: 17, y: 11 },
-    { x: 15, y: 11 },
-    { x: 15, y: 8 },
-    { x: 16, y: 7 },
-    { x: 16, y: 1 },
-    { x: 13, y: 1 },
-    { x: 12, y: 3 },
-    { x: 11, y: 3 },
-    { x: 11, y: 5 },
-    { x: 11, y: 3 },
-    { x: 12, y: 3 },
-    { x: 13, y: 1 },
-    { x: 16, y: 1 },
-    { x: 16, y: 7 },
-    { x: 15, y: 8 },
-    { x: 15, y: 11 },
-    { x: 17, y: 11 },
-    { x: 18, y: 13 },
-    { x: 18, y: 16 },
-    { x: 15, y: 16 },
-    { x: 13, y: 14 },
-    { x: 9, y: 14 },
-    { x: 9, y: 11 },
-    { x: 11, y: 11 },
-    { x: 11, y: 8 },
-    { x: 9, y: 8 },
-    { x: 8, y: 6 },
-    { x: 7, y: 4 },
-    { x: 7, y: 1 },
-    { x: 9, y: 1 },
-    { x: 9, y: 0 },
-    { x: 10, y: 0 },
-  ],
-  duration: 30.98,
-  slows: [
-    { time: 1.48, thunder: { x: 12, y: 12 } },
-    { time: 5.54, thunder: { x: 12, y: 12 } },
-    { time: 15.92, thunder: { x: 12, y: 12 } },
-    { time: 20.78, thunder: { x: 12, y: 12 } },
-    { time: 24, thunder: { x: 12, y: 12 } },
-  ],
-};
 
 const Tooltip = (
   { children, left, right, top, bottom }: {
@@ -161,8 +117,29 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
         gap: 16,
       }}
     >
-      {!last && <a onClick={onSkip}>{t("intro.skip")}</a>}
-      <a onClick={onNext}>{last ? t("intro.play") : t("intro.next")}</a>
+      {
+        /* Stop the click bubbling to the overlay's own onClick={advance} — the
+           whole mask advances on click (tap anywhere to proceed), so without
+           this a tap on Skip/Next would fire twice and skip the next tip. */
+      }
+      {!last && (
+        <a
+          onClick={(e) => {
+            e.stopPropagation();
+            onSkip();
+          }}
+        >
+          {t("intro.skip")}
+        </a>
+      )}
+      <a
+        onClick={(e) => {
+          e.stopPropagation();
+          onNext();
+        }}
+      >
+        {last ? t("intro.play") : t("intro.next")}
+      </a>
     </div>
   </Tooltip>
 );
@@ -186,8 +163,8 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   // `transition` is the grabbed block (its origin is drawn hidden), and `placing`
   // is the overlay block that glides to the target (the overlay already animates
   // its x/y in Board). `dragMoved` suppresses the thunder-radius preview that a
-  // real drag shows before it moves. Latest blocks via a ref so the choreography's
-  // deferred steps read past the refund that ran just before it.
+  // real drag shows before it moves. Latest blocks via a ref so the choreography
+  // and the live path computation read the board as it stands at that moment.
   const [placing, setPlacing] = useState<Point & { placing: boolean }>({
     x: 0,
     y: 0,
@@ -206,93 +183,60 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
 
       // Each hop force-completes the demo the previous tip was auto-playing (in
       // case the reader clicked Next before its interval finished), then the
-      // interval for the new step plays that step's demo. The final tip's "Play"
-      // (step 9) releases the runner; a stray click afterwards ends the tour.
-      if (step === 6) setAttemptStep(7); // placements done → upgrade
-      else if (step === 7) setAttemptStep(8); // upgrade done → refund
-      else if (step === 8) setAttemptStep(9); // refund done → move
-      else if (step === 9) setAttemptStep(10); // Play → release the runner
+      // interval for the new step plays that step's demo. tipMove (step 8) has no
+      // board step — the move is choreographed below and committed on cleanup.
+      // Its "Play" (step 9) releases the runner; a stray click afterwards ends it.
+      if (step === 6) setAttemptStep(1); // place done → upgrade
+      else if (step === 7) setAttemptStep(2); // upgrade done → refund
+      else if (step === 8) setAttemptStep(3); // refund done → move
+      else if (step === 9) setAttemptStep(4); // Play → release the runner
       else if (step === 10) onDone();
 
       return step;
     });
   }, []);
 
+  // Auto-play each build tip's single board change after a short beat. tipMove
+  // (step 8) is handled by the move choreography instead.
   useEffect(() => {
-    let interval = -1;
-
-    if (onboardingStep === 5) {
-      interval = setInterval(() => {
-        setAttemptStep((step) => {
-          if (step > 6) {
-            clearInterval(interval);
-            return step;
-          }
-          return step + 1;
-        });
-      }, 750);
-    } else if (onboardingStep === 6) {
-      interval = setInterval(() => {
-        setAttemptStep((step) => {
-          if (step > 7) {
-            clearInterval(interval);
-            return step;
-          }
-          return step + 1;
-        });
-      }, 750);
-    } else if (onboardingStep === 7) {
-      // tipRefund: play the refund (board step 8) after a beat.
-      interval = setInterval(() => {
-        setAttemptStep((step) => {
-          if (step > 8) {
-            clearInterval(interval);
-            return step;
-          }
-          return step + 1;
-        });
-      }, 750);
-    }
-
-    return () => clearInterval(interval);
+    const board = onboardingStep === 5
+      ? 1
+      : onboardingStep === 6
+      ? 2
+      : onboardingStep === 7
+      ? 3
+      : undefined;
+    if (board === undefined) return;
+    const timer = setTimeout(() => setAttemptStep(board), 500);
+    return () => clearTimeout(timer);
   }, [onboardingStep]);
 
   useEffect(() => {
-    for (
-      let step = lastAttemptStepRef.current;
-      step < attemptStep;
-      step++
-    ) {
+    for (let step = lastAttemptStepRef.current; step < attemptStep; step++) {
+      // 0: place the one missing block (path lengthens); 1: upgrade a block to a
+      // thunder in place (path slows); 2: refund a top-left block (brick chip
+      // ticks back up); 3: release the runner along the live path for the maze as
+      // it now stands — computed with the same solver the game uses, so it can
+      // never drift from what the walkthrough built.
       if (step === 0) setBlocks((b) => [...b, { x: 16, y: 14, local: true }]);
-      if (step === 1) setBlocks((b) => b.filter((_, i) => i !== 32));
-      if (step === 2) setBlocks((b) => [...b, { x: 12, y: 12, local: true }]);
-      if (step === 3) setBlocks((b) => [...b, { x: 10, y: 12, local: true }]);
-      if (step === 4) setBlocks((b) => b.filter((_, i) => i !== 32));
-      if (step === 5) setBlocks((b) => [...b, { x: 2, y: 2, local: true }]);
-      if (step === 6) setBlocks((b) => [...b, { x: 2, y: 4, local: true }]);
-      if (step === 7) {
-        setBlocks((
-          b,
-        ) => [...b.filter((_, i) => i !== 33), {
-          x: 12,
-          y: 12,
-          local: true,
-          thunder: true,
-        }]);
+      if (step === 1) {
+        setBlocks((b) =>
+          b.map((x) =>
+            x.x === 11 && x.y === 12 && x.local ? { ...x, thunder: true } : x
+          )
+        );
       }
-      // Refund demo: remove the lower-left block (added at step 6). Removed by
-      // coordinate, not index, so it survives edits to the placement demo above;
-      // the brick chip ticks back up, showing the budget being reclaimed. This
-      // also clears (2,4) as the landing cell for the move demo that follows.
-      if (step === 8) {
-        setBlocks((b) => b.filter((x) => !(x.x === 2 && x.y === 4 && x.local)));
+      if (step === 2) {
+        setBlocks((b) => b.filter((x) => !(x.x === 2 && x.y === 6 && x.local)));
       }
-      if (step === 9) {
+      if (step === 3) {
         setTime(-1);
-        setRun(storedRun);
+        const r = localRun(blocksRef.current, introCheckpoint);
+        if (r) setRun(r);
+      } else {
+        // Cosmetic countdown, ticking only while the maze is being built.
+        setTime((t) => t - 0.75);
       }
-
-      setTime((t) => t - 0.75);
     }
 
     lastAttemptStepRef.current = attemptStep;
@@ -303,37 +247,34 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     blocksRef.current = blocks;
   }, [blocks]);
 
-  // tipMove: animate the upper-left block (2,2) sliding into the gap the refund
-  // just opened at (2,4), reusing the real drag path — lift (origin hidden,
-  // overlay at origin), glide the overlay to the target, then commit the block
-  // and drop the overlay. Reads the block by coordinate off the ref so it picks
-  // up the post-refund board; if it isn't there the demo simply no-ops.
+  // tipMove: animate the top-left block (2,4) sliding down a single tile to
+  // (2,5), reusing the real drag path — lift (origin hidden, overlay at origin),
+  // glide the overlay to the target, then commit the block and drop the overlay.
+  // Reads the block by coordinate off the ref; if it isn't there the demo no-ops.
   useEffect(() => {
     if (onboardingStep !== 8) return;
     let lifted = false;
     // Land the block at the target and drop the drag overlay.
     const commit = () => {
       setBlocks((b) =>
-        b.map((x) =>
-          x.x === 2 && x.y === 2 && x.local ? { ...x, x: 2, y: 4 } : x
-        )
+        b.map((x) => x.x === 2 && x.y === 4 && x.local ? { ...x, y: 5 } : x)
       );
       setTransition(undefined);
       setDragMoved(false);
-      setPlacing({ x: 2, y: 4, placing: false });
+      setPlacing({ x: 2, y: 5, placing: false });
     };
     const timers = [
       setTimeout(() => {
         const mover = blocksRef.current.find(
-          (b) => b.x === 2 && b.y === 2 && b.local,
+          (b) => b.x === 2 && b.y === 4 && b.local,
         );
         if (!mover) return;
         lifted = true;
         setTransition(mover);
         setDragMoved(true);
-        setPlacing({ x: 2, y: 2, placing: true });
+        setPlacing({ x: 2, y: 4, placing: true });
       }, 300),
-      setTimeout(() => setPlacing({ x: 2, y: 4, placing: true }), 700),
+      setTimeout(() => setPlacing({ x: 2, y: 5, placing: true }), 700),
       setTimeout(commit, 1200),
     ];
     return () => {
@@ -458,22 +399,22 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </Tip>
         )}
         {onboardingStep === 5 && (
-          <Tip bottom="29%" right="15%" onNext={advance} onSkip={onDone}>
+          <Tip bottom="29.5%" right="15%" onNext={advance} onSkip={onDone}>
             {t("intro.tipPlace")}
           </Tip>
         )}
         {onboardingStep === 6 && (
-          <Tip bottom="39%" right="35%" onNext={advance} onSkip={onDone}>
+          <Tip bottom="39.5%" right="35%" onNext={advance} onSkip={onDone}>
             {t("intro.tipUpgrade")}
           </Tip>
         )}
         {onboardingStep === 7 && (
-          <Tip top="32%" left="9%" onNext={advance} onSkip={onDone}>
+          <Tip top="29.5%" left="15%" onNext={advance} onSkip={onDone}>
             {t("intro.tipRefund")}
           </Tip>
         )}
         {onboardingStep === 8 && (
-          <Tip top="32%" left="9%" onNext={advance} onSkip={onDone} last>
+          <Tip top="24.5%" left="15%" onNext={advance} onSkip={onDone} last>
             {t("intro.tipMove")}
           </Tip>
         )}
