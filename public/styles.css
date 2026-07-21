@@ -714,6 +714,14 @@ a:hover {
   pointer-events: none;
   filter: blur(16px) saturate(0.9);
   opacity: light-dark(0.5, 0.6);
+  /* Pin this blurred subtree to its own composited backing. Without it, when
+     Chrome re-rasterizes the page at a reduced scale for the tab-hover preview
+     thumbnail, the board-sized `filter: blur` is applied per raster-tile and
+     leaves a hairline seam at a tile boundary — which stays baked into the
+     cached filter texture until the next full repaint (opening dev tools or
+     tabbing out and back clears it). A dedicated layer makes the blur rasterize
+     as one texture, so the capture can't inject the seam. */
+  transform: translateZ(0);
 }
 
 .prestart__deco .board-frame {
