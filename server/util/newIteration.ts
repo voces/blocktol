@@ -1,8 +1,11 @@
 import { offsets } from "../../common/constants.ts";
 import { newGrid, pathDuration, PathSolver } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
-import { createIteration } from "../db/iteration.ts";
+import { createIteration, getDailyIterationId } from "../db/iteration.ts";
 import { log } from "./logging.ts";
+import { UserError } from "./UserError.ts";
+
+const ONE_DAY = 1_000 * 60 * 60 * 24;
 
 export const newIteration = async (date: Date) => {
   log.info("new iteration", { date: date.toDateString() });
@@ -76,4 +79,66 @@ export const newIteration = async (date: Date) => {
     thunders,
     duration,
   );
+};
+
+// Resolve a day's daily iteration id, generating it on demand when it's missing.
+//
+// The `ensure-iterations` cron (util/gen.ts) is the bulk generator, but it only
+// runs on a deployment that executes `Deno.cron` — and Deno Deploy PREVIEW
+// deployments (what dev is usually served by) don't. So a dev/gappy environment
+// routinely asks for a daily nothing ever produced, which is where the old
+// "no daily available for that date yet" came from.
+//
+// This reinstates the per-request backfill that was removed for being racy —
+// now made safe by DB structure, not app coordination: `iteration.created` is
+// UNIQUE (migration v14), so two isolates racing to create the same day can't
+// duplicate it. Both may run the (idempotent) generation, but only one INSERT
+// lands; the loser's is rejected by the unique key, and it re-reads the winner's
+// row. That's why this needs no lock — the database IS the mutex.
+//
+// Bounded to no later than tomorrow UTC — the cron's own look-ahead — so a deep
+// link to a far-future date can't force generation and leak a puzzle that isn't
+// playable yet. A missing PAST date is a real gap and is backfilled.
+export const ensureDailyIterationId = async (
+  year: number,
+  month: number,
+  day: number,
+): Promise<number> => {
+  const existing = await getDailyIterationId(year, month, day);
+  if (existing !== undefined) return existing;
+
+  // No timezone is ever on a local day later than tomorrow UTC, so a request
+  // beyond that is a future deep link, not a missing daily — refuse it (the same
+  // client-visible 400 the old requireDailyIterationId threw).
+  const now = new Date();
+  const todayUtc = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  if (Date.UTC(year, month - 1, day) > todayUtc + ONE_DAY) {
+    throw new UserError("no daily available for that date yet");
+  }
+
+  try {
+    // Local-midnight Date whose local Y/M/D are exactly year/month/day, matching
+    // how createIteration derives the stored day and how getDailyIterationId
+    // looks it up (the server runs UTC, so local == UTC there).
+    await newIteration(new Date(year, month - 1, day));
+  } catch (err) {
+    // A concurrent isolate may have won the race: its INSERT landed and ours was
+    // rejected by UNIQUE(created). If the row now exists the race was harmless;
+    // otherwise the failure is real and propagates.
+    const raced = await getDailyIterationId(year, month, day);
+    if (raced !== undefined) return raced;
+    throw err;
+  }
+
+  const id = await getDailyIterationId(year, month, day);
+  if (id === undefined) {
+    // Should not happen — we just created it — but never return undefined into
+    // getIteration, which would 500. Surface the same clean 400 instead.
+    throw new UserError("no daily available for that date yet");
+  }
+  return id;
 };

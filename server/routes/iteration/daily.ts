@@ -6,8 +6,8 @@ import {
   getIteration,
   getIterationOtherBest,
   getIterationTimeCounts,
-  requireDailyIterationId,
 } from "../../db/iteration.ts";
+import { ensureDailyIterationId } from "../../util/newIteration.ts";
 import { getLatestRun } from "../../db/run.ts";
 import {
   allRunsByIteration,
@@ -29,7 +29,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
     const iterationId = "timeZone" in rest
       ? (() => {
         const { year, month, day } = dailyParts(rest.timeZone);
-        return requireDailyIterationId(year, month, day);
+        return ensureDailyIterationId(year, month, day);
       })()
       : Promise.resolve(rest.iteration);
 

@@ -8,11 +8,8 @@
 
 import { z } from "zod";
 import { errText, log } from "../../../util/logging.ts";
-import {
-  getIteration,
-  getIterationOtherBest,
-  requireDailyIterationId,
-} from "../../../db/iteration.ts";
+import { getIteration, getIterationOtherBest } from "../../../db/iteration.ts";
+import { ensureDailyIterationId } from "../../../util/newIteration.ts";
 import { dailyParts } from "../../../util/dailyParts.ts";
 import { method } from "../../apiHelpers.ts";
 import { startRun as dbStartRun, updateCurrentRun } from "../../../db/run.ts";
@@ -37,7 +34,7 @@ export const startRun = method(startRunBody, true)(
 
     let iteration: number;
     if (inputIteration === "daily") {
-      iteration = await requireDailyIterationId(year, month, day);
+      iteration = await ensureDailyIterationId(year, month, day);
     } else iteration = inputIteration;
 
     // Fetched before dbStartRun so the run about to be created isn't counted —

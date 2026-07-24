@@ -310,6 +310,35 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `pb_top` ADD COLUMN IF NOT EXISTS `holders` int(10) unsigned NOT NULL DEFAULT 1;",
   },
+  {
+    version: 14,
+    name: "iteration-date-unique",
+    // A puzzle belongs to a calendar DATE, not an instant — `created` was a
+    // timestamp only by inheritance from the table template, and every read
+    // already keys off DATE()/YEAR()/MONTH()/DAY() of it (never its time). Narrow
+    // it to DATE and make it UNIQUE. That turns the database itself into the mutex
+    // for daily generation: the on-demand backfill (util/newIteration.ts
+    // `ensureDailyIterationId`, needed because Deno Deploy preview deployments
+    // don't run the `ensure-iterations` Deno.cron) can now race across isolates
+    // without ever creating two puzzles for one day — the loser's INSERT is
+    // rejected by the unique key and it re-reads the winner's row. This is why the
+    // per-isolate cold-start backfill could safely be reinstated.
+    //
+    // Narrowing to DATE first collapses any historical same-day timestamps onto
+    // one value; the self-join then deletes all but the lowest id per date — the
+    // id every read already resolved to via `ORDER BY id LIMIT 1`, so the later
+    // duplicates (unreachable as a daily, their runs invisible) are cleared
+    // (block/run/notification/pb_top cascade on the iteration FK) before UNIQUE is
+    // added. A no-op on a single-writer database. The old plain KEY `created` is
+    // dropped and re-added UNIQUE under the same name in one ALTER.
+    up: `
+      ALTER TABLE \`iteration\` MODIFY COLUMN \`created\` date NOT NULL;
+
+      DELETE i FROM \`iteration\` i
+      JOIN \`iteration\` lo ON lo.created = i.created AND lo.id < i.id;
+
+      ALTER TABLE \`iteration\` DROP KEY \`created\`, ADD UNIQUE KEY \`created\` (\`created\`);`,
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

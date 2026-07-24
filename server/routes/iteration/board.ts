@@ -9,11 +9,8 @@ import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
 import type { Point } from "../../../common/types.ts";
 import { errText, log } from "../../util/logging.ts";
-import {
-  getIteration,
-  getIterationOtherBest,
-  requireDailyIterationId,
-} from "../../db/iteration.ts";
+import { getIteration, getIterationOtherBest } from "../../db/iteration.ts";
+import { ensureDailyIterationId } from "../../util/newIteration.ts";
 import { dailyAttempts, getOwnBest } from "../../db/user.ts";
 import { iterationAttempts } from "../../util/attempts.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
@@ -32,7 +29,7 @@ const getBoardBody = z.object({
 export const getBoard = method(getBoardBody, true)(
   async ({ userId, timeZone, iteration: inputIteration, soft }, req) => {
     const { year, month, day } = dailyParts(timeZone);
-    const todayId = await requireDailyIterationId(year, month, day);
+    const todayId = await ensureDailyIterationId(year, month, day);
     const iteration = inputIteration ?? todayId;
 
     // The gate applies ONLY to today's own daily: it can't be free-played before
