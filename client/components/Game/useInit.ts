@@ -51,17 +51,6 @@ import { computeVerdict } from "./verdict.ts";
 // Monotonic key for implosion ghosts, so overlapping reverts can't collide.
 let implosionId = 0;
 
-// A daily's date (`iteration.created`) is a calendar day, not an instant — the
-// server stores it as a DATE. Parse it to UTC midnight ms: the board caption
-// formats this value in UTC (see Board.tsx), so a UTC-midnight anchor shows the
-// puzzle's date in every timezone. Pulling the Y/M/D off the leading 10 chars
-// keeps it correct whichever way the transport serialises the DATE (a bare
-// `YYYY-MM-DD` or a fuller datetime string) and tolerates a legacy timestamp.
-const dailyDateMs = (date: string) => {
-  const [y, m, d] = date.slice(0, 10).split("-").map(Number);
-  return Date.UTC(y, m - 1, d);
-};
-
 // The client's ranked build clock is run this many ms ahead of the server's true
 // 60s window. The server enforces the window from the run's insert time; the
 // client derives its deadline from the server's reported remaining time, but that
@@ -216,7 +205,7 @@ export const useInit = () => {
       deadlineRef.current = deadline;
       setTime(Math.max(0, Math.floor((deadline - Date.now()) / 1000)));
       rankedEndsAtMidnight.value = deadline < windowEnd;
-      setDate(dailyDateMs(data.date));
+      setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
       // Field / personal bests for the free-play verdict (see verdict.ts). These
       // are the bars from *before* this run — startRun fetches them first — so a
@@ -262,7 +251,7 @@ export const useInit = () => {
       // No countdown until the first placement's startRun response restarts
       // the clock with a fresh deadline (useClock holds still on null).
       deadlineRef.current = null;
-      setDate(dailyDateMs(data.date));
+      setDate(new Date(data.date).getTime());
       setIteration(data.iteration);
       placingBlock.value = { ...placingBlock.value, placing: false };
       transitionBlock.value = undefined;

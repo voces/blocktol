@@ -290,9 +290,10 @@ double-write):**
   duplicate — but `iteration.created` is now a **UNIQUE `DATE`** (migration v14,
   the column narrowed from a timestamp since a puzzle is for a calendar day, not
   an instant), so the loser's INSERT is rejected instead of standing: **the DB
-  is the mutex**, no app lock needed. The client parses that DATE to
-  UTC-midnight ms for the board caption (`useInit`'s `dailyDateMs`), which
-  formats in UTC.
+  is the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
+  board's `date`; the client needs no special parsing — a `DATE` deserialises to
+  `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
+  midnight, and the board caption formats it in UTC.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
   percentile-based), then fires "daily final" notifications and posts the day's
