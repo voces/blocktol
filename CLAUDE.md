@@ -281,6 +281,19 @@ double-write):**
 - `ensure-iterations` (hourly) — generates each day's puzzle through _tomorrow_
   UTC (`util/newIteration.ts` builds a random solvable board; idempotent, heals
   gaps). Timezones ahead of UTC hit a new local day first, hence the look-ahead.
+  This cron is the _bulk_ generator but **not the only writer**: Deno Deploy
+  preview deployments don't run `Deno.cron`, so a dev/gappy env would otherwise
+  hit "no daily available". `ensureDailyIterationId` (same file) backfills a
+  missing day **on demand** in the daily read path (board/start/daily/standings,
+  capped at tomorrow UTC so a future deep link can't leak a puzzle). That
+  per-request path once raced the cron — two isolates both check-then-create a
+  duplicate — but `iteration.created` is now a **UNIQUE `DATE`** (migration v14,
+  the column narrowed from a timestamp since a puzzle is for a calendar day, not
+  an instant), so the loser's INSERT is rejected instead of standing: **the DB
+  is the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
+  board's `date`; the client needs no special parsing — a `DATE` deserialises to
+  `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
+  midnight, and the board caption formats it in UTC.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
   percentile-based), then fires "daily final" notifications and posts the day's

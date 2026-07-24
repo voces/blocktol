@@ -15,7 +15,7 @@
 import { z } from "zod";
 import { avatarHue } from "../../../common/avatar.ts";
 import { standing } from "../../../common/standing.ts";
-import { requireDailyIterationId } from "../../db/iteration.ts";
+import { ensureDailyIterationId } from "../../util/newIteration.ts";
 import {
   getDailyStandings,
   getIterationBests,
@@ -184,11 +184,11 @@ export const standings = method(standingsBody, true)(
     const iteration = "timeZone" in rest
       ? await (() => {
         const { year, month, day } = dailyParts(rest.timeZone);
-        return requireDailyIterationId(year, month, day);
+        return ensureDailyIterationId(year, month, day);
       })()
       : "iteration" in rest
       ? rest.iteration
-      : await requireDailyIterationId(rest.year, rest.month, rest.day);
+      : await ensureDailyIterationId(rest.year, rest.month, rest.day);
 
     const field = await cachedField(iteration);
     const dailyField = project(field.players, "daily");

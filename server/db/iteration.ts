@@ -1,7 +1,8 @@
 import { Point } from "../../common/types.ts";
 import { memoize } from "../util/memoize.ts";
-import { UserError } from "../util/UserError.ts";
 import { ExecResult, format, raw, sql, sqlOnce } from "./query.ts";
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 export const getIterationCount = () =>
   sql<{ count: number }[]>`
@@ -52,13 +53,22 @@ export const createIteration = (
   blocks: Point[],
   thunders: Point[],
   duration: number,
-) =>
-  // sqlOnce: a retry after a lost response would create a duplicate iteration
-  // for the day (the generation cron is the only caller, but it check-then-
-  // creates, so a duplicate here would stand).
-  sqlOnce<[ExecResult, ExecResult, ExecResult[] | undefined]>`
+) => {
+  // `created` is a DATE (a puzzle is for a calendar day, not an instant — see
+  // migration v14). Bind an explicit `YYYY-MM-DD` rather than a JS Date so the
+  // stored day is unambiguous across transports, derived from the same local
+  // components getDailyIterationId / the gen cron look the day up by.
+  const created = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${
+    pad(date.getDate())
+  }`;
+  // sqlOnce: a retry after a lost response would attempt a duplicate INSERT for
+  // the day. The UNIQUE(created) key makes that a hard error rather than a
+  // duplicate row, but the caller (ensureDailyIterationId) treats a losing
+  // INSERT as "someone else generated it" and re-reads, so a retry here must not
+  // fire a second write it would then have to reconcile.
+  return sqlOnce<[ExecResult, ExecResult, ExecResult[] | undefined]>`
     INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min)
-    VALUES (${date}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y}, ${duration});
+    VALUES (${created}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y}, ${duration});
     SET @last_id = LAST_INSERT_ID();
     ${
     raw(format`
@@ -68,6 +78,7 @@ export const createIteration = (
       ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
     ]};`)
   }`.then(([q]) => q.insertId);
+};
 
 export const getMaxIterationTime = (iteration: number) =>
   sql<{ max: number }[] | undefined>`
@@ -98,22 +109,6 @@ export const getDailyIterationId = (year: number, month: number, day: number) =>
       AND DAY(created) = ${day}
     ORDER BY id
     LIMIT 1`.then((r) => r[0]?.id);
-
-// The routes' variant: a date with no daily yet (the generation cron hasn't
-// produced it) is a clean, client-visible 400 rather than `undefined` flowing
-// into getIteration and blowing up as an unhandled 500. The generation cron
-// keeps using getDailyIterationId — for it, "missing" is the signal to create.
-export const requireDailyIterationId = (
-  year: number,
-  month: number,
-  day: number,
-) =>
-  getDailyIterationId(year, month, day).then((id) => {
-    if (id === undefined) {
-      throw new UserError("no daily available for that date yet");
-    }
-    return id;
-  });
 
 export const getDailyIteration = (year: number, month: number, day: number) =>
   getDailyIterationId(year, month, day).then((id) =>

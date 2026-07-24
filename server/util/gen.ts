@@ -53,13 +53,20 @@ const ensureIterations = async (offsetDays: number) => {
   }
 };
 
-// Single-writer daily generation. `ensureIteration` is check-then-create (not
-// atomic), so running it on multiple isolates could create duplicate iterations
-// for a day. `Deno.cron` runs once per schedule, never overlapping, so it's the
-// lone writer — replacing the per-isolate cold-start backfill that caused the
-// race. Hourly is enough: the window reaches tomorrow, so each day is generated
-// ~a day before any timezone needs it (this also seeds new envs / heals gaps).
-// Idempotent; must be registered before `Deno.serve`.
+// Bulk daily generation. `Deno.cron` runs once per schedule, never overlapping,
+// so it's a single writer for the whole 33-day window in one pass — cheaper than
+// backfilling day-by-day on request. Hourly is enough: the window reaches
+// tomorrow, so each day is generated ~a day before any timezone needs it (this
+// also seeds new envs / heals gaps). Idempotent; must be registered before
+// `Deno.serve`.
+//
+// It is NOT the only writer, though — the per-request backfill
+// (util/newIteration.ts `ensureDailyIterationId`) generates a missing day on
+// demand, because Deno Deploy preview deployments don't run `Deno.cron` and so
+// never reach this. That on-demand path was once removed for racing this one
+// (two isolates both check-then-create a duplicate), but `iteration.created` is
+// now UNIQUE (migration v14), so the duplicate INSERT is rejected rather than
+// standing — the DB is the mutex, and the two writers coexist safely.
 //
 // DISABLE_CRONS gates registration so a second instance sharing this DB (a
 // staging box, or the EC2 cohost while Deno Deploy still runs the crons) doesn't
