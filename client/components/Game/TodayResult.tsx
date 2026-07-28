@@ -150,9 +150,15 @@ export const TodayResult = () => {
           <div class="today-result__sub">
             {personalBest == null
               ? t("today.notPlayed")
-              : `${
-                personalPct == null ? "" : `${formatPercentile(personalPct)}%`
-              }${personalUnranked ? ` · ${t("today.unranked")}` : ""}`}
+              // Mirrors the ranked chip's "best of 3 · p88": where the time came
+              // from, then how it placed. The two numbers are deliberately
+              // different measures — the ranked chip shows a field percentile
+              // (pNN), this one the standing against the field's best (NN%) —
+              // so only the shape is parallel, not the units.
+              : [
+                personalUnranked ? t("today.unranked") : "",
+                personalPct == null ? "" : `${formatPercentile(personalPct)}%`,
+              ].filter(Boolean).join(" · ")}
           </div>
         </div>
       </div>
