@@ -148,11 +148,10 @@ export const TodayResult = () => {
               : "—"}
           </div>
           <div class="today-result__sub">
-            {personalBest == null
-              ? t("today.notPlayed")
-              : `${
-                personalPct == null ? "" : `${formatPercentile(personalPct)}%`
-              }${personalUnranked ? ` · ${t("today.unranked")}` : ""}`}
+            {personalBest == null ? t("today.notPlayed") : [
+              personalUnranked ? t("today.unranked") : "",
+              personalPct == null ? "" : `${formatPercentile(personalPct)}%`,
+            ].filter(Boolean).join(" · ")}
           </div>
         </div>
       </div>

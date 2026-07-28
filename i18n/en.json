@@ -248,8 +248,8 @@
     "description": "Subtext on the ranked chip: the shown time is the best of {count} ranked attempts. {count} is a small pre-formatted number."
   },
   "today.unranked": {
-    "message": "unranked run",
-    "description": "Tag appended to the personal-best subtext when the best time came from a free-play (unranked) run rather than a ranked attempt."
+    "message": "free play",
+    "description": "Tag leading the personal-best subtext when the best time came from a free-play run rather than a ranked attempt. Sits opposite \"best of {count}\" on the ranked chip, so keep it a short noun phrase naming where the time came from. See glossary \"free play\"."
   },
   "hud.reset": {
     "message": "Reset board",
