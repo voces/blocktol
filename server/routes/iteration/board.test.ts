@@ -2,12 +2,16 @@ import { assert, assertEquals } from "@std/assert";
 import { createOrUpdateUser } from "../../db/user.ts";
 import { sql } from "../../db/query.ts";
 import { extractUserId } from "../../middleware/userid.ts";
+import { dailyParts } from "../../util/dailyParts.ts";
+import { ensureDailyIterationId } from "../../util/newIteration.ts";
+import { dayView } from "../dayView.ts";
 import { getBoard } from "./board.ts";
 
-// getBoard's free-play gate: only TODAY's own daily is gated (soft mode keeps
-// priming from 403ing when it isn't finished); every other date is always
-// free-playable. Against the real (dev) database — the gate lives in SQL.
-// Skipped wholesale when SQL_PASSWORD isn't available.
+// getBoard's free-play gate: only TODAY's own daily is gated, and a locked board
+// is a plain { incomplete } rather than an error (the client relays every error
+// response to reportClientError, so a routine "not yet" must not be one); every
+// other date is always free-playable. Against the real (dev) database — the gate
+// lives in SQL. Skipped wholesale when SQL_PASSWORD isn't available.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -25,27 +29,31 @@ const testUser = async () => {
 };
 
 Deno.test({
-  name: "getBoard: soft answers { incomplete } where the default 403s",
+  name: "getBoard: an unfinished daily answers { incomplete }, never an error",
   ignore: !live,
   fn: async () => {
     const user = await testUser();
     try {
       // A fresh user has spent zero of today's three attempts, so free play is
       // locked. UTC matches how the daily is created/looked up in these tests.
-      const hard = await getBoard.handler(
+      const locked = await getBoard.handler(
         { timeZone: "UTC" },
         authed(user),
       );
-      assert("error" in hard, "unfinished daily should 403 without soft");
-      assertEquals(hard.status, 403);
-
-      const soft = await getBoard.handler(
-        { timeZone: "UTC", soft: true },
+      // A plain, non-error "not yet" — nothing for the api proxy to report.
+      assert(!("error" in locked), "a locked board must not return an error");
+      assertEquals(locked, { incomplete: true });
+      // And it stays that way when reached through the day-navigation composite
+      // — how a calendar pick asks for it, and how a `/YYYYMMDD`-for-today boot
+      // gets its linked slice. Both used to hand the client a 403 to relay.
+      const { year, month, day } = dailyParts("UTC");
+      const todayId = await ensureDailyIterationId(year, month, day);
+      const viaDay = await dayView.handler(
+        { iteration: todayId, timeZone: "UTC" },
         authed(user),
       );
-      // Soft: a plain, non-error "not yet" — nothing for the proxy to report.
-      assert(!("error" in soft), "soft must not return an error");
-      assertEquals(soft, { incomplete: true });
+      assert(!("error" in viaDay), "dayView must not error on a locked board");
+      assertEquals(viaDay.board, { incomplete: true });
     } finally {
       await sql`DELETE FROM user WHERE id = ${user};`;
     }

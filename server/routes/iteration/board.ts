@@ -19,15 +19,10 @@ import { method } from "../apiHelpers.ts";
 const getBoardBody = z.object({
   timeZone: z.string(),
   iteration: z.number().min(1).optional(),
-  // Boot primes today's board so "keep playing" opens instantly — but at prime
-  // time the daily may not be done, which would 403. `soft` turns that lock
-  // into a plain { incomplete } (200) so priming never fires a spurious
-  // client-error report. Absent (every explicit caller), the 403 still stands.
-  soft: z.boolean().optional(),
 });
 
 export const getBoard = method(getBoardBody, true)(
-  async ({ userId, timeZone, iteration: inputIteration, soft }, req) => {
+  async ({ userId, timeZone, iteration: inputIteration }, req) => {
     const { year, month, day } = dailyParts(timeZone);
     const todayId = await ensureDailyIterationId(year, month, day);
     const iteration = inputIteration ?? todayId;
@@ -36,12 +31,20 @@ export const getBoard = method(getBoardBody, true)(
     // its three ranked attempts are spent (no previewing/practising the puzzle
     // you're about to rank). Every other date is ungated — replayable anytime,
     // even with today's daily still outstanding.
+    //
+    // The locked answer is a plain { incomplete } (200), never an error. It used
+    // to 403 unless the caller opted into `soft`, and only boot ever did — so
+    // every other path that can legitimately land on an unfinished today
+    // (the regrade refetch, a notification tap, boot's own linked-day slice for a
+    // today permalink, a calendar pick while parked on a past day) turned a
+    // routine "not yet" into a 403. The client relays EVERY error response to
+    // reportClientError from inside the api proxy, before the caller can swallow
+    // it, so each one logged an error server-side even where the call site was
+    // written to ignore it. Nothing ever wanted the error: "not yet" is a state,
+    // not a fault, and it leaks nothing either way.
     if (iteration === todayId) {
       const todayAttempts = await dailyAttempts(userId, year, month, day);
-      if (todayAttempts.length < 3) {
-        if (soft) return { incomplete: true as const };
-        return { error: "daily not complete", status: 403 };
-      }
+      if (todayAttempts.length < 3) return { incomplete: true as const };
     }
 
     const [data, ownBest, otherBest, attempts] = await Promise.all([

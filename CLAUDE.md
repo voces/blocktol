@@ -161,19 +161,19 @@ client faults.
 
 **`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
 that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
-`standings`, `getNotifications`, soft `getBoard`, and the current month's
-`list`) and bundles their results. Each sub-handler re-derives `userId` from the
-request, so their exact semantics carry through unchanged. Note
-`getDailySummary` deliberately **does not** start a daily attempt — it resumes
-an already-open run (`currentRun`) but never opens one, so a background
-boot/refresh can't silently spend an attempt. When attempts remain and nothing
-is in progress the client raises an explicit "Start attempt" overlay
-(`Game/Prestart.tsx`, the `prestart` board phase) over an inert board; the
-button fires `startRun` — still the one fetch-and-start call — and only that
-opens the attempt. Finishing a ranked attempt re-raises the overlay for the next
-one (no auto-start) rather than opening it. The pre-start overlay's blurred
-backdrop is the tutorial maze (`IntroBoard`'s `initialBlocks`), deliberately
-**not** the day's puzzle, so it can't leak the layout.
+`standings`, `getNotifications`, `getBoard`, and the current month's `list`) and
+bundles their results. Each sub-handler re-derives `userId` from the request, so
+their exact semantics carry through unchanged. Note `getDailySummary`
+deliberately **does not** start a daily attempt — it resumes an already-open run
+(`currentRun`) but never opens one, so a background boot/refresh can't silently
+spend an attempt. When attempts remain and nothing is in progress the client
+raises an explicit "Start attempt" overlay (`Game/Prestart.tsx`, the `prestart`
+board phase) over an inert board; the button fires `startRun` — still the one
+fetch-and-start call — and only that opens the attempt. Finishing a ranked
+attempt re-raises the overlay for the next one (no auto-start) rather than
+opening it. The pre-start overlay's blurred backdrop is the tutorial maze
+(`IntroBoard`'s `initialBlocks`), deliberately **not** the day's puzzle, so it
+can't leak the layout.
 
 The client's `primeBoot` (`client/api.ts`) fires it once and primes each method
 with its slice, so every existing call site consumes off the single fetch —
@@ -193,36 +193,35 @@ A `/YYYYMMDD` **permalink cold-load** boots through the same one request:
 `primeBoot` passes the URL's date as `boot`'s optional `day`, and boot resolves
 it to an iteration and _also_ bundles that day's
 `linked: { iteration, board,
-standings }` (non-soft `getBoard` + `standings`,
-same composition as `dayView`). `primeBoot` then primes the three calls the
-deep-link handler fires for that day — by-date `standings` (what
-`consumeDeepLink` resolves the id with), then `getBoard` and `standings` **by
-iteration** (the id is only known once boot lands, so those two primes are set
-in boot's `.then`). Because the pool is content-keyed, the linked day's
-iteration-keyed calls never collide with today's timezone-keyed primes — today's
-slices still feed the dock/calendar/summary while the linked day feeds the
-staged board. An unresolvable date (or a linked slice that can't be served)
-throws, so the consumer falls through to its own fetch — the old skip-boot
-day-link path is gone. `entryIsPastDayLink` (a `/YYYYMMDD` for a day _strictly
-before_ today) gates today-**staging** so a linked past day wins the board
-(`useInit`). A link to _today_ or a _future_ day is deliberately **not**
-suppressed: today has no other day to stage, and a future day must not be staged
-at all (tomorrow's iteration exists — the gen cron runs a day ahead — so staging
-it would leak the puzzle you'll rank tomorrow; next week's 400s). Both fall
-through to today's normal resume/prestart flow, and `consumeDeepLink` stages
-only for a strictly-past link — so a today/future link lets `useInit` own the
-board. (Gating on the raw day-link stranded a fresh user on a today/future
-permalink — today's `getBoard` 403s until the three ranked attempts are spent,
-so nothing staged _and_ the prestart was suppressed, leaving an inert loading
-board.)
+standings }` (`getBoard` + `standings`, same
+composition as `dayView`). `primeBoot` then primes the three calls the deep-link
+handler fires for that day — by-date `standings` (what `consumeDeepLink`
+resolves the id with), then `getBoard` and `standings` **by iteration** (the id
+is only known once boot lands, so those two primes are set in boot's `.then`).
+Because the pool is content-keyed, the linked day's iteration-keyed calls never
+collide with today's timezone-keyed primes — today's slices still feed the
+dock/calendar/summary while the linked day feeds the staged board. An
+unresolvable date (or a linked slice that can't be served) throws, so the
+consumer falls through to its own fetch — the old skip-boot day-link path is
+gone. `entryIsPastDayLink` (a `/YYYYMMDD` for a day _strictly before_ today)
+gates today-**staging** so a linked past day wins the board (`useInit`). A link
+to _today_ or a _future_ day is deliberately **not** suppressed: today has no
+other day to stage, and a future day must not be staged at all (tomorrow's
+iteration exists — the gen cron runs a day ahead — so staging it would leak the
+puzzle you'll rank tomorrow; next week's 400s). Both fall through to today's
+normal resume/prestart flow, and `consumeDeepLink` stages only for a
+strictly-past link — so a today/future link lets `useInit` own the board.
+(Gating on the raw day-link stranded a fresh user on a today/future permalink —
+today's `getBoard` 403s until the three ranked attempts are spent, so nothing
+staged _and_ the prestart was suppressed, leaving an inert loading board.)
 
 **`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
-`getBoard` (non-soft) + `standings` for a chosen `{ iteration, timeZone }` —
-because a day navigation (a calendar click, view-best) fires exactly those two:
-`getBoard` from `showBoard`, and `standings` as the dock reacts to the iteration
-change. `client/store/board.ts`'s `showDay(iteration)` fires the one `dayView`,
-then `primeFrom` (the general form of `primeBoot`'s slicing — `client/api.ts`)
-primes each slice under the exact input its consumer sends: `getBoard` under
+`getBoard` + `standings` for a chosen `{ iteration, timeZone }` — because a day
+navigation (a calendar click, view-best) fires exactly those two: `getBoard`
+from `showBoard`, and `standings` as the dock reacts to the iteration change.
+`client/store/board.ts`'s `showDay(iteration)` fires the one `dayView`, then
+`primeFrom` (the general form of `primeBoot`'s slicing — `client/api.ts`) primes
+each slice under the exact input its consumer sends: `getBoard` under
 `{ iteration, timeZone }`, and `standings` under `{ timeZone }` when the day is
 today (the dock keys today by timezone) or `{ iteration }` for a past day — then
 delegates to `showBoard`. Both methods are `RETRYABLE`, so a primed slice that
@@ -354,10 +353,23 @@ Other invariants:
   it can't be free-played until its three ranked attempts are spent (no
   previewing/practising the puzzle you're about to rank). So a day that just
   rolled over is immediately replayable even while the new day's daily is still
-  outstanding. **Ranked play is a strictly local-day affair** — the client
-  hard-cuts a ranked attempt's build window at the player's local midnight (an
-  in-progress attempt executes early; no further attempts open on the old day),
-  and surfaces the new day via an explicit switch (see the daily-rollover flow).
+  outstanding. A locked board answers a plain **`{ incomplete: true }` (200),
+  never an error** — "not yet" is a state, not a fault, and it leaks nothing
+  either way. It used to 403 unless the caller passed `soft`, which only `boot`
+  did; every other path that legitimately lands on an unfinished today (the
+  regrade refetch, a notification tap, `boot`'s own linked-day slice for a today
+  permalink, a calendar pick while parked on a past day) therefore turned a
+  routine "not yet" into a 403 — and since `client/api.ts` relays **every**
+  error response to `reportClientError` from inside the proxy, before the caller
+  can swallow it, each one logged a server-side error even where the call site
+  was written to ignore it. Consumers already branch on `"incomplete" in r`
+  (`store/board.ts`, `useInit`'s regrade); `showBoard` re-requests once on
+  `{ incomplete }` so a stale prime (notably the linked-day slice a
+  `/YYYYMMDD`-for-today boot stashes) can't wedge the first real stage. **Ranked
+  play is a strictly local-day affair** — the client hard-cuts a ranked
+  attempt's build window at the player's local midnight (an in-progress attempt
+  executes early; no further attempts open on the old day), and surfaces the new
+  day via an explicit switch (see the daily-rollover flow).
 - `standing(time, min, best)` (`common/standing.ts`) is the one shared
   position-in-field formula used by every surface; `min` is the time of the base
   board's unobstructed shortest path, stored on the iteration. It's a

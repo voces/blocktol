@@ -121,9 +121,13 @@ export const useInit = () => {
   // days. If the OPEN board is one of them, regrade the runs panel against the
   // new field best. Refetch only this board's attempts and swap them in — no
   // re-stage, so the clock / blocks and any in-progress build or run are
-  // untouched (no phase gate needed). A 403 (today's daily unfinished, so free
-  // play is still locked) just skips — there's nothing to regrade yet. The
-  // calendar + standings refresh in the store regardless of what's on screen.
+  // untouched (no phase gate needed). An { incomplete } board (today's daily
+  // unfinished, so free play is still locked) just skips — there's nothing to
+  // regrade yet. That's the COMMON case here, not an edge one: a lost-top
+  // notification by construction fires at players with a build on today's
+  // unfinished board, and a re-pass re-surfaces the same row (see
+  // store/notifications.ts), so this runs again on every swap of the top.
+  // The calendar + standings refresh in the store regardless of what's on screen.
   const regrade = regradedIterations.value;
   useEffect(() => {
     if (iteration === undefined || !regrade.iterations.includes(iteration)) {

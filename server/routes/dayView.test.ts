@@ -5,7 +5,7 @@ import { extractUserId } from "../middleware/userid.ts";
 import { boot } from "./boot.ts";
 import { dayView } from "./dayView.ts";
 
-// dayView composes getBoard (non-soft) + standings for one chosen day; this
+// dayView composes getBoard + standings for one chosen day; this
 // checks the bundle carries both slices and that the composed standings is the
 // requested iteration's. Hits the dev DB like the run-lifecycle tests;
 // self-skips without SQL_PASSWORD.
@@ -40,10 +40,12 @@ Deno.test({
       if ("error" in r) throw new Error("dayView returned an auth error");
 
       assertEquals(Object.keys(r).sort(), ["board", "standings"]);
-      // A brand-new user hasn't spent the day's three attempts, so the non-soft
-      // board is still gated (a real navigation targets an already-unlocked day)
-      // — the composition still bundles it, which is what this asserts.
-      assert("error" in r.board, "board gated until free play unlocks");
+      // A brand-new user hasn't spent the day's three attempts, so the board is
+      // still gated — as a plain { incomplete }, never an error (the client
+      // relays any error response to reportClientError). The composition still
+      // bundles it, which is what this asserts.
+      assert(!("error" in r.board), "a gated board is not an error");
+      assertEquals(r.board, { incomplete: true });
       assert("daily" in r.standings && "pb" in r.standings);
       assertEquals(
         r.standings.iteration,

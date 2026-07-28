@@ -21,8 +21,8 @@ import { todayIteration } from "./standings.ts";
 // The staged-board shape: an iteration's fixed pieces and FULL budgets (what
 // handleStaged expects), never the mid-run leftovers.
 export type BoardData = Pick<
-  // getBoard's soft mode can answer { incomplete } (a primed boot before the
-  // daily's done); exclude it so the board shape stays a plain record here.
+  // getBoard answers { incomplete } while today's daily is unfinished (free play
+  // is locked until then); exclude it so the board shape stays a plain record.
   Exclude<MessageMap["getBoard"], { incomplete: true }>,
   | "iteration"
   | "date"
@@ -136,10 +136,12 @@ export const showBoard = (iteration?: number) => {
   };
   return req()
     .then((r) =>
-      // A boot-primed soft board lands here as { incomplete } when the daily
-      // wasn't finished at prime time. Discard it and fetch for real (the real
-      // call sends no `soft`, so it can't come back incomplete) — this is what
-      // keeps a stale prime from wedging the first true stage of the session.
+      // { incomplete } means today's daily wasn't finished when this response
+      // was produced — which, for a PRIMED response, may have been at boot,
+      // several attempts ago. Ask again so a stale prime can't wedge the stage
+      // (this is what recovers the linked-day prime a `/YYYYMMDD`-for-today boot
+      // stashes). A genuinely locked board just answers { incomplete } twice and
+      // doesn't stage: useInit owns that screen (resume / prestart), not us.
       "incomplete" in r && s === seq ? req().then(settle) : settle(r)
     )
     .catch(() => !!cached && s === seq);

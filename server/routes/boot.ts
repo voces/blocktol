@@ -24,10 +24,9 @@ import { method } from "./apiHelpers.ts";
 // cohost these run against the local DB with the per-iteration solver cache and
 // the standings LRU warm, so the fan-out is a handful of cheap parallel reads.
 //
-// getBoard runs with `soft` so an unfinished daily comes back `{ incomplete }`
-// (200) rather than a 403 — the client stages currentRun (from the summary) when
-// present and only falls back to this board once the daily is done, exactly as
-// the old soft-primed getBoard did.
+// An unfinished daily comes back `{ incomplete }` (200) — the client stages
+// currentRun (from the summary) when present and only falls back to this board
+// once the daily is done.
 //
 // `list` is the calendar's two mount months — CURRENT and PREV — derived from
 // the caller's timezone so they match the client's local-month keys (the client
@@ -87,12 +86,14 @@ export const boot = method(bootBody, true)(
       getProfile.handler({}, req),
       standings.handler({ timeZone }, req),
       getNotifications.handler({}, req),
-      getBoard.handler({ timeZone, soft: true }, req),
+      getBoard.handler({ timeZone }, req),
       listIterations.handler(monthRange(year, month), req),
       listIterations.handler(monthRange(prevYear, prevMonth), req),
-      // getBoard is NOT soft here — a real day navigation targets an unlocked
-      // day, matching the non-soft getBoard showBoard sends (so the client primes
-      // it under the same key). Same composition as dayView.
+      // The same call showBoard sends for that day, so the client primes it
+      // under the same key. Same composition as dayView. A link to TODAY while
+      // the daily is unfinished answers { incomplete } here; the prime then
+      // carries that "not yet", and showBoard's re-request picks up the real
+      // board once the attempts are spent (see store/board.ts).
       linkedIteration !== undefined
         ? getBoard.handler({ iteration: linkedIteration, timeZone }, req)
         : Promise.resolve(undefined),
