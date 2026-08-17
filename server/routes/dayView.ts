@@ -10,9 +10,9 @@ import { method } from "./apiHelpers.ts";
 //
 // Composition (not reimplementation): each sub-handler keeps its tested semantics
 // (getBoard's free-play gate, standings' cached field) and re-derives userId from
-// the request (apiHelpers.method). getBoard is NOT soft here — a real navigation
-// targets an unlocked day, matching the non-soft getBoard showBoard itself sends,
-// so the client can prime it under the same key.
+// the request (apiHelpers.method). It's the same getBoard call showBoard itself
+// sends, so the client can prime it under the same key — including the
+// { incomplete } a navigation to an unfinished today answers with.
 const dayViewBody = z.object({
   iteration: z.number().min(1),
   timeZone: z.string(),

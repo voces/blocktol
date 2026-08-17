@@ -21,7 +21,7 @@ initSettings();
 // priming would bake in the wrong user).
 //
 // One request feeds the whole cold load (see primeSession / api.primeBoot): boot
-// bundles getDailySummary, getProfile, standings, getBoard (soft),
+// bundles getDailySummary, getProfile, standings, getBoard,
 // getNotifications, and the calendar's two mount months, and — on a `/YYYYMMDD`
 // permalink — that day's linked board + standings too. The client primes each
 // slice content-keyed by the input its consumer sends, so every call site

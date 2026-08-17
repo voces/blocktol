@@ -43,9 +43,9 @@ export const entryIsDayLink = entryDay !== null;
 // staged at all — tomorrow's puzzle is one you'll rank tomorrow (previewing it
 // is a leak) and next week's doesn't exist yet. Both fall through to today's
 // normal flow instead. Gating on the raw day-link stranded a fresh user on a
-// today-or-future permalink (today's `getBoard` 403s until the three ranked
-// attempts are spent; a future date 400s or, worse, served tomorrow's board),
-// leaving an inert loading board with no way forward.
+// today-or-future permalink (today's `getBoard` answers { incomplete } until the
+// three ranked attempts are spent; a future date 400s or, worse, served
+// tomorrow's board), leaving an inert loading board with no way forward.
 export const entryIsPastDayLink = entryDay !== null &&
   dayIsBefore(
     [Number(entryDay[1]), Number(entryDay[2]), Number(entryDay[3])],
@@ -141,8 +141,9 @@ export const consumeDeepLink = async () => {
     // was open (the view sync then keeps the URL honest as you interact). Awaited
     // so the sync gate opens only once the day is actually staged. A today-link
     // hands staging to the normal boot flow instead — `useInit` owns today's
-    // resume / prestart, and today's board 403s until the ranked attempts are
-    // spent, so staging it here would 403 to nothing (or race that flow).
+    // resume / prestart, and today's board stays { incomplete } until the ranked
+    // attempts are spent, so staging it here would stage nothing (or race that
+    // flow).
     if (entryIsPastDayLink) await showBoard(s.iteration);
     if (boardParam) {
       requestStandings(s.iteration);
