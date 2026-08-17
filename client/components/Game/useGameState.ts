@@ -82,8 +82,32 @@ export const useGameState = () => {
   // The iteration's full brick/power budget (remaining + already placed at load),
   // captured when the board loads so reviewing a past maze can show how much was
   // left over. -1 until a board has loaded.
-  const [bricksTotal, setBricksTotal] = useState(-1);
-  const [powerTotal, setPowerTotal] = useState(-1);
+  const [bricksTotal, _setBricksTotal] = useState(-1);
+  const [powerTotal, _setPowerTotal] = useState(-1);
+  // Mirrors of the two budgets, readable without waiting for a re-render — the
+  // same trick `time` uses below, for a different reason. `viewMaze` derives a
+  // reviewed maze's leftovers from these, and its callers are not all synchronous
+  // with the render they were created in: the today-result chips and the
+  // profile's view-best STAGE ANOTHER DAY first and overlay the maze in the
+  // response's `.then`, so the render-state values they closed over belong to the
+  // board they left. Reading the mirrors makes the leftovers follow the board
+  // that's actually on screen — otherwise a 16-block daily attempt reviewed after
+  // switching from a 6-brick day read "0 blocks left" (clamped), while a later
+  // review from the now-current day read correctly.
+  const bricksTotalRef = useRef(-1);
+  const powerTotalRef = useRef(-1);
+  const setBricksTotal: typeof _setBricksTotal = (n) => {
+    bricksTotalRef.current = typeof n === "function"
+      ? n(bricksTotalRef.current)
+      : n;
+    _setBricksTotal(n);
+  };
+  const setPowerTotal: typeof _setPowerTotal = (n) => {
+    powerTotalRef.current = typeof n === "function"
+      ? n(powerTotalRef.current)
+      : n;
+    _setPowerTotal(n);
+  };
   const [time, _setTime] = useState(-2);
   // Handlers registered once (the input hooks) read the clock through this
   // mirror rather than putting `time` in their dependency arrays — which
@@ -222,11 +246,16 @@ export const useGameState = () => {
     setPrestart(false);
     // Show what this run left unspent: every placed block cost a brick, every
     // thunder an extra snowflake. 0/0 when the whole budget was used. Hidden (-1)
-    // only if we somehow never loaded the board's budget.
+    // only if we somehow never loaded the board's budget. Read through the
+    // mirrors, not the render's state: a caller that staged this board moments
+    // ago (the today-result chips, view-best) is running in that request's
+    // `.then` with the PREVIOUS day's budget in its closure.
     const usedBricks = maze.length;
     const usedPower = maze.filter((b) => b.thunder).length;
-    setBricks(bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - usedBricks));
-    setPower(powerTotal < 0 ? -1 : Math.max(0, powerTotal - usedPower));
+    const bricksBudget = bricksTotalRef.current;
+    const powerBudget = powerTotalRef.current;
+    setBricks(bricksBudget < 0 ? -1 : Math.max(0, bricksBudget - usedBricks));
+    setPower(powerBudget < 0 ? -1 : Math.max(0, powerBudget - usedPower));
     clearTouchZoom();
     invalid.value = false;
     transitionBlock.value = undefined;
