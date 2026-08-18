@@ -1683,11 +1683,15 @@ a:hover {
   color: var(--lose);
 }
 
-/* No counterpart in the best run (a flag it never crossed) reads as a dash, and
-   a dead-level mark stays neutral — neither is a gain. */
-.splits__delta--none,
-.splits__delta--even {
+/* No counterpart in the best run (a flag it never crossed): a dash, not a zero. */
+.splits__delta--none {
   color: var(--text-faint);
+}
+
+/* Dead level against the reference — amber, because it is neither a gain nor a
+   loss, and because the faint grey above already means "nothing to compare". */
+.splits__delta--even {
+  color: var(--warn);
 }
 
 /* Viewing your own best: there is nothing to compare against, so the marks show

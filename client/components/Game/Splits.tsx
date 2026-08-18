@@ -121,9 +121,16 @@ const Glyph = ({ split }: { split: Split }) =>
 const formatDelta = (delta: number) =>
   (delta > 0 ? "+" : "") + formatSeconds(delta);
 
+// Dead level is its own state, not a gain: matching the reference exactly gets
+// the warn amber rather than the win green (and not the faint grey either —
+// that one already means "no counterpart in the best run", see --none).
 const deltaClass = (delta: number | undefined) =>
-  delta === undefined ? "splits__delta splits__delta--none" : "splits__delta " +
-    (delta >= 0 ? "splits__delta--gain" : "splits__delta--loss");
+  delta === undefined
+    ? "splits__delta splits__delta--none"
+    : delta === 0
+    ? "splits__delta splits__delta--even"
+    : "splits__delta " +
+      (delta > 0 ? "splits__delta--gain" : "splits__delta--loss");
 
 // The board rectangle a hovered row rings: a thunder is a 2x2 piece anchored at
 // its cell, a flag one cell, and the checkpoint the cell its half-offset anchor
