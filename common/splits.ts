@@ -30,9 +30,11 @@ export type SplitKind = "slow" | "checkpoint" | "flag";
 
 export type Split = {
   kind: SplitKind;
-  // 1-based ordinal WITHIN the kind, in crossing order — the tape's "Slow 3".
-  // One thunder can trigger a dozen times and one flag can be crossed twice
-  // (once per leg), so this counts events, not pieces.
+  // 1-based ordinal WITHIN the kind, ordered by first crossing — the tape's
+  // "Slow 3". It names the PIECE, not the event: one thunder can trigger a
+  // dozen times and one flag can be crossed twice (once per leg), and every one
+  // of those rows carries the same number, because it is the same flag. The
+  // times down the column are what tell the passes apart.
   index: number;
   // Identity of this mark across runs of the SAME board, so a delta pairs like
   // with like: the piece's cell plus which of its own crossings this is. An
@@ -147,10 +149,19 @@ export const computeSplits = (
   // then flags) rather than shuffling between renders.
   marks.sort((a, b) => a.raw - b.raw);
 
+  // Ordinals are per PIECE, handed out in crossing order and then reused for
+  // every later crossing of that same piece (see `index`).
   const counts = { slow: 0, checkpoint: 0, flag: 0 };
+  const ordinals = new Map<string, number>();
+  const ordinal = (kind: SplitKind, cell: string) => {
+    const id = `${kind}:${cell}`;
+    let n = ordinals.get(id);
+    if (n === undefined) ordinals.set(id, n = ++counts[kind]);
+    return n;
+  };
   return marks.map((mark) => ({
     kind: mark.kind,
-    index: ++counts[mark.kind],
+    index: ordinal(mark.kind, `${mark.at.x},${mark.at.y}`),
     key: `${mark.kind[0]}:${mark.at.x},${mark.at.y}:${mark.nth}`,
     time: round2(mark.raw),
     at: mark.at,

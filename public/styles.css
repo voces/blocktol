@@ -524,6 +524,10 @@ a:hover {
 .game {
   display: grid;
   gap: 24px;
+  /* One rhythm for the right rail: the gap under the standings dock and the gap
+     under the splits tape are the same value, so the tape sits evenly between
+     the dock above it and the runs below. */
+  --rail-gap: 12px;
   justify-content: center;
   align-items: start;
   box-sizing: border-box;
@@ -547,8 +551,25 @@ a:hover {
       minmax(0, 340px) min(var(--maze-size), 100%) minmax(0, 340px);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
-      "today board standings"
-      "cal   board attempts";
+      "today board rail"
+      "cal   board rail";
+  }
+
+  /* The right rail owns its own vertical rhythm: the dock, then the runs (with
+     the splits tape at their head), spaced by --rail-gap. Spanning both grid
+     rows is what frees it from the left column's row heights — the today card
+     is taller than the dock, and with the dock parked in row 1 the runs were
+     pushed down to meet it. */
+  .game__rail {
+    grid-area: rail;
+    gap: var(--rail-gap);
+    min-height: 0;
+  }
+
+  /* The dock is its natural height; the runs take the rest and scroll. */
+  .game__rail > .attempts {
+    flex: 1;
+    min-height: 0;
   }
 
   /* The wrapper vanishes so its three panels land directly in the grid. */
@@ -662,6 +683,16 @@ a:hover {
   .game__panel .today-result {
     display: none;
   }
+}
+
+/* Dock + runs as one column. A plain flex column here; the desktop block gives
+   it the grid area spanning both rows and the gap. On mobile it just passes its
+   children through to the stacked panel (and the dock is pinned to the viewport
+   anyway), so it needs no spacing of its own. */
+.game__rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .game__board {
@@ -1233,8 +1264,6 @@ a:hover {
    max-width media block above (as descendant selectors, to win by
    specificity). */
 .attempts {
-  grid-area: attempts;
-  align-self: stretch;
   min-height: 0;
   overflow-y: auto;
   text-align: left;
@@ -1355,6 +1384,13 @@ a:hover {
 .attempts__meta {
   flex: 1;
   min-width: 0;
+  /* One line: "2m ago" plus its tags reads as a single caption, and letting it
+     wrap in the 288px rail made the row grow a line whenever a run picked up a
+     badge. Clipped rather than allowed to spill, so a run wearing every tag
+     (x3 + DAILY + SUPREME) runs out under its own edge instead of colliding
+     with the "viewing" label beside it. */
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .attempts__kind {
@@ -1484,7 +1520,9 @@ a:hover {
   border: 1px solid var(--border);
   border-radius: 13px;
   overflow: hidden;
-  margin: 0 0 10px;
+  /* Matches the rail gap above it (see .game), so the tape is evenly spaced
+     between the dock and the runs. */
+  margin: 0 0 var(--rail-gap, 12px);
 }
 
 .splits__head {
@@ -1506,24 +1544,62 @@ a:hover {
   border-bottom: 1px solid var(--border);
 }
 
+/* The standings dock's caret, same weight and same muted colour so the rail
+   reads as one system — but this one is a disclosure, not a sheet, so it points
+   RIGHT when closed and rotates down on open (the dock's points up, or left on
+   desktop where its sheet is a side drawer). The glyph's base orientation is
+   up, hence the 90deg / 180deg. */
 .splits__chevron {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 9px;
-  height: 13px;
-  color: var(--text-dim);
+  width: 14px;
+  height: 14px;
+  color: var(--text-mute);
 }
 
 /* display:block or the glyph sits low on the text baseline. */
 .splits__chevron svg {
   display: block;
-  transition: transform 0.12s ease;
+  transform: rotate(90deg);
+  transition: transform 0.16s ease;
 }
 
 .splits__chevron--open svg {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
+}
+
+/* Open/close slides: the body is a grid row animated from 0fr to 1fr, with the
+   inner wrapper clipping the overflow — no measured pixel height, so the tape
+   can be any length. Browsers that can't interpolate fr units simply snap, the
+   behaviour before this. Collapsed, `visibility: hidden` (applied only once the
+   slide has finished) takes the rows and the flag controls out of the tab order
+   and off the accessibility tree. */
+.splits__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.16s ease, visibility 0s 0.16s;
+}
+
+.splits--open .splits__body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.16s ease;
+}
+
+.splits__body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splits__body,
+  .splits--open .splits__body,
+  .splits__chevron svg {
+    transition: none;
+  }
 }
 
 .splits__title {
@@ -3863,14 +3939,9 @@ a:hover {
   color: var(--peak);
 }
 
-/* Desktop: a peek card at the top of the right rail (its own grid area, above
-   the runs). */
+/* Desktop: a peek card at the top of the right rail (see .game__rail, which
+   stacks it above the runs). */
 @media (min-width: 1200px) {
-  .standings-dock {
-    grid-area: standings;
-    align-self: start;
-  }
-
   /* The sheet is a side drawer here (slides in from the right — see
      .standings-sheet below), not a bottom sheet, so the "expands upward" caret
      is rotated to point left: an "opens a side panel" affordance instead. */

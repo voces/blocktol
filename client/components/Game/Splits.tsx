@@ -14,6 +14,7 @@ import {
 import { storage } from "../../util/storage.ts";
 import { t } from "../../util/t.ts";
 import { localRun, mazeKey } from "./helpers.ts";
+import { Chevron } from "../Standings/icons.tsx";
 import { GameStateContext } from "./useGameState.ts";
 
 // Open/closed sticks across visits, like the runs sort and the standings sort.
@@ -24,18 +25,16 @@ const OPEN_KEY = "splitsOpen";
 const COARSE = typeof matchMedia === "function" &&
   matchMedia("(pointer: coarse)").matches;
 
-const Chevron = ({ open }: { open: boolean }) => (
+// The same caret the standings dock uses, in the same weight and colour, so the
+// rail reads as one system — but pointed differently, because the two controls
+// do different things: the dock's opens a sheet (up on mobile, left into a side
+// drawer on desktop), while this one is a disclosure that expands in place, so
+// it points right when closed and down when open. Matching the glyph and
+// diverging on direction is the honest pairing; making them identical would
+// promise the same behaviour.
+const Caret = ({ open }: { open: boolean }) => (
   <span class={"splits__chevron" + (open ? " splits__chevron--open" : "")}>
-    <svg viewBox="0 0 8 13" width={8} height={13} aria-hidden="true">
-      <path
-        d="M1.5 1.5L6 6.5L1.5 11.5"
-        fill="none"
-        stroke="currentColor"
-        stroke-width={1.6}
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
+    <Chevron />
   </span>
 );
 
@@ -255,6 +254,9 @@ export const Splits = () => {
 
   const toggle = () => {
     storage.setItem(OPEN_KEY, open ? "0" : "1");
+    // Collapsing takes the Done button off screen, so it has to disarm too —
+    // otherwise the board sits waiting for a flag tap with no way to stop it.
+    if (open) flagsArmed.value = false;
     setOpen(!open);
   };
 
@@ -268,7 +270,7 @@ export const Splits = () => {
         aria-expanded={open}
         onClick={toggle}
       >
-        <Chevron open={open} />
+        <Caret open={open} />
         {open ? <span class="splits__title">{t("splits.title")}</span> : (
           // Collapsed, the whole tape is the header: every mark on one
           // wrapping line — the delta against your best, or the absolute time
@@ -308,8 +310,14 @@ export const Splits = () => {
           </span>
         )}
       </button>
-      {open && (
-        <>
+      {
+        /* Always rendered, so opening and closing can SLIDE (a 0fr -> 1fr grid
+          row, clipped by the inner wrapper) instead of snapping. Collapsed it
+          is also `visibility: hidden`, which takes it out of the tab order and
+          off the accessibility tree once the animation has run. */
+      }
+      <div class="splits__body">
+        <div class="splits__body-inner">
           {rows.map((split) => (
             <div
               class={"splits__row" +
@@ -396,8 +404,8 @@ export const Splits = () => {
                 </>
               )}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

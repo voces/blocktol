@@ -504,23 +504,32 @@ result.
 
 **Splits & flags (`Game/Splits.tsx`, `components/FlagLayer.tsx`,
 `store/flags.ts`):** the tape above the runs list, rendered inside `.attempts`
-so it scrolls with the list it describes. It appears only while **reviewing a
-run in free play** (`viewing && !dailyInProgress`) — mid-daily it would spoil
-the attempt being built, and a live board has no run to describe. Everything is
-computed locally: the maze on the board and the reference (the best run in
-`viewedAttempts`) are each re-solved with `localRun` and read through
-`computeSplits`, so the tape can never disagree with the time on the row and
-costs no round trip. Viewing your own best hides the delta column and shows
+so it scrolls with the list it describes. On desktop the dock and the runs are
+one `.game__rail` spanning both grid rows — before that the dock sat in its own
+row, whose height the (taller) today card in the left column set, leaving a wide
+dead gap above the runs; the rail's `--rail-gap` is also the tape's bottom
+margin, so the tape sits evenly between the two. It appears only while
+**reviewing a run in free play** (`viewing && !dailyInProgress`) — mid-daily it
+would spoil the attempt being built, and a live board has no run to describe.
+Everything is computed locally: the maze on the board and the reference (the
+best run in `viewedAttempts`) are each re-solved with `localRun` and read
+through `computeSplits`, so the tape can never disagree with the time on the row
+and costs no round trip. Viewing your own best hides the delta column and shows
 absolute times — there is nothing to compare against. Collapsed, every mark sits
 on one **wrapping** line; expanded, one row per mark with the delta leading and
-the absolute time trailing. Open/closed persists per player (`splitsOpen`). Flag
-placement is explicitly **armed** from the footer (with the board visible a bare
-tap is ambiguous — inspecting a thunder's radius vs. dropping a flag); armed,
-the board dims behind a scrim, any cell takes a flag, and a flag drags to move /
-taps to clear. `store/flags.ts` folds flags in from board responses, writes them
-back optimistically, and carries the two board-facing signals (`liveFlags` —
-which flags this run actually crosses, the rest drawing dashed as speculative —
-and `hoveredSplit`, the mark a hovered row rings), the same signals-not-context
+the absolute time trailing, sliding open on a `0fr -> 1fr` grid row (no measured
+height, and it degrades to a snap where `fr` can't interpolate). Open/closed
+persists per player (`splitsOpen`). Its caret is the standings dock's glyph in
+the dock's colour — one family for the rail — but pointed differently on
+purpose: the dock opens a sheet (up, or left into a desktop drawer), this
+discloses in place (right, rotating down). Flag placement is explicitly
+**armed** from the footer (with the board visible a bare tap is ambiguous —
+inspecting a thunder's radius vs. dropping a flag); armed, the board dims behind
+a scrim, any cell takes a flag, and a flag drags to move / taps to clear.
+`store/flags.ts` folds flags in from board responses, writes them back
+optimistically, and carries the two board-facing signals (`liveFlags` — which
+flags this run actually crosses, the rest drawing dashed as speculative — and
+`hoveredSplit`, the mark a hovered row rings), the same signals-not-context
 split `Game/interaction.ts` uses.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free

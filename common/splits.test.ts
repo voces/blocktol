@@ -27,6 +27,39 @@ Deno.test("splits time the checkpoint and flags along the path", () => {
   assertEquals(pathDuration(PATH, []), [3.8, []]);
 });
 
+// An out-and-back route: down to a checkpoint at (9,5), then back up past the
+// same ground. Anything sitting between the two legs is crossed twice.
+const OUT_AND_BACK: Point[] = [{ x: 9, y: 19 }, { x: 9, y: 5 }, {
+  x: 9,
+  y: 15,
+}];
+const OUT_AND_BACK_CHECKPOINT = { x: 8.5, y: 4.5 };
+
+Deno.test("a piece keeps its number on every crossing", () => {
+  const splits = computeSplits({
+    path: OUT_AND_BACK,
+    // Off to the side of both legs, and inside its radius long enough for the
+    // 3.2s cooldown to expire before the second pass.
+    thunders: [{ x: 5, y: 9 }],
+    checkpoint: OUT_AND_BACK_CHECKPOINT,
+    flags: [{ x: 9, y: 10 }],
+  });
+
+  // One flag crossed twice is "Flag 1" both times, and one thunder striking
+  // twice is "Slow 1" both times — the number names the piece, not the event.
+  // The keys still separate the passes, which is what a delta pairs on.
+  assertEquals(
+    splits.map((s) => [s.kind, s.index, s.key]),
+    [
+      ["slow", 1, "s:5,9:1"],
+      ["flag", 1, "f:9,10:1"],
+      ["checkpoint", 1, "c:8.5,4.5:1"],
+      ["slow", 1, "s:5,9:2"],
+      ["flag", 1, "f:9,10:2"],
+    ],
+  );
+});
+
 Deno.test("a flag is crossed once per leg", () => {
   // Cell (9,9) is the checkpoint's own node: the runner reaches it, turns, and
   // leaves — one continuous pass, so one mark. Cell (9,4) is only on the second
@@ -41,7 +74,7 @@ Deno.test("a flag is crossed once per leg", () => {
   assertEquals(splits[1].key, "f:9,4:1");
 });
 
-Deno.test("slows are numbered per crossing and priced for waste", () => {
+Deno.test("distinct thunders number in strike order and price their waste", () => {
   // Two thunders 3.5 units off the line, so both trigger. The second lands
   // 2.112s in, while the first's 6s slow still has 4.4s to run — a reset, not a
   // stack, so 4.4s of slow never lands: 2.2s of finish time. The runner then

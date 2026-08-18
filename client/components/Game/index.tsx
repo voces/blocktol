@@ -102,8 +102,18 @@ export const Game = () => {
         }
         <div class="game__panel">
           <TodayResult />
-          <StandingsDock />
-          <Attempts />
+          {
+            /* The dock and the runs are one rail: on desktop they share a
+              single grid area spanning both rows, so the runs start right
+              under the dock instead of at the row line the (taller) left
+              column sets — which left a wide dead gap above them. On mobile
+              the rail is just a passthrough (the dock is pinned to the
+              viewport there). */
+          }
+          <div class="game__rail">
+            <StandingsDock />
+            <Attempts />
+          </div>
           <Calendar />
         </div>
       </div>
