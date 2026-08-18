@@ -9,6 +9,7 @@ import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
 import type { Point } from "../../../common/types.ts";
 import { errText, log } from "../../util/logging.ts";
+import { getFlags } from "../../db/flags.ts";
 import { getIteration, getIterationOtherBest } from "../../db/iteration.ts";
 import { ensureDailyIterationId } from "../../util/newIteration.ts";
 import { dailyAttempts, getOwnBest } from "../../db/user.ts";
@@ -47,11 +48,16 @@ export const getBoard = method(getBoardBody, true)(
       if (todayAttempts.length < 3) return { incomplete: true as const };
     }
 
-    const [data, ownBest, otherBest, attempts] = await Promise.all([
+    const [data, ownBest, otherBest, attempts, flags] = await Promise.all([
       getIteration(iteration),
       getOwnBest(userId, iteration),
       getIterationOtherBest(iteration, userId),
       iterationAttempts(userId, iteration),
+      // The player's own flags on this board (the splits tape's manual
+      // checkpoints). They ride the board response because that is the one call
+      // every free-play staging path already makes — boot, dayView and the
+      // board loaders all compose it — so the tape needs no fetch of its own.
+      getFlags(userId, iteration),
     ]);
 
     let path: Point[] | undefined;
@@ -79,6 +85,7 @@ export const getBoard = method(getBoardBody, true)(
       ownBest,
       best: Math.max(otherBest ?? 0, ownBest ?? 0, data.min),
       attempts,
+      flags,
       remainingTime: 60,
     };
   },

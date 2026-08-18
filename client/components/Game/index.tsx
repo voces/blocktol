@@ -14,6 +14,7 @@ import { useClock } from "./useClock.ts";
 import { useInputStart } from "./useInputStart.ts";
 import { useInputEnd } from "./useInputEnd.ts";
 import { useOnSlow } from "./useOnSlow.ts";
+import { flagsArmed, flagsFor, saveFlags } from "../../store/flags.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { Daily } from "./Daily.tsx";
 import { Prestart } from "./Prestart.tsx";
@@ -42,7 +43,13 @@ const BoardArea = (
     setRun,
     date,
     implosions,
+    iteration,
+    dailyInProgress,
   } = useContext(GameStateContext);
+  // Flags belong to free play: they mark up a board you're studying, and the
+  // splits tape they feed is hidden mid-daily anyway (Splits.tsx). Passing them
+  // only there keeps the ranked board exactly as it was.
+  const flagged = !dailyInProgress && iteration !== undefined;
   return (
     <Board
       placingBlock={placingBlock.value}
@@ -62,6 +69,11 @@ const BoardArea = (
       date={date}
       dragMoved={dragMoved.value}
       implosions={implosions}
+      flags={flagged ? flagsFor(iteration) : undefined}
+      flagsArmed={flagsArmed.value}
+      onFlagsChange={flagged
+        ? (flags) => saveFlags(iteration, flags)
+        : undefined}
     />
   );
 };

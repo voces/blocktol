@@ -56,6 +56,14 @@
   --maze-thunder-radius: hsla(220, 60%, 50%, 20%);
   --maze-debug-block: hsla(0, 100%, 60%, 10%);
   --maze-stroke: rgba(0, 0, 0, 0.4);
+  /* Flags — the splits tape's manual checkpoints (see common/splits.ts).
+     Orange is the one hue the maze palette leaves free, so a flag can never be
+     read as a piece. Theme-independent like the rest of the maze tokens: the
+     board is the same colour in light and dark. */
+  --flag: hsl(32, 92%, 52%);
+  --flag-bright: hsl(32, 92%, 62%);
+  --flag-soft: hsla(32, 92%, 52%, 0.5);
+  --flag-deep: hsl(32, 92%, 38%);
   --runner: hsl(300, 60%, 60%);
   --slow-runner: hsl(258, 36%, 53%);
   --brightness: light-dark(40%, 70%);
@@ -1465,6 +1473,298 @@ a:hover {
    as a set, without a second accent colour fighting the band. */
 .attempts__row--pinned {
   --band-card-edge: 46%;
+}
+
+/* Splits panel — the tape above the runs list (see Splits.tsx). One card that
+   is either a single collapsed line of marks or the expanded table; the header
+   is the toggle in both states. Sits inside .attempts so it scrolls with the
+   list it belongs to. */
+.splits {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  overflow: hidden;
+  margin: 0 0 10px;
+}
+
+.splits__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  background: transparent;
+  color: var(--color);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Only the expanded header rules a line off the tape below it; collapsed, the
+   header IS the panel. */
+.splits--open .splits__head {
+  border-bottom: 1px solid var(--border);
+}
+
+.splits__chevron {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 9px;
+  height: 13px;
+  color: var(--text-dim);
+}
+
+/* display:block or the glyph sits low on the text baseline. */
+.splits__chevron svg {
+  display: block;
+  transition: transform 0.12s ease;
+}
+
+.splits__chevron--open svg {
+  transform: rotate(90deg);
+}
+
+.splits__title {
+  flex: 1;
+  font: 600 12px var(--font);
+  color: var(--color);
+}
+
+/* Collapsed: every mark on one line, wrapping rather than truncating — the
+   whole tape is meant to be readable without opening it. */
+.splits__marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.splits__mark {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.splits__glyph {
+  display: block;
+  flex: none;
+}
+
+.splits__note {
+  flex: none;
+  font: 500 10.5px var(--font);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* One mark per row: glyph, label, the delta (the point of the tape, so it
+   leads), then the absolute time trailing in a muted mono column. */
+.splits__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The checkpoint is the one mark every route shares — lifted a little so the
+   tape reads as before/after it. */
+.splits__row--checkpoint {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--color) 3%, transparent);
+}
+
+.splits__row--checkpoint .splits__label {
+  font-weight: 600;
+  color: var(--color);
+}
+
+.splits__label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12.5px var(--font);
+  color: var(--text-dim);
+}
+
+/* Higher is better, so a gain is green and a loss red — the sign is spelled out
+   in the text too (see formatDelta). */
+.splits__delta {
+  font: 700 13px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.splits__delta--gain {
+  color: var(--win);
+}
+
+.splits__delta--loss {
+  color: var(--lose);
+}
+
+/* No counterpart in the best run (a flag it never crossed) reads as a dash, and
+   a dead-level mark stays neutral — neither is a gain. */
+.splits__delta--none,
+.splits__delta--even {
+  color: var(--text-faint);
+}
+
+/* Viewing your own best: there is nothing to compare against, so the marks show
+   absolute times in the collapsed line. */
+.splits__delta--absolute {
+  color: var(--color);
+  font-size: 12px;
+}
+
+.splits__time {
+  flex: none;
+  width: 44px;
+  text-align: right;
+  font: 600 11px var(--font-mono);
+  color: var(--text-faint);
+}
+
+/* A re-strike that reset a still-running slow, priced in finish seconds. */
+.splits__waste {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--lose) 32%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lose) 13%, transparent);
+  color: var(--lose);
+  font: 700 10.5px var(--font-mono);
+  white-space: nowrap;
+}
+
+.splits__foot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-top: 1px solid var(--border-strong);
+  background: var(--surface-2);
+}
+
+/* Armed: the footer is the only thing that changes state, because the tape is
+   the reason you're placing a flag and must stay readable. */
+.splits__foot--armed {
+  background: color-mix(in srgb, var(--flag) 12%, var(--surface-2));
+}
+
+.splits__add {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--flag) 45%, transparent);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--flag-bright);
+  font: 600 11.5px var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.splits__add:hover {
+  background: color-mix(in srgb, var(--flag) 12%, transparent);
+}
+
+.splits__arm-label {
+  flex: 1;
+  min-width: 0;
+  font: 600 12px var(--font);
+  color: var(--flag-bright);
+  /* The rail is 288px: the label, the saved count and Done only fit on one line
+     if none of them wraps. */
+  white-space: nowrap;
+}
+
+.splits__spacer {
+  flex: 1;
+}
+
+.splits__saved {
+  font: 500 10.5px var(--font);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.splits__clear {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: 600 11px var(--font);
+  color: var(--text-mute);
+  cursor: pointer;
+}
+
+.splits__clear:hover {
+  color: var(--color);
+}
+
+.splits__done {
+  flex: none;
+  padding: 5px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  font: 600 11.5px var(--font);
+  cursor: pointer;
+}
+
+/* Flags on the board (see FlagLayer.tsx). The pennant and its cell ring are
+   decoration — only the grab target (armed only) takes a pointer. */
+.flag__pennant {
+  fill: var(--flag-soft);
+  stroke: var(--flag);
+  stroke-width: 0.1;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* A flag the current run doesn't cross reports nothing: drawn hollow and dashed,
+   with its cell ringed, so it reads as speculative rather than broken. */
+.flag__pennant--speculative {
+  fill: none;
+  stroke: var(--flag-deep);
+  stroke-width: 0.13;
+  stroke-dasharray: 0.26 0.2;
+}
+
+.flag__cell {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.85;
+  stroke-width: 0.12;
+  pointer-events: none;
+}
+
+.flag__grab {
+  cursor: grab;
+}
+
+.flag-layer__scrim {
+  cursor: crosshair;
+}
+
+/* The mark a hovered tape row points at. */
+.flag-layer__hover {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.9;
+  stroke-width: 0.12;
+  pointer-events: none;
 }
 
 /* Build-phase HUD strip above the board (see Hud.tsx). */

@@ -55,10 +55,10 @@ workflow only checks.
 Three source roots with a strict dependency direction:
 
 - **`common/`** — pure, framework-free logic shared by both sides (the pathing
-  engine, domain math, serialization, notification classification, settings
-  parsing). Must import nothing from `server/` or `client/`. `client/api.ts`
-  imports **types only** from `server/routes/api.ts` — that type-only edge is
-  the API contract, not a runtime dependency.
+  engine, the splits derived from it, domain math, serialization, notification
+  classification, settings parsing). Must import nothing from `server/` or
+  `client/`. `client/api.ts` imports **types only** from `server/routes/api.ts`
+  — that type-only edge is the API contract, not a runtime dependency.
 - **`server/`** — the Deno backend. May import `common/`.
 - **`client/`** — the Preact frontend, bundled to `public/js/`. May import
   `common/`. JSX uses the `h`/`Fragment` pragma (`preact`), configured in
@@ -119,7 +119,26 @@ diverge — the server's accepted time must equal what the client previewed.
   (halved while slowed); a thunder within radius 4 triggers at the earliest
   instant strictly in range with its 3.2s cooldown passed, resetting the shared
   6s slow (never stacking); exact ties fire together. Times round to the two
-  decimals the game stores.
+  decimals the game stores. The walk itself is `pathTimeline`, which
+  `pathDuration` is a rounding wrapper over: it also returns each node's
+  cumulative distance, a closed-form `timeAt(distance)` (its state is recorded
+  at every trigger, so any point on the route resolves without re-walking), and
+  per slow the seconds of slow the trigger **destroyed** by resetting a
+  still-running one (plus, on the last, whatever was still owed at the finish).
+  `circleWindows` is the shared geometry — a thunder's trigger windows and a
+  flag's passes are the same circle/polyline intersection.
+- `common/splits.ts` reads a solved path back as **splits**: the run's time at
+  every mark it crosses — each thunder trigger (`local` distinguishing the
+  player's piece from the day's), the checkpoint, and the player's flags —
+  numbered per kind in crossing order and each carrying a cross-run `key` (the
+  piece's cell plus which of ITS crossings this is). `splitDeltas` pairs a run's
+  marks against the reference run's **by that key, never by ordinal**: a
+  different build routes the runner differently, so the 3rd flag of one run may
+  be a different flag entirely. A slow's `wasted` is the timeline's lost slow
+  seconds **halved** — at half speed a second of slow only buys half a second of
+  finish time, and the tape is about the clock. All of it is pure and derived
+  from the path, so the splits panel needs no server data (see the client
+  section).
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `cachedSolver`, per iteration shape), so what the
   audit script accepts is exactly what the write path accepts. Any change that
@@ -157,7 +176,8 @@ the client imports — add a route by adding a `{ validation, handler }` (see
 `routes/apiHelpers.ts`'s `method(...)` helper) to that object and the client's
 typed `api.<method>()` appears automatically. A handler returning
 `{ status: >=500 }` (or throwing) is reported; 4xx are treated as expected
-client faults.
+client faults. (`setFlags` — `routes/iteration/flags.ts` — is the splits tape's
+one write; see the flags invariant below.)
 
 **`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
 that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
@@ -324,6 +344,16 @@ get these right, they encode the whole competitive model:
   Attempts panel. The panel merges runs that built the identical maze into one
   row, so pinning toggles the whole maze-group together.
 
+**Flags** (`flag`, migration v15) are the one other player-owned row: the splits
+tape's manual checkpoints. A flag belongs to the **board**, not to a run — one
+row per `(user, iteration)` holding the whole set in a single column, the way a
+run's maze is stored (`util/flags.ts`) — so every build of that maze is timed
+against the same marks. They ride the `getBoard` response (and so `boot` /
+`dayView` / every board loader through it) and are written back whole by
+`setFlags`, an absolute-value upsert that is therefore idempotent and retryable.
+Nothing but the owner reads them: they never touch timing, standings, or
+validation.
+
 Other invariants:
 
 - **The run lifecycle splits by type, to keep request volume down and survive
@@ -389,22 +419,23 @@ Other invariants:
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
-  notifications, push endpoints) as one JSON document the client offers as a
-  download. `deleteAccount` (`routes/deleteAccount.ts` → `db/deleteAccount.ts`,
-  `anonymizeUser`) is **anonymize-in-place, not a row delete**: it hard-deletes
-  the caller's push subscriptions + notifications, then rotates `user.id` to a
-  fresh random UUID and clears `name`/`settings`/`locale`. The runs ride along
-  via `FK_run_user ON UPDATE CASCADE`, so the player's build history survives as
-  one distinct **anonymous** competitor — the day's field, others' percentiles,
-  and the applied ELO deltas aren't rewritten, and every `JOIN user` still
-  resolves. The new id is never returned, so the link to the person is gone
-  (anonymization, not pseudonymization). The op is an idempotent no-op on retry
-  (the old id is gone), but `deleteAccount` is still **excluded from the client
-  `RETRYABLE` allowlist** because on success the client mints a fresh local id +
-  reloads, so a blind retry would act on the stale id. The confirm is gated
-  behind typing "DELETE" (`DeleteAccount.tsx`). `public/privacy.html` is the
-  static disclosure page linked from the same panel (the SQL proxy is
-  first-party infra, not listed as a third-party recipient).
+  notifications, push endpoints, board flags) as one JSON document the client
+  offers as a download. `deleteAccount` (`routes/deleteAccount.ts` →
+  `db/deleteAccount.ts`, `anonymizeUser`) is **anonymize-in-place, not a row
+  delete**: it hard-deletes the caller's push subscriptions + notifications +
+  flags (private annotations nothing else is computed from), then rotates
+  `user.id` to a fresh random UUID and clears `name`/`settings`/`locale`. The
+  runs ride along via `FK_run_user ON UPDATE CASCADE`, so the player's build
+  history survives as one distinct **anonymous** competitor — the day's field,
+  others' percentiles, and the applied ELO deltas aren't rewritten, and every
+  `JOIN user` still resolves. The new id is never returned, so the link to the
+  person is gone (anonymization, not pseudonymization). The op is an idempotent
+  no-op on retry (the old id is gone), but `deleteAccount` is still **excluded
+  from the client `RETRYABLE` allowlist** because on success the client mints a
+  fresh local id + reloads, so a blind retry would act on the stale id. The
+  confirm is gated behind typing "DELETE" (`DeleteAccount.tsx`).
+  `public/privacy.html` is the static disclosure page linked from the same panel
+  (the SQL proxy is first-party infra, not listed as a third-party recipient).
 
 ## Client architecture
 
@@ -456,15 +487,41 @@ mirrors the maze to `localStorage` for reload-resume, and `commitRun` fires once
 at execution; `useInit` awaits that commit before re-staging so a slow
 (retrying) commit can't let the re-stage drop the run from recents. Navigating
 away mid-build (reviewing a maze, another day) deliberately does NOT abandon the
-build — the record stays, and staging its board within the window resumes it.
-Its window doesn't pause either: reviewing a past maze keeps the live countdown
-in the HUD's Play slot alongside the reset button, and reset there clears the
-attempt while staying on the reviewed maze (the input hooks gate on `viewing`,
-so the ticking clock never makes a reviewed board editable). Should the window
-expire mid-review, the board hands back to the build (restored from the local
-record via `pendingFreePlay`, the one read that ignores the deadline) and it
-executes normally — committed, runner released. `useClock`/`RunClock` run the
-60s/animation timing; `verdict.ts` computes the result.
+build — the record stays, and staging its board within the window resumes it. A
+free-play run that FINISHES doesn't clear the board either: the re-stage still
+runs (it refreshes the board's bests and recents), and the executed maze is then
+overlaid back onto it as a review — the run you just watched stays up, its row
+reads "viewing", and its splits are there to read. Play stages a fresh board
+when you want one. Its window doesn't pause either: reviewing a past maze keeps
+the live countdown in the HUD's Play slot alongside the reset button, and reset
+there clears the attempt while staying on the reviewed maze (the input hooks
+gate on `viewing`, so the ticking clock never makes a reviewed board editable).
+Should the window expire mid-review, the board hands back to the build (restored
+from the local record via `pendingFreePlay`, the one read that ignores the
+deadline) and it executes normally — committed, runner released.
+`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
+result.
+
+**Splits & flags (`Game/Splits.tsx`, `components/FlagLayer.tsx`,
+`store/flags.ts`):** the tape above the runs list, rendered inside `.attempts`
+so it scrolls with the list it describes. It appears only while **reviewing a
+run in free play** (`viewing && !dailyInProgress`) — mid-daily it would spoil
+the attempt being built, and a live board has no run to describe. Everything is
+computed locally: the maze on the board and the reference (the best run in
+`viewedAttempts`) are each re-solved with `localRun` and read through
+`computeSplits`, so the tape can never disagree with the time on the row and
+costs no round trip. Viewing your own best hides the delta column and shows
+absolute times — there is nothing to compare against. Collapsed, every mark sits
+on one **wrapping** line; expanded, one row per mark with the delta leading and
+the absolute time trailing. Open/closed persists per player (`splitsOpen`). Flag
+placement is explicitly **armed** from the footer (with the board visible a bare
+tap is ambiguous — inspecting a thunder's radius vs. dropping a flag); armed,
+the board dims behind a scrim, any cell takes a flag, and a flag drags to move /
+taps to clear. `store/flags.ts` folds flags in from board responses, writes them
+back optimistically, and carries the two board-facing signals (`liveFlags` —
+which flags this run actually crosses, the rest drawing dashed as speculative —
+and `hoveredSplit`, the mark a hovered row rings), the same signals-not-context
+split `Game/interaction.ts` uses.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy

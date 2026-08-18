@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "preact/compat";
 
 import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
+import { FlagLayer } from "./FlagLayer.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { useSettings } from "../hooks/useSettings.ts";
@@ -26,6 +27,9 @@ export const Board = (
     date,
     dragMoved,
     implosions,
+    flags,
+    flagsArmed,
+    onFlagsChange,
   }: {
     placingBlock: Point & { placing: boolean };
     touching: boolean;
@@ -53,6 +57,12 @@ export const Board = (
     date: number;
     // Optional: the intro board never reverts, so it has no ghosts to show.
     implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
+    // Optional: the player's splits flags, and whether placing one is armed.
+    // Absent on the intro board and during a ranked daily (there are no splits
+    // to mark up there) — see FlagLayer.
+    flags?: ReadonlyArray<Point>;
+    flagsArmed?: boolean;
+    onFlagsChange?: (flags: Point[]) => void;
   },
 ) => {
   // Board magnification while placing (touch). A 1× setting disables it — the
@@ -224,6 +234,14 @@ export const Board = (
             width={0.9}
             height={0.9}
             fill="var(--maze-checkpoint)"
+          />
+        )}
+        {flags && onFlagsChange && (
+          <FlagLayer
+            flags={flags}
+            armed={!!flagsArmed}
+            checkpoint={checkpoint}
+            onChange={onFlagsChange}
           />
         )}
         {

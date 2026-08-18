@@ -1,11 +1,11 @@
 import { sql } from "./query.ts";
 
 // Every row we hold that belongs to one user, for their "export my data" (GDPR
-// access / portability). Four result sets in one round trip: the user row, all
+// access / portability). Five result sets in one round trip: the user row, all
 // their runs (void included — it's their data, even abandoned attempts), their
-// notification history, and their push subscriptions. Timestamps come back as
-// epoch millis (UNIX_TIMESTAMP * 1000) so the caller ships plain numbers rather
-// than the proxy's datetime strings. The route shapes these into the export
+// notification history, their push subscriptions, and their board flags.
+// Timestamps come back as epoch millis (UNIX_TIMESTAMP * 1000) so the caller
+// ships plain numbers rather than the proxy's datetime strings. The route shapes these into the export
 // document (see routes/exportData.ts) — deserializing the maze blob, parsing the
 // JSON columns, and dropping the push encryption keys (crypto material, not
 // meaningful personal data).
@@ -44,12 +44,18 @@ export type ExportPushRow = {
   created: number;
 };
 
+export type ExportFlagRow = {
+  iteration: number;
+  data: string;
+};
+
 export const exportUserData = (userId: string) =>
   sql<[
     ExportUserRow[],
     ExportRunRow[],
     ExportNotificationRow[],
     ExportPushRow[],
+    ExportFlagRow[],
   ]>`
     SELECT id, name, rating, plays, settings, locale,
            UNIX_TIMESTAMP(created) * 1000 created
@@ -66,4 +72,6 @@ export const exportUserData = (userId: string) =>
 
     SELECT endpoint, UNIX_TIMESTAMP(created) * 1000 created
     FROM push_subscription WHERE user = ${userId};
+
+    SELECT iteration, data FROM flag WHERE user = ${userId} ORDER BY iteration ASC;
   `;

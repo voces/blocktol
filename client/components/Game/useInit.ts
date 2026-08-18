@@ -98,6 +98,7 @@ export const useInit = () => {
     enterPrestart,
     setViewedAttempts,
     viewedAttempts,
+    viewMaze,
     viewing,
     setViewing,
     blocks,
@@ -398,6 +399,10 @@ export const useInit = () => {
       // as the board re-stages.
       if (freePlay) {
         setVerdict(undefined);
+        // The maze that just ran, captured before the re-stage clears the board.
+        const executed = blocks.filter((b) => b.local).map((b) =>
+          b.thunder ? { x: b.x, y: b.y, thunder: true } : { x: b.x, y: b.y }
+        );
         // Wait for this attempt's commit before re-staging, so getBoard's recents
         // include the just-finished run rather than racing a slow (retrying)
         // commit and dropping it from the panel. Normally the commit is already
@@ -405,7 +410,21 @@ export const useInit = () => {
         // while it was still landing (only possible when the commit is slow).
         const token = boardSeq();
         awaitPendingCommit().then(() => {
-          if (boardSeq() === token) showBoard(iteration);
+          if (boardSeq() !== token) return;
+          // The re-stage is still what refreshes the board's bests and recents,
+          // but free play does NOT wipe the maze afterwards: the run you just
+          // watched stays on the board as a review (its row reads "viewing"), so
+          // its splits are there to read and the build is there to study. Play
+          // stages a fresh board when you want one. Overlaid in the `.then` the
+          // same way the today-result chips and view-best do it — the stage has
+          // to land first, since it lays out the day's fixed pieces. An empty
+          // maze (everything deleted before the run) has nothing to review.
+          // `staged` already means this very request took the board (a newer
+          // navigation would have superseded it), so it is the only guard the
+          // overlay needs — the token above advanced when showBoard claimed it.
+          showBoard(iteration).then((staged) => {
+            if (staged && executed.length) viewMaze(executed);
+          });
         });
         return;
       }
@@ -430,7 +449,7 @@ export const useInit = () => {
       if (attemptsRemaining > 1) enterPrestart();
       api.getDailySummary({ iteration });
     },
-    [iteration, attemptsRemaining, freePlay],
+    [iteration, attemptsRemaining, freePlay, blocks],
   );
 
   // The free-play window closed while its owner was reviewing another maze:

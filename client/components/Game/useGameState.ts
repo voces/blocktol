@@ -239,7 +239,18 @@ export const useGameState = () => {
     // honestly left. Every other state parks the clock at -1 (inert board);
     // the ticking clock alone can't make the board playable — the input hooks
     // gate on `viewing`.
-    if (!(freePlay && !staged && timeRef.current > 0)) setTime(-1);
+    //
+    // "A build is live" is the DEADLINE, not `staged`: a caller that staged a
+    // board moments ago and overlays a maze in the response's `.then` (the
+    // today-result chips, view-best, and the review the finished free-play run
+    // lands in) is running with the previous render's `staged` in its closure,
+    // while `timeRef` already reads the fresh board's full 60 — so the stale
+    // pair says "live build" and the review kept a ticking clock it never had.
+    // The deadline ref is written by the same handlers, synchronously: null on a
+    // staged board, set only once a run's window is actually open.
+    if (!(freePlay && deadlineRef.current !== null && timeRef.current > 0)) {
+      setTime(-1);
+    }
     setStaged(false);
     // Reviewing a maze (e.g. tapping a past attempt from the panel while the
     // Start overlay is up) exits prestart so the review is actually visible.

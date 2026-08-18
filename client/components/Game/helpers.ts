@@ -68,6 +68,21 @@ export const localRun = (
   return { path, duration, slows };
 };
 
+/**
+ * Order-independent key for a maze, so two lists that hold the same pieces in a
+ * different order (a stored run vs. what's on the board) compare equal. Used to
+ * merge the runs panel's rows, to flag the row currently being reviewed, and by
+ * the splits panel to tell whether the maze on the board IS the reference best.
+ */
+export const mazeKey = (
+  maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean }>,
+) =>
+  JSON.stringify(
+    [...maze]
+      .map((b) => [b.x, b.y, b.thunder ? 1 : 0])
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]),
+  );
+
 export const isTouchSource = is.object({
   sourceCapabilities: is.object({ firesTouchEvents: is.const(true) }),
 });
