@@ -389,6 +389,11 @@ export const useInit = () => {
     "runFinish",
     () => {
       if (iteration === undefined) return;
+      // A runner released over a REVIEW (viewMaze replays the maze you picked)
+      // is not an attempt finishing: nothing to commit, nothing to re-stage, and
+      // above all no daily attempt to spend. The board simply goes static again
+      // (BoardArea's onFinish clears the run).
+      if (viewing) return;
       // The finished build's saves are history — a lingering retry must not
       // write a stale maze onto the next attempt's run.
       resetRunSaver();
@@ -423,7 +428,11 @@ export const useInit = () => {
           // navigation would have superseded it), so it is the only guard the
           // overlay needs — the token above advanced when showBoard claimed it.
           showBoard(iteration).then((staged) => {
-            if (staged && executed.length) viewMaze(executed);
+            // No replay: this run just finished animating, and viewMaze
+            // otherwise releases the runner over the maze it lands on.
+            if (staged && executed.length) {
+              viewMaze(executed, { replay: false });
+            }
           });
         });
         return;
@@ -449,7 +458,7 @@ export const useInit = () => {
       if (attemptsRemaining > 1) enterPrestart();
       api.getDailySummary({ iteration });
     },
-    [iteration, attemptsRemaining, freePlay, blocks],
+    [iteration, attemptsRemaining, freePlay, blocks, viewing],
   );
 
   // The free-play window closed while its owner was reviewing another maze:

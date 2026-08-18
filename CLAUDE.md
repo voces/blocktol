@@ -485,22 +485,30 @@ the flush comes back expired and `onExpired` snaps the board back. **Free play**
 bypasses the saver entirely: `freePlay.ts` mints the per-attempt `client_id`,
 mirrors the maze to `localStorage` for reload-resume, and `commitRun` fires once
 at execution; `useInit` awaits that commit before re-staging so a slow
-(retrying) commit can't let the re-stage drop the run from recents. Navigating
-away mid-build (reviewing a maze, another day) deliberately does NOT abandon the
-build — the record stays, and staging its board within the window resumes it. A
-free-play run that FINISHES doesn't clear the board either: the re-stage still
-runs (it refreshes the board's bests and recents), and the executed maze is then
-overlaid back onto it as a review — the run you just watched stays up, its row
-reads "viewing", and its splits are there to read. Play stages a fresh board
-when you want one. Its window doesn't pause either: reviewing a past maze keeps
-the live countdown in the HUD's Play slot alongside the reset button, and reset
-there clears the attempt while staying on the reviewed maze (the input hooks
-gate on `viewing`, so the ticking clock never makes a reviewed board editable).
-Should the window expire mid-review, the board hands back to the build (restored
-from the local record via `pendingFreePlay`, the one read that ignores the
-deadline) and it executes normally — committed, runner released.
-`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
-result.
+(retrying) commit can't let the re-stage drop the run from recents. Picking a
+maze to review RELEASES the runner over it (`viewMaze`'s `replay`, defaulting on
+— asking to see a maze means asking to see it run; re-picking the row runs it
+again), which is also why `runFinish` bails while `viewing`: a replay is not an
+attempt finishing and must not commit, re-stage, or spend anything. The one
+caller that opts out is the review a just-finished free-play run lands in, which
+would replay the run you were already watching. A reviewed board stays inert to
+placement, but a hover (or, on touch, a tap) still reveals a thunder's radius —
+the day's pieces and the reviewed maze's alike, which is the point of studying a
+maze. Navigating away mid-build (reviewing a maze, another day) deliberately
+does NOT abandon the build — the record stays, and staging its board within the
+window resumes it. A free-play run that FINISHES doesn't clear the board either:
+the re-stage still runs (it refreshes the board's bests and recents), and the
+executed maze is then overlaid back onto it as a review — the run you just
+watched stays up, its row reads "viewing", and its splits are there to read.
+Play stages a fresh board when you want one. Its window doesn't pause either:
+reviewing a past maze keeps the live countdown in the HUD's Play slot alongside
+the reset button, and reset there clears the attempt while staying on the
+reviewed maze (the input hooks gate on `viewing`, so the ticking clock never
+makes a reviewed board editable). Should the window expire mid-review, the board
+hands back to the build (restored from the local record via `pendingFreePlay`,
+the one read that ignores the deadline) and it executes normally — committed,
+runner released. `useClock`/`RunClock` run the 60s/animation timing;
+`verdict.ts` computes the result.
 
 **Splits & flags (`Game/Splits.tsx`, `components/FlagLayer.tsx`,
 `store/flags.ts`):** the tape above the runs list, rendered inside `.attempts`

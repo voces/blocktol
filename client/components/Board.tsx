@@ -161,7 +161,14 @@ export const Board = (
               z-index={1}
             />
           )}
-        {thunderHover && !thunderHover.local &&
+        {
+          /* A hovered thunder's radius. Skipped when it's the same piece
+            `transitionBlock` is already drawing a circle for (a mid-build hover
+            over your own thunder), so the translucent fill isn't stacked twice
+            — reviewing a maze has no transitionBlock, so both the day's
+            thunders and the reviewed maze's draw here. */
+        }
+        {thunderHover && thunderHover !== transitionBlock &&
           (
             <circle
               cx={thunderHover.x + 1}
