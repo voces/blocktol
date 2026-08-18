@@ -1385,12 +1385,11 @@ a:hover {
   flex: 1;
   min-width: 0;
   /* One line: "2m ago" plus its tags reads as a single caption, and letting it
-     wrap in the 288px rail made the row grow a line whenever a run picked up a
-     badge. Clipped rather than allowed to spill, so a run wearing every tag
-     (x3 + DAILY + SUPREME) runs out under its own edge instead of colliding
-     with the "viewing" label beside it. */
+     wrap in the 288px rail grew the row by a line whenever a run picked up a
+     badge. Left to overflow rather than clipped — a tag half-cut at an
+     invisible edge reads as a rendering fault, where a line running past its
+     box reads as a line that didn't fit. */
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .attempts__kind {
