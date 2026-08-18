@@ -823,9 +823,9 @@
     "message": "{count} salvas",
     "hash": "2767bdc886ae8d599d8e352cb6215aa230c27739196270ed6e55fd2f7c79c39b"
   },
-  "splits.slowN": {
-    "message": "Lentidão {n}",
-    "hash": "b5696b37b53624e9c591fd00b934e77106d1a1c8a158176eaa3495a86732e8a7"
+  "splits.thunderN": {
+    "message": "Trovão {n}",
+    "hash": "c24ae52257e4022a4458f49c65b8f9868a87b4da3a43a250d25d2e9a7e295fb8"
   },
   "splits.title": {
     "message": "Parciais",
@@ -840,8 +840,8 @@
     "hash": "01970ffb7100923792b3bb67030a12af043ee156ce0662553d2fe7c535aeace8"
   },
   "splits.wasteTitle": {
-    "message": "{seconds} s de lentidão perdidos: este trovão atingiu quando o corredor já estava lento",
-    "hash": "5e0699436020e805616d2aa9fef000361de0463b33b5ff0f20018f22addab106"
+    "message": "{seconds} s perdidos: este trovão atingiu quando o corredor já estava lento",
+    "hash": "c732f34b9c633cd56a13a7387c161d3dc2ce71514a0505ad9931b0aac1aecbf2"
   },
   "standings.between": {
     "message": "{count} entre",

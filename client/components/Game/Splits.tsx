@@ -59,7 +59,7 @@ export const FlagGlyph = ({ size = 11 }: { size?: number }) => (
   </svg>
 );
 
-const SlowGlyph = ({ local }: { local?: boolean }) => (
+const ThunderGlyph = ({ local }: { local?: boolean }) => (
   <svg width={11} height={11} viewBox="0 0 24 24" class="splits__glyph">
     <rect
       x={2.5}
@@ -110,7 +110,7 @@ const WasteIcon = () => (
 
 const Glyph = ({ split }: { split: Split }) =>
   split.kind === "slow"
-    ? <SlowGlyph local={split.local} />
+    ? <ThunderGlyph local={split.local} />
     : split.kind === "checkpoint"
     ? <CheckpointGlyph />
     : <FlagGlyph />;
@@ -158,7 +158,7 @@ const markRect = (split: Split) =>
 
 const splitLabel = (split: Split) =>
   split.kind === "slow"
-    ? t("splits.slowN", { n: split.index })
+    ? t("splits.thunderN", { n: split.index })
     : split.kind === "flag"
     ? t("splits.flagN", { n: split.index })
     : t("splits.checkpoint");
@@ -178,6 +178,7 @@ const splitLabel = (split: Split) =>
 export const Splits = () => {
   const {
     viewing,
+    phase,
     dailyInProgress,
     blocks,
     checkpoint,
@@ -252,7 +253,13 @@ export const Splits = () => {
     flagKey(r.at)
   ).join(" ");
 
-  const visible = viewing && !dailyInProgress && iteration !== undefined &&
+  // The tape describes the run the board is showing — a review, or the run
+  // currently ANIMATING: a free-play run is committed and in the panel the
+  // moment it executes, so its splits are readable while you watch it rather
+  // than only once the runner stops. The board's blocks don't change during the
+  // animation, so this is the same maze the review will settle on.
+  const showing = viewing || phase === "running";
+  const visible = showing && !dailyInProgress && iteration !== undefined &&
     rows.length > 0;
 
   useEffect(() => {

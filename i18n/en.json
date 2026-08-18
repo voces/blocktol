@@ -519,9 +519,9 @@
     "message": "Checkpoint",
     "description": "Splits row label for the board's one fixed waypoint. \"Checkpoint\" is the game term."
   },
-  "splits.slowN": {
-    "message": "Slow {n}",
-    "description": "Splits row label for the nth time the runner was slowed by a thunder, counted in crossing order. One thunder can strike many times, so this numbers the strikes, not the pieces. \"thunder\" is the game term (see glossary)."
+  "splits.thunderN": {
+    "message": "Thunder {n}",
+    "description": "Splits row label for a thunder strike, numbered by the piece in first-crossing order. The same thunder can strike many times and every one of those rows carries its number, so this names the thunder, not the strike. \"thunder\" is the game term (see glossary)."
   },
   "splits.flagN": {
     "message": "Flag {n}",
@@ -568,8 +568,8 @@
     "description": "Button in the splits panel that removes every flag from the board being viewed."
   },
   "splits.wasteTitle": {
-    "message": "{seconds}s of slow lost — this thunder struck while the runner was already slowed",
-    "description": "Tooltip on the splits row's waste tag. A second strike restarts the 6-second slow instead of extending it, so the rest of the running one never happens; the value is what that costs in finish time. \"thunder\"/\"runner\" are game terms (see glossary)."
+    "message": "{seconds}s lost — this thunder struck while the runner was already slowed",
+    "description": "Tooltip on the splits row's waste tag. A second strike restarts the 6-second slowing instead of extending it, so the rest of the running one never happens; the value is what that costs in finish time. \"thunder\"/\"runner\" are game terms (see glossary)."
   },
   "time.now": {
     "message": "now",

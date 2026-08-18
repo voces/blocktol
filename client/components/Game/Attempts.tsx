@@ -84,6 +84,7 @@ export const Attempts = () => {
     dailyInProgress,
     blocks,
     viewing,
+    phase,
     iteration,
   } = useContext(GameStateContext);
   // Local-only ordering, remembered across visits. Defaults to best (longest)
@@ -207,9 +208,11 @@ export const Attempts = () => {
       .catch(() => flip(!next));
   };
 
-  // The maze currently on the board when reviewing a past run (viewMaze makes it
-  // the local blocks) — used to flag its row as being viewed.
-  const viewingKey = viewing
+  // The maze the board is showing: a review (viewMaze made it the local blocks)
+  // or, in free play, the run currently animating — its row is marked from the
+  // moment it executes, not once the runner stops. Never mid-daily, where the
+  // running attempt has no row yet and the panel is inert anyway.
+  const viewingKey = viewing || (!dailyInProgress && phase === "running")
     ? mazeKey(
       blocks.filter((b) => b.local).map((b) => ({
         x: b.x,

@@ -12,7 +12,10 @@
 // Three kinds of mark, in crossing order:
 //   - `slow`       — a thunder trigger (the day's pieces and the player's
 //                    alike; `local` says which, so the tape can colour it with
-//                    the board's own tokens).
+//                    the board's own tokens). Internal name: the tape labels it
+//                    by the PIECE ("Thunder 2"), since that is what the number
+//                    counts, and "slow" never appears in copy (see the i18n
+//                    glossary).
 //   - `checkpoint` — the one fixed waypoint every route must touch.
 //   - `flag`       — a player-placed marker, the manual checkpoint. Flags
 //                    belong to the board, not to a run, so the same flag is
