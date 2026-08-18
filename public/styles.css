@@ -528,6 +528,11 @@ a:hover {
      under the splits tape are the same value, so the tape sits evenly between
      the dock above it and the runs below. */
   --rail-gap: 12px;
+  /* The collapsed tape's exact height, so the panel is the same size whether it
+     is showing deltas, absolute times, or nothing at all (see .splits). Derived,
+     not measured: the head's fixed 16px line box plus its 9px padding and the
+     panel's 1px border, top and bottom. */
+  --splits-collapsed: 36px;
   justify-content: center;
   align-items: start;
   box-sizing: border-box;
@@ -1514,11 +1519,18 @@ a:hover {
    is either a single collapsed line of marks or the expanded table; the header
    is the toggle in both states. Sits inside .attempts so it scrolls with the
    list it belongs to. */
+/* Fixed collapsed height. The tape's content changes size with what it is
+   showing — a delta reads at 13px, an absolute time at 12px — and letting the
+   panel size to it shifted the whole runs list by a pixel every time you moved
+   between a run and your best. The head below pins its line box, and this pins
+   the panel, so every state (deltas, absolutes, the empty placeholder) is the
+   same box. */
 .splits {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 13px;
   overflow: hidden;
+  min-height: var(--splits-collapsed);
   /* Matches the rail gap above it (see .game), so the tape is evenly spaced
      between the dock and the runs. */
   margin: 0 0 var(--rail-gap, 12px);
@@ -1530,6 +1542,10 @@ a:hover {
   gap: 9px;
   width: 100%;
   padding: 9px 11px;
+  /* Fixed line box (not the font's own metrics) so the collapsed height doesn't
+     depend on which size of number is in the line — or on whether the webfont
+     has loaded yet. A wrapped second line of marks still grows it, as it must. */
+  line-height: 16px;
   border: 0;
   background: transparent;
   color: var(--color);
@@ -1644,6 +1660,30 @@ a:hover {
   gap: 10px;
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
+  /* Same fixed line box as the head: a row is the same height whether or not it
+     carries a delta (your best run has no delta column). */
+  line-height: 16px;
+  /* Nothing to compare against until a modifier below says otherwise. */
+  --split-tone: var(--text-faint);
+}
+
+/* How this mark stands against the reference run — worn by the delta outright
+   and by the absolute time in a dimmed mix, so the whole row reads ahead or
+   behind while the delta stays the loudest thing in it. */
+.splits__row--gain {
+  --split-tone: var(--win);
+}
+
+.splits__row--loss {
+  --split-tone: var(--lose);
+}
+
+.splits__row--even {
+  --split-tone: var(--warn);
+}
+
+.splits__row .splits__delta {
+  color: var(--split-tone);
 }
 
 /* The checkpoint is the one mark every route shares — lifted a little so the
@@ -1698,15 +1738,25 @@ a:hover {
    absolute times in the collapsed line. */
 .splits__delta--absolute {
   color: var(--color);
+}
+
+/* The collapsed line is one size whatever it holds — the expanded tape's 13px
+   delta would otherwise make the panel a pixel taller in delta mode than in
+   absolute mode. */
+.splits__marks .splits__delta {
   font-size: 12px;
 }
 
+/* The run's own time at this mark. Tinted to the row's tone but pulled most of
+   the way back to the faint neutral: the comparison is the point, so the time
+   should say which way it went without competing with the delta. Neutral
+   outright when there's nothing to compare against. */
 .splits__time {
   flex: none;
   width: 44px;
   text-align: right;
   font: 600 11px var(--font-mono);
-  color: var(--text-faint);
+  color: color-mix(in srgb, var(--split-tone) 70%, var(--text-faint));
 }
 
 /* A re-strike that reset a still-running slow, priced in finish seconds. */

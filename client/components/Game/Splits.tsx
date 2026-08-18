@@ -124,6 +124,20 @@ const formatDelta = (delta: number) =>
 // Dead level is its own state, not a gain: matching the reference exactly gets
 // the warn amber rather than the win green (and not the faint grey either —
 // that one already means "no counterpart in the best run", see --none).
+// A tape ROW's comparison state, as a modifier that sets --split-tone: the
+// delta wears it outright and the absolute time a dimmed mix of it, so the
+// whole line says "ahead" or "behind" at a glance while the delta stays the
+// headline. Nothing to compare against (your best run, or a mark the reference
+// never crossed) leaves the default faint tone.
+const rowTone = (delta: number | undefined, isBest: boolean) =>
+  isBest || delta === undefined
+    ? ""
+    : delta === 0
+    ? " splits__row--even"
+    : delta > 0
+    ? " splits__row--gain"
+    : " splits__row--loss";
+
 const deltaClass = (delta: number | undefined) =>
   delta === undefined
     ? "splits__delta splits__delta--none"
@@ -257,7 +271,15 @@ export const Splits = () => {
     };
   }, [visible]);
 
-  if (!visible) return null;
+  // The tape comes and goes as you review a run and go back to playing, and the
+  // runs list below must not hop when it does — so when it isn't up (but could
+  // be: this is a free-play board), an empty panel of the collapsed height holds
+  // the space. Mid-daily there is no tape to reserve for, and nothing renders.
+  if (!visible) {
+    return dailyInProgress || iteration === undefined
+      ? null
+      : <div class="splits splits--placeholder" aria-hidden="true" />;
+  }
 
   const toggle = () => {
     storage.setItem(OPEN_KEY, open ? "0" : "1");
@@ -328,7 +350,10 @@ export const Splits = () => {
           {rows.map((split) => (
             <div
               class={"splits__row" +
-                (split.kind === "checkpoint" ? " splits__row--checkpoint" : "")}
+                (split.kind === "checkpoint"
+                  ? " splits__row--checkpoint"
+                  : "") +
+                rowTone(split.delta, isBest)}
               key={split.key}
               onMouseEnter={() => hoveredSplit.value = markRect(split)}
               onMouseLeave={() => hoveredSplit.value = undefined}
@@ -353,7 +378,9 @@ export const Splits = () => {
                 )}
               </span>
               {!isBest && (
-                <span class={deltaClass(split.delta)}>
+                // Coloured by the row's tone, not its own class — the time
+                // beside it takes the same tone, dimmed.
+                <span class="splits__delta">
                   {split.delta === undefined ? "—" : formatDelta(split.delta)}
                 </span>
               )}
@@ -391,7 +418,15 @@ export const Splits = () => {
                     onClick={() => flagsArmed.value = true}
                   >
                     <FlagGlyph />
-                    <span>{t("splits.addFlag")}</span>
+                    {
+                      /* Same control either way; the word just says whether
+                        you're starting a set or changing one that exists. */
+                    }
+                    <span>
+                      {flags.length
+                        ? t("splits.editFlags")
+                        : t("splits.addFlag")}
+                    </span>
                   </button>
                   <span class="splits__spacer" />
                   {flags.length > 0 && (

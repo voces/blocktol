@@ -515,18 +515,23 @@ Everything is computed locally: the maze on the board and the reference (the
 best run in `viewedAttempts`) are each re-solved with `localRun` and read
 through `computeSplits`, so the tape can never disagree with the time on the row
 and costs no round trip. Viewing your own best hides the delta column and shows
-absolute times — there is nothing to compare against. Collapsed, every mark sits
-on one **wrapping** line; expanded, one row per mark with the delta leading and
-the absolute time trailing, sliding open on a `0fr -> 1fr` grid row (no measured
-height, and it degrades to a snap where `fr` can't interpolate). Open/closed
-persists per player (`splitsOpen`). Its caret is the standings dock's glyph in
-the dock's colour — one family for the rail — but pointed differently on
-purpose: the dock opens a sheet (up, or left into a desktop drawer), this
-discloses in place (right, rotating down). Flag placement is explicitly
-**armed** from the footer (with the board visible a bare tap is ambiguous —
-inspecting a thunder's radius vs. dropping a flag); armed, the board dims behind
-a scrim, any cell takes a flag, and a flag drags to move / taps to clear.
-`store/flags.ts` folds flags in from board responses, writes them back
+absolute times — there is nothing to compare against; otherwise each row is
+tinted by how it stands (`--split-tone`: green ahead, red behind, amber dead
+level), the delta wearing it outright and the absolute time a dimmed mix. The
+panel is a **fixed collapsed height** and holds that space even when there is no
+tape to show (a `.splits--placeholder` on any free-play board), so the runs
+below never hop as you move between a run, your best, and a live board.
+Collapsed, every mark sits on one **wrapping** line; expanded, one row per mark
+with the delta leading and the absolute time trailing, sliding open on a
+`0fr -> 1fr` grid row (no measured height, and it degrades to a snap where `fr`
+can't interpolate). Open/closed persists per player (`splitsOpen`). Its caret is
+the standings dock's glyph in the dock's colour — one family for the rail — but
+pointed differently on purpose: the dock opens a sheet (up, or left into a
+desktop drawer), this discloses in place (right, rotating down). Flag placement
+is explicitly **armed** from the footer (with the board visible a bare tap is
+ambiguous — inspecting a thunder's radius vs. dropping a flag); armed, the board
+dims behind a scrim, any cell takes a flag, and a flag drags to move / taps to
+clear. `store/flags.ts` folds flags in from board responses, writes them back
 optimistically, and carries the two board-facing signals (`liveFlags` — which
 flags this run actually crosses, the rest drawing dashed as speculative — and
 `hoveredSplit`, the mark a hovered row rings), the same signals-not-context

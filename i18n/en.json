@@ -543,6 +543,10 @@
     "message": "Add flag",
     "description": "Button in the splits panel that arms flag placement: the next tap on the board drops a flag."
   },
+  "splits.editFlags": {
+    "message": "Edit flags",
+    "description": "Button in the splits panel that arms flag placement when the board already has flags — the same control as \"Add flag\", worded for changing a set that exists (you can add, move or remove while armed). Keep it short: it sits in a narrow footer."
+  },
   "splits.armedTap": {
     "message": "Tap to add a flag",
     "description": "Splits panel footer while flag placement is armed, on a touch device."
