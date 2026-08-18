@@ -1536,6 +1536,13 @@ a:hover {
   margin: 0 0 var(--rail-gap, 12px);
 }
 
+/* The tape isn't up, but the slot it would take is held so the runs below don't
+   hop when it appears (see Splits.tsx). Hidden rather than drawn empty — an
+   empty bordered card reads as a panel that failed to load. */
+.splits--placeholder {
+  visibility: hidden;
+}
+
 .splits__head {
   display: flex;
   align-items: center;
