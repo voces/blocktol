@@ -1875,6 +1875,12 @@ a:hover {
   pointer-events: none;
 }
 
+/* Being placed: the same pennant, faded, because it isn't written until the
+   pointer lets go — the flag equivalent of the block placement's ghost. */
+.flag__pennant--placing {
+  opacity: 0.55;
+}
+
 /* A flag the current run doesn't cross reports nothing: drawn hollow and dashed,
    with its cell ringed, so it reads as speculative rather than broken. */
 .flag__pennant--speculative {

@@ -69,7 +69,9 @@ export const Board = (
   // board never scales — so it behaves as if the zoom feature isn't there.
   const { settings } = useSettings();
   const zoom = settings.zoom;
-  const zooming = touching && time > 0 && zoom > 1;
+  // The placing zoom also serves flag placement, which happens on a REVIEWED
+  // board (time < 0) — the finger covers the cell it's aiming at just the same.
+  const zooming = touching && (time > 0 || !!flagsArmed) && zoom > 1;
   // Only pan the camera (animate transform-origin) once we're already zoomed
   // in, i.e. dragging the block a step. On the initial tap-to-zoom the origin
   // jumps instantly so it zooms straight into the tapped point instead of

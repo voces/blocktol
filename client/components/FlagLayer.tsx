@@ -1,6 +1,12 @@
 import { Fragment, h, JSX } from "preact";
 import { useRef, useState } from "preact/compat";
 import type { Point } from "../../common/types.ts";
+import {
+  armTouchZoom,
+  clearTouchZoom,
+  placingBlock,
+} from "./Game/interaction.ts";
+import { getSettings } from "../hooks/useSettings.ts";
 import { flagKey, hoveredSplit, liveFlags } from "../store/flags.ts";
 
 // Same slop the block drag uses (see useInputStart): a flag only MOVES once the
@@ -43,15 +49,34 @@ export const FlagLayer = (
     onChange: (flags: Point[]) => void;
   },
 ) => {
-  // The in-progress grab: which flag, where the pointer went down (screen
-  // pixels, for the slop test), and whether it has become a move.
+  // The gesture in progress. `index` is the flag being dragged, or -1 while
+  // placing a NEW one — which is a press on empty ground, previewed from the
+  // instant the pointer lands and committed on release, exactly the way a block
+  // is placed. `clientX/Y` is the press point, for the slop test.
   const drag = useRef<
-    { index: number; clientX: number; clientY: number; moved: boolean } | null
+    {
+      index: number;
+      clientX: number;
+      clientY: number;
+      moved: boolean;
+      // The cell the preview is on. Release commits THIS, never a fresh mapping
+      // of the release point — the same contract the block placement has (see
+      // useInputEnd, which places at `placingBlock`): what you can see is where
+      // it lands, even mid zoom animation, where the board's box is still
+      // moving under the pointer.
+      cell: Point;
+    } | null
   >(null);
-  // Where the grabbed flag currently sits, so it follows the pointer.
+  // Where the dragged (or about-to-be-placed) flag currently sits, so it
+  // follows the pointer.
   const [preview, setPreview] = useState<{ index: number } & Point | null>(
     null,
   );
+  // The scrim owns the pointer for the whole gesture, whether it started on
+  // empty ground or on a flag: it's one element that outlives every placement,
+  // so a capture taken here can't be lost when the flag under the finger is
+  // re-rendered.
+  const scrim = useRef<SVGRectElement>(null);
   const live = liveFlags.value;
   const hovered = hoveredSplit.value;
 
@@ -67,37 +92,66 @@ export const FlagLayer = (
   const occupied = (cell: Point, ignore?: number) =>
     flags.some((f, i) => i !== ignore && f.x === cell.x && f.y === cell.y);
 
-  const addFlag = (e: JSX.TargetedPointerEvent<SVGElement>) => {
-    if (drag.current) return;
-    const cell = cellAt(e);
-    if (occupied(cell) || flags.length >= MAX_FLAGS) return;
-    onChange([...flags, cell]);
-  };
-
-  const grab = (index: number) => (e: JSX.TargetedPointerEvent<SVGElement>) => {
-    if (!armed) return;
-    // Keep the press from also reaching the scrim below, which would drop a
-    // second flag on release.
+  // Take the gesture: capture the pointer on the scrim and, on touch, arm the
+  // placing zoom on the player's configured delay — the same magnification a
+  // block placement gets, so a finger doesn't have to cover the cell it is
+  // aiming at. `placingBlock` is the camera origin the board zooms about
+  // (`placing` stays false, so no block ghost is drawn).
+  const take = (
+    e: JSX.TargetedPointerEvent<SVGElement>,
+    index: number,
+    cell: Point,
+  ) => {
     e.stopPropagation();
     try {
-      e.currentTarget.setPointerCapture(e.pointerId);
+      scrim.current?.setPointerCapture(e.pointerId);
     } catch { /* capture unavailable (synthetic event) */ }
     drag.current = {
       index,
       clientX: e.clientX,
       clientY: e.clientY,
       moved: false,
+      cell,
     };
+    placingBlock.value = { ...placingBlock.peek(), x: cell.x, y: cell.y };
+    if (e.pointerType === "touch") armTouchZoom(getSettings().zoomDelay);
   };
+
+  // Press on empty ground: the flag appears AT ONCE, previewed under the
+  // pointer, and is only written on release — a block placement, with a flag.
+  const startPlace = (e: JSX.TargetedPointerEvent<SVGElement>) => {
+    if (!armed || drag.current) return;
+    const cell = cellAt(e);
+    if (occupied(cell) || flags.length >= MAX_FLAGS) return;
+    take(e, -1, cell);
+    setPreview({ index: -1, ...cell });
+  };
+
+  const startGrab =
+    (index: number) => (e: JSX.TargetedPointerEvent<SVGElement>) => {
+      if (!armed) return;
+      take(e, index, flags[index]);
+    };
 
   const move = (e: JSX.TargetedPointerEvent<SVGElement>) => {
     const held = drag.current;
     if (!held) return;
     const dx = e.clientX - held.clientX;
     const dy = e.clientY - held.clientY;
-    if (!held.moved && dx * dx + dy * dy <= DRAG_SLOP * DRAG_SLOP) return;
+    // A new flag tracks the pointer from the first move; an existing one only
+    // once the press has really travelled, so a tap that wobbles still reads as
+    // a tap (and a tap on a flag clears it).
+    if (
+      held.index >= 0 && !held.moved && dx * dx + dy * dy <= DRAG_SLOP ** 2
+    ) return;
     held.moved = true;
-    setPreview({ index: held.index, ...cellAt(e) });
+    held.cell = cellAt(e);
+    placingBlock.value = {
+      ...placingBlock.peek(),
+      x: held.cell.x,
+      y: held.cell.y,
+    };
+    setPreview({ index: held.index, ...held.cell });
   };
 
   const release = (e: JSX.TargetedPointerEvent<SVGElement>) => {
@@ -106,15 +160,31 @@ export const FlagLayer = (
     e.stopPropagation();
     drag.current = null;
     setPreview(null);
-    // Never left its cell → a tap, which clears the flag. Moved → drop it
-    // there, unless another flag already holds the cell (then it snaps back).
+    clearTouchZoom();
+    const cell = held.cell;
+    // A new flag lands where its preview stood, unless something is already
+    // there (the preview simply evaporates then, like a block dropped on an
+    // occupied cell).
+    if (held.index < 0) {
+      if (!occupied(cell)) onChange([...flags, cell]);
+      return;
+    }
+    // An existing flag that never left its cell → a tap, which clears it.
+    // Moved → drop it there, unless another flag holds the cell (snap back).
     if (!held.moved) {
       onChange(flags.filter((_, i) => i !== held.index));
       return;
     }
-    const cell = cellAt(e);
     if (occupied(cell, held.index)) return;
     onChange(flags.map((f, i) => i === held.index ? cell : f));
+  };
+
+  // The gesture was taken away (a system gesture, a second finger): drop the
+  // preview without writing anything.
+  const cancel = () => {
+    drag.current = null;
+    setPreview(null);
+    clearTouchZoom();
   };
 
   return (
@@ -148,13 +218,17 @@ export const FlagLayer = (
               a grab, not a second flag. */
           }
           <rect
+            ref={scrim}
             class="flag-layer__scrim"
             x={1}
             y={1}
             width={18}
             height={18}
             fill="transparent"
-            onPointerUp={addFlag}
+            onPointerDown={startPlace}
+            onPointerMove={move}
+            onPointerUp={release}
+            onPointerCancel={cancel}
           />
         </>
       )}
@@ -166,6 +240,17 @@ export const FlagLayer = (
           width={hovered.size}
           height={hovered.size}
           rx={0.06}
+        />
+      )}
+      {
+        /* A flag being placed: drawn from the moment the pointer lands, so the
+          gesture reads the way a block placement does, and faded until release
+          because nothing is written until then. */
+      }
+      {preview?.index === -1 && (
+        <path
+          class="flag__pennant flag__pennant--placing"
+          d={pennant(preview.x, preview.y)}
         />
       )}
       {flags.map((flag, index) => {
@@ -201,10 +286,7 @@ export const FlagLayer = (
                 width={1.5}
                 height={2}
                 fill="transparent"
-                onPointerDown={grab(index)}
-                onPointerMove={move}
-                onPointerUp={release}
-                onPointerCancel={release}
+                onPointerDown={startGrab(index)}
               />
             )}
           </g>
