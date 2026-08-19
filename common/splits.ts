@@ -26,7 +26,8 @@ import type { Point } from "./types.ts";
 
 // How close the runner must pass a flag's cell centre to trip it. Half a cell,
 // i.e. the runner's own square has to cover the centre — the same "strictly
-// inside the circle" test a thunder's radius uses, just much smaller.
+// inside the circle" test a thunder's radius uses, just much smaller. It decides
+// WHETHER a flag was passed; `closestApproach` below decides when.
 export const FLAG_RADIUS = 0.5;
 
 export type SplitKind = "slow" | "checkpoint" | "flag";
@@ -58,6 +59,53 @@ export type Split = {
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Where along the path (in distance) the runner comes CLOSEST to (cx, cy),
+ * searching only the stretch `[from, to]` — one pass of a flag.
+ *
+ * That instant, not the moment the runner first crosses into FLAG_RADIUS, is
+ * when a flag is passed. Timing the entry made a flag planted ON the checkpoint
+ * read half a cell early — 0.2s at half speed — against the checkpoint's own
+ * mark, which is timed at the node the runner actually reaches. The nadir makes
+ * the two agree, and reads right everywhere else too: a flag marks a spot, and
+ * the split is the moment you were at it.
+ */
+const closestApproach = (
+  path: ReadonlyArray<Readonly<Point>>,
+  cum: ReadonlyArray<number>,
+  cx: number,
+  cy: number,
+  from: number,
+  to: number,
+) => {
+  let at = from;
+  let nearest = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const segmentStart = cum[i - 1];
+    const segmentEnd = cum[i];
+    const length = segmentEnd - segmentStart;
+    if (length === 0 || segmentEnd <= from || segmentStart >= to) continue;
+    const dx = path[i].x - path[i - 1].x;
+    const dy = path[i].y - path[i - 1].y;
+    // The perpendicular foot, clamped to the part of this segment inside the
+    // pass — so a nadir that lies outside the window can't be picked up.
+    const u = ((cx - path[i - 1].x) * dx + (cy - path[i - 1].y) * dy) /
+      (dx * dx + dy * dy);
+    const candidate = Math.min(
+      Math.max(segmentStart + u * length, Math.max(segmentStart, from)),
+      Math.min(segmentEnd, to),
+    );
+    const t = (candidate - segmentStart) / length;
+    const distance = (path[i - 1].x + dx * t - cx) ** 2 +
+      (path[i - 1].y + dy * t - cy) ** 2;
+    if (distance < nearest) {
+      nearest = distance;
+      at = candidate;
+    }
+  }
+  return at;
+};
 
 // A wasted second of SLOW is not a wasted second of finish time: while slowed
 // the runner covers half the ground, so a second of slow is worth SPEED/2 of
@@ -136,11 +184,19 @@ export const computeSplits = (
     // One mark per pass: a flag near the checkpoint is legitimately crossed on
     // the way out and again on the way back, and each pass is its own split.
     for (
-      const [start] of circleWindows(path, cum, flag.x, flag.y, FLAG_RADIUS)
+      const [start, end] of circleWindows(
+        path,
+        cum,
+        flag.x,
+        flag.y,
+        FLAG_RADIUS,
+      )
     ) {
       marks.push({
         kind: "flag",
-        raw: timeline.timeAt(start),
+        raw: timeline.timeAt(
+          closestApproach(path, cum, flag.x, flag.y, start, end),
+        ),
         nth: nextNth(`f:${cell}`),
         at: flag,
       });

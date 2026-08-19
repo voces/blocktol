@@ -126,7 +126,10 @@ diverge — the server's accepted time must equal what the client previewed.
   per slow the seconds of slow the trigger **destroyed** by resetting a
   still-running one (plus, on the last, whatever was still owed at the finish).
   `circleWindows` is the shared geometry — a thunder's trigger windows and a
-  flag's passes are the same circle/polyline intersection.
+  flag's passes are the same circle/polyline intersection (for a flag the window
+  only says it WAS passed; the mark is timed at the closest approach within it,
+  so a flag on the checkpoint reads the checkpoint's own time rather than half a
+  cell early).
 - `common/splits.ts` reads a solved path back as **splits**: the run's time at
   every mark it crosses — each thunder trigger (`local` distinguishing the
   player's piece from the day's), the checkpoint, and the player's flags —

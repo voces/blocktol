@@ -14,13 +14,14 @@ Deno.test("splits time the checkpoint and flags along the path", () => {
     path: PATH,
     thunders: [],
     checkpoint: CHECKPOINT,
-    // Cell (9,14) sits on the line, 4.5 units in — entered at 0.9s. Cell (2,2)
-    // is nowhere near it and never fires.
+    // Cell (9,14) sits on the line, 5 units in — the runner is AT it at 1s
+    // (not 0.9s, when it first came within half a cell). Cell (2,2) is nowhere
+    // near the route and never fires.
     flags: [{ x: 9, y: 14 }, { x: 2, y: 2 }],
   });
 
   assertEquals(splits.map((s) => [s.kind, s.index, s.time]), [
-    ["flag", 1, 0.9],
+    ["flag", 1, 1],
     ["checkpoint", 1, 2],
   ]);
   // The last mark can never exceed the run's own time.
@@ -58,6 +59,23 @@ Deno.test("a piece keeps its number on every crossing", () => {
       ["flag", 1, "f:9,10:2"],
     ],
   );
+});
+
+Deno.test("a flag on the checkpoint reads the checkpoint's time", () => {
+  // The two marks are timed differently — the checkpoint at the node the runner
+  // reaches, a flag at its closest approach — and on the same cell those are the
+  // same instant. Timing the flag at the edge of its radius instead put it half
+  // a cell early.
+  const splits = computeSplits({
+    path: PATH,
+    thunders: [],
+    checkpoint: CHECKPOINT,
+    flags: [{ x: 9, y: 9 }],
+  });
+  assertEquals(splits.map((s) => [s.kind, s.time]), [
+    ["checkpoint", 2],
+    ["flag", 2],
+  ]);
 });
 
 Deno.test("a flag is crossed once per leg", () => {
