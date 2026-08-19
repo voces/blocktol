@@ -1781,19 +1781,25 @@ a:hover {
   white-space: nowrap;
 }
 
+/* Part of the card, not a shelf under it. The divider is the same weight as the
+   ones between rows (a heavier rule read as the panel ENDING there), and the
+   fill is the card's own surface lifted a hair — the same recipe the checkpoint
+   row uses. --surface-2 was the trap: in dark it sits above --surface and reads
+   fine, but in light it lands within a hair of the page background, so on a
+   phone the footer looked like it had fallen out of the panel. */
 .splits__foot {
   display: flex;
   align-items: center;
   gap: 9px;
   padding: 9px 11px;
-  border-top: 1px solid var(--border-strong);
-  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--color) 3%, var(--surface));
 }
 
 /* Armed: the footer is the only thing that changes state, because the tape is
    the reason you're placing a flag and must stay readable. */
 .splits__foot--armed {
-  background: color-mix(in srgb, var(--flag) 12%, var(--surface-2));
+  background: color-mix(in srgb, var(--flag) 12%, var(--surface));
 }
 
 .splits__add {
