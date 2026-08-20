@@ -43,9 +43,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     blocksRef,
     setBlocks,
     setRun,
-    powerRef,
-    bricksRef,
-    syncBudget,
+    budgetNow,
     dragRef,
     placingRef,
     iteration,
@@ -69,16 +67,14 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     // Preact re-runs an effect after paint, so a gesture landing within a frame
     // of the previous one still runs on the old closure; editing that snapshot
     // wrote a board with the previous edit undone (a deleted block back on the
-    // board), and the brick counts drifted with it. See syncBudget.
+    // board), and the brick counts drifted with it. The counts now derive from
+    // the board (see useGameState), so writing it is the whole edit.
     const apply = (newBlocks: ReadonlyArray<BoardBlock>) => {
       rebuildGrid(grid, checkpoint, newBlocks);
       const localBlocks = newBlocks.filter((b) => b.local);
       const r = localRun(newBlocks, checkpoint);
       if (r) setRun(r);
       setBlocks(newBlocks);
-      // The chips are a function of the maze just written — never a tally
-      // stepped alongside it, which is what let a refund outlive its removal.
-      syncBudget(localBlocks);
       // Persistence diverges by mode. Free play keeps its state on the client
       // (localStorage) until commit — no network mid-build. Ranked saves to the
       // server, debounced by a delay that shrinks to 0 as the clock runs out
@@ -98,9 +94,10 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     };
 
     // Remove a local block, refunding its brick (and power, if it was a
-    // thunder) — the refund falls out of syncBudget, so a block that is already
-    // gone (a double tap racing the re-render) refunds nothing. Shared by a
-    // tap-delete and by dragging a block somewhere it can't be placed.
+    // thunder) — the refund is just the block leaving the board, so removing one
+    // that is already gone (a double tap racing the re-render) refunds nothing.
+    // Shared by a tap-delete and by dragging a block somewhere it can't be
+    // placed.
     const removeBlock = (block: Point & { thunder?: boolean }) => {
       apply(blocksRef.current.filter((b) => b !== block));
     };
@@ -135,7 +132,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         // otherwise delete.
         if (!dragged) {
           if (!onBoard) return;
-          if (!origin.thunder && powerRef.current > 0) {
+          if (!origin.thunder && budgetNow().power > 0) {
             apply(
               blocks.map((b) =>
                 b === origin ? { ...origin, thunder: true } : b
@@ -174,7 +171,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       // Place a new block at the previewed cell.
       const { x, y } = placingBlock.peek();
 
-      if (bricksRef.current <= 0) return;
+      if (budgetNow().bricks <= 0) return;
 
       if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return;
 

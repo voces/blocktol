@@ -28,7 +28,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
   const {
     timeRef,
     blocksRef,
-    bricksRef,
+    budgetNow,
     checkpoint,
     grid,
     dragRef,
@@ -51,7 +51,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // this effect was registered with, and a grab resolved against that stale
       // board pointed at a block the board no longer holds (see useInputEnd).
       const blocks = blocksRef.current;
-      const bricks = bricksRef.current;
+      const { bricks } = budgetNow();
 
       const box = svg.getBoundingClientRect();
       const xRaw = Math.min(
