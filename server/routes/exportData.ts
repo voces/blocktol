@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseSettings } from "../../common/settings.ts";
 import { exportUserData } from "../db/export.ts";
+import { deserializeFlags } from "../util/flags.ts";
 import { deserializeRun } from "../util/run.ts";
 import { method } from "./apiHelpers.ts";
 
@@ -22,9 +23,8 @@ const safeJson = (raw: string): unknown => {
 // identifies the subscription is included).
 export const exportData = method(z.object({}).optional(), true)(
   async ({ userId }) => {
-    const [users, runs, notifications, subscriptions] = await exportUserData(
-      userId,
-    );
+    const [users, runs, notifications, subscriptions, flags] =
+      await exportUserData(userId);
     const u = users[0];
 
     return {
@@ -61,6 +61,12 @@ export const exportData = method(z.object({}).optional(), true)(
       pushSubscriptions: subscriptions.map((s) => ({
         endpoint: s.endpoint,
         created: Number(s.created),
+      })),
+      // The player's splits flags, per board (see common/splits.ts) —
+      // deserialized to cells like the maze above.
+      flags: flags.map((f) => ({
+        iteration: f.iteration,
+        cells: deserializeFlags(f.data),
       })),
     };
   },

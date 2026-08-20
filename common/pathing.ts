@@ -586,11 +586,83 @@ export type Slow = {
   thunder: Point;
 };
 
-// The runner's travel time along `path`, exactly and continuously — an
-// event-driven computation, not a stepped simulation, so duration is a smooth
-// function of the maze rather than being quantized to 0.1-distance ticks
-// (which displayed genuinely different mazes as the same time whenever their
-// optimal lengths fell in one tick bucket).
+// A slow as the timeline records it: the trigger, plus the seconds of slow the
+// trigger DESTROYED. A re-strike landing while the runner is already slowed
+// resets the shared 6s window instead of extending it, so whatever was left of
+// the previous window never lands; the tail still owed when the runner finishes
+// is wasted the same way and is folded into the last trigger. Seconds of SLOW —
+// at half speed each one is worth half that in finish time, which is the figure
+// the splits tape shows.
+export type TimelineSlow = Slow & { wasted: number };
+
+// The full result of walking a path: everything `pathDuration` reports, plus
+// the machinery the splits tape needs — the cumulative distance of each node
+// and a closed-form distance -> time map, so a mark anywhere along the path
+// (the checkpoint, a flag) can be timed without re-walking the schedule.
+export type PathTimeline = {
+  // Unrounded, unlike pathDuration's — callers round at the display boundary.
+  duration: number;
+  slows: TimelineSlow[];
+  cum: number[];
+  timeAt: (distance: number) => number;
+};
+
+// Where a path enters and leaves a circle, as [start, end] intervals in
+// DISTANCE along the path — the geometry half of both a thunder's trigger
+// windows and a flag's pass detection. Intervals are merged where the polyline
+// leaves one segment inside the circle and enters the next (the same crossing
+// point, up to float noise). A tangent graze has no interior crossing and is
+// dropped, so "in range" is strict — mirroring lineOfSight's treatment of
+// boundaries.
+export const circleWindows = (
+  path: ReadonlyArray<Readonly<Point>>,
+  cum: ReadonlyArray<number>,
+  cx: number,
+  cy: number,
+  radius: number,
+) => {
+  const list: [number, number][] = [];
+  for (let i = 1; i < path.length; i++) {
+    const segment = cum[i] - cum[i - 1];
+    if (segment === 0) continue;
+    const dx = path[i].x - path[i - 1].x;
+    const dy = path[i].y - path[i - 1].y;
+    const fx = path[i - 1].x - cx;
+    const fy = path[i - 1].y - cy;
+    const a = dx * dx + dy * dy;
+    const b = 2 * (fx * dx + fy * dy);
+    const c = fx * fx + fy * fy - radius * radius;
+    const disc = b * b - 4 * a * c;
+    if (disc <= 0) continue;
+    const sq = disc ** 0.5;
+    const u1 = Math.max(0, (-b - sq) / (2 * a));
+    const u2 = Math.min(1, (-b + sq) / (2 * a));
+    if (u2 <= u1) continue;
+    const start = cum[i - 1] + u1 * segment;
+    const end = cum[i - 1] + u2 * segment;
+    const previous = list[list.length - 1];
+    if (previous && start <= previous[1] + 1e-9) {
+      previous[1] = Math.max(previous[1], end);
+    } else list.push([start, end]);
+  }
+  return list;
+};
+
+// Cumulative distance along the path, node by node (cum[0] = 0). Callers get it
+// back on the timeline rather than recomputing it.
+const pathDistances = (path: ReadonlyArray<Readonly<Point>>) => {
+  const cum: number[] = [0];
+  for (let i = 1; i < path.length; i++) {
+    cum.push(cum[i - 1] + euclideanDistance(path[i - 1], path[i]));
+  }
+  return cum;
+};
+
+// The runner's travel along `path`, exactly and continuously — an event-driven
+// computation, not a stepped simulation, so duration is a smooth function of
+// the maze rather than being quantized to 0.1-distance ticks (which displayed
+// genuinely different mazes as the same time whenever their optimal lengths
+// fell in one tick bucket).
 //
 // Model: the runner moves at SPEED, halved while slowed. A thunder triggers
 // when the runner is strictly within THUNDER_RADIUS of its centre (the anchor
@@ -603,73 +675,55 @@ export type Slow = {
 // runners-up's triggers entirely).
 //
 // Where the runner is in range is pure geometry: per thunder, a short list of
-// intervals in DISTANCE along the path (circle/segment intersections). Only
-// the mapping distance<->time depends on the slow schedule, and between events
-// it is linear, so the walk below advances event to event in closed form.
-// Times are rounded to the same two decimals the game stores and displays.
-export const pathDuration = (
+// intervals in DISTANCE along the path (circleWindows). Only the mapping
+// distance<->time depends on the slow schedule, and between events it is
+// linear, so the walk below advances event to event in closed form. That is
+// also what makes `timeAt` cheap and exact afterwards: the walk records its
+// state at every event, so any distance resolves from the last event before it
+// with the same two-piece formula.
+export const pathTimeline = (
   path: ReadonlyArray<Readonly<Point>> = [],
   thunders: ReadonlyArray<Readonly<Point>> = [],
-): [duration: number, slows: Slow[]] => {
-  if (path.length < 2) return [0, []];
-
-  const cum: number[] = [0];
-  for (let i = 1; i < path.length; i++) {
-    cum.push(cum[i - 1] + euclideanDistance(path[i - 1], path[i]));
+): PathTimeline => {
+  if (path.length < 2) {
+    return { duration: 0, slows: [], cum: [0], timeAt: () => 0 };
   }
+
+  const cum = pathDistances(path);
   const total = cum[cum.length - 1];
 
-  // Per-thunder in-range windows as [start, end] distance intervals, merged
-  // where the polyline leaves one segment inside the circle and enters the
-  // next (the same crossing point, up to float noise).
-  const windows = thunders.map((thunder) => {
-    const cx = thunder.x + 0.5;
-    const cy = thunder.y + 0.5;
-    const list: [number, number][] = [];
-    for (let i = 1; i < path.length; i++) {
-      const segment = cum[i] - cum[i - 1];
-      if (segment === 0) continue;
-      const dx = path[i].x - path[i - 1].x;
-      const dy = path[i].y - path[i - 1].y;
-      const fx = path[i - 1].x - cx;
-      const fy = path[i - 1].y - cy;
-      const a = dx * dx + dy * dy;
-      const b = 2 * (fx * dx + fy * dy);
-      const c = fx * fx + fy * fy - THUNDER_RADIUS * THUNDER_RADIUS;
-      const disc = b * b - 4 * a * c;
-      // A tangent graze has no interior crossing — "in range" is strict,
-      // mirroring lineOfSight's treatment of boundaries.
-      if (disc <= 0) continue;
-      const sq = disc ** 0.5;
-      const u1 = Math.max(0, (-b - sq) / (2 * a));
-      const u2 = Math.min(1, (-b + sq) / (2 * a));
-      if (u2 <= u1) continue;
-      const start = cum[i - 1] + u1 * segment;
-      const end = cum[i - 1] + u2 * segment;
-      const previous = list[list.length - 1];
-      if (previous && start <= previous[1] + 1e-9) {
-        previous[1] = Math.max(previous[1], end);
-      } else list.push([start, end]);
-    }
-    return list;
-  });
+  const windows = thunders.map((thunder) =>
+    circleWindows(path, cum, thunder.x + 0.5, thunder.y + 0.5, THUNDER_RADIUS)
+  );
 
   let t = 0;
   let d = 0;
   let slowEnd = -Infinity;
   const lastFire = thunders.map(() => -Infinity);
-  const slows: Slow[] = [];
+  const slows: TimelineSlow[] = [];
+  // The walk's state at each event boundary, in increasing distance: the seed
+  // (the start) plus one entry per trigger instant. `timeAt` resolves any
+  // distance from the last entry at or before it.
+  const states: { t: number; d: number; slowEnd: number }[] = [
+    { t: 0, d: 0, slowEnd: -Infinity },
+  ];
 
-  // When the runner reaches `target` distance, from the current state. Two
-  // linear pieces at most: half speed until the slow expires, full after.
-  const timeToReach = (target: number) => {
-    if (t < slowEnd) {
-      const coveredSlowed = d + (slowEnd - t) * (SPEED / 2);
-      if (target <= coveredSlowed) return t + (target - d) / (SPEED / 2);
-      return slowEnd + (target - coveredSlowed) / SPEED;
+  // When the runner reaches `target` distance, from the state (t, d, slowEnd).
+  // Two linear pieces at most: half speed until the slow expires, full after.
+  const reach = (
+    state: { t: number; d: number; slowEnd: number },
+    target: number,
+  ) => {
+    if (state.t < state.slowEnd) {
+      const coveredSlowed = state.d + (state.slowEnd - state.t) * (SPEED / 2);
+      if (target <= coveredSlowed) {
+        return state.t + (target - state.d) / (SPEED / 2);
+      }
+      return state.slowEnd + (target - coveredSlowed) / SPEED;
     }
-    return t + (target - d) / SPEED;
+    return state.t + (target - state.d) / SPEED;
   };
+  const timeToReach = (target: number) => reach({ t, d, slowEnd }, target);
 
   while (true) {
     // The earliest feasible trigger across all thunders. A trigger in a
@@ -707,15 +761,54 @@ export const pathDuration = (
       d += (best - t) * SPEED;
       t = best;
     }
+    // What the reset throws away: whatever was left of the running slow at this
+    // instant. Charged to the FIRST trigger of a simultaneous batch — they share
+    // one reset, so the loss is one event's, not one per thunder.
+    const wasted = Math.max(0, slowEnd - t);
     slowEnd = t + SLOW_DURATION;
-    for (const i of firing) {
+    for (const [n, i] of firing.entries()) {
       lastFire[i] = t;
-      slows.push({ time: t, thunder: { x: thunders[i].x, y: thunders[i].y } });
+      slows.push({
+        time: t,
+        thunder: { x: thunders[i].x, y: thunders[i].y },
+        wasted: n === 0 ? wasted : 0,
+      });
     }
+    states.push({ t, d, slowEnd });
   }
 
+  const duration = timeToReach(total);
+  // Slow still owed when the runner crosses the line is wasted just the same;
+  // fold it into the trigger that was running.
+  const last = slows[slows.length - 1];
+  if (last) last.wasted += Math.max(0, slowEnd - duration);
+
+  const timeAt = (distance: number) => {
+    const target = Math.min(Math.max(distance, 0), total);
+    let lo = 0;
+    let hi = states.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (states[mid].d <= target) lo = mid;
+      else hi = mid - 1;
+    }
+    return reach(states[lo], target);
+  };
+
+  return { duration, slows, cum, timeAt };
+};
+
+// The runner's travel time along `path` and the slows it triggered, rounded to
+// the two decimals the game stores and displays. The whole computation lives in
+// `pathTimeline` — this is the shape every timing surface (validation, board
+// staging, the client preview) consumes.
+export const pathDuration = (
+  path: ReadonlyArray<Readonly<Point>> = [],
+  thunders: ReadonlyArray<Readonly<Point>> = [],
+): [duration: number, slows: Slow[]] => {
+  const { duration, slows } = pathTimeline(path, thunders);
   return [
-    Math.round(timeToReach(total) * 100) / 100,
+    Math.round(duration * 100) / 100,
     slows.map(({ time, thunder }) => ({
       time: Math.round(time * 100) / 100,
       thunder,

@@ -63,6 +63,10 @@
     "message": "记录",
     "hash": "848f54e89660cea4357644039ac5d7146f76c8e85df5c04076e08feb7e7547f0"
   },
+  "attempts.titleCount": {
+    "message": "{count, plural, other {# 条记录}}",
+    "hash": "e1c5a73ba72f7c18ced44777ea6b07c623b61294a412a2e26af23bc9605e1e48"
+  },
   "attempts.unpin": {
     "message": "取消置顶",
     "hash": "78c0b1bd34779337d4ed4a478cac70a034b061bead7ead7bee2932c150d04694"
@@ -778,6 +782,66 @@
   "profile.zoomSub": {
     "message": "触摸时放大棋盘。",
     "hash": "ae679914ecf9d1786f752e9b5ccf4f3f747a0287255450bb36a870499b1fce03"
+  },
+  "splits.addFlag": {
+    "message": "添加旗帜",
+    "hash": "18a5a8787ea6a461be3b98f376286468bf482fddf2d9bc351d7717cedd9743bc"
+  },
+  "splits.armedClick": {
+    "message": "点击以添加旗帜",
+    "hash": "7939f02a84fd5765d83d260549ef06b72ed708d6f1600361a9ef8114c868d9b4"
+  },
+  "splits.armedTap": {
+    "message": "点按以添加旗帜",
+    "hash": "238283b8ab5070f29f02db7738241e4338efbd15fc377f40271a1d6d2c31af33"
+  },
+  "splits.checkpoint": {
+    "message": "检查点",
+    "hash": "ee325afd9b4e907b3c521293ce4c841c990f124a10192bcba8ec7cc6bf005090"
+  },
+  "splits.clearAll": {
+    "message": "全部清除",
+    "hash": "29a390f9237e3c84e5641785eca25199620e53f7b6f4b9d843b23dcb5c12904f"
+  },
+  "splits.done": {
+    "message": "完成",
+    "hash": "11a6767d5674c7e45f7e00dc525762275b3a48491ad6045427d2609cc496c516"
+  },
+  "splits.editFlags": {
+    "message": "编辑旗帜",
+    "hash": "f9a50997e610befdef351168976fccd4db17079d05ec1074afb7de66e891e548"
+  },
+  "splits.flagN": {
+    "message": "旗帜 {n}",
+    "hash": "34d9d373917419ed5ae5b4563eb00740f2f7cd5f34c09a9085b1347ac61f14a4"
+  },
+  "splits.isBest": {
+    "message": "最佳",
+    "hash": "8f4375ec65c2c4092a1cc21e76712472eae0de999384e8327c495957121db9c2"
+  },
+  "splits.saved": {
+    "message": "已保存 {count} 个",
+    "hash": "2767bdc886ae8d599d8e352cb6215aa230c27739196270ed6e55fd2f7c79c39b"
+  },
+  "splits.thunderN": {
+    "message": "雷电 {n}",
+    "hash": "c24ae52257e4022a4458f49c65b8f9868a87b4da3a43a250d25d2e9a7e295fb8"
+  },
+  "splits.title": {
+    "message": "分段",
+    "hash": "351924e97f58a6250c3824188bafb3e7dfdb3a24004c7e7689271b072752e197"
+  },
+  "splits.vsBest": {
+    "message": "对比最佳",
+    "hash": "da2e86f03c15d1c547c58bfe8847addfdf9f431af2e6f2ac13a177a44e17c181"
+  },
+  "splits.vsBestTime": {
+    "message": "对比最佳 {time} 秒",
+    "hash": "01970ffb7100923792b3bb67030a12af043ee156ce0662553d2fe7c535aeace8"
+  },
+  "splits.wasteTitle": {
+    "message": "损失 {seconds} 秒——奔跑者已处于减速状态时这道雷电再次触发",
+    "hash": "c732f34b9c633cd56a13a7387c161d3dc2ce71514a0505ad9931b0aac1aecbf2"
   },
   "standings.between": {
     "message": "相隔 {count} 名",

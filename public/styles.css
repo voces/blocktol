@@ -56,6 +56,14 @@
   --maze-thunder-radius: hsla(220, 60%, 50%, 20%);
   --maze-debug-block: hsla(0, 100%, 60%, 10%);
   --maze-stroke: rgba(0, 0, 0, 0.4);
+  /* Flags — the splits tape's manual checkpoints (see common/splits.ts).
+     Orange is the one hue the maze palette leaves free, so a flag can never be
+     read as a piece. Theme-independent like the rest of the maze tokens: the
+     board is the same colour in light and dark. */
+  --flag: hsl(32, 92%, 52%);
+  --flag-bright: hsl(32, 92%, 62%);
+  --flag-soft: hsla(32, 92%, 52%, 0.5);
+  --flag-deep: hsl(32, 92%, 38%);
   --runner: hsl(300, 60%, 60%);
   --slow-runner: hsl(258, 36%, 53%);
   --brightness: light-dark(40%, 70%);
@@ -516,6 +524,15 @@ a:hover {
 .game {
   display: grid;
   gap: 24px;
+  /* One rhythm for the right rail: the gap under the standings dock and the gap
+     under the splits tape are the same value, so the tape sits evenly between
+     the dock above it and the runs below. */
+  --rail-gap: 12px;
+  /* The collapsed tape's exact height, so the panel is the same size whether it
+     is showing deltas, absolute times, or nothing at all (see .splits). Derived,
+     not measured: the head's fixed 16px line box plus its 9px padding and the
+     panel's 1px border, top and bottom. */
+  --splits-collapsed: 36px;
   justify-content: center;
   align-items: start;
   box-sizing: border-box;
@@ -539,8 +556,25 @@ a:hover {
       minmax(0, 340px) min(var(--maze-size), 100%) minmax(0, 340px);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
-      "today board standings"
-      "cal   board attempts";
+      "today board rail"
+      "cal   board rail";
+  }
+
+  /* The right rail owns its own vertical rhythm: the dock, then the runs (with
+     the splits tape at their head), spaced by --rail-gap. Spanning both grid
+     rows is what frees it from the left column's row heights — the today card
+     is taller than the dock, and with the dock parked in row 1 the runs were
+     pushed down to meet it. */
+  .game__rail {
+    grid-area: rail;
+    gap: var(--rail-gap);
+    min-height: 0;
+  }
+
+  /* The dock is its natural height; the runs take the rest and scroll. */
+  .game__rail > .attempts {
+    flex: 1;
+    min-height: 0;
   }
 
   /* The wrapper vanishes so its three panels land directly in the grid. */
@@ -654,6 +688,16 @@ a:hover {
   .game__panel .today-result {
     display: none;
   }
+}
+
+/* Dock + runs as one column. A plain flex column here; the desktop block gives
+   it the grid area spanning both rows and the gap. On mobile it just passes its
+   children through to the stacked panel (and the dock is pinned to the viewport
+   anyway), so it needs no spacing of its own. */
+.game__rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .game__board {
@@ -1225,8 +1269,6 @@ a:hover {
    max-width media block above (as descendant selectors, to win by
    specificity). */
 .attempts {
-  grid-area: attempts;
-  align-self: stretch;
   min-height: 0;
   overflow-y: auto;
   text-align: left;
@@ -1347,6 +1389,12 @@ a:hover {
 .attempts__meta {
   flex: 1;
   min-width: 0;
+  /* One line: "2m ago" plus its tags reads as a single caption, and letting it
+     wrap in the 288px rail grew the row by a line whenever a run picked up a
+     badge. Left to overflow rather than clipped — a tag half-cut at an
+     invisible edge reads as a rendering fault, where a line running past its
+     box reads as a line that didn't fit. */
+  white-space: nowrap;
 }
 
 .attempts__kind {
@@ -1465,6 +1513,449 @@ a:hover {
    as a set, without a second accent colour fighting the band. */
 .attempts__row--pinned {
   --band-card-edge: 46%;
+}
+
+/* Splits panel — the tape above the runs list (see Splits.tsx). One card that
+   is either a single collapsed line of marks or the expanded table; the header
+   is the toggle in both states. Sits inside .attempts so it scrolls with the
+   list it belongs to. */
+/* Fixed collapsed height. The tape's content changes size with what it is
+   showing — a delta reads at 13px, an absolute time at 12px — and letting the
+   panel size to it shifted the whole runs list by a pixel every time you moved
+   between a run and your best. The head below pins its line box, and this pins
+   the panel, so every state (deltas, absolutes, the empty placeholder) is the
+   same box. */
+.splits {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  overflow: hidden;
+  min-height: var(--splits-collapsed);
+  /* Matches the rail gap above it (see .game), so the tape is evenly spaced
+     between the dock and the runs. */
+  margin: 0 0 var(--rail-gap, 12px);
+}
+
+/* The tape isn't up, but the slot it would take is held so the runs below don't
+   hop when it appears (see Splits.tsx). Hidden rather than drawn empty — an
+   empty bordered card reads as a panel that failed to load. */
+.splits--placeholder {
+  visibility: hidden;
+}
+
+.splits__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 11px;
+  /* Fixed line box (not the font's own metrics) so the collapsed height doesn't
+     depend on which size of number is in the line — or on whether the webfont
+     has loaded yet. A wrapped second line of marks still grows it, as it must. */
+  line-height: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--color);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Only the expanded header rules a line off the tape below it; collapsed, the
+   header IS the panel. */
+.splits--open .splits__head {
+  border-bottom: 1px solid var(--border);
+}
+
+/* The standings dock's caret, same weight and same muted colour so the rail
+   reads as one system — but this one is a disclosure, not a sheet, so it points
+   RIGHT when closed and rotates down on open (the dock's points up, or left on
+   desktop where its sheet is a side drawer). The glyph's base orientation is
+   up, hence the 90deg / 180deg. */
+.splits__chevron {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-mute);
+}
+
+/* display:block or the glyph sits low on the text baseline. */
+.splits__chevron svg {
+  display: block;
+  transform: rotate(90deg);
+  transition: transform 0.16s ease;
+}
+
+.splits__chevron--open svg {
+  transform: rotate(180deg);
+}
+
+/* Open/close slides: the body is a grid row animated from 0fr to 1fr, with the
+   inner wrapper clipping the overflow — no measured pixel height, so the tape
+   can be any length. Browsers that can't interpolate fr units simply snap, the
+   behaviour before this. Collapsed, `visibility: hidden` (applied only once the
+   slide has finished) takes the rows and the flag controls out of the tab order
+   and off the accessibility tree. */
+.splits__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.16s ease, visibility 0s 0.16s;
+}
+
+.splits--open .splits__body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.16s ease;
+}
+
+.splits__body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splits__body,
+  .splits--open .splits__body,
+  .splits__chevron svg,
+  .splits__mark,
+  .splits__row {
+    transition: none;
+  }
+}
+
+.splits__title {
+  flex: 1;
+  font: 600 12px var(--font);
+  color: var(--color);
+}
+
+/* Collapsed: every mark on one line, wrapping rather than truncating — the
+   whole tape is meant to be readable without opening it. */
+.splits__marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  /* The 10px between marks is carried by their own side padding (so the
+     running highlight has room to sit in), not by a column gap. The negative
+     inline margin gives that padding back to the line: the first mark's glyph
+     and the last one's digits land exactly where they would with no padding at
+     all, against the caret and the note either side. */
+  gap: 4px 0;
+  margin-inline: -5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.splits__mark {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Every mark carries it, lit or not, so the highlight can never reflow the
+     line as it advances (see .splits__marks for where the space comes from).
+     Horizontal only: the head's line box is fixed, and vertical padding here
+     would push the collapsed panel past --splits-collapsed. */
+  padding-inline: 5px;
+  border-radius: 999px;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* The mark the runner has just reached, in the RUNNER's own colour — the
+   highlight says "the runner is here", so it borrows the thing it tracks
+   rather than joining the gain/loss tones (which say something else) or the
+   accent (the dock's and the checkpoint's). Its width comes from padding every
+   mark carries whether lit or not, and its height from a box-shadow spread:
+   this line WRAPS, so padding that appeared and disappeared as the runner
+   advanced would reflow it mark by mark, and vertical padding would push the
+   collapsed panel past its fixed height. */
+.splits__mark--current {
+  /* Mixed into the card's own surface rather than left translucent: marks that
+     share an instant light side by side, and two translucent pills would stack
+     their alpha into a darker seam where they meet. */
+  background: color-mix(in srgb, var(--runner) 22%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--runner) 22%, var(--surface));
+}
+
+.splits__glyph {
+  display: block;
+  flex: none;
+}
+
+.splits__note {
+  flex: none;
+  font: 500 10.5px var(--font);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* One mark per row: glyph, label, the delta (the point of the tape, so it
+   leads), then the absolute time trailing in a muted mono column. */
+.splits__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  /* The running highlight moves from row to row: each fades its own band in
+     and out rather than the lit row jumping. */
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  /* Same fixed line box as the head: a row is the same height whether or not it
+     carries a delta (your best run has no delta column). */
+  line-height: 16px;
+  /* Nothing to compare against until a modifier below says otherwise. */
+  --split-tone: var(--text-faint);
+}
+
+/* How this mark stands against the reference run — worn by the delta outright
+   and by the absolute time in a dimmed mix, so the whole row reads ahead or
+   behind while the delta stays the loudest thing in it. */
+.splits__row--gain {
+  --split-tone: var(--win);
+}
+
+.splits__row--loss {
+  --split-tone: var(--lose);
+}
+
+.splits__row--even {
+  --split-tone: var(--warn);
+}
+
+.splits__row .splits__delta {
+  color: var(--split-tone);
+}
+
+/* The checkpoint is the one mark every route shares — lifted a little so the
+   tape reads as before/after it. */
+.splits__row--checkpoint {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--color) 3%, transparent);
+}
+
+.splits__row--checkpoint .splits__label {
+  font-weight: 600;
+  color: var(--color);
+}
+
+/* Same "the runner is here" band in the table, with an edge marker down the
+   left so it still reads on a checkpoint row (which carries a tint of its own)
+   and for anyone who can't separate the two fills. Declared after the
+   checkpoint rules so it wins the background on that row. */
+.splits__row--current {
+  background: color-mix(in srgb, var(--runner) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--runner);
+}
+
+.splits__label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12.5px var(--font);
+  color: var(--text-dim);
+}
+
+/* Higher is better, so a gain is green and a loss red — the sign is spelled out
+   in the text too (see formatDelta). */
+.splits__delta {
+  font: 700 13px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.splits__delta--gain {
+  color: var(--win);
+}
+
+.splits__delta--loss {
+  color: var(--lose);
+}
+
+/* No counterpart in the best run (a flag it never crossed): a dash, not a zero. */
+.splits__delta--none {
+  color: var(--text-faint);
+}
+
+/* Dead level against the reference — amber, because it is neither a gain nor a
+   loss, and because the faint grey above already means "nothing to compare". */
+.splits__delta--even {
+  color: var(--warn);
+}
+
+/* Viewing your own best: there is nothing to compare against, so the marks show
+   absolute times in the collapsed line. */
+.splits__delta--absolute {
+  color: var(--color);
+}
+
+/* The collapsed line is one size whatever it holds — the expanded tape's 13px
+   delta would otherwise make the panel a pixel taller in delta mode than in
+   absolute mode. */
+.splits__marks .splits__delta {
+  font-size: 12px;
+}
+
+/* The run's own time at this mark. Tinted to the row's tone but pulled most of
+   the way back to the faint neutral: the comparison is the point, so the time
+   should say which way it went without competing with the delta. Neutral
+   outright when there's nothing to compare against. */
+.splits__time {
+  flex: none;
+  width: 44px;
+  text-align: right;
+  font: 600 11px var(--font-mono);
+  color: color-mix(in srgb, var(--split-tone) 70%, var(--text-faint));
+}
+
+/* A re-strike that reset a still-running slow, priced in finish seconds. */
+.splits__waste {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--lose) 32%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--lose) 13%, transparent);
+  color: var(--lose);
+  font: 700 10.5px var(--font-mono);
+  white-space: nowrap;
+}
+
+/* Part of the card, not a shelf under it. The divider is the same weight as the
+   ones between rows (a heavier rule read as the panel ENDING there), and the
+   fill is the card's own surface lifted a hair — the same recipe the checkpoint
+   row uses. --surface-2 was the trap: in dark it sits above --surface and reads
+   fine, but in light it lands within a hair of the page background, so on a
+   phone the footer looked like it had fallen out of the panel. */
+.splits__foot {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--color) 3%, var(--surface));
+}
+
+/* Armed: the footer is the only thing that changes state, because the tape is
+   the reason you're placing a flag and must stay readable. */
+.splits__foot--armed {
+  background: color-mix(in srgb, var(--flag) 12%, var(--surface));
+}
+
+.splits__add {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--flag) 45%, transparent);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--flag-bright);
+  font: 600 11.5px var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.splits__add:hover {
+  background: color-mix(in srgb, var(--flag) 12%, transparent);
+}
+
+.splits__arm-label {
+  flex: 1;
+  min-width: 0;
+  font: 600 12px var(--font);
+  color: var(--flag-bright);
+  /* The rail is 288px: the label, the saved count and Done only fit on one line
+     if none of them wraps. */
+  white-space: nowrap;
+}
+
+.splits__spacer {
+  flex: 1;
+}
+
+.splits__saved {
+  font: 500 10.5px var(--font);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.splits__clear {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: 600 11px var(--font);
+  color: var(--text-mute);
+  cursor: pointer;
+}
+
+.splits__clear:hover {
+  color: var(--color);
+}
+
+.splits__done {
+  flex: none;
+  padding: 5px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  font: 600 11.5px var(--font);
+  cursor: pointer;
+}
+
+/* Flags on the board (see FlagLayer.tsx). The pennant and its cell ring are
+   decoration — only the grab target (armed only) takes a pointer. */
+.flag__pennant {
+  fill: var(--flag-soft);
+  stroke: var(--flag);
+  stroke-width: 0.1;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Being placed: the same pennant, faded, because it isn't written until the
+   pointer lets go — the flag equivalent of the block placement's ghost. */
+.flag__pennant--placing {
+  opacity: 0.55;
+}
+
+/* A flag the current run doesn't cross reports nothing: drawn hollow and dashed,
+   with its cell ringed, so it reads as speculative rather than broken. */
+.flag__pennant--speculative {
+  fill: none;
+  stroke: var(--flag-deep);
+  stroke-width: 0.13;
+  stroke-dasharray: 0.26 0.2;
+}
+
+.flag__cell {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.85;
+  stroke-width: 0.12;
+  pointer-events: none;
+}
+
+.flag__grab {
+  cursor: grab;
+}
+
+.flag-layer__scrim {
+  cursor: crosshair;
+}
+
+/* The mark a hovered tape row points at. */
+.flag-layer__hover {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.9;
+  stroke-width: 0.12;
+  pointer-events: none;
 }
 
 /* Build-phase HUD strip above the board (see Hud.tsx). */
@@ -3563,14 +4054,9 @@ a:hover {
   color: var(--peak);
 }
 
-/* Desktop: a peek card at the top of the right rail (its own grid area, above
-   the runs). */
+/* Desktop: a peek card at the top of the right rail (see .game__rail, which
+   stacks it above the runs). */
 @media (min-width: 1200px) {
-  .standings-dock {
-    grid-area: standings;
-    align-self: start;
-  }
-
   /* The sheet is a side drawer here (slides in from the right — see
      .standings-sheet below), not a bottom sheet, so the "expands upward" caret
      is rotated to point left: an "opens a side panel" affordance instead. */

@@ -9,5 +9,8 @@
   "SUPREME": "a celebratory badge for a sole untied #1 — keep it short and punchy; all-caps if the language allows.",
   "RECORD": "a badge for a held top build — keep it short; all-caps if the language allows.",
   "BEST": "a badge for a personal best — keep it short; all-caps if the language allows.",
-  "DELETE": "the literal word the user must type to confirm account deletion — keep it as the English word DELETE unless a localized equivalent is unambiguous and standard."
+  "DELETE": "the literal word the user must type to confirm account deletion — keep it as the English word DELETE unless a localized equivalent is unambiguous and standard.",
+  "slow": "the state a thunder puts the runner in (half speed for 6s). An internal term — copy never names it as a thing; where the effect has to be described, it appears as the plain adjective \"slowed\" (see splits.wasteTitle).",
+  "splits": "the per-mark breakdown of a run (speedrunning sense: the time at each point along the route); translate with the term your language's speedrunning/racing communities use.",
+  "flag": "a marker the player plants on a board to add a split point; translate it as the pennant/marker sense."
 }

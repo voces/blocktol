@@ -339,6 +339,31 @@ export const migrations: Migration[] = [
 
       ALTER TABLE \`iteration\` DROP KEY \`created\`, ADD UNIQUE KEY \`created\` (\`created\`);`,
   },
+  {
+    version: 15,
+    name: "flag",
+    // Player-placed flags: the manual checkpoints of the splits tape (see
+    // common/splits.ts). A flag belongs to the BOARD, not to a run — it marks a
+    // spot on the day's maze and every build of that maze is timed against it —
+    // so the key is (user, iteration) and the whole set lives in one column, the
+    // way a run's maze does (util/flags.ts). Reads and writes are always the
+    // whole set, so a row per flag would buy nothing.
+    //
+    // Both FKs cascade on UPDATE as well as DELETE: `user.id` is ROTATED by the
+    // GDPR erasure path (db/deleteAccount.ts), and every table keyed by it has to
+    // follow — though erasure deletes a player's flags outright, since nothing
+    // but that player depends on them. MariaDB dialect.
+    up: `
+      CREATE TABLE IF NOT EXISTS \`flag\` (
+        \`user\` char(36) NOT NULL,
+        \`iteration\` int(10) unsigned NOT NULL,
+        \`data\` varchar(255) NOT NULL,
+        PRIMARY KEY (\`user\`,\`iteration\`),
+        KEY \`FK_flag_iteration\` (\`iteration\`),
+        CONSTRAINT \`FK_flag_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT \`FK_flag_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

@@ -58,6 +58,8 @@ const doFetch = (method: string, input: unknown) =>
 //                   local id on success, so a blind retry would act on the stale
 //                   id. (The server op is itself an idempotent no-op on repeat.)
 //   - reportClientError — retrying error reports risks amplifying a bad loop.
+// setFlags IS retryable: it writes the whole flag set as an absolute value, so a
+// repeat lands the same rows.
 // commitRun IS retryable: free play's commit carries a per-attempt clientId and
 // the server INSERT is guarded on it (NOT EXISTS), so a repeat is a no-op. Old
 // clients' bare commit is an idempotent flip-to-non-void, also safe to repeat.
@@ -80,6 +82,7 @@ const RETRYABLE = new Set<keyof BlocktolApi>([
   "subscribePush",
   "unsubscribePush",
   "setRunPinned",
+  "setFlags",
   "commitRun",
 ]);
 

@@ -39,10 +39,12 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
   useEffect(() => {
     // `press` is a pointer/touch down: if it lands on a local block we grab it
     // to drag; otherwise it (and subsequent moves) position a placement preview.
-    // `viewing` is checked explicitly: a reviewed maze keeps a live free-play
-    // build's countdown on the clock (time > 0), but the board must stay inert.
+    // `viewing` is checked explicitly (below, once the hovered cell is known): a
+    // reviewed maze keeps a live free-play build's countdown on the clock
+    // (time > 0), but the board must stay inert — bar the thunder radii, which
+    // are the point of studying a maze.
     const callback = (clientX: number, clientY: number, press = false) => {
-      if (!svg || viewing || timeRef.current <= 0) return;
+      if (!svg || (!viewing && timeRef.current <= 0)) return;
 
       const box = svg.getBoundingClientRect();
       const xRaw = Math.min(
@@ -80,6 +82,15 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         nearest && Math.abs(nearest.x - x) <= 1 && Math.abs(nearest.y - y) <= 1
           ? nearest
           : undefined;
+
+      // Reviewing: nothing is placeable, so the only thing a pointer does is
+      // reveal a thunder's radius — the day's pieces and the reviewed maze's
+      // alike (mid-build a hover over your OWN thunder shows the radius through
+      // `transitionBlock` instead, which also previews the upgrade).
+      if (viewing) {
+        thunderHover.value = overlap?.thunder ? overlap : undefined;
+        return;
+      }
 
       // Grab a local block on press, remembering the pressed cell and pixel
       // point so a tap (no real movement) doesn't move it.
@@ -204,13 +215,16 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // Ignore taps on the board's border/wall band so they don't zoom or
       // place blocks — that ring holds the HUD controls (Ready?, best score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
-      // An inert reviewed maze doesn't zoom either (`touching` drives the
-      // placing zoom, which keys off time > 0 — live during a view now).
-      if (viewing) return;
-      // Arm the zoom on the player's configured delay (read non-reactively so
-      // the listeners don't re-register per setting change) — 0 zooms at once,
-      // a larger value lets a quick tap-to-place land before the board magnifies.
-      armTouchZoom(getSettings().zoomDelay);
+      // An inert reviewed maze doesn't zoom (`touching` drives the placing zoom,
+      // which keys off time > 0 — live during a view now), but the tap still
+      // goes through: with no hover on touch, tapping a thunder is how you see
+      // its radius while studying a maze. It stays up until you tap elsewhere —
+      // the release path leaves it alone while viewing.
+      // Otherwise arm the zoom on the player's configured delay (read
+      // non-reactively so the listeners don't re-register per setting change) —
+      // 0 zooms at once, a larger value lets a quick tap-to-place land before
+      // the board magnifies.
+      if (!viewing) armTouchZoom(getSettings().zoomDelay);
       callback(touch.clientX, touch.clientY, true);
       e.preventDefault();
     };

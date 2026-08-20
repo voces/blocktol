@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "preact/compat";
 
 import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
+import { FlagLayer } from "./FlagLayer.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { useSettings } from "../hooks/useSettings.ts";
@@ -26,6 +27,9 @@ export const Board = (
     date,
     dragMoved,
     implosions,
+    flags,
+    flagsArmed,
+    onFlagsChange,
   }: {
     placingBlock: Point & { placing: boolean };
     touching: boolean;
@@ -53,13 +57,21 @@ export const Board = (
     date: number;
     // Optional: the intro board never reverts, so it has no ghosts to show.
     implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
+    // Optional: the player's splits flags, and whether placing one is armed.
+    // Absent on the intro board and during a ranked daily (there are no splits
+    // to mark up there) — see FlagLayer.
+    flags?: ReadonlyArray<Point>;
+    flagsArmed?: boolean;
+    onFlagsChange?: (flags: Point[]) => void;
   },
 ) => {
   // Board magnification while placing (touch). A 1× setting disables it — the
   // board never scales — so it behaves as if the zoom feature isn't there.
   const { settings } = useSettings();
   const zoom = settings.zoom;
-  const zooming = touching && time > 0 && zoom > 1;
+  // The placing zoom also serves flag placement, which happens on a REVIEWED
+  // board (time < 0) — the finger covers the cell it's aiming at just the same.
+  const zooming = touching && (time > 0 || !!flagsArmed) && zoom > 1;
   // Only pan the camera (animate transform-origin) once we're already zoomed
   // in, i.e. dragging the block a step. On the initial tap-to-zoom the origin
   // jumps instantly so it zooms straight into the tapped point instead of
@@ -151,7 +163,14 @@ export const Board = (
               z-index={1}
             />
           )}
-        {thunderHover && !thunderHover.local &&
+        {
+          /* A hovered thunder's radius. Skipped when it's the same piece
+            `transitionBlock` is already drawing a circle for (a mid-build hover
+            over your own thunder), so the translucent fill isn't stacked twice
+            — reviewing a maze has no transitionBlock, so both the day's
+            thunders and the reviewed maze's draw here. */
+        }
+        {thunderHover && thunderHover !== transitionBlock &&
           (
             <circle
               cx={thunderHover.x + 1}
@@ -224,6 +243,14 @@ export const Board = (
             width={0.9}
             height={0.9}
             fill="var(--maze-checkpoint)"
+          />
+        )}
+        {flags && onFlagsChange && (
+          <FlagLayer
+            flags={flags}
+            armed={!!flagsArmed}
+            checkpoint={checkpoint}
+            onChange={onFlagsChange}
           />
         )}
         {

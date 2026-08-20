@@ -463,6 +463,10 @@
     "message": "Runs",
     "description": "Section title over the list of the player's runs on the viewed maze."
   },
+  "attempts.titleCount": {
+    "message": "{count, plural, one {# run} other {# runs}}",
+    "description": "Section title over the runs list, showing how many runs the viewed maze has. Replaces the bare \"Runs\" title once there is at least one."
+  },
   "attempts.sortRuns": {
     "message": "Sort runs",
     "description": "Accessible group label for the runs-list sort toggle."
@@ -506,6 +510,66 @@
   "attempts.empty": {
     "message": "No runs yet",
     "description": "Empty state for the runs list when the viewed maze has no runs."
+  },
+  "splits.title": {
+    "message": "Splits",
+    "description": "Title of the splits panel (expanded): the run's time at each mark along the route."
+  },
+  "splits.checkpoint": {
+    "message": "Checkpoint",
+    "description": "Splits row label for the board's one fixed waypoint. \"Checkpoint\" is the game term."
+  },
+  "splits.thunderN": {
+    "message": "Thunder {n}",
+    "description": "Splits row label for a thunder strike, numbered by the piece in first-crossing order. The same thunder can strike many times and every one of those rows carries its number, so this names the thunder, not the strike. \"thunder\" is the game term (see glossary)."
+  },
+  "splits.flagN": {
+    "message": "Flag {n}",
+    "description": "Splits row label for the nth flag the runner passed, counted in crossing order. The same flag can be passed twice (once before the checkpoint, once after)."
+  },
+  "splits.isBest": {
+    "message": "best",
+    "description": "Note on the splits panel when the run being viewed IS the player's best on this board, so the times shown are absolute rather than differences."
+  },
+  "splits.vsBest": {
+    "message": "vs best",
+    "description": "Note on the collapsed splits panel: the numbers shown are differences against the player's best run on this board."
+  },
+  "splits.vsBestTime": {
+    "message": "vs best {time}s",
+    "description": "Note on the expanded splits panel header, naming the run the differences are measured against (the player's best) and its time in seconds."
+  },
+  "splits.addFlag": {
+    "message": "Add flag",
+    "description": "Button in the splits panel that arms flag placement: the next tap on the board drops a flag."
+  },
+  "splits.editFlags": {
+    "message": "Edit flags",
+    "description": "Button in the splits panel that arms flag placement when the board already has flags — the same control as \"Add flag\", worded for changing a set that exists (you can add, move or remove while armed). Keep it short: it sits in a narrow footer."
+  },
+  "splits.armedTap": {
+    "message": "Tap to add a flag",
+    "description": "Splits panel footer while flag placement is armed, on a touch device."
+  },
+  "splits.armedClick": {
+    "message": "Click to add a flag",
+    "description": "Splits panel footer while flag placement is armed, on a device with a mouse."
+  },
+  "splits.saved": {
+    "message": "{count} saved",
+    "description": "How many flags are stored on the board being viewed, shown in the splits panel footer."
+  },
+  "splits.done": {
+    "message": "Done",
+    "description": "Button that finishes flag placement and returns the board to normal."
+  },
+  "splits.clearAll": {
+    "message": "Clear all",
+    "description": "Button in the splits panel that removes every flag from the board being viewed."
+  },
+  "splits.wasteTitle": {
+    "message": "{seconds}s lost — this thunder struck while the runner was already slowed",
+    "description": "Tooltip on the splits row's waste tag. A second strike restarts the 6-second slowing instead of extending it, so the rest of the running one never happens; the value is what that costs in finish time. \"thunder\"/\"runner\" are game terms (see glossary)."
   },
   "time.now": {
     "message": "now",

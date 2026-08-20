@@ -26,6 +26,11 @@ export const nonVoidRunCount = (user: string) =>
 // iteration (higher time breaks an exact-timestamp tie), so exactly the single
 // earliest daily survives.
 //
+// Splits flags come across too, but only for boards the primary has none of
+// (INSERT IGNORE on the (user, iteration) key): the primary keeps its own marks
+// wherever the two devices flagged the same day, matching "the primary sets what
+// you keep". Whatever isn't carried over goes with the secondary's row.
+//
 // All of it is one round trip wrapped in a transaction. A single query runs on
 // one connection (the same guarantee startRun's session variables rely on), so
 // the reassign, demote, and delete commit together or not at all.
@@ -43,6 +48,9 @@ export const mergeUsers = (primary: string, secondary: string) =>
       AND (o.created < r.created OR (o.created = r.created AND o.time > r.time))
     SET r.daily = FALSE
     WHERE r.user = ${primary} AND r.daily = TRUE;
+
+    INSERT IGNORE INTO flag (user, iteration, data)
+      SELECT ${primary}, iteration, data FROM flag WHERE user = ${secondary};
 
     DELETE FROM user WHERE id = ${secondary};
 

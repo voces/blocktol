@@ -10,6 +10,8 @@ import {
 import { api, MessageMap } from "../../api.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
 import { t } from "../../util/t.ts";
+import { mazeKey } from "./helpers.ts";
+import { Splits } from "./Splits.tsx";
 import { GameStateContext } from "./useGameState.ts";
 
 // Best-run badge → catalog key, mapped by a literal object so every live key
@@ -49,17 +51,6 @@ const storedSort = (): Sort =>
   storage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
 const storedReversed = (): boolean => storage.getItem(DIR_KEY) === "1";
 
-// Order-independent key for a maze, so the row whose maze is currently on the
-// board can be matched however its blocks happen to be ordered.
-const mazeKey = (
-  maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean }>,
-) =>
-  JSON.stringify(
-    [...maze]
-      .map((b) => [b.x, b.y, b.thunder ? 1 : 0])
-      .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]),
-  );
-
 // When a run happened, from the viewer's clock: relative (Xs/Xm/Xh ago) if it's
 // today OR within the last 8 hours — so an 11pm run still reads "3h ago" at 2am —
 // otherwise the date.
@@ -93,6 +84,7 @@ export const Attempts = () => {
     dailyInProgress,
     blocks,
     viewing,
+    phase,
     iteration,
   } = useContext(GameStateContext);
   // Local-only ordering, remembered across visits. Defaults to best (longest)
@@ -216,9 +208,11 @@ export const Attempts = () => {
       .catch(() => flip(!next));
   };
 
-  // The maze currently on the board when reviewing a past run (viewMaze makes it
-  // the local blocks) — used to flag its row as being viewed.
-  const viewingKey = viewing
+  // The maze the board is showing: a review (viewMaze made it the local blocks)
+  // or, in free play, the run currently animating — its row is marked from the
+  // moment it executes, not once the runner stops. Never mid-daily, where the
+  // running attempt has no row yet and the panel is inert anyway.
+  const viewingKey = viewing || (!dailyInProgress && phase === "running")
     ? mazeKey(
       blocks.filter((b) => b.local).map((b) => ({
         x: b.x,
@@ -230,8 +224,23 @@ export const Attempts = () => {
 
   return (
     <div class="attempts">
+      {
+        /* The splits tape for the run being reviewed — free play only, and only
+          while reviewing (see Splits.tsx). It sits above the list, inside the
+          same scroll column, so the tape and the run it describes read as one
+          panel. */
+      }
+      <Splits />
       <div class="attempts__head">
-        <div class="section-title">{t("attempts.title")}</div>
+        <div class="section-title">
+          {
+            /* The count is the runs themselves, not the merged rows: two runs
+              of one maze are still two runs. */
+          }
+          {attempts.length
+            ? t("attempts.titleCount", { count: attempts.length })
+            : t("attempts.title")}
+        </div>
         {groups.length > 1 && (
           <div
             class="attempts__sort"

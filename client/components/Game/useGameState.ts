@@ -3,6 +3,7 @@ import { useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { MessageMap } from "../../api.ts";
+import { localRun } from "./helpers.ts";
 import {
   BoardBlock,
   clearTouchZoom,
@@ -63,8 +64,27 @@ export const useGameState = () => {
   // preview) rather than the tap-to-upgrade preview, which is meant for a bare
   // hover over your own block. Cleared on release.
   const placingRef = useRef(false);
-  const [checkpoint, setCheckpoint] = useState<Point>({ x: -2, y: -2 });
-  const [blocks, setBlocks] = useState<ReadonlyArray<BoardBlock>>([]);
+  const [checkpoint, _setCheckpoint] = useState<Point>({ x: -2, y: -2 });
+  const [blocks, _setBlocks] = useState<ReadonlyArray<BoardBlock>>([]);
+  // Mirrors of the board itself, for the same reason the budgets have them
+  // (below): `viewMaze`'s callers are not all synchronous with the render they
+  // were created in — the today-result chips and the profile's view-best stage
+  // another day first and overlay the maze in the response's `.then`, so the
+  // render-state board they closed over belongs to the day they left. Releasing
+  // the runner over a review needs the CURRENT board's fixed pieces and
+  // checkpoint, so it reads them here.
+  const blocksRef = useRef<ReadonlyArray<BoardBlock>>(blocks);
+  const checkpointRef = useRef(checkpoint);
+  const setBlocks: typeof _setBlocks = (b) => {
+    blocksRef.current = typeof b === "function" ? b(blocksRef.current) : b;
+    _setBlocks(b);
+  };
+  const setCheckpoint: typeof _setCheckpoint = (c) => {
+    checkpointRef.current = typeof c === "function"
+      ? c(checkpointRef.current)
+      : c;
+    _setCheckpoint(c);
+  };
   // The local blocks the SERVER last accepted: seeded when a board loads
   // (startRun / getBoard / summary resume) and advanced on each confirmed
   // updateRun save. Edits stay optimistic; when a save comes back expired or
@@ -226,9 +246,16 @@ export const useGameState = () => {
   };
 
   // Review a previously-built maze (a past attempt or your best) on the board:
-  // drop into a static, non-playable view keeping the iteration's fixed pieces
-  // and checkpoint, with the reviewed maze as the local blocks.
-  const viewMaze = (maze: ReadonlyArray<Point & { thunder?: boolean }>) => {
+  // a non-playable view keeping the iteration's fixed pieces and checkpoint,
+  // with the reviewed maze as the local blocks. The runner is RELEASED over it
+  // (`replay`) — asking to see a maze means asking to see it run, and re-picking
+  // the same row runs it again. The one caller that doesn't want that is the
+  // review a just-finished free-play run lands in: it would replay the run you
+  // were already watching (see useInit).
+  const viewMaze = (
+    maze: ReadonlyArray<Point & { thunder?: boolean }>,
+    { replay = true }: { replay?: boolean } = {},
+  ) => {
     setRun(undefined);
     // Reviewing a past maze leaves the board inert (Play button); drop any
     // lingering free-play verdict so it doesn't keep overriding the HUD.
@@ -239,7 +266,18 @@ export const useGameState = () => {
     // honestly left. Every other state parks the clock at -1 (inert board);
     // the ticking clock alone can't make the board playable — the input hooks
     // gate on `viewing`.
-    if (!(freePlay && !staged && timeRef.current > 0)) setTime(-1);
+    //
+    // "A build is live" is the DEADLINE, not `staged`: a caller that staged a
+    // board moments ago and overlays a maze in the response's `.then` (the
+    // today-result chips, view-best, and the review the finished free-play run
+    // lands in) is running with the previous render's `staged` in its closure,
+    // while `timeRef` already reads the fresh board's full 60 — so the stale
+    // pair says "live build" and the review kept a ticking clock it never had.
+    // The deadline ref is written by the same handlers, synchronously: null on a
+    // staged board, set only once a run's window is actually open.
+    if (!(freePlay && deadlineRef.current !== null && timeRef.current > 0)) {
+      setTime(-1);
+    }
     setStaged(false);
     // Reviewing a maze (e.g. tapping a past attempt from the panel while the
     // Start overlay is up) exits prestart so the review is actually visible.
@@ -262,10 +300,15 @@ export const useGameState = () => {
     thunderHover.value = undefined;
     placingBlock.value = { ...placingBlock.value, placing: false };
     setViewing(true);
-    setBlocks((blocks) => [
-      ...blocks.filter((b) => !b.local),
+    const next = [
+      ...blocksRef.current.filter((b) => !b.local),
       ...maze.map((b) => ({ ...b, local: true })),
-    ]);
+    ];
+    setBlocks(next);
+    // The same engine the build preview and the server run — so the replayed
+    // path IS the one that produced the stored time. An unsolvable maze (bad
+    // data) simply doesn't release the runner; the board stays static.
+    if (replay) setRun(localRun(next, checkpointRef.current));
   };
 
   const phase: BoardPhase = time === -2
