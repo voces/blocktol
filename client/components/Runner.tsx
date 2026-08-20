@@ -4,6 +4,7 @@ import { SPEED } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { debug } from "../util/debug.ts";
+import { runnerTime } from "./Game/interaction.ts";
 
 export const Runner = (
   { path, slows, onFinish, onSlow }: {
@@ -37,6 +38,11 @@ export const Runner = (
       const delta = now - last;
       last = now;
       const time = (now - start) / 1_000;
+      // How far into the walk we are, for anything that wants to keep pace with
+      // the runner (the splits tape lights the mark it has just reached). A
+      // signal rather than a callback prop: this fires every frame, and a
+      // prop threaded through Board would re-render the tree at that rate.
+      runnerTime.value = time;
 
       // Off by 1 error
       for (
@@ -90,7 +96,12 @@ export const Runner = (
 
     cb();
 
-    return () => cancelAnimationFrame(animationFrame);
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      // No runner, no progress — a finished or abandoned walk must not leave a
+      // mark lit on the tape.
+      runnerTime.value = undefined;
+    };
   }, [path]);
 
   return (

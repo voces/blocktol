@@ -1619,7 +1619,9 @@ a:hover {
 @media (prefers-reduced-motion: reduce) {
   .splits__body,
   .splits--open .splits__body,
-  .splits__chevron svg {
+  .splits__chevron svg,
+  .splits__mark,
+  .splits__row {
     transition: none;
   }
 }
@@ -1645,6 +1647,19 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 4px;
+  border-radius: 999px;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* The mark the runner has just reached, in the RUNNER's own colour — the
+   highlight says "the runner is here", so it borrows the thing it tracks
+   rather than joining the gain/loss tones (which say something else) or the
+   accent (the dock's and the checkpoint's). The pill is drawn entirely with a
+   box-shadow spread instead of padding: this line WRAPS, and padding that
+   appears and disappears as the runner advances would reflow it mark by mark. */
+.splits__mark--current {
+  background: color-mix(in srgb, var(--runner) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--runner) 22%, transparent);
 }
 
 .splits__glyph {
@@ -1667,6 +1682,9 @@ a:hover {
   gap: 10px;
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
+  /* The running highlight moves from row to row: each fades its own band in
+     and out rather than the lit row jumping. */
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
   /* Same fixed line box as the head: a row is the same height whether or not it
      carries a delta (your best run has no delta column). */
   line-height: 16px;
@@ -1703,6 +1721,15 @@ a:hover {
 .splits__row--checkpoint .splits__label {
   font-weight: 600;
   color: var(--color);
+}
+
+/* Same "the runner is here" band in the table, with an edge marker down the
+   left so it still reads on a checkpoint row (which carries a tint of its own)
+   and for anyone who can't separate the two fills. Declared after the
+   checkpoint rules so it wins the background on that row. */
+.splits__row--current {
+  background: color-mix(in srgb, var(--runner) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--runner);
 }
 
 .splits__label {

@@ -1,5 +1,12 @@
 import { Fragment, h } from "preact";
-import { useContext, useEffect, useMemo, useState } from "preact/compat";
+import { useComputed } from "@preact/signals";
+import {
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/compat";
 import { formatSeconds } from "../../../common/format.ts";
 import { computeSplits, Split, splitDeltas } from "../../../common/splits.ts";
 import type { Point } from "../../../common/types.ts";
@@ -14,6 +21,7 @@ import {
 import { storage } from "../../util/storage.ts";
 import { t } from "../../util/t.ts";
 import { localRun, mazeKey } from "./helpers.ts";
+import { runnerTime } from "./interaction.ts";
 import { Chevron } from "../Standings/icons.tsx";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -246,6 +254,36 @@ export const Splits = () => {
   const rows: (Split & { delta?: number })[] = tape?.deltas ?? tape?.splits ??
     [];
 
+  // While the runner is animating, the mark it has most recently REACHED is
+  // lit — on the collapsed line and in the expanded table alike — so the tape
+  // keeps pace with the board instead of being a column of numbers you match
+  // up afterwards. Nothing is lit before the first mark or once the walk ends
+  // (`runnerTime` is undefined whenever no runner is on the board).
+  //
+  // Read through a computed, not straight in render: `runnerTime` is written
+  // every frame, and a component that reads it re-renders at that rate. This
+  // collapses it to a key that moves a handful of times per run, and signals
+  // only notify on a CHANGED value, so the tape re-renders when the lit mark
+  // moves and not otherwise. `rows` rides in on a ref because the computed is
+  // created once — it is recomputed on every frame anyway, so it never reads a
+  // stale board.
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const currentAt = useComputed(() => {
+    const at = runnerTime.value;
+    if (at === undefined) return undefined;
+    let reached: number | undefined;
+    // Marks are in crossing order (computeSplits sorts them), so the last one
+    // the runner has passed is the one it is standing on. Matched by TIME, not
+    // by key, so marks that share an instant light together — a flag dropped on
+    // the checkpoint is one moment of the run, not two.
+    for (const row of rowsRef.current) {
+      if (row.time > at) break;
+      reached = row.time;
+    }
+    return reached;
+  }).value;
+
   // Tell the board which flags this run actually crosses; the rest draw as
   // dashed outlines — speculative marks waiting for a build that routes past
   // them.
@@ -313,7 +351,11 @@ export const Splits = () => {
           // when the run on the board IS your best (nothing to compare to).
           <span class="splits__marks">
             {rows.map((split) => (
-              <span class="splits__mark" key={split.key}>
+              <span
+                class={"splits__mark" +
+                  (split.time === currentAt ? " splits__mark--current" : "")}
+                key={split.key}
+              >
                 <Glyph split={split} />
                 <span
                   class={isBest
@@ -360,8 +402,10 @@ export const Splits = () => {
                 (split.kind === "checkpoint"
                   ? " splits__row--checkpoint"
                   : "") +
+                (split.time === currentAt ? " splits__row--current" : "") +
                 rowTone(split.delta, isBest)}
               key={split.key}
+              aria-current={split.time === currentAt ? "true" : undefined}
               onMouseEnter={() => hoveredSplit.value = markRect(split)}
               onMouseLeave={() => hoveredSplit.value = undefined}
             >

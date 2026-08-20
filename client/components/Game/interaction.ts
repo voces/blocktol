@@ -32,6 +32,14 @@ export const thunderHover = signal<(Point & { local?: boolean }) | undefined>(
   undefined,
 );
 
+// How far into the runner's walk we are, in seconds, while one is animating —
+// undefined the rest of the time (Runner clears it when it unmounts). Written
+// on every animation frame, which is why it belongs here and not in game
+// state: at frame frequency a context value would re-render the whole tree.
+// The splits tape reads it through a computed that collapses it to "which mark
+// has the runner reached", so the tape re-renders only when that answer moves.
+export const runnerTime = signal<number | undefined>(undefined);
+
 // Whether the previewed placement/move is illegal (red preview).
 export const invalid = signal(false);
 

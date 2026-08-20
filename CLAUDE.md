@@ -537,7 +537,15 @@ so the runs below never hop as you move between a run, your best, and a live
 board. Collapsed, every mark sits on one **wrapping** line; expanded, one row
 per mark with the delta leading and the absolute time trailing, sliding open on
 a `0fr -> 1fr` grid row (no measured height, and it degrades to a snap where
-`fr` can't interpolate). Open/closed persists per player (`splitsOpen`). Its
+`fr` can't interpolate). While the runner is **animating**, the mark it has most
+recently reached is lit in both states — the runner's own colour, so the
+highlight reads as "the runner is here" rather than joining the gain/loss tones
+— matched by time so marks sharing an instant (a flag on the checkpoint) light
+together. `Runner` publishes its elapsed seconds to `runnerTime`
+(`Game/interaction.ts`, alongside the pointer-frequency signals and for the same
+reason: it is written every frame), and the tape reads it through a
+`useComputed` that collapses it to the reached mark, so a re-render costs only
+when the lit mark moves. Open/closed persists per player (`splitsOpen`). Its
 caret is the standings dock's glyph in the dock's colour — one family for the
 rail — but pointed differently on purpose: the dock opens a sheet (up, or left
 into a desktop drawer), this discloses in place (right, rotating down). Flag
