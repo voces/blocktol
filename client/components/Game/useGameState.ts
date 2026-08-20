@@ -3,7 +3,7 @@ import { useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
 import { Point } from "../../../common/types.ts";
 import { MessageMap } from "../../api.ts";
-import { localRun } from "./helpers.ts";
+import { localRun, mazeBudget } from "./helpers.ts";
 import {
   BoardBlock,
   clearTouchZoom,
@@ -97,8 +97,22 @@ export const useGameState = () => {
   const [implosions, setImplosions] = useState<
     ReadonlyArray<Point & { id: number; thunder?: boolean }>
   >([]);
-  const [bricks, setBricks] = useState(-1);
-  const [power, setPower] = useState(-1);
+  // Remaining budget. Both are DERIVED from the maze on the board (see
+  // `syncBudget` below), never stepped per edit, and both carry a mirror ref
+  // for the same reason `time` does: the input hooks read them at pointer
+  // time, where the render's copy can be a frame stale.
+  const [bricks, _setBricks] = useState(-1);
+  const [power, _setPower] = useState(-1);
+  const bricksRef = useRef(bricks);
+  const powerRef = useRef(power);
+  const setBricks: typeof _setBricks = (n) => {
+    bricksRef.current = typeof n === "function" ? n(bricksRef.current) : n;
+    _setBricks(n);
+  };
+  const setPower: typeof _setPower = (n) => {
+    powerRef.current = typeof n === "function" ? n(powerRef.current) : n;
+    _setPower(n);
+  };
   // The iteration's full brick/power budget (remaining + already placed at load),
   // captured when the board loads so reviewing a past maze can show how much was
   // left over. -1 until a board has loaded.
@@ -127,6 +141,29 @@ export const useGameState = () => {
       ? n(powerTotalRef.current)
       : n;
     _setPowerTotal(n);
+  };
+  /**
+   * Point the brick/power chips at a maze: the board's totals minus what the
+   * maze holds. This is the ONE writer of the two counts on every path that
+   * changes the maze — an edit, a resume, a revert, a review — so they are a
+   * function of the board rather than a running tally beside it.
+   *
+   * They used to be stepped per gesture (-1 on a placement, +1 on a delete)
+   * while the maze itself was written from the render's snapshot. The two
+   * disagree whenever a gesture lands before Preact has re-run the input
+   * effects with the previous edit's board: the stale write puts a deleted
+   * block back, but its refund already landed, so the HUD offered a brick the
+   * iteration's budget never had. Spending it built a maze one piece over
+   * budget, which `validateRun` rejects at commit ("too many blocks") — free
+   * play's single round trip, so the run was simply lost.
+   */
+  const syncBudget = (maze: ReadonlyArray<{ thunder?: boolean }>) => {
+    const next = mazeBudget(maze, {
+      bricks: bricksTotalRef.current,
+      power: powerTotalRef.current,
+    });
+    setBricks(next.bricks);
+    setPower(next.power);
   };
   const [time, _setTime] = useState(-2);
   // Handlers registered once (the input hooks) read the clock through this
@@ -284,16 +321,11 @@ export const useGameState = () => {
     setPrestart(false);
     // Show what this run left unspent: every placed block cost a brick, every
     // thunder an extra snowflake. 0/0 when the whole budget was used. Hidden (-1)
-    // only if we somehow never loaded the board's budget. Read through the
-    // mirrors, not the render's state: a caller that staged this board moments
-    // ago (the today-result chips, view-best) is running in that request's
-    // `.then` with the PREVIOUS day's budget in its closure.
-    const usedBricks = maze.length;
-    const usedPower = maze.filter((b) => b.thunder).length;
-    const bricksBudget = bricksTotalRef.current;
-    const powerBudget = powerTotalRef.current;
-    setBricks(bricksBudget < 0 ? -1 : Math.max(0, bricksBudget - usedBricks));
-    setPower(powerBudget < 0 ? -1 : Math.max(0, powerBudget - usedPower));
+    // only if we somehow never loaded the board's budget. syncBudget reads the
+    // total through the mirrors, not the render's state: a caller that staged
+    // this board moments ago (the today-result chips, view-best) is running in
+    // that request's `.then` with the PREVIOUS day's budget in its closure.
+    syncBudget(maze);
     clearTouchZoom();
     invalid.value = false;
     transitionBlock.value = undefined;
@@ -342,10 +374,17 @@ export const useGameState = () => {
   return {
     dailyInProgress,
     blocks,
+    // The live maze, for the input hooks: a gesture must edit the board as it
+    // stands at pointer time, not as the render that registered the listener
+    // saw it (see syncBudget).
+    blocksRef,
     savedBlocksRef,
     implosions,
     setImplosions,
     bricks,
+    bricksRef,
+    powerRef,
+    syncBudget,
     bricksTotal,
     powerTotal,
     checkpoint,

@@ -147,3 +147,26 @@ export const isInvalidMove = (
   offsets.forEach(([xd, yd]) => grid[origin.y + yd][origin.x + xd] = true);
   return invalid;
 };
+
+/**
+ * The brick/power chips for a maze: the board's full budget minus what the
+ * maze holds. DERIVED, never stepped — every surface that changes the maze
+ * (a placement, a delete, a drag, an upgrade, a resume, a revert, a review)
+ * recomputes the pair from the pieces actually on the board, so the counts
+ * cannot drift out of step with it. Stepping them (`bricks - 1` here,
+ * `bricks + 1` there) is what let a refund land for a removal that a stale
+ * write then put back, handing the player a brick the iteration's budget
+ * never had — which the server rejected at commit ("too many blocks"), so the
+ * run vanished instead of scoring.
+ *
+ * A total of -1 means no board budget is loaded, and the chip stays hidden.
+ */
+export const mazeBudget = (
+  maze: ReadonlyArray<{ thunder?: boolean }>,
+  totals: { bricks: number; power: number },
+) => ({
+  bricks: totals.bricks < 0 ? -1 : Math.max(0, totals.bricks - maze.length),
+  power: totals.power < 0
+    ? -1
+    : Math.max(0, totals.power - maze.filter((b) => b.thunder).length),
+});

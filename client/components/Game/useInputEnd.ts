@@ -3,6 +3,7 @@ import { offsets } from "../../../common/constants.ts";
 import { Point } from "../../../common/types.ts";
 import { claimBoard } from "../../store/board.ts";
 import {
+  BoardBlock,
   clearTouchZoom,
   placingBlock,
   thunderHover,
@@ -39,13 +40,12 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     timeRef,
     checkpoint,
     grid,
-    blocks,
+    blocksRef,
     setBlocks,
     setRun,
-    power,
-    setPower,
-    setBricks,
-    bricks,
+    powerRef,
+    bricksRef,
+    syncBudget,
     dragRef,
     placingRef,
     iteration,
@@ -62,14 +62,23 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     // the runner path moves the instant a block lands — no round trip), then
     // persist. Effectful work stays OUT of the setBlocks updater — updaters are
     // contractually pure, and a double-invoked updater would double-fire the
-    // save. `blocks` from the render closure is fresh: the effect re-registers on
-    // it, and each gesture applies at most one edit.
-    const apply = (newBlocks: typeof blocks) => {
+    // save.
+    //
+    // Every edit below builds `newBlocks` from `blocksRef`, the board as it
+    // stands right now — NOT from the render that registered these listeners.
+    // Preact re-runs an effect after paint, so a gesture landing within a frame
+    // of the previous one still runs on the old closure; editing that snapshot
+    // wrote a board with the previous edit undone (a deleted block back on the
+    // board), and the brick counts drifted with it. See syncBudget.
+    const apply = (newBlocks: ReadonlyArray<BoardBlock>) => {
       rebuildGrid(grid, checkpoint, newBlocks);
       const localBlocks = newBlocks.filter((b) => b.local);
       const r = localRun(newBlocks, checkpoint);
       if (r) setRun(r);
       setBlocks(newBlocks);
+      // The chips are a function of the maze just written — never a tally
+      // stepped alongside it, which is what let a refund outlive its removal.
+      syncBudget(localBlocks);
       // Persistence diverges by mode. Free play keeps its state on the client
       // (localStorage) until commit — no network mid-build. Ranked saves to the
       // server, debounced by a delay that shrinks to 0 as the clock runs out
@@ -89,12 +98,11 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     };
 
     // Remove a local block, refunding its brick (and power, if it was a
-    // thunder). Shared by a tap-delete and by dragging a block somewhere it
-    // can't be placed.
+    // thunder) — the refund falls out of syncBudget, so a block that is already
+    // gone (a double tap racing the re-render) refunds nothing. Shared by a
+    // tap-delete and by dragging a block somewhere it can't be placed.
     const removeBlock = (block: Point & { thunder?: boolean }) => {
-      apply(blocks.filter((b) => b !== block));
-      setBricks((bricks) => bricks + 1);
-      if (block.thunder) setPower((power) => power + 1);
+      apply(blocksRef.current.filter((b) => b !== block));
     };
 
     // `onBoard` is whether the release landed on the playable board (not a HUD
@@ -114,6 +122,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       placingRef.current = false;
       thunderHover.value = undefined;
 
+      // The board as it stands at release, not as the registering render saw it.
+      const blocks = blocksRef.current;
+
       const drag = dragRef.current;
       if (drag) {
         dragRef.current = null;
@@ -124,13 +135,12 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         // otherwise delete.
         if (!dragged) {
           if (!onBoard) return;
-          if (!origin.thunder && power) {
+          if (!origin.thunder && powerRef.current > 0) {
             apply(
               blocks.map((b) =>
                 b === origin ? { ...origin, thunder: true } : b
               ),
             );
-            setPower((power) => power - 1);
           } else {
             removeBlock(origin);
           }
@@ -164,7 +174,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       // Place a new block at the previewed cell.
       const { x, y } = placingBlock.peek();
 
-      if (bricks <= 0) return;
+      if (bricksRef.current <= 0) return;
 
       if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return;
 
@@ -179,7 +189,12 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       // the board token so an in-flight re-stage fired just before this placement
       // can't land and clobber the fresh build. `apply` then computes the path
       // and persists locally, exactly like every later placement.
-      if (staged) {
+      //
+      // The deadline is what says the run is already open, not `staged` alone
+      // (which this render's closure can still report true a frame after the
+      // opening placement — see apply): re-opening would mint a second
+      // idempotency id and re-arm the window from now.
+      if (staged && deadlineRef.current === null) {
         claimBoard();
         beginFreePlay();
         deadlineRef.current = Date.now() + 60_000;
@@ -187,7 +202,6 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         setStaged(false);
       }
       apply(newBlocks);
-      setBricks((bricks) => bricks - 1);
 
       placingBlock.value = { ...placingBlock.peek(), placing: false };
     };
@@ -215,18 +229,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("mouseup", mouseupCallback);
       globalThis.removeEventListener("touchend", touchendCallback);
     };
-    // The clock and pointer state are read through refs/signals; the
-    // listeners re-register only when the board itself changes. apply() reads
-    // the render's blocks, so blocks stays a dependency.
-  }, [
-    svg,
-    checkpoint,
-    power,
-    bricks,
-    blocks,
-    iteration,
-    staged,
-    freePlay,
-    viewing,
-  ]);
+    // The clock, the board and the budgets are read through refs/signals, so the
+    // listeners re-register only on the handful of things that change what a
+    // gesture MEANS — never per edit, which is exactly the window a fast second
+    // gesture used to fall into.
+  }, [svg, checkpoint, iteration, staged, freePlay, viewing]);
 };

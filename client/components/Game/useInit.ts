@@ -78,8 +78,7 @@ export const useInit = () => {
     setBricks,
     setBricksTotal,
     setPowerTotal,
-    bricksTotal,
-    powerTotal,
+    syncBudget,
     checkpoint,
     setRun,
     setCheckpoint,
@@ -283,8 +282,7 @@ export const useInit = () => {
         const merged = [...data.blocks.map((b) => ({ ...b })), ...restored];
         setBlocks(merged);
         savedBlocksRef.current = [];
-        setBricks(data.bricks - restored.length);
-        setPower(data.power - restored.filter((b) => b.thunder).length);
+        syncBudget(restored);
         rebuildGrid(grid, data.checkpoint, merged);
         const r = localRun(merged, data.checkpoint);
         if (r) setRun(r);
@@ -478,14 +476,7 @@ export const useInit = () => {
     const merged = [...blocks.filter((b) => !b.local), ...restored];
     rebuildGrid(grid, checkpoint, merged);
     setBlocks(merged);
-    setBricks(
-      bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - restored.length),
-    );
-    setPower(
-      powerTotal < 0
-        ? -1
-        : Math.max(0, powerTotal - restored.filter((b) => b.thunder).length),
-    );
+    syncBudget(restored);
     const r = localRun(merged, checkpoint);
     if (r) setRun(r);
     setViewing(false);
@@ -643,10 +634,7 @@ export const useInit = () => {
     }
     rebuildGrid(grid, checkpoint, next);
     setBlocks(next);
-    setBricks(bricksTotal < 0 ? -1 : bricksTotal - saved.length);
-    setPower(
-      powerTotal < 0 ? -1 : powerTotal - saved.filter((b) => b.thunder).length,
-    );
+    syncBudget(saved);
   };
 
   // Wired every render so the callbacks close over fresh state. The saver
