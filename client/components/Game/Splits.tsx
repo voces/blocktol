@@ -254,15 +254,19 @@ export const Splits = () => {
   const rows: (Split & { delta?: number })[] = tape?.deltas ?? tape?.splits ??
     [];
 
-  // While the runner is animating, the mark it has most recently REACHED is
-  // lit — on the collapsed line and in the expanded table alike — so the tape
-  // keeps pace with the board instead of being a column of numbers you match
-  // up afterwards. Nothing is lit before the first mark or once the walk ends
-  // (`runnerTime` is undefined whenever no runner is on the board).
+  // While the runner is animating, the mark it is running TOWARD is lit — on
+  // the collapsed line and in the expanded table alike — so the tape keeps
+  // pace with the board instead of being a column of numbers you match up
+  // afterwards. The split in progress, the way a speedrun timer reads: the lit
+  // mark is the one about to be scored, and it moves on the instant the runner
+  // reaches it. (Lighting the mark just PASSED instead leaves the tape dark
+  // for the opening leg and lit on a mark the runner has already left.) Past
+  // the last mark nothing is lit — there is no next one — and nothing is while
+  // no runner is on the board (`runnerTime` is undefined then).
   //
   // Read through a computed, not straight in render: `runnerTime` is written
   // every frame, and a component that reads it re-renders at that rate. This
-  // collapses it to a key that moves a handful of times per run, and signals
+  // collapses it to a time that moves a handful of times per run, and signals
   // only notify on a CHANGED value, so the tape re-renders when the lit mark
   // moves and not otherwise. `rows` rides in on a ref because the computed is
   // created once — it is recomputed on every frame anyway, so it never reads a
@@ -272,16 +276,11 @@ export const Splits = () => {
   const currentAt = useComputed(() => {
     const at = runnerTime.value;
     if (at === undefined) return undefined;
-    let reached: number | undefined;
-    // Marks are in crossing order (computeSplits sorts them), so the last one
-    // the runner has passed is the one it is standing on. Matched by TIME, not
-    // by key, so marks that share an instant light together — a flag dropped on
-    // the checkpoint is one moment of the run, not two.
-    for (const row of rowsRef.current) {
-      if (row.time > at) break;
-      reached = row.time;
-    }
-    return reached;
+    // Marks are in crossing order (computeSplits sorts them), so the first one
+    // the runner hasn't reached is the one it's heading for. Matched by TIME,
+    // not by key, so marks that share an instant light together — a flag
+    // dropped on the checkpoint is one moment of the run, not two.
+    return rowsRef.current.find((row) => row.time > at)?.time;
   }).value;
 
   // Tell the board which flags this run actually crosses; the rest draw as

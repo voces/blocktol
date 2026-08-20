@@ -537,11 +537,15 @@ so the runs below never hop as you move between a run, your best, and a live
 board. Collapsed, every mark sits on one **wrapping** line; expanded, one row
 per mark with the delta leading and the absolute time trailing, sliding open on
 a `0fr -> 1fr` grid row (no measured height, and it degrades to a snap where
-`fr` can't interpolate). While the runner is **animating**, the mark it has most
-recently reached is lit in both states — the runner's own colour, so the
-highlight reads as "the runner is here" rather than joining the gain/loss tones
-— matched by time so marks sharing an instant (a flag on the checkpoint) light
-together. `Runner` publishes its elapsed seconds to `runnerTime`
+`fr` can't interpolate). While the runner is **animating**, the mark it is
+running TOWARD is lit in both states — the split in progress, the way a speedrun
+timer reads it, so the highlight moves the instant a mark is reached rather than
+trailing a leg behind (past the last mark nothing is lit; there is no next one).
+The runner's own colour, so it reads as "the runner is here" rather than joining
+the gain/loss tones, and matched by time so marks sharing an instant (a flag on
+the checkpoint) light together — the pill's width is padding every mark carries
+lit or not, since the collapsed line wraps and appearing padding would reflow
+it. `Runner` publishes its elapsed seconds to `runnerTime`
 (`Game/interaction.ts`, alongside the pointer-frequency signals and for the same
 reason: it is written every frame), and the tape reads it through a
 `useComputed` that collapses it to the reached mark, so a re-render costs only

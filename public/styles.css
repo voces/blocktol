@@ -1638,7 +1638,13 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  /* The 10px between marks is carried by their own side padding (so the
+     running highlight has room to sit in), not by a column gap. The negative
+     inline margin gives that padding back to the line: the first mark's glyph
+     and the last one's digits land exactly where they would with no padding at
+     all, against the caret and the note either side. */
+  gap: 4px 0;
+  margin-inline: -5px;
   flex: 1;
   min-width: 0;
 }
@@ -1647,6 +1653,11 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 4px;
+  /* Every mark carries it, lit or not, so the highlight can never reflow the
+     line as it advances (see .splits__marks for where the space comes from).
+     Horizontal only: the head's line box is fixed, and vertical padding here
+     would push the collapsed panel past --splits-collapsed. */
+  padding-inline: 5px;
   border-radius: 999px;
   transition: background-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -1654,12 +1665,17 @@ a:hover {
 /* The mark the runner has just reached, in the RUNNER's own colour — the
    highlight says "the runner is here", so it borrows the thing it tracks
    rather than joining the gain/loss tones (which say something else) or the
-   accent (the dock's and the checkpoint's). The pill is drawn entirely with a
-   box-shadow spread instead of padding: this line WRAPS, and padding that
-   appears and disappears as the runner advances would reflow it mark by mark. */
+   accent (the dock's and the checkpoint's). Its width comes from padding every
+   mark carries whether lit or not, and its height from a box-shadow spread:
+   this line WRAPS, so padding that appeared and disappeared as the runner
+   advanced would reflow it mark by mark, and vertical padding would push the
+   collapsed panel past its fixed height. */
 .splits__mark--current {
-  background: color-mix(in srgb, var(--runner) 22%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--runner) 22%, transparent);
+  /* Mixed into the card's own surface rather than left translucent: marks that
+     share an instant light side by side, and two translucent pills would stack
+     their alpha into a darker seam where they meet. */
+  background: color-mix(in srgb, var(--runner) 22%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--runner) 22%, var(--surface));
 }
 
 .splits__glyph {
