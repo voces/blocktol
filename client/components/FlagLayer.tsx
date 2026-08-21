@@ -30,10 +30,15 @@ const pennant = (x: number, y: number) =>
 /**
  * Flags on the board: the splits tape's manual checkpoints.
  *
- * Drawn always (they belong to the board, so they stay put across runs and
- * reviews) and interactive only while placement is ARMED from the splits panel
- * — with the board visible a bare tap is ambiguous, so arming is what tells a
- * flag tap apart from inspecting a thunder. While armed the board dims behind a
+ * Drawn while the splits tape is up and only then — a run being reviewed, or
+ * the one animating (the caller gates this; see Game/index.tsx). The flags
+ * themselves still belong to the BOARD and stay put across runs and reviews;
+ * it's SHOWING them that rides with the tape, because a mark you can't read a
+ * split off is just something in the way of the cells you're placing into.
+ *
+ * Interactive only while placement is ARMED from the splits panel — with the
+ * board visible a bare tap is ambiguous, so arming is what tells a flag tap
+ * apart from inspecting a thunder. While armed the board dims behind a
  * scrim (the checkpoint is redrawn on top so it stays legible) and every cell
  * takes a flag; a flag itself drags to move and taps to clear.
  *
@@ -255,8 +260,9 @@ export const FlagLayer = (
       )}
       {flags.map((flag, index) => {
         const at = preview?.index === index ? preview : flag;
-        // No tape up (`live` undefined) means there is no run to judge this
-        // flag against — draw it plainly rather than as a dead mark.
+        // `live` is set whenever this layer is on the board at all, since the
+        // same signal is what puts it there; the guard only keeps a set-less
+        // render from marking every flag dead.
         const speculative = !!live && !live.has(flagKey(flag));
         return (
           <g key={flagKey(flag)}>

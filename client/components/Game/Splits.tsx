@@ -285,7 +285,9 @@ export const Splits = () => {
 
   // Tell the board which flags this run actually crosses; the rest draw as
   // dashed outlines — speculative marks waiting for a build that routes past
-  // them.
+  // them. This is also what puts the flags on the board at all: unset, the
+  // board draws none (see `splitsShowing`), so the marks and the tape that
+  // reads them appear and go together.
   const crossed = rows.filter((r) => r.kind === "flag").map((r) =>
     flagKey(r.at)
   ).join(" ");
@@ -304,6 +306,16 @@ export const Splits = () => {
       ? new Set(crossed ? crossed.split(" ") : [])
       : undefined;
   }, [crossed, visible]);
+
+  // Going away entirely is the one case the effect above can't cover: it only
+  // rewrites `liveFlags` while this panel is mounted, and that signal is what
+  // tells the board a tape is up — so an unmount would strand the flags on a
+  // board with nothing left to read them against. Its own effect, deliberately:
+  // folding it into the arming cleanup below would have it fire on every
+  // visibility change too, racing the write that effect just made.
+  useEffect(() => () => {
+    liveFlags.value = undefined;
+  }, []);
 
   // Arming is a property of this panel being up: leaving the review (Play, a
   // day change, the daily) must not leave the board waiting for a flag tap.

@@ -14,7 +14,12 @@ import { useClock } from "./useClock.ts";
 import { useInputStart } from "./useInputStart.ts";
 import { useInputEnd } from "./useInputEnd.ts";
 import { useOnSlow } from "./useOnSlow.ts";
-import { flagsArmed, flagsFor, saveFlags } from "../../store/flags.ts";
+import {
+  flagsArmed,
+  flagsFor,
+  saveFlags,
+  splitsShowing,
+} from "../../store/flags.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { Daily } from "./Daily.tsx";
 import { Prestart } from "./Prestart.tsx";
@@ -44,12 +49,15 @@ const BoardArea = (
     date,
     implosions,
     iteration,
-    dailyInProgress,
   } = useContext(GameStateContext);
-  // Flags belong to free play: they mark up a board you're studying, and the
-  // splits tape they feed is hidden mid-daily anyway (Splits.tsx). Passing them
-  // only there keeps the ranked board exactly as it was.
-  const flagged = !dailyInProgress && iteration !== undefined;
+  // Flags come and go WITH the splits tape, because they are its marks: they
+  // only mean something read off a row, so a board with no tape up has nothing
+  // to show them for. That means a run you're reviewing or the one animating —
+  // never a board you're building on, ranked or free play, where they'd be
+  // clutter over the cells you're placing into. `splitsShowing` is the panel
+  // itself saying the tape is up (Splits.tsx owns the condition; the board just
+  // follows), so the two can't drift apart.
+  const flagged = splitsShowing.value && iteration !== undefined;
   return (
     <Board
       placingBlock={placingBlock.value}

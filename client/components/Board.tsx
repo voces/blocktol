@@ -58,8 +58,10 @@ export const Board = (
     // Optional: the intro board never reverts, so it has no ghosts to show.
     implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
     // Optional: the player's splits flags, and whether placing one is armed.
-    // Absent on the intro board and during a ranked daily (there are no splits
-    // to mark up there) — see FlagLayer.
+    // Passed only while the splits tape is up — a run being reviewed or the one
+    // animating — since a flag is one of that tape's marks and means nothing
+    // without it. Absent on the intro board, on a board being built, and
+    // throughout a ranked daily. See FlagLayer.
     flags?: ReadonlyArray<Point>;
     flagsArmed?: boolean;
     onFlagsChange?: (flags: Point[]) => void;
