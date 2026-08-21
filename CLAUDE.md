@@ -477,10 +477,24 @@ the board handlers; `interaction.ts`/`useInputStart`/`useInputEnd` handle
 placement. Every placement recomputes the runner locally (`localRun` in
 `helpers.ts`, on the same shared `cachedSolver` the server validates with) so
 the board updates with no round trip; **persistence then splits by run type**
-(see the run lifecycle above). **Ranked** goes through `runSaver.ts` — a
-**trailing-edge queue of depth 1** (every save sends the full maze, newer saves
-coalesce, failures retry with backoff), now **debounced** with a delay that
-ramps from 2s down to 0 over the final 10s (`saveDebounce`). At run start
+(see the run lifecycle above). Both input hooks read the board and the budgets
+through **refs** (`blocksRef`/`bricksRef`/`powerRef`), never the render closure
+they were registered with — Preact re-runs an effect after paint, so a gesture
+landing within a frame of the previous one would otherwise edit a snapshot with
+that edit undone. And the brick/power counts are **not state at all**: only the
+board's `bricksTotal`/`powerTotal` are, and the remaining pair is a `useMemo`
+over `mazeBudget` (`helpers.ts`) — totals minus the maze on the board — with
+`budgetNow` the same function over the refs for pointer-time gating. So every
+path that changes the maze (an edit, a resume, a revert, a review) is right by
+construction, and `clear`/prestart blank the chips by clearing the budget (the
+`-1` sentinel), not the count. Stepping them (`-1` on a placement, `+1` on a
+delete) beside a stale write let a refund outlive its removal, so the HUD handed
+out a brick the iteration's budget never had; the maze then went one piece over,
+`validateRun` rejected it at commit ("too many blocks"), and free play — one
+server round trip — simply lost the run. **Ranked** goes through `runSaver.ts` —
+a **trailing-edge queue of depth 1** (every save sends the full maze, newer
+saves coalesce, failures retry with backoff), now **debounced** with a delay
+that ramps from 2s down to 0 over the final 10s (`saveDebounce`). At run start
 `flushRunSaver` **sends** the pending maze immediately (rather than reverting to
 the last confirmed one — that would drop a debounced edit the player hasn't
 waited out, e.g. tapping "Ready?" mid-build); if the window has already closed

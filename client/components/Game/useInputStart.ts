@@ -27,8 +27,8 @@ const DRAG_SLOP = 12;
 export const useInputStart = (svg: SVGSVGElement | null) => {
   const {
     timeRef,
-    blocks,
-    bricks,
+    blocksRef,
+    budgetNow,
     checkpoint,
     grid,
     dragRef,
@@ -45,6 +45,13 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     // are the point of studying a maze.
     const callback = (clientX: number, clientY: number, press = false) => {
       if (!svg || (!viewing && timeRef.current <= 0)) return;
+
+      // The board and the budget as they stand right now: a press arriving
+      // within a frame of the previous gesture's edit still runs on the closure
+      // this effect was registered with, and a grab resolved against that stale
+      // board pointed at a block the board no longer holds (see useInputEnd).
+      const blocks = blocksRef.current;
+      const { bricks } = budgetNow();
 
       const box = svg.getBoundingClientRect();
       const xRaw = Math.min(
@@ -236,7 +243,8 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("touchstart", touchstartCallback);
       globalThis.removeEventListener("touchmove", touchmoveCallback);
     };
-    // The clock and pointer state are read through refs/signals, so the
-    // listeners only re-register when the board itself changes.
-  }, [svg, bricks, blocks, checkpoint, viewing]);
+    // The clock, the board and the budget are read through refs/signals, so the
+    // listeners only re-register when what a gesture MEANS changes — never per
+    // edit.
+  }, [svg, checkpoint, viewing]);
 };

@@ -74,12 +74,8 @@ export const useInit = () => {
     savedBlocksRef,
     setImplosions,
     deadlineRef,
-    setPower,
-    setBricks,
     setBricksTotal,
     setPowerTotal,
-    bricksTotal,
-    powerTotal,
     checkpoint,
     setRun,
     setCheckpoint,
@@ -188,10 +184,10 @@ export const useInit = () => {
       savedBlocksRef.current = data.blocks
         .filter((b) => b.player)
         .map((b) => ({ ...b, local: true }));
-      setBricks(data.bricks);
-      setPower(data.power);
       // Full budget = what's left plus what's already been placed this run, so a
-      // resumed run still recovers the true total (for the review leftover chips).
+      // resumed run still recovers the true total; the HUD's remaining counts
+      // derive from it and the board (see useGameState), so there is nothing
+      // else to set.
       setBricksTotal(data.bricks + data.blocks.filter((b) => b.player).length);
       setPowerTotal(
         data.power + data.blocks.filter((b) => b.player && b.thunder).length,
@@ -247,9 +243,8 @@ export const useInit = () => {
       // A re-stage orphans any in-flight/queued save from the abandoned build;
       // drop it so a late verdict can't touch this board.
       resetRunSaver();
-      setBricks(data.bricks);
-      setPower(data.power);
-      // A staged board has no player blocks yet, so its budget is the full total.
+      // A staged board has no player blocks yet, so its budget is the full total
+      // and the chips read it back unspent.
       setBricksTotal(data.bricks);
       setPowerTotal(data.power);
       setTime(60);
@@ -283,8 +278,6 @@ export const useInit = () => {
         const merged = [...data.blocks.map((b) => ({ ...b })), ...restored];
         setBlocks(merged);
         savedBlocksRef.current = [];
-        setBricks(data.bricks - restored.length);
-        setPower(data.power - restored.filter((b) => b.thunder).length);
         rebuildGrid(grid, data.checkpoint, merged);
         const r = localRun(merged, data.checkpoint);
         if (r) setRun(r);
@@ -478,14 +471,6 @@ export const useInit = () => {
     const merged = [...blocks.filter((b) => !b.local), ...restored];
     rebuildGrid(grid, checkpoint, merged);
     setBlocks(merged);
-    setBricks(
-      bricksTotal < 0 ? -1 : Math.max(0, bricksTotal - restored.length),
-    );
-    setPower(
-      powerTotal < 0
-        ? -1
-        : Math.max(0, powerTotal - restored.filter((b) => b.thunder).length),
-    );
     const r = localRun(merged, checkpoint);
     if (r) setRun(r);
     setViewing(false);
@@ -607,17 +592,17 @@ export const useInit = () => {
     placingBlock.value = { ...placingBlock.value, placing: false };
     transitionBlock.value = undefined;
     setTime(-1);
-    // Leave bricks/power as they were — the HUD keeps showing the leftover
-    // counts through the run animation rather than blanking them out. The next
-    // board (startRun / getBoard) resets them for the following build.
+    // The executed maze stays on the board through the animation, so the HUD
+    // keeps showing this run's leftover counts rather than blanking them out.
+    // The next board (startRun / getBoard) brings a fresh budget with it.
     clearTouchZoom();
     thunderHover.value = undefined;
   }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
 
   // Snap the board back to the last maze the server accepted: the optimistic
   // edit it's undoing was never persisted, so this is the maze the run will
-  // actually execute. Blocks, grid, and the brick/power chips (recomputed from
-  // the board's full budget) all revert together. Each removed block leaves a
+  // actually execute. Blocks and grid revert together — and with them the
+  // brick/power chips, which derive from the board. Each removed block leaves a
   // brief implosion ghost in its place so the removal reads as deliberate.
   const revertToSaved = () => {
     const saved = savedBlocksRef.current;
@@ -643,10 +628,6 @@ export const useInit = () => {
     }
     rebuildGrid(grid, checkpoint, next);
     setBlocks(next);
-    setBricks(bricksTotal < 0 ? -1 : bricksTotal - saved.length);
-    setPower(
-      powerTotal < 0 ? -1 : powerTotal - saved.filter((b) => b.thunder).length,
-    );
   };
 
   // Wired every render so the callbacks close over fresh state. The saver
