@@ -1,4 +1,4 @@
-import { signal } from "@preact/signals";
+import { computed, signal } from "@preact/signals";
 import type { Point } from "../../common/types.ts";
 import { api } from "../api.ts";
 
@@ -73,9 +73,15 @@ export const hoveredSplit = signal<
 // The flags the run being reviewed actually crosses, as "x,y" keys. A flag the
 // runner misses reports nothing, and the board draws it as a dashed outline —
 // a speculative mark waiting for a build that routes past it. Written by the
-// splits panel, which is what knows. Undefined when no tape is up (a staged or
-// mid-build board): there is no run to judge a flag against, so they all draw
-// plainly rather than every one of them reading as broken.
+// splits panel, which is what knows. Undefined when no tape is up, which is
+// also the board's cue that there are no flags to draw at all (see
+// `splitsShowing`).
 export const liveFlags = signal<ReadonlySet<string> | undefined>(undefined);
+
+// Is the splits tape up? Derived from `liveFlags` rather than tracked beside it
+// so the two can never disagree: the panel sets that one signal, and the board
+// reads this. Flags are the tape's marks, so the board draws them exactly when
+// the tape is there to read them off — never on a board you are building on.
+export const splitsShowing = computed(() => liveFlags.value !== undefined);
 
 export const flagKey = (flag: Point) => `${flag.x},${flag.y}`;

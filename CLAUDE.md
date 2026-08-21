@@ -566,20 +566,28 @@ reason: it is written every frame), and the tape reads it through a
 when the lit mark moves. Open/closed persists per player (`splitsOpen`). Its
 caret is the standings dock's glyph in the dock's colour — one family for the
 rail — but pointed differently on purpose: the dock opens a sheet (up, or left
-into a desktop drawer), this discloses in place (right, rotating down). Flag
-placement is explicitly **armed** from the footer (with the board visible a bare
-tap is ambiguous — inspecting a thunder's radius vs. dropping a flag); armed,
-the board dims behind a scrim, any cell takes a flag, and a flag drags to move /
-taps to clear. The gesture mirrors a BLOCK placement, down to the placing zoom
-and its delay: the flag appears under the pointer the instant it lands, follows
-it, and is written on release — at the cell its preview stood on, never a fresh
-mapping of the release point, since the zoom animation is still moving the
-board's box under the finger (the same reason `useInputEnd` commits
-`placingBlock` rather than re-reading the pointer). `store/flags.ts` folds flags
-in from board responses, writes them back optimistically, and carries the two
-board-facing signals (`liveFlags` — which flags this run actually crosses, the
-rest drawing dashed as speculative — and `hoveredSplit`, the mark a hovered row
-rings), the same signals-not-context split `Game/interaction.ts` uses.
+into a desktop drawer), this discloses in place (right, rotating down). **The
+flags on the board come and go with the tape**, on the same condition — the
+board draws them only while the panel is up, so a board you are BUILDING on
+(free play or ranked) shows none. They are the tape's marks: one you can't read
+a split off is just something in the way of the cells you're placing into. The
+flags themselves still belong to the board and stay put across runs and reviews;
+only their visibility rides along. Flag placement is explicitly **armed** from
+the footer (with the board visible a bare tap is ambiguous — inspecting a
+thunder's radius vs. dropping a flag); armed, the board dims behind a scrim, any
+cell takes a flag, and a flag drags to move / taps to clear. The gesture mirrors
+a BLOCK placement, down to the placing zoom and its delay: the flag appears
+under the pointer the instant it lands, follows it, and is written on release —
+at the cell its preview stood on, never a fresh mapping of the release point,
+since the zoom animation is still moving the board's box under the finger (the
+same reason `useInputEnd` commits `placingBlock` rather than re-reading the
+pointer). `store/flags.ts` folds flags in from board responses, writes them back
+optimistically, and carries the two board-facing signals (`liveFlags` — which
+flags this run actually crosses, the rest drawing dashed as speculative; **unset
+when no tape is up**, which is also what `splitsShowing` derives the board's
+draw-them-at-all gate from, so the two can't drift — and `hoveredSplit`, the
+mark a hovered row rings), the same signals-not-context split
+`Game/interaction.ts` uses.
 
 **Push notifications:** `common/notifications.ts` is the shared, framework-free
 domain (the five-way `classifyDailyOutcome`, and `notificationText` so push copy
