@@ -22,10 +22,26 @@ const clampCell = (n: number) => Math.min(Math.max(Math.floor(n), 1), 18);
 // the write come back rejected.
 const MAX_FLAGS = 40;
 
+// How far a pennant's pole rises above the cell it's planted in, and the
+// clearance its tip keeps from the board's edge — half the widest stroke a
+// pennant is drawn with (the speculative 0.13), so the STROKE lands on the edge
+// rather than the path does.
+const RISE = 1.1;
+const TIP_CLEARANCE = 0.07;
+
 // A pennant on a pole, planted in the centre of its cell and flying up out of
 // it. Orange: the one hue the maze palette leaves free (see the design tokens).
-const pennant = (x: number, y: number) =>
-  `M${x + 0.5} ${y + 0.5}V${y - 1.1}h1.1l-.32.5.32.5H${x + 0.5}`;
+//
+// The rise is what's left above the cell, never more: the board's viewBox stops
+// at y=0 (widening it isn't available — `cellAt` and the input hooks all map a
+// pointer through `box.width / 20`), so a row-1 flag asking for the full 1.1
+// tips out at -0.1 and has the top of its pennant sliced off. Row 1 is the only
+// row with less than 1.1 to give, and it gives 0.93 — the flag tucks against
+// the top wall instead of through it, a difference you have to measure to see.
+const pennant = (x: number, y: number) => {
+  const rise = Math.min(RISE, y - TIP_CLEARANCE);
+  return `M${x + 0.5} ${y + 0.5}V${y - rise}h1.1l-.32.5.32.5H${x + 0.5}`;
+};
 
 /**
  * Flags on the board: the splits tape's manual checkpoints.
