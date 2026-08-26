@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { dailyEmbed } from "./dailyAnnounce.ts";
+import { dailyEmbed, freePlayReaches } from "./dailyAnnounce.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
 
 const day: [number, number, number] = [2026, 7, 6];
@@ -32,4 +32,84 @@ Deno.test("dailyEmbed: more than ten winners collapse to a count", () => {
   assertEquals(e.color, CHARTREUSE);
   assertStringIncludes(e.description, "11 players tied");
   assertEquals(e.description.includes("• p0"), false);
+});
+
+// ── the free-play addendum ───────────────────────────────────────────────────
+
+const best = (
+  user: string,
+  best: number,
+  at = 0,
+): { user: string; name: string | null; best: number; at: number } => ({
+  user,
+  name: user,
+  best,
+  at,
+});
+
+Deno.test("freePlayReaches: only non-winners at or above the winning time", () => {
+  const bests = [
+    best("alice", 42.1), // the winner, on her ranked run
+    best("carol", 42.1), // matched it in free play
+    best("dave", 43.2), // bettered it in free play
+    best("erin", 41.9), // fell short
+  ];
+  assertEquals(
+    freePlayReaches(bests, new Set(["alice"]), 42.1),
+    [{ name: "dave", time: 43.2 }, { name: "carol", time: 42.1 }],
+  );
+});
+
+Deno.test("freePlayReaches: equal reaches order by who got there first", () => {
+  const bests = [best("late", 42.1, 200), best("early", 42.1, 100)];
+  assertEquals(freePlayReaches(bests, new Set(), 42.1).map((r) => r.name), [
+    "early",
+    "late",
+  ]);
+});
+
+Deno.test("freePlayReaches: a nameless player reads as anonymous", () => {
+  const bests = [{ user: "u", name: null, best: 42.1, at: 0 }];
+  assertEquals(freePlayReaches(bests, new Set(), 42.1), [{
+    name: "anonymous",
+    time: 42.1,
+  }]);
+});
+
+Deno.test("dailyEmbed: the addendum names matchers and times only those who bettered it", () => {
+  const e = dailyEmbed(["alice"], 42.1, day, [
+    { name: "dave", time: 43.2 },
+    { name: "carol", time: 42.1 },
+  ]);
+  assertStringIncludes(e.description, "Also reached in free play:");
+  assertStringIncludes(e.description, "• dave — **43.20s**");
+  assertStringIncludes(e.description, "• carol\n");
+  assertEquals(e.description.includes("• carol —"), false);
+  // The addendum sits between the winners and the link, not after it.
+  assertEquals(
+    e.description.indexOf("Also reached") < e.description.indexOf("[View"),
+    true,
+  );
+});
+
+Deno.test("dailyEmbed: more than ten free-play reaches collapse to a count", () => {
+  const reaches = Array.from({ length: 11 }, (_, i) => ({
+    name: `p${i}`,
+    time: 42.1,
+  }));
+  const e = dailyEmbed(["alice"], 42.1, day, reaches);
+  assertStringIncludes(
+    e.description,
+    "11 more players reached it in free play.",
+  );
+  assertEquals(e.description.includes("• p0"), false);
+});
+
+Deno.test("dailyEmbed: no reaches leaves the post exactly as before", () => {
+  assertEquals(
+    dailyEmbed(["alice"], 42.1, day, []).description.includes(
+      "free play",
+    ),
+    false,
+  );
 });
