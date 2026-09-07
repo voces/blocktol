@@ -5,22 +5,22 @@ import {
   CSSProperties,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "preact/compat";
 import { Point } from "../../common/types.ts";
 import { localRun } from "./Game/helpers.ts";
+import { runnerTime } from "./Game/interaction.ts";
 import { t } from "../util/t.ts";
 
-// Exported so the daily "Start attempt" overlay (Prestart.tsx) can render this
-// same maze as a purely decorative, blurred backdrop — a real-looking board
-// that is deliberately NOT today's puzzle, so the mask can't leak the layout the
-// player is about to build.
-export const initialBlocks: (Point & {
+export const decoBlocks: (Point & {
   local?: boolean;
   thunder?: boolean;
   active?: boolean;
 })[] = [
+  // opposite of what the WALKTHROUGH wants, which is why the two no longer share
+  // a board — see INTRO_FIXED below.
   { x: 17, y: 5 },
   { x: 15, y: 12 },
   { x: 5, y: 3 },
@@ -64,17 +64,92 @@ export const initialBlocks: (Point & {
   { x: 2, y: 4, local: true },
 ];
 
-// Local blocks pre-placed in the starting maze — the baseline the brick budget
-// counts up from.
-const INITIAL_LOCAL = initialBlocks.filter((b) => b.local).length;
+export const decoCheckpoint: Point = { x: 10.5, y: 4.5 };
 
-// The tutorial maze's checkpoint, shared with the decorative Start-attempt
-// backdrop (Prestart.tsx).
-export const introCheckpoint: Point = { x: 10.5, y: 4.5 };
+// The walkthrough's own maze, and it is chosen, not drawn by hand. The dense
+// board above was the tutorial's too, and solving it showed why that was a
+// problem: 33 path nodes, an out-and-back through the checkpoint (the runner
+// walks a segment, then walks it again backwards), and the right-hand corridor
+// travelled three times. A first-time viewer reads that as a runner wandering
+// at random — the exact opposite of the point, which is that it takes the
+// shortest route it can find and the player can only obstruct it.
+//
+// So this one was searched for against the properties that make a route legible
+// at a glance, and it holds all of them:
+//
+//   (9,19) → (10,18) → (18,18) → (18,12) → (12,2) → (10,1) → (10,0)
+//
+// seven nodes, no segment walked twice, and a 90° bend at the checkpoint — in
+// along the bottom, out on one long diagonal. The corner checkpoint is doing
+// deliberate work: the runner visibly leaves its way to touch it, which is what
+// makes "it HAS to go there" something the board says rather than the copy.
+const INTRO_FIXED: Point[] = [
+  { x: 10, y: 3 },
+  { x: 11, y: 6 },
+  { x: 3, y: 16 },
+  { x: 14, y: 12 },
+  { x: 16, y: 13 },
+  { x: 13, y: 8 },
+];
 
+export const introCheckpoint: Point = { x: 17.5, y: 17.5 };
+
+// The budgets the walkthrough spends, and the numbers its copy quotes — passed
+// to the tips as ICU args rather than written into the sentences, so the two
+// can't drift apart.
+const INTRO_BRICKS = 3;
+const INTRO_POWER = 1;
+
+type IntroBlock = Point & {
+  local?: boolean;
+  thunder?: boolean;
+  active?: boolean;
+};
+
+// The build, one beat per entry. Each was picked by measuring the maze rather
+// than by eye: the three placements are the greedy best-time sequence for the
+// real 3-brick budget, and the refund/move act on the cheapest block so that
+// taking one back reads as a small, honest cost rather than throwing the run
+// away. The clock this produces climbs 6.06 → 6.64 → 7.82 → 8.92, dips to 7.69
+// over the edit, then lands on 12.29 when the thunder goes in — so the tour
+// ends on its largest gain, at double where it opened.
+type Beat =
+  | { kind: "place"; at: Point }
+  | { kind: "refund"; at: Point }
+  | { kind: "move"; from: Point; to: Point }
+  | { kind: "thunder"; at: Point };
+
+const BEATS: Beat[] = [
+  { kind: "place", at: { x: 10, y: 17 } },
+  { kind: "place", at: { x: 8, y: 15 } },
+  { kind: "place", at: { x: 6, y: 13 } },
+  { kind: "refund", at: { x: 6, y: 13 } },
+  { kind: "move", from: { x: 8, y: 15 }, to: { x: 8, y: 16 } },
+  { kind: "thunder", at: { x: 10, y: 17 } },
+];
+
+// How far into BEATS each tip has played by the time you leave it. Step 0 and 1
+// are the opening run and the goal, so they touch nothing.
+const BEATS_DONE = [0, 0, 3, 5, 6, 6];
+const LAST_STEP = 5;
+
+const apply = (blocks: IntroBlock[], beat: Beat): IntroBlock[] => {
+  const isAt = (b: IntroBlock, p: Point) =>
+    b.x === p.x && b.y === p.y && b.local;
+  switch (beat.kind) {
+    case "place":
+      return [...blocks, { ...beat.at, local: true }];
+    case "refund":
+      return blocks.filter((b) => !isAt(b, beat.at));
+    case "move":
+      return blocks.map((b) => isAt(b, beat.from) ? { ...b, ...beat.to } : b);
+    case "thunder":
+      return blocks.map((b) => isAt(b, beat.at) ? { ...b, thunder: true } : b);
+  }
+};
 const Tooltip = (
   { children, left, right, top, bottom }: {
-    children: ComponentChildren;
+    children?: ComponentChildren;
     left?: CSSProperties["left"];
     right?: CSSProperties["left"];
     top?: CSSProperties["top"];
@@ -94,7 +169,7 @@ const Tooltip = (
 );
 
 const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
-  children: ComponentChildren;
+  children?: ComponentChildren;
   left?: CSSProperties["left"];
   right?: CSSProperties["right"];
   top?: CSSProperties["top"];
@@ -145,10 +220,32 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
   </Tooltip>
 );
 
+// The clock reads the runner's own elapsed-seconds signal, so it ticks while the
+// runner walks and settles on the maze's time when it stops. Its own component
+// on purpose: that signal is written every frame, and reading it up in IntroBoard
+// would re-render Board — and the whole board — at that rate.
+const Clock = (
+  { settled, offset, holding }: {
+    settled: number;
+    offset: number;
+    // True across the halt on the checkpoint, where no runner is mounted and so
+    // no elapsed time is being published. Without it the clock falls back to the
+    // settled time for those 800ms — flashing the route's FINAL number in the
+    // middle of the walk, which reads as a glitch and gives the total away
+    // before the runner has earned it. Hold at the handover instead.
+    holding: boolean;
+  },
+) => {
+  const live = runnerTime.value;
+  const shown = live !== undefined ? offset + live : holding ? offset : settled;
+  return <span class="mono">{shown.toFixed(2)}s</span>;
+};
+
 export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [blocks, setBlocks] = useState(initialBlocks);
-  const [time, setTime] = useState(9);
+  const [step, setStep] = useState(0);
+  const [blocks, setBlocks] = useState<IntroBlock[]>(INTRO_FIXED);
+  const [beatsDone, setBeatsDone] = useState(0);
   const [run, setRun] = useState<
     {
       path: Point[];
@@ -156,241 +253,237 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       slows: { time: number; thunder: Point }[];
     }
   >();
-  const [onboardingStep, setOnboardingStep] = useState(0);
-  const [attemptStep, setAttemptStep] = useState(0);
-  const lastAttemptStepRef = useRef(0);
-  // Steps 0–2 narrate the route while the runner actually walks it (see the
-  // opening-lap effect); step 3 onward is the static build walkthrough.
-  const [openingLap, setOpeningLap] = useState(0);
-  const opening = onboardingStep <= 2;
+  // Which half of the opening route is walking: 1 to the checkpoint, 2 out the
+  // top, 3 once the route has been shown. The finale run uses 4.
+  const [leg, setLeg] = useState(0);
+  const [clockOffset, setClockOffset] = useState(0);
 
-  // Drive the "drag to move" demo through the real drag machinery the game uses:
-  // `transition` is the grabbed block (its origin is drawn hidden), and `placing`
-  // is the overlay block that glides to the target (the overlay already animates
-  // its x/y in Board). `dragMoved` suppresses the thunder-radius preview that a
-  // real drag shows before it moves. Latest blocks via a ref so the choreography
-  // and the live path computation read the board as it stands at that moment.
   const [placing, setPlacing] = useState<Point & { placing: boolean }>({
     x: 0,
     y: 0,
     placing: false,
   });
-  const [transition, setTransition] = useState<
-    | (Point & { local?: boolean; thunder?: boolean; active?: boolean })
-    | undefined
-  >();
+  const [transition, setTransition] = useState<IntroBlock | undefined>();
   const [dragMoved, setDragMoved] = useState(false);
   const blocksRef = useRef(blocks);
-
-  const advance = useCallback(() => {
-    setOnboardingStep((step) => {
-      step++;
-
-      // Each hop force-completes the demo the previous tip was auto-playing (in
-      // case the reader clicked Next before its interval finished). tipMove
-      // (step 9) is the last tip: its move is choreographed below and it then
-      // auto-releases the runner — no further step. "Play" finishes onboarding.
-      // Each currency chip is now explained one step AFTER the verb that spends
-      // it, so the force-complete is what guarantees the chip has already ticked
-      // when its tip points at it.
-      if (step === 5) setAttemptStep(1); // place done → blocks chip
-      else if (step === 7) setAttemptStep(2); // upgrade done → thunders chip
-      else if (step === 9) setAttemptStep(3); // refund done → move
-
-      return step;
-    });
-  }, []);
-
-  // The opening demo, and the reason the walkthrough starts with it: the most
-  // common first-run misreading is that the checkpoint is a target the PLAYER
-  // builds toward — that placing blocks is how you ROUTE the runner to it. The
-  // runner is autonomous and optimal (it always takes the shortest way it can
-  // find), so the player's job is the opposite: obstruct. Copy alone loses that
-  // argument to the board, which shows a distinctly-coloured square and, until
-  // now, nothing moving — so before any tip about building, the runner threads
-  // the pre-built maze on its own and the question "who moves this thing?" is
-  // answered by the board.
-  //
-  // It LOOPS while the three route tips are read: one lap ends well inside tip
-  // 0 for an unhurried reader, and tips 1–2 narrating a static board again is
-  // the very thing this replaces. Leaving the opening clears the runner and
-  // restores a positive `time` — the gate Board draws the walker behind.
-  useEffect(() => {
-    if (!opening) {
-      setRun(undefined);
-      setTime(9);
-      return;
-    }
-    setTime(-1);
-    // A fresh solve each lap: Runner keys its walk on the path's identity, so a
-    // new array is what restarts it. A beat between laps so the restart reads as
-    // another lap rather than a teleport back to the start.
-    const timer = setTimeout(
-      () => setRun(localRun(initialBlocks, introCheckpoint)),
-      openingLap === 0 ? 0 : 500,
-    );
-    return () => clearTimeout(timer);
-  }, [opening, openingLap]);
-
-  // Auto-play each build tip's single board change after a short beat. tipMove
-  // (step 9) is handled by the move choreography instead.
-  useEffect(() => {
-    const board = onboardingStep === 4
-      ? 1
-      : onboardingStep === 6
-      ? 2
-      : onboardingStep === 8
-      ? 3
-      : undefined;
-    if (board === undefined) return;
-    // A beat so the tip is read before its demo plays — and, for the refund,
-    // long enough that the block being reclaimed is on screen when the tip
-    // appears, then visibly disappears.
-    const timer = setTimeout(() => setAttemptStep(board), 1100);
-    return () => clearTimeout(timer);
-  }, [onboardingStep]);
-
-  useEffect(() => {
-    for (let step = lastAttemptStepRef.current; step < attemptStep; step++) {
-      // 0: place the one missing block (path lengthens); 1: upgrade a block to a
-      // thunder in place (path slows); 2: refund a top-left block (brick chip
-      // ticks back up). The runner is released later, by the move choreography.
-      if (step === 0) setBlocks((b) => [...b, { x: 16, y: 14, local: true }]);
-      if (step === 1) {
-        setBlocks((b) =>
-          b.map((x) =>
-            x.x === 11 && x.y === 12 && x.local ? { ...x, thunder: true } : x
-          )
-        );
-      }
-      if (step === 2) {
-        setBlocks((b) => b.filter((x) => !(x.x === 2 && x.y === 6 && x.local)));
-      }
-      // Cosmetic countdown, ticking while the maze is being built.
-      setTime((t) => t - 0.75);
-    }
-
-    lastAttemptStepRef.current = attemptStep;
-  }, [attemptStep]);
-
-  // Keep the latest blocks reachable from the move choreography's deferred steps.
   useEffect(() => {
     blocksRef.current = blocks;
   }, [blocks]);
 
-  // tipMove (the last tip): animate the top-left block (2,4) down a single tile to
-  // (2,5), reusing the real drag path — lift (origin hidden, overlay at origin),
-  // glide the overlay to the target, then commit the block and drop the overlay.
-  // Reads the block by coordinate off the ref; if it isn't there the demo no-ops.
-  useEffect(() => {
-    if (onboardingStep !== 9) return;
-    // Land the block at the target and drop the drag overlay.
-    const commit = () => {
-      setBlocks((b) =>
-        b.map((x) => x.x === 2 && x.y === 4 && x.local ? { ...x, y: 5 } : x)
-      );
-      setTransition(undefined);
-      setDragMoved(false);
-      setPlacing({ x: 2, y: 5, placing: false });
-    };
-    // Once the move has landed, release the runner automatically along the live
-    // path for the maze as it now stands (same solver the game uses, so it can
-    // never drift from what the walkthrough built). This is the finale — the
-    // player watches, or taps "Play" to drop straight into the game.
-    const release = () => {
-      setTime(-1);
-      const r = localRun(blocksRef.current, introCheckpoint);
-      if (r) setRun(r);
-    };
-    const timers = [
-      setTimeout(() => {
-        const mover = blocksRef.current.find(
-          (b) => b.x === 2 && b.y === 4 && b.local,
-        );
-        if (!mover) return;
-        setTransition(mover);
-        setDragMoved(true);
-        setPlacing({ x: 2, y: 4, placing: true });
-      }, 300),
-      setTimeout(() => setPlacing({ x: 2, y: 5, placing: true }), 700),
-      setTimeout(commit, 1200),
-      setTimeout(release, 1700),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, [onboardingStep]);
+  // The whole tour is timed off the same solver the game validates with, so the
+  // clock can never quote a number the runner doesn't then walk.
+  const bare = useMemo(() => localRun(INTRO_FIXED, introCheckpoint)!, []);
+  // Where the route touches the checkpoint — the node the opening run stops on.
+  // The pause there is the entire argument that the checkpoint is compulsory, so
+  // it is found by measuring the path rather than hard-coded to an index.
+  const cut = useMemo(() => {
+    let best = 1, bestD = Infinity;
+    bare.path.forEach((p, i) => {
+      const d = Math.hypot(p.x - introCheckpoint.x, p.y - introCheckpoint.y);
+      if (i > 0 && i < bare.path.length - 1 && d < bestD) {
+        [best, bestD] = [i, d];
+      }
+    });
+    return best;
+  }, [bare]);
 
-  const onSlow = useCallback((thunder: Point) => {
-    // Animate thunder tower
-    setBlocks(
-      (thunders) =>
-        thunders.map((t) =>
-          t.x === thunder.x && t.y === thunder.y
-            ? { ...thunder, active: true }
-            : t
-        ),
-    );
+  // Where the halt falls in the walk, as a fraction of the route's length: the
+  // clock resumes from there for the second leg. By DISTANCE, not node index —
+  // the first leg is a 1.4-unit hop and the second an 8-unit run, so counting
+  // nodes would hand the clock a visibly wrong number at the halt. The bare
+  // board carries no thunders, so time is proportional to distance.
+  const cutFraction = useMemo(() => {
+    const seg = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
+    let upTo = 0, total = 0;
+    for (let i = 1; i < bare.path.length; i++) {
+      const d = seg(bare.path[i - 1], bare.path[i]);
+      total += d;
+      if (i <= cut) upTo += d;
+    }
+    return total === 0 ? 0 : upTo / total;
+  }, [bare, cut]);
 
-    // Remove thunder tower animation after 0.1s
-    setTimeout(() => {
-      setBlocks(
-        (thunders) =>
-          thunders.map((t) =>
-            t.x === thunder.x && t.y === thunder.y
-              ? { ...thunder, active: false }
-              : t
-          ),
-      );
-    }, 100);
-  }, []);
+  const live = useMemo(() => localRun(blocks, introCheckpoint), [blocks]);
+  const duration = live?.duration ?? bare.duration;
 
-  // The HUD chips mirror the game's strip so the block/thunder tips have real
-  // chips to point at; both counts are derived from the blocks so they move with
-  // the walkthrough. The block budget is the total minus the blocks placed on top
-  // of the pre-built maze (upgrading swaps a local block for a local thunder one,
-  // so the local count — and thus the block budget — is unchanged; only the
-  // thunder count drops).
-  const snowflakes = Math.max(0, 1 - blocks.filter((b) => b.thunder).length);
   const bricks = Math.max(
     0,
-    3 - (blocks.filter((b) => b.local).length - INITIAL_LOCAL),
+    INTRO_BRICKS - blocks.filter((b) => b.local).length,
   );
+  const power = Math.max(
+    0,
+    INTRO_POWER - blocks.filter((b) => b.thunder).length,
+  );
+
+  // Play every beat this tip owns that hasn't run yet — so tapping Next early
+  // lands the same board the unhurried reader watched build itself.
+  const settle = useCallback((upTo: number) => {
+    setBeatsDone((done) => {
+      if (done >= upTo) return done;
+      setBlocks((bs) => BEATS.slice(done, upTo).reduce(apply, bs));
+      return upTo;
+    });
+  }, []);
+
+  const advance = useCallback(() => {
+    setStep((s) => {
+      if (s >= LAST_STEP) return s;
+      settle(BEATS_DONE[s]);
+      return s + 1;
+    });
+  }, [settle]);
+
+  // The opening: the runner walks to the checkpoint, STOPS on it, then leaves.
+  // That halt is what the tour has instead of a sentence claiming the checkpoint
+  // is compulsory — the board makes the case, and the copy keeps only what the
+  // picture can't say.
+  useEffect(() => {
+    if (step !== 0 || leg !== 0) return;
+    const timer = setTimeout(() => {
+      setLeg(1);
+      setRun({ ...bare, path: bare.path.slice(0, cut + 1) });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [step, leg, bare, cut]);
+
+  // Each build tip plays its beats after a beat's pause, so the tip is read
+  // before the board moves under it.
+  useEffect(() => {
+    if (step === 0 || step === 1) return;
+    const timer = setTimeout(() => settle(BEATS_DONE[step]), 900);
+    return () => clearTimeout(timer);
+  }, [step, settle]);
+
+  // The move beat is the real drag machinery, not a jump: the block lifts (its
+  // origin drawn hidden), the overlay glides to the target, then it lands.
+  useEffect(() => {
+    const beat = BEATS[4];
+    if (beat.kind !== "move" || beatsDone !== 5) return;
+    const mover = blocksRef.current.find((b) =>
+      b.x === beat.to.x && b.y === beat.to.y && b.local
+    );
+    if (!mover) return;
+    setTransition({ ...mover, ...beat.from });
+    setDragMoved(true);
+    setPlacing({ ...beat.from, placing: true });
+    const timers = [
+      setTimeout(() => setPlacing({ ...beat.to, placing: true }), 400),
+      setTimeout(() => {
+        setTransition(undefined);
+        setDragMoved(false);
+        setPlacing({ ...beat.to, placing: false });
+      }, 900),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [beatsDone]);
+
+  // The finale: release the runner over the maze the tour just built. Same
+  // solver, so the clock's closing number is the one it walks.
+  useEffect(() => {
+    if (step !== LAST_STEP || !live) return;
+    const timer = setTimeout(() => {
+      setLeg(4);
+      setClockOffset(0);
+      setRun(live);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [step, live]);
+
+  const onFinish = useCallback(() => {
+    setRun(undefined);
+    setLeg((l) => {
+      if (l === 1) {
+        // Held on the checkpoint before the second half — the stop is the point.
+        setClockOffset(bare.duration * cutFraction);
+        setTimeout(() => {
+          setLeg(2);
+          setRun({ ...bare, path: bare.path.slice(cut) });
+        }, 800);
+        return 1;
+      }
+      if (l === 2) {
+        setClockOffset(0);
+        setStep((s) => (s === 0 ? 1 : s));
+        return 3;
+      }
+      setTimeout(onDone, 1_000);
+      return l;
+    });
+  }, [bare, cutFraction, onDone]);
+
+  const onSlow = useCallback((thunder: Point) => {
+    setBlocks((bs) =>
+      bs.map((b) =>
+        b.x === thunder.x && b.y === thunder.y ? { ...b, active: true } : b
+      )
+    );
+    setTimeout(
+      () =>
+        setBlocks((bs) =>
+          bs.map((b) =>
+            b.x === thunder.x && b.y === thunder.y ? { ...b, active: false } : b
+          )
+        ),
+      100,
+    );
+  }, []);
+
+  const tips: [ComponentChildren, Record<string, unknown>][] = [
+    // Upper-left: the only quadrant the route leaves alone. It runs the bottom
+    // edge, up the right, then diagonally across — so a tip anywhere else covers
+    // the runner during the one demo the player is meant to be watching.
+    [t("intro.tipRoute"), { top: "12%", left: "8%" }],
+    [t("intro.tipGoal"), { top: -12, left: 41 }],
+    [t("intro.tipBlocks", { count: INTRO_BRICKS }), {
+      top: "22%",
+      left: "12%",
+    }],
+    [t("intro.tipFix"), { top: "44%", left: "14%" }],
+    [t("intro.tipThunder", { count: INTRO_POWER }), {
+      top: "34%",
+      left: "14%",
+    }],
+    [null, { top: "22%", left: "12%" }],
+  ];
 
   return (
     <div class="onboarding">
       <div class="hud">
         <div class="hud__chips">
+          {
+            /* The clock leads: it is the score, and until now the tour never put
+              a number on the thing it was asking the player to grow. */
+          }
+          <div class="hud__chip">
+            <Clock
+              settled={duration}
+              offset={clockOffset}
+              holding={leg === 1 || leg === 2}
+            />
+          </div>
           <div class="hud__chip">
             <BrickIcon />
             <span class="mono">{bricks}</span>
           </div>
           <div class="hud__chip">
             <PowerIcon />
-            <span class="mono">{snowflakes}</span>
+            <span class="mono">{power}</span>
           </div>
         </div>
       </div>
       <Board
         placingBlock={placing}
         touching={false}
-        time={Math.round(time)}
+        time={run ? -1 : 9}
         svgRef={svgRef}
         transitionBlock={transition}
-        power={run ? -1 : 1 - blocks.filter((b) => b.thunder).length}
+        power={run ? -1 : power}
         thunderHover={undefined}
         blocks={blocks}
         checkpoint={introCheckpoint}
         invalid={false}
         run={run}
-        onFinish={() => {
-          // Opening: drop the walker and queue another lap. Finale: the
-          // walkthrough is over, so fall into the game a beat later.
-          if (opening) {
-            setRun(undefined);
-            setOpeningLap((n) => n + 1);
-            return;
-          }
-          setTimeout(onDone, 1_000);
-        }}
+        onFinish={onFinish}
         grid={[]}
         onSlow={onSlow}
         date={NaN}
@@ -398,8 +491,6 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       />
       <div
         style={{
-          // Track the board's actual width (it shrinks to fit the padded
-          // container on mobile) so the tips stay aligned to the board.
           width: "min(var(--maze-size), 100%)",
           height: 0,
           paddingBottom: "min(var(--maze-size), 100%)",
@@ -407,81 +498,27 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           position: "relative",
           fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
-          // Dim the board so the tips pop; undim once the runner is released so
-          // the finale plays clear.
           backgroundColor: run ? undefined : "#0001",
-          // Match the board's rounded corners so the mask doesn't square off
-          // over them (--radius is a fixed length, so it tracks at any board
-          // size the same way the SVG's own rounding does).
           borderRadius: "var(--radius)",
         }}
-        // Tap anywhere to proceed through the tips; on the last tip, tapping
-        // (like "Play") drops straight into the game.
-        onClick={onboardingStep < 9 ? advance : onDone}
+        onClick={step < LAST_STEP ? advance : onDone}
       >
         {
-          /* Steps 0–2: the route, narrated over the looping opening run — the
-             runner is walking it as these are read. Anchors sweep the board once,
-             bottom → checkpoint → top, matching the walk. */
+          /* The last tip carries only the button — the finale is the runner
+            walking the maze the tour built, and narrating that is the habit
+            this rewrite is getting rid of. */
         }
-        {onboardingStep === 0 && (
-          <Tip bottom="4.5%" left="47.5%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipRunnerBottom")}
+        {step < LAST_STEP && (
+          <Tip
+            {...tips[step][1]}
+            onNext={advance}
+            onSkip={onDone}
+          >
+            {tips[step][0]}
           </Tip>
         )}
-        {onboardingStep === 1 && (
-          <Tip top="29.5%" left="57.5%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipCheckpoint")}
-          </Tip>
-        )}
-        {onboardingStep === 2 && (
-          <Tip top="4.5%" left="52.5%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipTop")}
-          </Tip>
-        )}
-        {
-          /* Names what the three above have just SHOWN: the runner chose that
-             route, and the player can only obstruct it. Static board — the lap
-             has stopped, so the sentence lands on a still frame. */
-        }
-        {onboardingStep === 3 && (
-          <Tip top="40%" left="15%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipAuto")}
-          </Tip>
-        )}
-        {
-          /* Steps 4–9: the build verbs, each followed by the chip it spends, so
-             a currency is explained on the beat its counter ticks. */
-        }
-        {onboardingStep === 4 && (
-          <Tip bottom="29.5%" right="15%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipPlace")}
-          </Tip>
-        )}
-        {onboardingStep === 5 && (
-          <Tip top={-12} left={41} onNext={advance} onSkip={onDone}>
-            {t("intro.tipBlocks")}
-          </Tip>
-        )}
-        {onboardingStep === 6 && (
-          <Tip bottom="39.5%" right="40%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipUpgrade")}
-          </Tip>
-        )}
-        {onboardingStep === 7 && (
-          <Tip top={-12} left={107} onNext={advance} onSkip={onDone}>
-            {t("intro.tipThunders")}
-          </Tip>
-        )}
-        {onboardingStep === 8 && (
-          <Tip top="39.5%" left="15%" onNext={advance} onSkip={onDone}>
-            {t("intro.tipRefund")}
-          </Tip>
-        )}
-        {onboardingStep === 9 && (
-          <Tip top="34.5%" left="15%" onNext={onDone} onSkip={onDone} last>
-            {t("intro.tipMove")}
-          </Tip>
+        {step === LAST_STEP && (
+          <Tip {...tips[LAST_STEP][1]} onNext={onDone} onSkip={onDone} last />
         )}
       </div>
     </div>
