@@ -239,45 +239,25 @@
     "message": "Passer",
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
-  "intro.tipAuto": {
-    "message": "Il choisit sa route lui-même — toujours la plus courte possible. Impossible de le diriger, seulement de le gêner.",
-    "hash": "4f3b3c992e6e72f0637a731d90cb5b1f8b867aad9fdf48b620a5d176133108ae"
-  },
   "intro.tipBlocks": {
-    "message": "Les blocs indiquent combien vous pouvez en placer.",
-    "hash": "3f53b445804256ebe025189fa8a5a4ea5181eb05188a1b0a4c1dc9b79797c9ff"
+    "message": "Les blocs le forcent à contourner. Tu as {count, plural, one {# bloc} many {# blocs} other {# blocs}}.",
+    "hash": "6283fb0f5f01a0b788d0ea7c45b214c6fff6cd935b8c87e219514ecc7d7169a9"
   },
-  "intro.tipCheckpoint": {
-    "message": "…se dirige vers le point de contrôle…",
-    "hash": "d312bf2dd40ee0aa37f64aecfdc409ead62dc936b4f1e142984314d7bc22a294"
+  "intro.tipFix": {
+    "message": "Touche un bloc pour le récupérer, ou fais-le glisser pour le déplacer.",
+    "hash": "8d9f48939570a8dc993193a77a816ef4ce4b01ca6d975fca215da7259d7d20d2"
   },
-  "intro.tipMove": {
-    "message": "Ou faites glisser un bloc pour le déplacer.",
-    "hash": "20048da553b10bfb38381f5a9a288f58cf49c5503cf03cf1f19e2a4e496b6e91"
+  "intro.tipGoal": {
+    "message": "Voici ton temps. Ton but : le rendre plus grand.",
+    "hash": "e35626c183cbfcbd91efcc78816f30a6e5efddff47dc52e23cd7f587ac530fe2"
   },
-  "intro.tipPlace": {
-    "message": "Placez des blocs et il doit les contourner. Plus vous le retenez dans le labyrinthe, mieux c'est.",
-    "hash": "a20c481f04af457e9f222c467a373c2a89a316825ee04cee3a46721b0d5e4842"
+  "intro.tipRoute": {
+    "message": "Le coureur doit toucher le point de contrôle en chemin.",
+    "hash": "6c6a760a74c44b0843fbf375f5d24e224a4f55a4a2396e198fc1bc37501e3ccf"
   },
-  "intro.tipRefund": {
-    "message": "Touchez à nouveau un bloc pour le rembourser.",
-    "hash": "07ba15b34ec4f93728ea15385ab4e7bfd0159af6fee59b3ac2fa8ce40e26ff1e"
-  },
-  "intro.tipRunnerBottom": {
-    "message": "Le coureur est libéré depuis le bas…",
-    "hash": "6384caa449827dd9edbdc3b93a24955059b03ef0eba7a93b93824ceb3cf1a0ec"
-  },
-  "intro.tipThunders": {
-    "message": "Les foudres indiquent combien de blocs vous pouvez améliorer.",
-    "hash": "051008817b37d7d0330eadafc9fb87776c713fe4d19eceb2b6d632112dd10bee"
-  },
-  "intro.tipTop": {
-    "message": "…puis sort par le haut.",
-    "hash": "d36572b0edcb81f331ea810becfe1710ff9415a5b0cc7217d2dca9c910852ca6"
-  },
-  "intro.tipUpgrade": {
-    "message": "Améliorez des blocs pour ralentir le coureur à son passage.",
-    "hash": "f2249be52d85d212850711b8fe2bcb4346e518494f42b501b2f9d32abc667072"
+  "intro.tipThunder": {
+    "message": "Transforme-en un en foudre pour le ralentir. Tu as {count, plural, one {# foudre} many {# foudres} other {# foudres}}.",
+    "hash": "43739185edc58a822c5eb80806fff7c2afb1259df9d71b275ceca31532af6225"
   },
   "mg.cameAlong": {
     "message": "{runs} de cet appareil ont été intégrées.",
