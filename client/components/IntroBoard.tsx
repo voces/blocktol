@@ -159,6 +159,10 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [attemptStep, setAttemptStep] = useState(0);
   const lastAttemptStepRef = useRef(0);
+  // Steps 0–2 narrate the route while the runner actually walks it (see the
+  // opening-lap effect); step 3 onward is the static build walkthrough.
+  const [openingLap, setOpeningLap] = useState(0);
+  const opening = onboardingStep <= 2;
 
   // Drive the "drag to move" demo through the real drag machinery the game uses:
   // `transition` is the grabbed block (its origin is drawn hidden), and `placing`
@@ -184,24 +188,58 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
 
       // Each hop force-completes the demo the previous tip was auto-playing (in
       // case the reader clicked Next before its interval finished). tipMove
-      // (step 8) is the last tip: its move is choreographed below and it then
+      // (step 9) is the last tip: its move is choreographed below and it then
       // auto-releases the runner — no further step. "Play" finishes onboarding.
-      if (step === 6) setAttemptStep(1); // place done → upgrade
-      else if (step === 7) setAttemptStep(2); // upgrade done → refund
-      else if (step === 8) setAttemptStep(3); // refund done → move
+      // Each currency chip is now explained one step AFTER the verb that spends
+      // it, so the force-complete is what guarantees the chip has already ticked
+      // when its tip points at it.
+      if (step === 5) setAttemptStep(1); // place done → blocks chip
+      else if (step === 7) setAttemptStep(2); // upgrade done → thunders chip
+      else if (step === 9) setAttemptStep(3); // refund done → move
 
       return step;
     });
   }, []);
 
-  // Auto-play each build tip's single board change after a short beat. tipMove
-  // (step 8) is handled by the move choreography instead.
+  // The opening demo, and the reason the walkthrough starts with it: the most
+  // common first-run misreading is that the checkpoint is a target the PLAYER
+  // builds toward — that placing blocks is how you ROUTE the runner to it. The
+  // runner is autonomous and optimal (it always takes the shortest way it can
+  // find), so the player's job is the opposite: obstruct. Copy alone loses that
+  // argument to the board, which shows a distinctly-coloured square and, until
+  // now, nothing moving — so before any tip about building, the runner threads
+  // the pre-built maze on its own and the question "who moves this thing?" is
+  // answered by the board.
+  //
+  // It LOOPS while the three route tips are read: one lap ends well inside tip
+  // 0 for an unhurried reader, and tips 1–2 narrating a static board again is
+  // the very thing this replaces. Leaving the opening clears the runner and
+  // restores a positive `time` — the gate Board draws the walker behind.
   useEffect(() => {
-    const board = onboardingStep === 5
+    if (!opening) {
+      setRun(undefined);
+      setTime(9);
+      return;
+    }
+    setTime(-1);
+    // A fresh solve each lap: Runner keys its walk on the path's identity, so a
+    // new array is what restarts it. A beat between laps so the restart reads as
+    // another lap rather than a teleport back to the start.
+    const timer = setTimeout(
+      () => setRun(localRun(initialBlocks, introCheckpoint)),
+      openingLap === 0 ? 0 : 500,
+    );
+    return () => clearTimeout(timer);
+  }, [opening, openingLap]);
+
+  // Auto-play each build tip's single board change after a short beat. tipMove
+  // (step 9) is handled by the move choreography instead.
+  useEffect(() => {
+    const board = onboardingStep === 4
       ? 1
       : onboardingStep === 6
       ? 2
-      : onboardingStep === 7
+      : onboardingStep === 8
       ? 3
       : undefined;
     if (board === undefined) return;
@@ -240,12 +278,12 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     blocksRef.current = blocks;
   }, [blocks]);
 
-  // tipMove: animate the top-left block (2,4) sliding down a single tile to
+  // tipMove (the last tip): animate the top-left block (2,4) down a single tile to
   // (2,5), reusing the real drag path — lift (origin hidden, overlay at origin),
   // glide the overlay to the target, then commit the block and drop the overlay.
   // Reads the block by coordinate off the ref; if it isn't there the demo no-ops.
   useEffect(() => {
-    if (onboardingStep !== 8) return;
+    if (onboardingStep !== 9) return;
     // Land the block at the target and drop the drag overlay.
     const commit = () => {
       setBlocks((b) =>
@@ -343,7 +381,16 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         checkpoint={introCheckpoint}
         invalid={false}
         run={run}
-        onFinish={() => setTimeout(onDone, 1_000)}
+        onFinish={() => {
+          // Opening: drop the walker and queue another lap. Finale: the
+          // walkthrough is over, so fall into the game a beat later.
+          if (opening) {
+            setRun(undefined);
+            setOpeningLap((n) => n + 1);
+            return;
+          }
+          setTimeout(onDone, 1_000);
+        }}
         grid={[]}
         onSlow={onSlow}
         date={NaN}
@@ -370,36 +417,50 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         }}
         // Tap anywhere to proceed through the tips; on the last tip, tapping
         // (like "Play") drops straight into the game.
-        onClick={onboardingStep < 8 ? advance : onDone}
+        onClick={onboardingStep < 9 ? advance : onDone}
       >
+        {
+          /* Steps 0–2: the route, narrated over the looping opening run — the
+             runner is walking it as these are read. Anchors sweep the board once,
+             bottom → checkpoint → top, matching the walk. */
+        }
         {onboardingStep === 0 && (
-          <Tip top={-12} left={41} onNext={advance} onSkip={onDone}>
-            {t("intro.tipBlocks")}
-          </Tip>
-        )}
-        {onboardingStep === 1 && (
-          <Tip top={-12} left={107} onNext={advance} onSkip={onDone}>
-            {t("intro.tipThunders")}
-          </Tip>
-        )}
-        {onboardingStep === 2 && (
           <Tip bottom="4.5%" left="47.5%" onNext={advance} onSkip={onDone}>
             {t("intro.tipRunnerBottom")}
           </Tip>
         )}
-        {onboardingStep === 3 && (
+        {onboardingStep === 1 && (
           <Tip top="29.5%" left="57.5%" onNext={advance} onSkip={onDone}>
             {t("intro.tipCheckpoint")}
           </Tip>
         )}
-        {onboardingStep === 4 && (
+        {onboardingStep === 2 && (
           <Tip top="4.5%" left="52.5%" onNext={advance} onSkip={onDone}>
             {t("intro.tipTop")}
           </Tip>
         )}
-        {onboardingStep === 5 && (
+        {
+          /* Names what the three above have just SHOWN: the runner chose that
+             route, and the player can only obstruct it. Static board — the lap
+             has stopped, so the sentence lands on a still frame. */
+        }
+        {onboardingStep === 3 && (
+          <Tip top="40%" left="15%" onNext={advance} onSkip={onDone}>
+            {t("intro.tipAuto")}
+          </Tip>
+        )}
+        {
+          /* Steps 4–9: the build verbs, each followed by the chip it spends, so
+             a currency is explained on the beat its counter ticks. */
+        }
+        {onboardingStep === 4 && (
           <Tip bottom="29.5%" right="15%" onNext={advance} onSkip={onDone}>
             {t("intro.tipPlace")}
+          </Tip>
+        )}
+        {onboardingStep === 5 && (
+          <Tip top={-12} left={41} onNext={advance} onSkip={onDone}>
+            {t("intro.tipBlocks")}
           </Tip>
         )}
         {onboardingStep === 6 && (
@@ -408,11 +469,16 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </Tip>
         )}
         {onboardingStep === 7 && (
+          <Tip top={-12} left={107} onNext={advance} onSkip={onDone}>
+            {t("intro.tipThunders")}
+          </Tip>
+        )}
+        {onboardingStep === 8 && (
           <Tip top="39.5%" left="15%" onNext={advance} onSkip={onDone}>
             {t("intro.tipRefund")}
           </Tip>
         )}
-        {onboardingStep === 8 && (
+        {onboardingStep === 9 && (
           <Tip top="34.5%" left="15%" onNext={onDone} onSkip={onDone} last>
             {t("intro.tipMove")}
           </Tip>

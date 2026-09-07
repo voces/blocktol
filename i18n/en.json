@@ -979,9 +979,13 @@
     "message": "…and then out the top.",
     "description": "Tutorial tip: third of three describing the runner's route. Leading ellipsis continues from the previous tip."
   },
+  "intro.tipAuto": {
+    "message": "It picks that route itself — always the shortest it can find. You can't steer it, only get in its way.",
+    "description": "Tutorial tip: the runner navigates on its own and cannot be directed; the player's role is to obstruct it, not to route it toward the checkpoint. Follows the three route tips. \"runner\" is a game term (see glossary)."
+  },
   "intro.tipPlace": {
-    "message": "Place blocks to elongate the runner's path.",
-    "description": "Tutorial tip: placing blocks lengthens the runner's route. \"blocks\"/\"runner\" are game terms (see glossary)."
+    "message": "Place blocks and it has to go around. The longer you keep it in the maze, the better.",
+    "description": "Tutorial tip: blocks are obstacles the runner must detour around, and a longer trip scores better. \"it\" is the runner, named in the preceding tips. \"blocks\"/\"runner\"/\"maze\" are game terms (see glossary)."
   },
   "intro.tipUpgrade": {
     "message": "Upgrade blocks to slow the runner as they pass.",
