@@ -239,6 +239,10 @@
     "message": "Überspringen",
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
+  "intro.tipAuto": {
+    "message": "Er wählt seine Route selbst — immer die kürzeste, die er findet. Du kannst ihn nicht lenken, nur ihm im Weg stehen.",
+    "hash": "4f3b3c992e6e72f0637a731d90cb5b1f8b867aad9fdf48b620a5d176133108ae"
+  },
   "intro.tipBlocks": {
     "message": "Blöcke zeigen, wie viele du platzieren kannst.",
     "hash": "3f53b445804256ebe025189fa8a5a4ea5181eb05188a1b0a4c1dc9b79797c9ff"
@@ -252,8 +256,8 @@
     "hash": "20048da553b10bfb38381f5a9a288f58cf49c5503cf03cf1f19e2a4e496b6e91"
   },
   "intro.tipPlace": {
-    "message": "Platziere Blöcke, um den Weg des Läufers zu verlängern.",
-    "hash": "e82a6713a11d6e1eb5aa055fb7481558760ff530bbde00f63228b3113fe18321"
+    "message": "Setze Blöcke und er muss außen herum. Je länger du ihn im Labyrinth hältst, desto besser.",
+    "hash": "a20c481f04af457e9f222c467a373c2a89a316825ee04cee3a46721b0d5e4842"
   },
   "intro.tipRefund": {
     "message": "Tippe einen Block erneut an, um ihn zurückzuerstatten.",

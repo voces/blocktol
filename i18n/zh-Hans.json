@@ -239,6 +239,10 @@
     "message": "跳过",
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
+  "intro.tipAuto": {
+    "message": "它会自己选择路线——总是找它能找到的最短路径。你无法操控它，只能阻挡它。",
+    "hash": "4f3b3c992e6e72f0637a731d90cb5b1f8b867aad9fdf48b620a5d176133108ae"
+  },
   "intro.tipBlocks": {
     "message": "方块数量表示你可以放置多少个。",
     "hash": "3f53b445804256ebe025189fa8a5a4ea5181eb05188a1b0a4c1dc9b79797c9ff"
@@ -252,8 +256,8 @@
     "hash": "20048da553b10bfb38381f5a9a288f58cf49c5503cf03cf1f19e2a4e496b6e91"
   },
   "intro.tipPlace": {
-    "message": "放置方块来延长奔跑者的路径。",
-    "hash": "e82a6713a11d6e1eb5aa055fb7481558760ff530bbde00f63228b3113fe18321"
+    "message": "放置方块，它就得绕行。让它在迷宫里待得越久越好。",
+    "hash": "a20c481f04af457e9f222c467a373c2a89a316825ee04cee3a46721b0d5e4842"
   },
   "intro.tipRefund": {
     "message": "再次点击方块即可返还它。",
