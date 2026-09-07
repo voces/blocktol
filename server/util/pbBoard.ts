@@ -6,14 +6,17 @@
 //   1. lost-top notifications — a prior #1/T1 holder passed by this build
 //      (decideLostTop; its tie/lead edge cases are unit-tested in lostTop.ts).
 //   2. the Discord "top PB" post — a message tracking the day's current record on
-//      the PB board. A new holder taking the top (a record-break — the event that
-//      sets a lost-top notification — or the day's first PB) posts a fresh message;
-//      a build MATCHING the announced top edits it with the tie count (chartreuse);
-//      the SAME holder improving their own lead edits it within a 12h window and
-//      posts a fresh one past it OR once the record has been matched in between
-//      (breaking a shared record is its own event). Ties/non-topping builds/replays
-//      that don't take the top do nothing. A `pb_top` marker (holder, message, time,
-//      tie count, post time) is the state that drives this.
+//      the PB board, and ONLY on a day that is already RATED (see onPbBuild: while
+//      the daily is live the post would spoil the ceiling for everyone still
+//      holding attempts; the daily-final post carries the day's records instead).
+//      A new holder taking the top (a record-break — the event that sets a lost-top
+//      notification — or the day's first PB) posts a fresh message; a build MATCHING
+//      the announced top edits it with the tie count (chartreuse); the SAME holder
+//      improving their own lead edits it within a 12h window and posts a fresh one
+//      past it OR once the record has been matched in between (breaking a shared
+//      record is its own event). Ties/non-topping builds/replays that don't take the
+//      top do nothing. A `pb_top` marker (holder, message, time, tie count, post
+//      time) is the state that drives this.
 //
 // Both never throw — a notification/webhook hiccup must not fail the run — and the
 // caller AWAITs onPbBuild because this Deploy kills work left running past the
@@ -229,9 +232,21 @@ export const onPbBuild = async (iteration: number, actor: string) => {
       )
       : Promise.resolve();
 
+    // The Discord record post is HELD until the day is rated. While the daily is
+    // still live, a "new top build" in the results channel is a heads-up on what
+    // the puzzle can do: it hands everyone who hasn't spent their three ranked
+    // attempts the shape of the ceiling. The in-app lost-top card above stays —
+    // it's addressed to one player, about their own record, on a surface they
+    // only reach after their attempts. Once the field is frozen and the ELOs are
+    // written there is nothing left to leak, so a later free-play record on a
+    // rated day posts (and edits) exactly as before. The day's live records reach
+    // the channel instead as the daily-final post's free-play addendum
+    // (util/dailyAnnounce.ts).
     await Promise.all([
       lostTop,
-      announce(iteration, actor, bests, prev, day, marker),
+      meta.rated
+        ? announce(iteration, actor, bests, prev, day, marker)
+        : Promise.resolve(),
     ]);
   } catch (err) {
     log.error("onPbBuild failed", { error: errText(err) });
