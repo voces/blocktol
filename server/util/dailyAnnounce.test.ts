@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { dailyEmbed, freePlayReaches } from "./dailyAnnounce.ts";
+import { dailyEmbed, freePlayEmbed, freePlayReaches } from "./dailyAnnounce.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
 
 const day: [number, number, number] = [2026, 7, 6];
@@ -34,7 +34,7 @@ Deno.test("dailyEmbed: more than ten winners collapse to a count", () => {
   assertEquals(e.description.includes("• p0"), false);
 });
 
-// ── the free-play addendum ───────────────────────────────────────────────────
+// ── the free-play companion post ─────────────────────────────────────────────
 
 const best = (
   user: string,
@@ -76,40 +76,54 @@ Deno.test("freePlayReaches: a nameless player reads as anonymous", () => {
   }]);
 });
 
-Deno.test("dailyEmbed: the addendum names matchers and times only those who bettered it", () => {
-  const e = dailyEmbed(["alice"], 42.1, day, [
-    { name: "dave", time: 43.2 },
-    { name: "carol", time: 42.1 },
-  ]);
-  assertStringIncludes(e.description, "Also reached in free play:");
+Deno.test("freePlayEmbed: names matchers, times only those who bettered it", () => {
+  const e = freePlayEmbed(
+    [{ name: "dave", time: 43.2 }, { name: "carol", time: 42.1 }],
+    42.1,
+    day,
+  )!;
+  assertStringIncludes(
+    e.description,
+    "winning time of **42.10s** in free play",
+  );
   assertStringIncludes(e.description, "• dave — **43.20s**");
   assertStringIncludes(e.description, "• carol\n");
   assertEquals(e.description.includes("• carol —"), false);
-  // The addendum sits between the winners and the link, not after it.
+  // Links the best-build board, not the ranked one these builds aren't on.
+  assertStringIncludes(e.url, "20260706?board=pb");
+});
+
+Deno.test("freePlayEmbed: bettering the daily's top is gold, matching it chartreuse", () => {
   assertEquals(
-    e.description.indexOf("Also reached") < e.description.indexOf("[View"),
-    true,
+    freePlayEmbed([{ name: "dave", time: 43.2 }], 42.1, day)!.color,
+    GOLD,
+  );
+  assertEquals(
+    freePlayEmbed([{ name: "carol", time: 42.1 }], 42.1, day)!.color,
+    CHARTREUSE,
   );
 });
 
-Deno.test("dailyEmbed: more than ten free-play reaches collapse to a count", () => {
+Deno.test("freePlayEmbed: more than ten reaches collapse to a count", () => {
   const reaches = Array.from({ length: 11 }, (_, i) => ({
     name: `p${i}`,
     time: 42.1,
   }));
-  const e = dailyEmbed(["alice"], 42.1, day, reaches);
+  const e = freePlayEmbed(reaches, 42.1, day)!;
   assertStringIncludes(
     e.description,
-    "11 more players reached it in free play.",
+    "11 players reached the daily's winning time of **42.10s** in free play.",
   );
   assertEquals(e.description.includes("• p0"), false);
 });
 
-Deno.test("dailyEmbed: no reaches leaves the post exactly as before", () => {
+Deno.test("freePlayEmbed: no reaches means no post at all", () => {
+  assertEquals(freePlayEmbed([], 42.1, day), null);
+});
+
+Deno.test("dailyEmbed: the summary never mentions free play", () => {
   assertEquals(
-    dailyEmbed(["alice"], 42.1, day, []).description.includes(
-      "free play",
-    ),
+    dailyEmbed(["alice"], 42.1, day).description.includes("free play"),
     false,
   );
 });

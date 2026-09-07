@@ -321,10 +321,11 @@ double-write):**
   percentile-based), then fires "daily final" notifications and posts the day's
   results to Discord (`util/dailyAnnounce.ts` — the top ranked time and everyone
   tied for it, up to 10 names then a count; gold for a sole winner, chartreuse
-  for a shared top), plus a **free-play addendum** naming whoever reached that
-  winning time off the ranked board (`freePlayReaches`; same 10-name cap, and a
-  reach that BETTERED it carries its own time). Rating flips `rated` before
-  announcing, so this post is also what unblocks that day's live top-PB posts.
+  for a shared top), then a **second, separate message** naming whoever reached
+  that winning time off the ranked board (`freePlayReaches` → `freePlayEmbed`;
+  its own 10-name cap, and a reach that BETTERED it carries its own time).
+  Rating flips `rated` before announcing, so these posts are also what unblocks
+  that day's live top-PB posts.
 
 ## Domain model & invariants
 
@@ -602,16 +603,16 @@ push delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys
 set. `public/sw.js` is the service worker.
 
 **Discord results webhook (`util/discordResults.ts`):** a player-facing channel
-mirror, separate from `adminAlert`'s operator pings. Two posts, both rich embeds
-in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with a
-title link to the day's `/YYYYMMDD?board=` permalink:
+mirror, separate from `adminAlert`'s operator pings. Three posts, all rich
+embeds in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with
+a title link to the day's `/YYYYMMDD?board=` permalink:
 
 - **Top PB** — a message tracking the day's current record on the PB
   (best-build) board, and **only on a day that is already `rated`**. While the
   daily is live, a "new top build" in the channel is a heads-up on the ceiling
   for everyone still holding ranked attempts, so `onPbBuild` skips the post
   outright until the day is finalized; the day's records surface instead as the
-  daily-final post's free-play addendum. The **in-app** lost-top notification is
+  day's own free-play post (below). The **in-app** lost-top notification is
   deliberately unaffected — it's addressed to one player, about their own
   record, on a surface they only reach after their attempts. Everything below
   therefore describes a rated day (a later free-play record on a closed board
@@ -639,10 +640,24 @@ title link to the day's `/YYYYMMDD?board=` permalink:
   reaches the field top), and it drives both the post and the lost-top
   notifications off the same load of the day's bests.
 - **Daily final** — posted by the `rate-dailies` cron once a day is rated (see
-  the cron list), listing the ranked winners, then the free-play addendum: the
-  non-winners whose best build that day reached the winning time (they can only
-  have got there off the ranked board, since the winners ARE the ranked top), up
-  to 10 names then a count.
+  the cron list), listing the ranked winners and nothing else. Links
+  `?board=daily`.
+- **Free play** — a SECOND message from the same sweep, sent straight after the
+  summary and only when there is something to say (`freePlayEmbed` returns
+  `null` on an empty list, and the caller then sends nothing): the non-winners
+  whose best build that day reached the winning time. They can only have got
+  there off the ranked board, since the winners ARE the ranked top — so no "was
+  this free play?" flag is needed to find them (`freePlayReaches`). Up to 10
+  names then a count; a reach that BETTERED the winning time carries its own
+  time, an exact match is just a name. Gold when the best reach betters the
+  daily's top (an outright day's-best build), chartreuse when they all merely
+  match it (a shared record). Links `?board=pb` — these builds are on the
+  best-build board, not the ranked one. It is a separate **message**, not an
+  addendum inside the summary nor a second embed on the same post, precisely so
+  it can be **moderated independently**: it carries its own message id, so
+  deleting or editing it away leaves the day's ranked result standing. It also
+  restates the time it is measured against, so it reads on its own if that
+  happens (or if the summary post fails).
 
 Both are best-effort (never throw, awaited so this Deploy doesn't kill them mid
 flight) and no-op without a webhook configured. See the `DISCORD_*` env vars.
