@@ -2,7 +2,7 @@
   "Blocktol": "the game's name — never translate.",
   "runner": "the entity that travels the maze; a common noun, translate it.",
   "block": "a piece the player places to lengthen the path; translate it. User copy always says \"block\" (never \"brick\" — that's an internal variable name only).",
-  "thunder": "the slow-field the player places; translate it. User copy always says \"thunder\" (\"power\" and \"slow\" are internal code terms and never appear on screen).",
+  "thunder": "the slow-field the player places; translate it. User copy always says \"thunder\" (\"power\" and \"slow\" are internal code terms and never appear on screen). Use your language's word for THUNDER — the storm/sound sense — not lightning: de Donner (not Blitz), zh-Hans 雷电 (not 闪电), es trueno, fr foudre, pt-BR trovão, ja サンダー. Whatever splits.thunderN already uses in that locale is the term; keep every key consistent with it.",
   "daily": "the day's ranked puzzle; translate as the noun for the daily challenge.",
   "free play": "unranked replay mode; translate the phrase.",
   "ranked": "counts toward the daily result; translate it.",
