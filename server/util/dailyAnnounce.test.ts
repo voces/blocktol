@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { dailyEmbed, freePlayEmbed, freePlayReaches } from "./dailyAnnounce.ts";
+import { dailyEmbed, dayTopBuild } from "./dailyAnnounce.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
 
 const day: [number, number, number] = [2026, 7, 6];
@@ -34,7 +34,7 @@ Deno.test("dailyEmbed: more than ten winners collapse to a count", () => {
   assertEquals(e.description.includes("• p0"), false);
 });
 
-// ── the free-play companion post ─────────────────────────────────────────────
+// ── the day's top-build post ─────────────────────────────────────────────────
 
 const best = (
   user: string,
@@ -47,83 +47,91 @@ const best = (
   at,
 });
 
-Deno.test("freePlayReaches: only non-winners at or above the winning time", () => {
+Deno.test("dayTopBuild: the top of the BEST-BUILD board, not the ranked one", () => {
   const bests = [
-    best("alice", 42.1), // the winner, on her ranked run
-    best("carol", 42.1), // matched it in free play
-    best("dave", 43.2), // bettered it in free play
-    best("erin", 41.9), // fell short
+    best("alice", 48.58), // won the daily on this, her ranked run
+    best("saizil", 50), // matched the day's top build in free play
+    best("verit", 49.73), // above the ranked winner, but holds no record
   ];
+  assertEquals(dayTopBuild(bests, new Set(["alice"]), 48.58), {
+    user: "saizil",
+    name: "saizil",
+    time: 50,
+    matchers: [],
+  });
+});
+
+Deno.test("dayTopBuild: the daily's winner counts like anyone else", () => {
+  // The Sep 7 shape: the winner's own free play holds the top build, matched.
+  const bests = [
+    best("katama", 50, 100), // won the daily at 48.58, then built 50.00
+    best("saizil", 50, 200),
+    best("verit", 49.73),
+  ];
+  assertEquals(dayTopBuild(bests, new Set(["katama"]), 48.58), {
+    user: "katama",
+    name: "katama",
+    time: 50,
+    matchers: ["saizil"],
+  });
+});
+
+Deno.test("dayTopBuild: the earliest holder is credited, the rest match", () => {
+  const bests = [
+    best("late", 50, 300),
+    best("early", 50, 100),
+    best(
+      "mid",
+      50,
+      200,
+    ),
+  ];
+  const top = dayTopBuild(bests, new Set(), 42)!;
+  assertEquals(top.name, "early");
+  assertEquals(top.matchers, ["mid", "late"]);
+});
+
+Deno.test("dayTopBuild: nothing to add when the winners ARE the top build", () => {
+  // Equal tops mean every winner is a holder, so an equal COUNT means the same
+  // people — the daily post already said this.
   assertEquals(
-    freePlayReaches(bests, new Set(["alice"]), 42.1),
-    [{ name: "dave", time: 43.2 }, { name: "carol", time: 42.1 }],
+    dayTopBuild([best("alice", 42.1)], new Set(["alice"]), 42.1),
+    null,
+  );
+  assertEquals(
+    dayTopBuild(
+      [best("alice", 42.1), best("bob", 42.1)],
+      new Set(["alice", "bob"]),
+      42.1,
+    ),
+    null,
   );
 });
 
-Deno.test("freePlayReaches: equal reaches order by who got there first", () => {
-  const bests = [best("late", 42.1, 200), best("early", 42.1, 100)];
-  assertEquals(freePlayReaches(bests, new Set(), 42.1).map((r) => r.name), [
-    "early",
-    "late",
-  ]);
-});
-
-Deno.test("freePlayReaches: a nameless player reads as anonymous", () => {
-  const bests = [{ user: "u", name: null, best: 42.1, at: 0 }];
-  assertEquals(freePlayReaches(bests, new Set(), 42.1), [{
-    name: "anonymous",
-    time: 42.1,
-  }]);
-});
-
-Deno.test("freePlayEmbed: names matchers, times only those who bettered it", () => {
-  const e = freePlayEmbed(
-    [{ name: "dave", time: 43.2 }, { name: "carol", time: 42.1 }],
+Deno.test("dayTopBuild: a free-play match of the winning time still posts", () => {
+  const top = dayTopBuild(
+    [best("alice", 42.1, 100), best("carol", 42.1, 200)],
+    new Set(["alice"]),
     42.1,
-    day,
   )!;
-  assertStringIncludes(
-    e.description,
-    "winning time of **42.10s** in free play",
-  );
-  assertStringIncludes(e.description, "• dave — **43.20s**");
-  assertStringIncludes(e.description, "• carol\n");
-  assertEquals(e.description.includes("• carol —"), false);
-  // Links the best-build board, not the ranked one these builds aren't on.
-  assertStringIncludes(e.url, "20260706?board=pb");
+  assertEquals(top.time, 42.1);
+  assertEquals(top.matchers, ["carol"]);
 });
 
-Deno.test("freePlayEmbed: bettering the daily's top is gold, matching it chartreuse", () => {
+Deno.test("dayTopBuild: a nameless holder reads as anonymous", () => {
   assertEquals(
-    freePlayEmbed([{ name: "dave", time: 43.2 }], 42.1, day)!.color,
-    GOLD,
-  );
-  assertEquals(
-    freePlayEmbed([{ name: "carol", time: 42.1 }], 42.1, day)!.color,
-    CHARTREUSE,
+    dayTopBuild([{ user: "u", name: null, best: 42.1, at: 0 }], new Set(), 40)
+      ?.name,
+    "anonymous",
   );
 });
 
-Deno.test("freePlayEmbed: more than ten reaches collapse to a count", () => {
-  const reaches = Array.from({ length: 11 }, (_, i) => ({
-    name: `p${i}`,
-    time: 42.1,
-  }));
-  const e = freePlayEmbed(reaches, 42.1, day)!;
-  assertStringIncludes(
-    e.description,
-    "11 players reached the daily's winning time of **42.10s** in free play.",
-  );
-  assertEquals(e.description.includes("• p0"), false);
+Deno.test("dayTopBuild: an empty field has no record", () => {
+  assertEquals(dayTopBuild([], new Set(), 42.1), null);
 });
 
-Deno.test("freePlayEmbed: no reaches means no post at all", () => {
-  assertEquals(freePlayEmbed([], 42.1, day), null);
-});
-
-Deno.test("dailyEmbed: the summary never mentions free play", () => {
-  assertEquals(
-    dailyEmbed(["alice"], 42.1, day).description.includes("free play"),
-    false,
-  );
+Deno.test("dailyEmbed: the summary never mentions the build board", () => {
+  const d = dailyEmbed(["alice"], 42.1, day).description;
+  assertEquals(d.includes("free play"), false);
+  assertEquals(d.includes("top build"), false);
 });

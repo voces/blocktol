@@ -116,11 +116,46 @@ Deno.test("pbEmbed: a sole holder is gold, no tally", () => {
   assertStringIncludes(e.url, "20260706?board=pb");
 });
 
-Deno.test("pbEmbed: a matched top is chartreuse with the tie count", () => {
+Deno.test("pbEmbed: a matched top names who matched it", () => {
+  const two = pbEmbed("alice", 30.5, 2, day, ["bob"]);
+  assertEquals(two.color, CHARTREUSE);
+  assertStringIncludes(two.description, "Matched by **bob**.");
+
+  const four = pbEmbed("alice", 30.5, 4, day, ["bob", "carol", "dave"]);
+  assertStringIncludes(four.description, "Matched by:\n• bob\n• carol\n• dave");
+});
+
+Deno.test("pbEmbed: without names it falls back to the tie count", () => {
+  // The grey-out path: a superseded message is rebuilt from the marker, which
+  // stores only how many shared the top.
   const two = pbEmbed("alice", 30.5, 2, day);
   assertEquals(two.color, CHARTREUSE);
   assertStringIncludes(two.description, "1 player has matched it.");
 
   const four = pbEmbed("alice", 30.5, 4, day);
   assertStringIncludes(four.description, "3 players have matched it.");
+});
+
+Deno.test("pbEmbed: more than ten matchers collapse to a count", () => {
+  const names = Array.from({ length: 11 }, (_, i) => `p${i}`);
+  const e = pbEmbed("alice", 30.5, 12, day, names);
+  assertStringIncludes(e.description, "11 players have matched it.");
+  assertEquals(e.description.includes("• p0"), false);
+});
+
+Deno.test("pbEmbed: exactly ten matchers are still named", () => {
+  const names = Array.from({ length: 10 }, (_, i) => `p${i}`);
+  assertStringIncludes(
+    pbEmbed("alice", 30.5, 11, day, names).description,
+    "• p9",
+  );
+});
+
+Deno.test("pbEmbed: a name list that disagrees with the count is not trusted", () => {
+  // Defensive: the tally is the authority, so a short list can never understate
+  // a tie by silently naming fewer players than actually hold the top.
+  assertStringIncludes(
+    pbEmbed("alice", 30.5, 4, day, ["bob"]).description,
+    "3 players have matched it.",
+  );
 });

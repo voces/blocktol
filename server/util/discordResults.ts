@@ -47,6 +47,12 @@ export const dayUrl = (
   board: "pb" | "daily",
 ): string => `${SITE}/${y}${pad(m)}${pad(d)}?board=${board}`;
 
+// At most this many names are listed in a post; beyond it a post states the count
+// only (a big tie would otherwise blow past Discord's embed limits and read as a
+// wall of names). Shared, because every list in this channel caps the same way —
+// the daily's winners, and the matchers on a record post.
+export const MAX_NAMES = 10;
+
 export type ResultEmbed = {
   title: string;
   url: string;
