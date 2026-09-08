@@ -99,9 +99,12 @@ const INTRO_FIXED: Point[] = [
 
 export const introCheckpoint: Point = { x: 12.5, y: 14.5 };
 
-// The budgets the walkthrough spends, and the numbers its copy quotes — passed
-// to the tips as ICU args rather than written into the sentences, so the two
-// can't drift apart.
+// What the walkthrough itself hands out. Deliberately NOT quoted in the copy:
+// a real daily's budget is rolled per iteration (see util/newIteration.ts —
+// blocks run 3 to 24, and 70% of days grant no thunder at all), so a tip
+// promising "3 blocks" or "1 thunder" would teach a number that is the demo's
+// and wrong on the player's very first board. The tips name the chip instead and
+// let it do the counting.
 const INTRO_BRICKS = 3;
 const INTRO_POWER = 1;
 
@@ -466,17 +469,11 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     [t("intro.tipGoal"), { top: -12, right: 40 }],
     // The middle of the three placements, (8,12) — the other two sit clear of
     // the box, above-left and below-right of it.
-    [t("intro.tipBlocks", { count: INTRO_BRICKS }), {
-      bottom: "40%",
-      left: "42.5%",
-    }],
+    [t("intro.tipBlocks"), { bottom: "40%", left: "42.5%" }],
     // The block the refund takes back, (5,7).
     [t("intro.tipFix"), { bottom: "65%", left: "27.5%" }],
     // The block that becomes the thunder, (10,14).
-    [t("intro.tipThunder", { count: INTRO_POWER }), {
-      bottom: "30%",
-      right: "47.5%",
-    }],
+    [t("intro.tipThunder"), { bottom: "30%", right: "47.5%" }],
     // The finale has no single subject — the runner is crossing the whole board
     // — so the button sits in the one corner the route never enters.
     [null, { top: "6%", left: "2%" }],

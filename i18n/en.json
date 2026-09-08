@@ -964,19 +964,19 @@
     "description": "Tutorial tip over the opening demo, where the runner walks the maze and visibly STOPS on the checkpoint. It states the one thing the demo can't: that the visit is compulsory. Everything else about the route (that the runner moves by itself, where it enters and leaves) is shown, so it is deliberately not said. \"runner\"/\"checkpoint\" are game terms (see glossary)."
   },
   "intro.tipGoal": {
-    "message": "That's your time. Your job is to make it bigger.",
-    "description": "Tutorial tip anchored on the clock, just after the opening run settles it. Names the score and its direction — in this game a LONGER run is better. Deliberately quotes no number: the clock beside it shows the value."
+    "message": "That's your time. The longer, the better.",
+    "description": "Tutorial tip anchored on the clock, just after the opening run settles it. States the score and its direction as a rule — in this game a LONGER run beats a shorter one. Quotes no number: the clock beside it shows the value."
   },
   "intro.tipBlocks": {
-    "message": "Blocks force it around. You get {count, plural, one {# block} other {# blocks}}.",
-    "description": "Tutorial tip as blocks drop onto the board and the clock climbs. \"it\" is the runner. Blocks are obstacles it must detour around — never a path the player draws. {count} is the block budget. \"block\" is a game term (see glossary)."
+    "message": "Blocks force it around. The chip counts what you have left.",
+    "description": "Tutorial tip as blocks drop onto the board and the clock climbs. \"it\" is the runner; blocks are obstacles it must detour around, never a path the player draws. \"The chip\" is the block-budget counter in the HUD. Deliberately quotes no number: the daily budget varies (3 to 24), and the walkthrough's own three are not the game's. \"block\" is a game term (see glossary)."
   },
   "intro.tipFix": {
     "message": "Tap a block to refund it, or drag it to move it.",
     "description": "Tutorial tip as the demo takes one block back (the budget chip ticks up) and drags another to a new cell. \"block\" is a game term (see glossary)."
   },
   "intro.tipThunder": {
-    "message": "Upgrade one into a thunder to slow it. You get {count, plural, one {# thunder} other {# thunders}}.",
-    "description": "Tutorial tip as a placed block becomes a thunder and the clock jumps. \"one\" is one of the player's placed blocks; \"it\" is the runner. {count} is the thunder budget. \"thunder\" is a game term (see glossary)."
+    "message": "Upgrade one into a thunder to slow the runner passing.",
+    "description": "Tutorial tip as a placed block becomes a thunder and the clock jumps. \"one\" is one of the player's placed blocks. Quotes no count on purpose: most dailies grant no thunder at all, so promising one would be wrong more often than right. \"thunder\"/\"runner\" are game terms (see glossary)."
   }
 }
