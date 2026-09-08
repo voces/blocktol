@@ -170,6 +170,13 @@ const LAST_BEAT = BEATS.length;
 // has finished sliding instead of dropping one through the drag.
 const MOVE_BEAT = BEATS.findIndex((b) => b.kind === "move");
 const MOVE_MS = 900;
+// How a tip's beats are spaced: a short breath before the first one, then a
+// longer gap between them. The two want opposite things. The lead-in only has
+// to let the new words land, and a long one is dead air with the reader already
+// looking at the board; the gaps between are what stop three blocks appearing
+// as one event, and they were too tight to read as three separate placements.
+const LEAD_MS = 400;
+const STEP_MS = 700;
 
 const apply = (blocks: IntroBlock[], beat: Beat): IntroBlock[] => {
   const isAt = (b: IntroBlock, p: Point) =>
@@ -307,7 +314,14 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   // The last completed run's time. The clock holds it through the build, where
   // the runner isn't moving and so has nothing to say.
   const [settled, setSettled] = useState(0);
+  // The runner outlives its run: it stands in the exit until the reader leaves
+  // the tip that is about the time it just posted. So "has a runner" stops
+  // meaning "is running", and the clock needs the difference — the live walk
+  // stops a frame PAST the true finish, and the tour's whole argument is two
+  // exact numbers.
+  const [finished, setFinished] = useState(false);
   const haltedRef = useRef(false);
+  const builtRef = useRef(0);
 
   const [placing, setPlacing] = useState<Point & { placing: boolean }>({
     x: 0,
@@ -393,12 +407,22 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       setPaused(false);
       return setStep(1);
     }
+    // Leaving the goal tip is where the bare run is cleared. The runner has been
+    // standing in the exit since it got there — "that's your time" is a sentence
+    // about a run you can still see, and the board going empty under it read as
+    // the tour tidying up mid-thought. A reader who clicks before the runner
+    // arrives cuts the walk short and gets the route's true time anyway: 4.60 is
+    // what it takes, watched or not.
+    if (step === 1) {
+      setRun(undefined);
+      setSettled(bare.duration);
+    }
     setStep((s) => {
       if (s >= LAST_STEP) return s;
       settle(BEATS_DONE[s]);
       return s + 1;
     });
-  }, [step, paused, bare, settle]);
+  }, [step, bare, settle]);
 
   // The elapsed time at which the runner reaches the checkpoint, by DISTANCE
   // along the route rather than node index — the legs are wildly uneven (a
@@ -443,17 +467,17 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     });
   }, [step, haltAt]);
 
-  // Each build tip plays its beats after a beat's pause, so the tip is read
+  // Each build tip plays its beats after a short pause, so the tip is read
   // before the board moves under it. Beats land one at a time: three blocks
   // appearing on the same frame reads as one event rather than three.
   useEffect(() => {
     if (step === 0 || step === 1) return;
     const from = BEATS_DONE[step - 1], to = BEATS_DONE[step];
     const timers: number[] = [];
-    let delay = 900;
+    let delay = LEAD_MS;
     for (let i = from; i < to; i++) {
       timers.push(setTimeout(() => settle(i + 1), delay));
-      delay += BEATS[i].kind === "move" ? MOVE_MS + 100 : 450;
+      delay += BEATS[i].kind === "move" ? MOVE_MS + 100 : STEP_MS;
     }
     return () => timers.forEach(clearTimeout);
   }, [step, settle]);
@@ -498,7 +522,9 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       const built = localRun(blocksRef.current, introCheckpoint);
       if (!built) return;
       haltedRef.current = true; // it stops for nothing; the checkpoint is explained
+      builtRef.current = built.duration;
       setSettled(0);
+      setFinished(false);
       setRun(built);
       setPaused(false);
     }, 1_200);
@@ -510,11 +536,16 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     // tip now hands over the moment it is clicked, so the bare run routinely
     // finishes with the step already moved on — and keying off the step would
     // read that as the built run and close the tour early.
+    // Either way the clock takes over from the live walk, which stops a frame
+    // past the finish: 4.61 for a 4.60 route. The tour is two numbers compared,
+    // so they are the maze's, not the animation's last sample.
+    setFinished(true);
     if (beatsDone >= LAST_BEAT) {
+      setSettled(builtRef.current);
       setTimeout(onDone, 1_000); // the built run: that was the tour
       return;
     }
-    setRun(undefined);
+    // The bare run keeps its runner — see advance, which is what clears it.
     setSettled(bare.duration);
     setStep((cur) => (cur === 0 ? 1 : cur));
   }, [beatsDone, bare, onDone]);
@@ -580,7 +611,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </div>
         </div>
         <div class="hud__controls">
-          <Clock running={!!run} settled={settled} />
+          <Clock running={!!run && !finished} settled={settled} />
         </div>
       </div>
       <Board
