@@ -127,6 +127,7 @@ export const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(
     !hadCompletedOnboarding.current,
   );
+  const [introRun, setIntroRun] = useState(0);
   // A one-shot toast left by the move/merge gate (silent adopt) — read once on
   // boot and auto-dismissed. See MoveGate.reloadAs.
   const [toast, setToast] = useState<{ title: string; sub?: string } | null>(
@@ -251,6 +252,12 @@ export const App = () => {
     return (
       <Shell gameState={gameState}>
         <IntroBoard
+          // A fresh key IS the replay: remounting restarts every part of the
+          // walkthrough at once. The tour is shown once per device and the
+          // screen after it opens a ranked attempt, so its last tip is the only
+          // place a reader who lost the thread can get it back.
+          key={introRun}
+          onReplay={() => setIntroRun((n) => n + 1)}
           onDone={() => {
             // Fire the one boot request NOW, before the re-render mounts Game and
             // its effects fetch — so a first-time user's first load consolidates

@@ -959,6 +959,10 @@
     "message": "Play",
     "description": "Tutorial tooltip button on the last tip that finishes the walkthrough and starts play."
   },
+  "intro.replay": {
+    "message": "Watch again",
+    "description": "Tutorial tooltip button on the last tip, beside Play: restarts the walkthrough from the beginning. The walkthrough is shown once per device, and the screen after it opens a ranked attempt, so this is the only way back to it."
+  },
   "intro.tipRoute": {
     "message": "The runner has to touch the checkpoint on its way out.",
     "description": "Tutorial tip over the opening demo, where the runner walks the maze and visibly STOPS on the checkpoint. It states the one thing the demo can't: that the visit is compulsory. Everything else about the route (that the runner moves by itself, where it enters and leaves) is shown, so it is deliberately not said. \"runner\"/\"checkpoint\" are game terms (see glossary)."

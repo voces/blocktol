@@ -225,16 +225,21 @@ const Tooltip = (
   </div>
 );
 
-const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
-  children?: ComponentChildren;
-  left?: CSSProperties["left"];
-  right?: CSSProperties["right"];
-  top?: CSSProperties["top"];
-  bottom?: CSSProperties["bottom"];
-  onSkip: () => void;
-  onNext: () => void;
-  last?: boolean;
-}) => (
+const Tip = (
+  { children, left, right, top, bottom, onSkip, onNext, onReplay, last }: {
+    children?: ComponentChildren;
+    left?: CSSProperties["left"];
+    right?: CSSProperties["right"];
+    top?: CSSProperties["top"];
+    bottom?: CSSProperties["bottom"];
+    onSkip: () => void;
+    onNext: () => void;
+    // Only on the last tip, where it takes the slot Skip vacates — there is
+    // nothing left to skip by then, and the tour is once per device.
+    onReplay?: () => void;
+    last?: boolean;
+  },
+) => (
   <Tooltip
     left={left}
     right={right}
@@ -247,6 +252,10 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
         justifyContent: "right",
         marginTop: 4,
         display: "flex",
+        // Two labels can outrun the box's max-width (the last tip carries both
+        // "Watch again" and "Play"). Wrap the ROW, never the label: each stays
+        // one readable phrase and the second drops to its own line.
+        flexWrap: "wrap",
         gap: 16,
       }}
     >
@@ -255,16 +264,27 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
            whole mask advances on click (tap anywhere to proceed), so without
            this a tap on Skip/Next would fire twice and skip the next tip. */
       }
-      {!last && (
-        <a
-          onClick={(e) => {
-            e.stopPropagation();
-            onSkip();
-          }}
-        >
-          {t("intro.skip")}
-        </a>
-      )}
+      {!last
+        ? (
+          <a
+            onClick={(e) => {
+              e.stopPropagation();
+              onSkip();
+            }}
+          >
+            {t("intro.skip")}
+          </a>
+        )
+        : onReplay && (
+          <a
+            onClick={(e) => {
+              e.stopPropagation();
+              onReplay();
+            }}
+          >
+            {t("intro.replay")}
+          </a>
+        )}
       <a
         onClick={(e) => {
           e.stopPropagation();
@@ -306,7 +326,14 @@ const Clock = (
   );
 };
 
-export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
+export const IntroBoard = (
+  // `onReplay` runs the tour again from the top. It is the caller's job rather
+  // than a reset here: App remounts this component on a fresh key, so every
+  // piece of the walkthrough's state — the board, the beats, the runner, the
+  // clock — starts over by construction instead of by a reset routine that has
+  // to be kept in step with whatever state gets added next.
+  { onDone, onReplay }: { onDone: () => void; onReplay?: () => void },
+) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [step, setStep] = useState(0);
   const [blocks, setBlocks] = useState<IntroBlock[]>(INTRO_FIXED);
@@ -553,14 +580,18 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     // so they are the maze's, not the animation's last sample.
     setFinished(true);
     if (beatsDone >= LAST_BEAT) {
+      // The built run. The tour STOPS here rather than closing itself: the
+      // runner stands in the exit with the maze's time beside it, which is the
+      // one frame the whole thing was arguing towards, and dismissing it on a
+      // timer takes that away from whoever was still reading it. Play (or a tap
+      // anywhere) is what ends the tour.
       setSettled(builtRef.current);
-      setTimeout(onDone, 1_000); // the built run: that was the tour
       return;
     }
     // The bare run keeps its runner — see advance, which is what clears it.
     setSettled(bare.duration);
     setStep((cur) => (cur === 0 ? 1 : cur));
-  }, [beatsDone, bare, onDone]);
+  }, [beatsDone, bare]);
 
   const onSlow = useCallback((thunder: Point) => {
     setBlocks((bs) =>
@@ -668,6 +699,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           {...tips[step][1]}
           onNext={step < LAST_STEP ? advance : onDone}
           onSkip={onDone}
+          onReplay={onReplay}
           last={step === LAST_STEP}
         >
           {tips[step][0]}
