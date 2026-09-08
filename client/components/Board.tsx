@@ -21,6 +21,7 @@ export const Board = (
     checkpoint,
     invalid,
     run,
+    paused,
     onFinish,
     grid,
     onSlow,
@@ -46,6 +47,9 @@ export const Board = (
     >;
     checkpoint: Point;
     invalid: boolean;
+    // Holds the runner where it stands (the intro tour's spawn beat and its stop
+    // on the checkpoint). Undefined everywhere else, so a live run never pauses.
+    paused?: boolean;
     run: {
       path: Point[];
       duration: number;
@@ -285,6 +289,7 @@ export const Board = (
         {run && time < 0 && (
           <Runner
             {...run}
+            paused={paused}
             onFinish={onFinish}
             onSlow={(thunder) =>
               onSlow(

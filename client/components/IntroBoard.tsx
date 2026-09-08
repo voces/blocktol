@@ -75,29 +75,29 @@ export const decoCheckpoint: Point = { x: 10.5, y: 4.5 };
 // at random — the exact opposite of the point, which is that it takes the
 // shortest route it can find and the player can only obstruct it.
 //
-// So this one was searched for against the properties that make a route legible
-// at a glance, and it holds all of them:
+// So this one was searched for. Its bare route is four nodes and no segment is
+// walked twice:
 //
-//   (9,19) → (11,15) → (13,15) → (10,1) → (10,0)
+//   (9,19) → (9,18) → (4,15) → (10,0)
 //
-// five nodes, no segment walked twice, and a 78° bend at the checkpoint — up
-// and right to touch it, then one long diagonal out the top. The checkpoint sits
-// well inside the board (three clear cells to the nearest wall, five to the
-// next): pinned into a corner it still produced a clean route, but a corner is
-// an edge case rather than a board the player will meet.
+// up a cell, one long diagonal down-left to the checkpoint, one long diagonal
+// up-right to the exit — a clear V with a 99° bend. The checkpoint sits three
+// cells clear of the nearest walls; a corner also produces a clean route, but a
+// corner is an edge case rather than a board the player will meet.
 //
-// Every stage of the build below stays retrace-free too, not just this opening
-// one — the finale runs the maze the tour assembled, so a route that doubles
-// back there would close the tour on the very look this replaces.
+// The search's OTHER objective was the drag (see BEATS): a maze where nudging a
+// placement one cell visibly changes everything. That is what picked this board
+// over the alternatives, now that the clock no longer shows per-block gains.
 const INTRO_FIXED: Point[] = [
-  { x: 14, y: 17 },
-  { x: 12, y: 16 },
-  { x: 7, y: 9 },
-  { x: 6, y: 11 },
-  { x: 9, y: 9 },
+  { x: 16, y: 8 },
+  { x: 10, y: 14 },
+  { x: 4, y: 3 },
+  { x: 4, y: 6 },
+  { x: 12, y: 14 },
+  { x: 13, y: 17 },
 ];
 
-export const introCheckpoint: Point = { x: 12.5, y: 14.5 };
+export const introCheckpoint: Point = { x: 3.5, y: 14.5 };
 
 // What the walkthrough itself hands out. Deliberately NOT quoted in the copy:
 // a real daily's budget is rolled per iteration (see util/newIteration.ts —
@@ -114,18 +114,22 @@ type IntroBlock = Point & {
   active?: boolean;
 };
 
-// The build, one beat per entry. Each was picked by measuring the maze rather
-// than by eye. The three placements are the greedy best-time sequence for the
-// real 3-brick budget; the refund takes the cheapest of them; and the drag was
-// chosen from every legal short move for costing nothing at all, so the edit
-// step reads as an adjustment rather than a demolition. The clock this produces:
+// The build, one beat per entry, in the order the real gesture happens: place,
+// tap to upgrade, tap again to take back, drag to move. That order is not a
+// preference — useInputEnd upgrades a tapped block whenever `power > 0` and only
+// removes it once there is no thunder left to spend, so a refund demonstrated
+// before the thunder would be showing a branch that cannot execute.
 //
-//   4.36 → 5.31 → 8.05 → 8.92 → 8.05 → 8.05 → 15.00
+// The drag is the reason this maze was chosen. (11,16) is placed and does
+// NOTHING — the runner ignores it, +0.00s — and nudging it a single cell to
+// (10,16) is worth +3.66s and reroutes the run entirely (6 nodes to 10). So the
+// beat reads as a placement that isn't working, then working: the drag has a
+// purpose rather than being a block sliding across open floor.
 //
-// climbing over the placements, giving back 0.87s to the refund (taking a block
-// back costs time — that is true, and worth showing), flat across the move, and
-// landing on the thunder's +6.95 — the tour's largest gain, last, at more than
-// three times where it opened.
+// The times below are what the maze does, not what the tour displays — the clock
+// is the runner's stopwatch and holds through the whole build (see Clock):
+//
+//   4.60 → 5.25 → 5.25 → 5.68 → 10.28 → 9.85 → 13.51   (2.94x the bare run)
 type Beat =
   | { kind: "place"; at: Point }
   | { kind: "refund"; at: Point }
@@ -133,18 +137,23 @@ type Beat =
   | { kind: "thunder"; at: Point };
 
 const BEATS: Beat[] = [
-  { kind: "place", at: { x: 10, y: 14 } },
-  { kind: "place", at: { x: 8, y: 12 } },
-  { kind: "place", at: { x: 5, y: 7 } },
-  { kind: "refund", at: { x: 5, y: 7 } },
-  { kind: "move", from: { x: 8, y: 12 }, to: { x: 8, y: 13 } },
-  { kind: "thunder", at: { x: 10, y: 14 } },
+  { kind: "place", at: { x: 8, y: 17 } },
+  { kind: "place", at: { x: 11, y: 16 } },
+  { kind: "place", at: { x: 7, y: 15 } },
+  { kind: "thunder", at: { x: 8, y: 17 } },
+  { kind: "refund", at: { x: 7, y: 15 } },
+  { kind: "move", from: { x: 11, y: 16 }, to: { x: 10, y: 16 } },
 ];
 
-// How far into BEATS each tip has played by the time you leave it. Step 0 and 1
-// are the opening run and the goal, so they touch nothing.
-const BEATS_DONE = [0, 0, 3, 5, 6, 6];
-const LAST_STEP = 5;
+// How far into BEATS each tip has played by the time you leave it. Steps 0 and 1
+// are the opening run and the goal, so they touch nothing; the last tip owns the
+// refund AND the drag, and the built run starts under it.
+const BEATS_DONE = [0, 0, 3, 4, 6];
+const LAST_STEP = 4;
+// The drag is the final beat, so the maze is locked the moment it lands — the
+// earliest the runner can honestly be released, since a real build is finished
+// before the runner goes.
+const LAST_BEAT = BEATS.length;
 
 const apply = (blocks: IntroBlock[], beat: Beat): IntroBlock[] => {
   const isAt = (b: IntroBlock, p: Point) =>
@@ -236,33 +245,27 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
 // The game's own run clock, not a lookalike. `.hud__run` IS the build slot
 // "counting the live run up" (styles.css), which is exactly what this is — so
 // the tour gets the accent pill, the "seconds" label and the fixed-width digits
-// that keep a count-up from jittering the chip, and it sits in `.hud__controls`
-// on the RIGHT where the HUD's clock lives. Budgets left, clock right: the tour
-// should teach the strip the player is about to use, not a mirror of it.
+// that keep a count-up from jittering, and it sits in `.hud__controls` on the
+// RIGHT where the HUD's clock lives. Budgets left, clock right: the tour should
+// teach the strip the player is about to use, not a mirror of it.
 //
-// The one part not borrowed is `Timer`, which races wall-clock from its own
-// mount to a fixed total — it can neither stay in step with the runner nor hold
-// still across the halt on the checkpoint. The value comes off the runner's own
-// elapsed-seconds signal instead. Its own component for that reason too: the
-// signal is written every frame, and reading it up in IntroBoard would re-render
-// Board, and the whole board, at that rate.
+// It is a STOPWATCH, not a readout of the maze: it counts while the runner
+// moves, holds while it is paused or stopped, and never derives a number from
+// the board. So it says nothing at all during the build — which is also what the
+// real game does, where no run time is shown while you are placing. The tour's
+// whole "longer is better" argument is therefore carried by two runs, 4.60s and
+// 13.51s, rather than by a figure jumping as blocks land.
+//
+// Holding while paused is free: Runner simply stops publishing, so the last
+// value stands. Its own component because that signal is written every frame,
+// and reading it up in IntroBoard would re-render Board at that rate.
 const Clock = (
-  { settled, offset, holding }: {
-    settled: number;
-    offset: number;
-    // True across the halt on the checkpoint, where no runner is mounted and so
-    // no elapsed time is being published. Without it the clock falls back to the
-    // settled time for those 800ms — flashing the route's FINAL number in the
-    // middle of the walk, which reads as a glitch and gives the total away
-    // before the runner has earned it. Hold at the handover instead.
-    holding: boolean;
-  },
+  { running, settled }: { running: boolean; settled: number },
 ) => {
   const live = runnerTime.value;
-  const shown = live !== undefined ? offset + live : holding ? offset : settled;
   return (
     <div class="hud__run">
-      <span class="mono">{formatSeconds(shown)}</span>
+      <span class="mono">{formatSeconds(running ? live ?? 0 : settled)}</span>
       <span class="hud__build-label">{t("hud.seconds")}</span>
     </div>
   );
@@ -280,10 +283,15 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       slows: { time: number; thunder: Point }[];
     }
   >();
-  // Which half of the opening route is walking: 1 to the checkpoint, 2 out the
-  // top, 3 once the route has been shown. The finale run uses 4.
-  const [leg, setLeg] = useState(0);
-  const [clockOffset, setClockOffset] = useState(0);
+  // The runner is HELD rather than unmounted — for the spawn beat, and for the
+  // stop on the checkpoint. Unmounting was how the halt used to be built, and it
+  // read as the runner blinking out and reappearing somewhere else rather than
+  // stopping on the spot. (Runner handles a hidden tab as a pause of its own.)
+  const [paused, setPaused] = useState(true);
+  // The last completed run's time. The clock holds it through the build, where
+  // the runner isn't moving and so has nothing to say.
+  const [settled, setSettled] = useState(0);
+  const haltedRef = useRef(false);
 
   const [placing, setPlacing] = useState<Point & { placing: boolean }>({
     x: 0,
@@ -360,32 +368,62 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     });
   }, [settle]);
 
-  // The opening: the runner walks to the checkpoint, STOPS on it, then leaves.
-  // That halt is what the tour has instead of a sentence claiming the checkpoint
-  // is compulsory — the board makes the case, and the copy keeps only what the
-  // picture can't say.
+  // The elapsed time at which the runner reaches the checkpoint, by DISTANCE
+  // along the route rather than node index — the legs are wildly uneven (a
+  // one-cell hop, then two long diagonals), so counting nodes would stop it in
+  // the wrong place. The bare board carries no thunders, so time is proportional
+  // to distance.
+  const haltAt = useMemo(() => {
+    const seg = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
+    let upTo = 0, total = 0;
+    for (let i = 1; i < bare.path.length; i++) {
+      const d = seg(bare.path[i - 1], bare.path[i]);
+      total += d;
+      if (i <= cut) upTo += d;
+    }
+    return total === 0 ? 0 : bare.duration * (upTo / total);
+  }, [bare, cut]);
+
+  // The opening. The runner mounts HELD, so it sits in the start gap long enough
+  // to be seen before it moves — otherwise the spawn is on screen for one frame.
   useEffect(() => {
-    if (step !== 0 || leg !== 0) return;
-    const timer = setTimeout(() => {
-      setLeg(1);
-      setRun({ ...bare, path: bare.path.slice(0, cut + 1) });
-    }, 600);
+    setRun(bare);
+    const timer = setTimeout(() => setPaused(false), 700);
     return () => clearTimeout(timer);
-  }, [step, leg, bare, cut]);
+  }, [bare]);
+
+  // The stop on the checkpoint, watched off the runner's own elapsed seconds
+  // rather than a timer, so it lands where the runner actually is. Subscribing
+  // rather than reading `.value` in render keeps a per-frame signal from
+  // re-rendering the board.
+  useEffect(() => {
+    if (step !== 0) return;
+    return runnerTime.subscribe((now) => {
+      if (now === undefined || haltedRef.current || now < haltAt) return;
+      haltedRef.current = true;
+      setPaused(true);
+      setTimeout(() => setPaused(false), 900);
+    });
+  }, [step, haltAt]);
 
   // Each build tip plays its beats after a beat's pause, so the tip is read
-  // before the board moves under it.
+  // before the board moves under it. Beats land one at a time: three blocks
+  // appearing on the same frame reads as one event rather than three.
   useEffect(() => {
     if (step === 0 || step === 1) return;
-    const timer = setTimeout(() => settle(BEATS_DONE[step]), 900);
-    return () => clearTimeout(timer);
+    const from = BEATS_DONE[step - 1], to = BEATS_DONE[step];
+    const timers: number[] = [];
+    for (let i = from; i < to; i++) {
+      timers.push(setTimeout(() => settle(i + 1), 900 + (i - from) * 450));
+    }
+    return () => timers.forEach(clearTimeout);
   }, [step, settle]);
 
   // The move beat is the real drag machinery, not a jump: the block lifts (its
   // origin drawn hidden), the overlay glides to the target, then it lands.
   useEffect(() => {
-    const beat = BEATS[4];
-    if (beat.kind !== "move" || beatsDone !== 5) return;
+    const beat = BEATS[LAST_BEAT - 1];
+    if (beat.kind !== "move" || beatsDone !== LAST_BEAT) return;
     const mover = blocksRef.current.find((b) =>
       b.x === beat.to.x && b.y === beat.to.y && b.local
     );
@@ -404,39 +442,34 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     return () => timers.forEach(clearTimeout);
   }, [beatsDone]);
 
-  // The finale: release the runner over the maze the tour just built. Same
-  // solver, so the clock's closing number is the one it walks.
+  // The built run, released once the last beat has landed AND its drag has
+  // finished animating — the maze is locked from that moment, which is the
+  // earliest it can honestly go, since a real build is finished before the
+  // runner runs. There is no separate finale step and no dead wait: it starts
+  // under the tip that was already up.
   useEffect(() => {
-    if (step !== LAST_STEP || !live) return;
+    if (beatsDone < LAST_BEAT) return;
     const timer = setTimeout(() => {
-      setLeg(4);
-      setClockOffset(0);
-      setRun(live);
-    }, 700);
+      const built = localRun(blocksRef.current, introCheckpoint);
+      if (!built) return;
+      haltedRef.current = true; // it stops for nothing; the checkpoint is explained
+      setSettled(0);
+      setRun(built);
+      setPaused(false);
+    }, 1_200);
     return () => clearTimeout(timer);
-  }, [step, live]);
+  }, [beatsDone]);
 
   const onFinish = useCallback(() => {
-    setRun(undefined);
-    setLeg((l) => {
-      if (l === 1) {
-        // Held on the checkpoint before the second half — the stop is the point.
-        setClockOffset(bare.duration * cutFraction);
-        setTimeout(() => {
-          setLeg(2);
-          setRun({ ...bare, path: bare.path.slice(cut) });
-        }, 800);
-        return 1;
-      }
-      if (l === 2) {
-        setClockOffset(0);
-        setStep((s) => (s === 0 ? 1 : s));
-        return 3;
-      }
-      setTimeout(onDone, 1_000);
-      return l;
-    });
-  }, [bare, cutFraction, onDone]);
+    // The bare run: park its time on the clock and hand over to the goal tip.
+    if (step === 0) {
+      setRun(undefined);
+      setSettled(bare.duration);
+      setStep(1);
+      return;
+    }
+    setTimeout(onDone, 1_000); // the built run: that was the tour
+  }, [step, bare, onDone]);
 
   const onSlow = useCallback((thunder: Point) => {
     setBlocks((bs) =>
@@ -455,28 +488,28 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     );
   }, []);
 
-  // Anchors are the arrow's target, in board coordinates: a `left`/`right` of L%
+  // Anchors are the ARROW's target, in board coordinates: a `left`/`right` of L%
   // puts it at x = L% of the 20-cell board (`right` mirrors it and swings the box
   // leftward, which is what keeps a right-hand target's box on the board), and a
   // `top`/`bottom` does the same vertically, with `bottom` sitting the box ABOVE
-  // its target. So a block at cell (x, y) spans x/20 … (x+1)/20 across, and the
-  // tips below point at the exact piece each one is talking about — the way the
-  // old ones did, re-derived because every piece moved.
+  // its target. A block at cell (x, y) spans x/20 … (x+1)/20 across, so each tip
+  // below points at the exact piece it is talking about — re-derived for this
+  // maze, the way the originals were for theirs.
   const tips: [ComponentChildren, Record<string, unknown>][] = [
-    // The checkpoint (cells 13, 15): arrow on its top edge, box above and left.
-    [t("intro.tipRoute"), { bottom: "25%", right: "32.5%" }],
-    // The clock pill itself, now in the right-hand group above the board.
+    // The checkpoint (cells 4, 15): arrow on its top edge, box above and right.
+    [t("intro.tipRoute"), { bottom: "25%", left: "22.5%" }],
+    // The clock pill, in the right-hand group above the board.
     [t("intro.tipGoal"), { top: -12, right: 40 }],
-    // The middle of the three placements, (8,12) — the other two sit clear of
-    // the box, above-left and below-right of it.
-    [t("intro.tipBlocks"), { bottom: "40%", left: "42.5%" }],
-    // The block the refund takes back, (5,7).
-    [t("intro.tipFix"), { bottom: "65%", left: "27.5%" }],
-    // The block that becomes the thunder, (10,14).
-    [t("intro.tipThunder"), { bottom: "30%", right: "47.5%" }],
-    // The finale has no single subject — the runner is crossing the whole board
-    // — so the button sits in the one corner the route never enters.
-    [null, { top: "6%", left: "2%" }],
+    // The topmost placement, (7,15): arrow on its top edge, box above and right,
+    // which clears all three — they sit in one cluster along the bottom, and a
+    // box tall enough for three lines covers whatever it opens over.
+    [t("intro.tipBlocks"), { bottom: "25%", left: "37.5%" }],
+    // The block that becomes the thunder, (8,17). Its box opens LEFT and stops
+    // at the block's own left edge, so the piece under discussion stays visible.
+    [t("intro.tipThunder"), { bottom: "15%", right: "60%" }],
+    // The block the refund takes back, (7,15) — named first in the tip, and the
+    // one anchor here that leaves every placement on show.
+    [t("intro.tipFix"), { bottom: "25%", left: "37.5%" }],
   ];
 
   return (
@@ -494,20 +527,16 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           </div>
         </div>
         <div class="hud__controls">
-          <Clock
-            settled={duration}
-            offset={clockOffset}
-            holding={leg === 1 || leg === 2}
-          />
+          <Clock running={!!run} settled={settled} />
         </div>
       </div>
       <Board
         placingBlock={placing}
         touching={false}
-        time={run ? -1 : 9}
+        time={-1}
         svgRef={svgRef}
         transitionBlock={transition}
-        power={run ? -1 : power}
+        power={-1}
         thunderHover={undefined}
         blocks={blocks}
         checkpoint={introCheckpoint}
@@ -518,6 +547,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         onSlow={onSlow}
         date={NaN}
         dragMoved={dragMoved}
+        paused={paused}
       />
       <div
         style={{
@@ -528,7 +558,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
           position: "relative",
           fontSize: "calc(min(400px, var(--maze-size)) / 20)",
           filter: "drop-shadow(1px 1px 4px rgba(0, 0, 0, 0.5))",
-          backgroundColor: run ? undefined : "#0001",
+          backgroundColor: "#0001",
           borderRadius: "var(--radius)",
         }}
         onClick={step < LAST_STEP ? advance : onDone}
@@ -538,18 +568,14 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
             walking the maze the tour built, and narrating that is the habit
             this rewrite is getting rid of. */
         }
-        {step < LAST_STEP && (
-          <Tip
-            {...tips[step][1]}
-            onNext={advance}
-            onSkip={onDone}
-          >
-            {tips[step][0]}
-          </Tip>
-        )}
-        {step === LAST_STEP && (
-          <Tip {...tips[LAST_STEP][1]} onNext={onDone} onSkip={onDone} last />
-        )}
+        <Tip
+          {...tips[step][1]}
+          onNext={step < LAST_STEP ? advance : onDone}
+          onSkip={onDone}
+          last={step === LAST_STEP}
+        >
+          {tips[step][0]}
+        </Tip>
       </div>
     </div>
   );
