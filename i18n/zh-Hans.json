@@ -240,12 +240,12 @@
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
   "intro.tipBlocks": {
-    "message": "方块会逼它绕行。计数器显示你剩余的数量。",
-    "hash": "d91b144dc77c2171670f1753dc245feb81d1930439600057029a1e9509412b92"
+    "message": "放置方块，奔跑者必须绕过它们。",
+    "hash": "59958721e1af3f66777c7ec675d81a61532fd96af4433d6969d1963e53bfdb0a"
   },
   "intro.tipFix": {
-    "message": "点击方块可退回，拖动方块可移动。",
-    "hash": "8d9f48939570a8dc993193a77a816ef4ce4b01ca6d975fca215da7259d7d20d2"
+    "message": "再次点击可收回方块，或拖动它来移动。",
+    "hash": "186fd3cac44354ca1122de5e87d1de7b99e3dc8a331cc2ec23eb0abc9cf8271e"
   },
   "intro.tipGoal": {
     "message": "这是你的时间。越长越好。",
@@ -256,8 +256,8 @@
     "hash": "6c6a760a74c44b0843fbf375f5d24e224a4f55a4a2396e198fc1bc37501e3ccf"
   },
   "intro.tipThunder": {
-    "message": "将一个方块升级为雷电，减缓路过的奔跑者。",
-    "hash": "417875caff803803a3dfb6cfbc5df9161cea4ed5f036884ec0fbd19c5224e9fd"
+    "message": "点击已放置的方块，将其升级为闪电，使奔跑者减速。",
+    "hash": "8773ef1817f4001b749a4253f06fa2b841e9d0c6be4d9bb48bee4724a5cde82f"
   },
   "mg.cameAlong": {
     "message": "此设备的 {runs} 已一并带入。",

@@ -240,12 +240,12 @@
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
   "intro.tipBlocks": {
-    "message": "Blöcke zwingen ihn zum Umweg. Der Chip zeigt, wie viele dir bleiben.",
-    "hash": "d91b144dc77c2171670f1753dc245feb81d1930439600057029a1e9509412b92"
+    "message": "Platziere Blöcke und der Läufer muss sie umgehen.",
+    "hash": "59958721e1af3f66777c7ec675d81a61532fd96af4433d6969d1963e53bfdb0a"
   },
   "intro.tipFix": {
-    "message": "Tippe einen Block an, um ihn zurückzuerhalten, oder ziehe ihn zum Verschieben.",
-    "hash": "8d9f48939570a8dc993193a77a816ef4ce4b01ca6d975fca215da7259d7d20d2"
+    "message": "Tippe erneut, um einen Block zurückzunehmen, oder ziehe ihn, um ihn zu bewegen.",
+    "hash": "186fd3cac44354ca1122de5e87d1de7b99e3dc8a331cc2ec23eb0abc9cf8271e"
   },
   "intro.tipGoal": {
     "message": "Das ist deine Zeit. Je länger, desto besser.",
@@ -256,8 +256,8 @@
     "hash": "6c6a760a74c44b0843fbf375f5d24e224a4f55a4a2396e198fc1bc37501e3ccf"
   },
   "intro.tipThunder": {
-    "message": "Rüste einen zu einem Donner auf, um den vorbeiziehenden Läufer zu verlangsamen.",
-    "hash": "417875caff803803a3dfb6cfbc5df9161cea4ed5f036884ec0fbd19c5224e9fd"
+    "message": "Tippe auf einen platzierten Block, um ihn zu einem Blitz aufzuwerten, der den Läufer verlangsamt.",
+    "hash": "8773ef1817f4001b749a4253f06fa2b841e9d0c6be4d9bb48bee4724a5cde82f"
   },
   "mg.cameAlong": {
     "message": "{runs} von diesem Gerät kamen mit.",
