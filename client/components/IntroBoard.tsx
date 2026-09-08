@@ -177,6 +177,18 @@ const MOVE_MS = 900;
 // as one event, and they were too tight to read as three separate placements.
 const LEAD_MS = 400;
 const STEP_MS = 700;
+// After the last beat lands, before the runner goes.
+const RELEASE_MS = 1_500;
+
+// The pause AFTER a beat, before the next one. A placement is instant, so the
+// gap is the whole of what separates two of them; a drag has already spent
+// MOVE_MS sliding, so its gap only separates the block landing from whatever
+// comes next. The refund and the drag get more room than a placement does,
+// because the tip that owns them plays three DIFFERENT gestures where the
+// placement tip plays three of the same one — each one wants reading before the
+// next starts.
+const gapAfter = (beat: Beat) =>
+  beat.kind === "move" ? MOVE_MS + 350 : beat.kind === "refund" ? 900 : STEP_MS;
 
 const apply = (blocks: IntroBlock[], beat: Beat): IntroBlock[] => {
   const isAt = (b: IntroBlock, p: Point) =>
@@ -477,7 +489,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     let delay = LEAD_MS;
     for (let i = from; i < to; i++) {
       timers.push(setTimeout(() => settle(i + 1), delay));
-      delay += BEATS[i].kind === "move" ? MOVE_MS + 100 : STEP_MS;
+      delay += gapAfter(BEATS[i]);
     }
     return () => timers.forEach(clearTimeout);
   }, [step, settle]);
@@ -527,7 +539,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       setFinished(false);
       setRun(built);
       setPaused(false);
-    }, 1_200);
+    }, RELEASE_MS);
     return () => clearTimeout(timer);
   }, [beatsDone]);
 
