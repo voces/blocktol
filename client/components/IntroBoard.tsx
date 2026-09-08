@@ -361,12 +361,26 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   }, []);
 
   const advance = useCallback(() => {
+    // During the opening the tip is up for the whole route, so a click here is
+    // "carry on" rather than "next tip": it releases the runner from the stop on
+    // the checkpoint, or — if it is still walking — lands the outcome and hands
+    // over, the same thing a click does to a half-played build beat.
+    if (step === 0) {
+      if (paused) {
+        setPaused(false);
+      } else {
+        setRun(undefined);
+        setSettled(bare.duration);
+        setStep(1);
+      }
+      return;
+    }
     setStep((s) => {
       if (s >= LAST_STEP) return s;
       settle(BEATS_DONE[s]);
       return s + 1;
     });
-  }, [settle]);
+  }, [step, paused, bare, settle]);
 
   // The elapsed time at which the runner reaches the checkpoint, by DISTANCE
   // along the route rather than node index — the legs are wildly uneven (a
@@ -396,13 +410,18 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   // rather than a timer, so it lands where the runner actually is. Subscribing
   // rather than reading `.value` in render keeps a per-frame signal from
   // re-rendering the board.
+  //
+  // It then WAITS for the reader. Resuming on a timer meant the tour walked on
+  // past the one beat it wants dwelt on — the runner stopping where it has no
+  // reason to stop is the whole argument that the checkpoint is compulsory, and
+  // an argument you are shown for 900ms and then hurried away from is one you
+  // can miss entirely.
   useEffect(() => {
     if (step !== 0) return;
     return runnerTime.subscribe((now) => {
       if (now === undefined || haltedRef.current || now < haltAt) return;
       haltedRef.current = true;
       setPaused(true);
-      setTimeout(() => setPaused(false), 900);
     });
   }, [step, haltAt]);
 
