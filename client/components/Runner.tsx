@@ -1,22 +1,35 @@
 import { Fragment, h } from "preact";
-import { useEffect, useState } from "preact/compat";
+import { useEffect, useRef, useState } from "preact/compat";
 import { SPEED } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { debug } from "../util/debug.ts";
 import { runnerTime } from "./Game/interaction.ts";
 
+// Distance is integrated forward from each frame's elapsed time, so one frame
+// must never cover enough ground for the runner's speed to have changed inside
+// it. At 32ms the walk is sampled at least as often as a 30fps display, and a
+// frame that runs long (a GC pause, a slow device, a tab handed back) is split
+// into chunks that each re-decide whether the runner is slowed.
+const MAX_STEP_S = 0.032;
+
 export const Runner = (
-  { path, slows, onFinish, onSlow }: {
+  { path, slows, onFinish, onSlow, paused }: {
     path: Point[];
     slows: { time: number; thunder: Point }[];
     onFinish: () => void;
     onSlow: (thunder: Point) => void;
+    // Holds the walk where it stands, and holds its clock with it — the run
+    // resumes at the time it left off rather than at wall-clock. Read through a
+    // ref below so toggling it never restarts the walk.
+    paused?: boolean;
   },
 ) => {
   const [loc, setLoc] = useState(path[0]);
   const [slowed, setSlowed] = useState(false);
   const game = useGame();
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   // Keyed on the PATH, not just mount: picking another run while one is
   // animating (a review replay) swaps the prop, and the walk has to start over
@@ -32,32 +45,68 @@ export const Runner = (
     let pathDistance = 0;
     let last = start;
     let nextSlow = 0;
+    // Time the run is NOT accountable for: a hidden tab, or an explicit pause.
+    // Subtracted from wall-clock rather than summed from frame deltas, so the
+    // clock stays exact instead of drifting over a long walk.
+    let pausedMs = 0;
+    let hiddenAt: number | null = null;
+    let isSlowed = false;
+
+    // A hidden tab suspends requestAnimationFrame outright — it is not merely
+    // throttled — so the first frame back would otherwise carry the whole
+    // absence as one delta: every thunder passed meanwhile firing at once, and
+    // the entire span integrated at whichever speed happened to be current when
+    // the tab went away. The runner then lands somewhere its own clock never put
+    // it, and can overshoot the finish (which, in free play, commits and
+    // re-stages a run nobody watched). Treat the absence as a pause instead: the
+    // walk holds, and resumes where it stood.
+    const onVisibility = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else if (hiddenAt !== null) {
+        pausedMs += Date.now() - hiddenAt;
+        // Nothing accrued while away, so the next frame starts from here.
+        last = Date.now();
+        hiddenAt = null;
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     const cb = () => {
       const now = Date.now();
-      const delta = now - last;
+      const frameMs = now - last;
       last = now;
-      const time = (now - start) / 1_000;
+
+      if (pausedRef.current) {
+        pausedMs += frameMs;
+        animationFrame = requestAnimationFrame(cb);
+        return;
+      }
+
+      const time = (now - start - pausedMs) / 1_000;
       // How far into the walk we are, for anything that wants to keep pace with
       // the runner (the splits tape lights the mark it has just reached). A
       // signal rather than a callback prop: this fires every frame, and a
       // prop threaded through Board would re-render the tree at that rate.
       runnerTime.value = time;
 
-      // Off by 1 error
-      for (
-        ;
-        nextSlow < slows.length && slows[nextSlow].time < time;
-        nextSlow++
-      ) {
-        onSlow(slows[nextSlow].thunder);
+      // Walk this frame in bounded chunks, each re-deciding whether the runner
+      // is slowed, so a long one can't be applied at a single speed sample.
+      for (let t = Math.max(0, time - frameMs / 1_000); t < time;) {
+        const stepEnd = Math.min(t + MAX_STEP_S, time);
+        // Off by 1 error
+        for (
+          ;
+          nextSlow < slows.length && slows[nextSlow].time < stepEnd;
+          nextSlow++
+        ) {
+          onSlow(slows[nextSlow].thunder);
+        }
+        isSlowed = nextSlow > 0 && (slows[nextSlow - 1].time) + 6 > stepEnd;
+        pathDistance += (stepEnd - t) * (isSlowed ? SPEED / 2 : SPEED);
+        t = stepEnd;
       }
-      const isSlowed = nextSlow > 0 && (slows[nextSlow - 1].time) + 6 > time;
       setSlowed(isSlowed);
-
-      const speed = isSlowed ? SPEED / 2 : SPEED;
-
-      pathDistance += delta / 1_000 * speed;
 
       let distanceRemaining = pathDistance - coveredDistance;
       while (pathIndex < path.length - 1) {
@@ -97,6 +146,7 @@ export const Runner = (
     cb();
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(animationFrame);
       // No runner, no progress — a finished or abandoned walk must not leave a
       // mark lit on the tape.
