@@ -377,15 +377,21 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   }, []);
 
   const advance = useCallback(() => {
-    // The opening's click does both halves at once: it releases the runner AND
-    // moves the tip on. Holding the tip until the runner reached the exit made
-    // the click feel like it had only half worked — the board answered and the
-    // words didn't. The runner walks the rest of the route under the next tip,
-    // which is about the clock it is still filling in.
+    // The opening's click does both halves on the same frame: it releases the
+    // runner AND moves the tip on. Holding the tip until the runner reached the
+    // exit made the click feel like it had only half worked — the board answered
+    // and the words didn't; a delay on the runner instead is the same complaint
+    // the other way round. The runner walks the rest of the route under the next
+    // tip, which is about the clock it is still filling in.
+    //
+    // Unlike the BUILD beats, which do wait a moment so the new words land
+    // before the board moves under them: there the click is what starts an
+    // animation the reader hasn't been told about yet. Here the runner is
+    // already mid-route and merely stopped, so waiting reads as lag.
     if (step === 0) {
       haltedRef.current = true; // clicked past it; don't stop later
-      setStep(1); // the runner follows a beat later, below
-      return;
+      setPaused(false);
+      return setStep(1);
     }
     setStep((s) => {
       if (s >= LAST_STEP) return s;
@@ -436,16 +442,6 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       setPaused(true);
     });
   }, [step, haltAt]);
-
-  // The runner follows the click rather than racing it: the tip swaps at once,
-  // then the walk resumes a beat later. Same reason the build beats wait — the
-  // new words want a moment to land before the board moves under them. A no-op
-  // when the click came in mid-walk rather than at the stop.
-  useEffect(() => {
-    if (step !== 1 || !run) return;
-    const timer = setTimeout(() => setPaused(false), 450);
-    return () => clearTimeout(timer);
-  }, [step, run]);
 
   // Each build tip plays its beats after a beat's pause, so the tip is read
   // before the board moves under it. Beats land one at a time: three blocks
