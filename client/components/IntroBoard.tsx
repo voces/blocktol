@@ -444,8 +444,13 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     return () => timers.forEach(clearTimeout);
   }, [step, settle]);
 
-  // The move beat is the real drag machinery, not a jump: the block lifts (its
-  // origin drawn hidden), the overlay glides to the target, then it lands.
+  // The move beat is the real drag machinery, not a jump: the block lifts, the
+  // overlay glides to the target, then it lands. `settle` has already moved the
+  // block, so `mover` is the object sitting at the DESTINATION — and it must be
+  // passed through as itself, because Board hides the grabbed block by identity
+  // (`block === transitionBlock`). Hand it a copy and nothing is hidden: the
+  // block stays drawn at the target while the overlay slides into it, which
+  // reads as a second block placed where the drag was going.
   useEffect(() => {
     const beat = BEATS[LAST_BEAT - 1];
     if (beat.kind !== "move" || beatsDone !== LAST_BEAT) return;
@@ -453,7 +458,7 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       b.x === beat.to.x && b.y === beat.to.y && b.local
     );
     if (!mover) return;
-    setTransition({ ...mover, ...beat.from });
+    setTransition(mover);
     setDragMoved(true);
     setPlacing({ ...beat.from, placing: true });
     const timers = [
@@ -524,20 +529,21 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   // below points at the exact piece it is talking about — re-derived for this
   // maze, the way the originals were for theirs.
   const tips: [ComponentChildren, Record<string, unknown>][] = [
-    // The checkpoint (cells 4, 15): arrow on its top edge, box above and right.
+    // The checkpoint. It draws 0.9 wide at cp+0.55, so its centre is cp+1 —
+    // (3.5,14.5) centres at 22.5% across, with its top edge at 75%.
     [t("intro.tipRoute"), { bottom: "25%", left: "22.5%" }],
     // The clock pill, in the right-hand group above the board.
     [t("intro.tipGoal"), { top: -12, right: 40 }],
-    // The topmost placement, (7,15): arrow on its top edge, box above and right,
-    // which clears all three — they sit in one cluster along the bottom, and a
-    // box tall enough for three lines covers whatever it opens over.
-    [t("intro.tipBlocks"), { bottom: "25%", left: "37.5%" }],
-    // The block that becomes the thunder, (8,17). Its box opens LEFT and stops
-    // at the block's own left edge, so the piece under discussion stays visible.
-    [t("intro.tipThunder"), { bottom: "15%", right: "60%" }],
-    // The block the refund takes back, (7,15) — named first in the tip, and the
-    // one anchor here that leaves every placement on show.
-    [t("intro.tipFix"), { bottom: "25%", left: "37.5%" }],
+    // (8,17), the FIRST placement to land — pointing at the last one left the
+    // arrow over empty board for the ~1.8s the stagger took to reach it. Blocks
+    // draw 2x2, so this centres at ((8+1)/20) = 45% with its top edge at 85%.
+    [t("intro.tipBlocks"), { bottom: "15%", left: "45%" }],
+    // The same block, now the thunder — the anchor holds, so the tip doesn't hop
+    // between two lines about one piece.
+    [t("intro.tipThunder"), { bottom: "15%", left: "45%" }],
+    // (7,15), the block the refund takes back and the first thing this tip
+    // names: centre 40% across, top edge 75%.
+    [t("intro.tipFix"), { bottom: "25%", left: "40%" }],
   ];
 
   return (
