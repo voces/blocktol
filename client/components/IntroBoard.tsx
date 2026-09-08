@@ -77,22 +77,26 @@ export const decoCheckpoint: Point = { x: 10.5, y: 4.5 };
 // So this one was searched for against the properties that make a route legible
 // at a glance, and it holds all of them:
 //
-//   (9,19) → (10,18) → (18,18) → (18,12) → (12,2) → (10,1) → (10,0)
+//   (9,19) → (11,15) → (13,15) → (10,1) → (10,0)
 //
-// seven nodes, no segment walked twice, and a 90° bend at the checkpoint — in
-// along the bottom, out on one long diagonal. The corner checkpoint is doing
-// deliberate work: the runner visibly leaves its way to touch it, which is what
-// makes "it HAS to go there" something the board says rather than the copy.
+// five nodes, no segment walked twice, and a 78° bend at the checkpoint — up
+// and right to touch it, then one long diagonal out the top. The checkpoint sits
+// well inside the board (three clear cells to the nearest wall, five to the
+// next): pinned into a corner it still produced a clean route, but a corner is
+// an edge case rather than a board the player will meet.
+//
+// Every stage of the build below stays retrace-free too, not just this opening
+// one — the finale runs the maze the tour assembled, so a route that doubles
+// back there would close the tour on the very look this replaces.
 const INTRO_FIXED: Point[] = [
-  { x: 10, y: 3 },
-  { x: 11, y: 6 },
-  { x: 3, y: 16 },
-  { x: 14, y: 12 },
-  { x: 16, y: 13 },
-  { x: 13, y: 8 },
+  { x: 14, y: 17 },
+  { x: 12, y: 16 },
+  { x: 7, y: 9 },
+  { x: 6, y: 11 },
+  { x: 9, y: 9 },
 ];
 
-export const introCheckpoint: Point = { x: 17.5, y: 17.5 };
+export const introCheckpoint: Point = { x: 12.5, y: 14.5 };
 
 // The budgets the walkthrough spends, and the numbers its copy quotes — passed
 // to the tips as ICU args rather than written into the sentences, so the two
@@ -107,12 +111,17 @@ type IntroBlock = Point & {
 };
 
 // The build, one beat per entry. Each was picked by measuring the maze rather
-// than by eye: the three placements are the greedy best-time sequence for the
-// real 3-brick budget, and the refund/move act on the cheapest block so that
-// taking one back reads as a small, honest cost rather than throwing the run
-// away. The clock this produces climbs 6.06 → 6.64 → 7.82 → 8.92, dips to 7.69
-// over the edit, then lands on 12.29 when the thunder goes in — so the tour
-// ends on its largest gain, at double where it opened.
+// than by eye. The three placements are the greedy best-time sequence for the
+// real 3-brick budget; the refund takes the cheapest of them; and the drag was
+// chosen from every legal short move for costing nothing at all, so the edit
+// step reads as an adjustment rather than a demolition. The clock this produces:
+//
+//   4.36 → 5.31 → 8.05 → 8.92 → 8.05 → 8.05 → 15.00
+//
+// climbing over the placements, giving back 0.87s to the refund (taking a block
+// back costs time — that is true, and worth showing), flat across the move, and
+// landing on the thunder's +6.95 — the tour's largest gain, last, at more than
+// three times where it opened.
 type Beat =
   | { kind: "place"; at: Point }
   | { kind: "refund"; at: Point }
@@ -120,12 +129,12 @@ type Beat =
   | { kind: "thunder"; at: Point };
 
 const BEATS: Beat[] = [
-  { kind: "place", at: { x: 10, y: 17 } },
-  { kind: "place", at: { x: 8, y: 15 } },
-  { kind: "place", at: { x: 6, y: 13 } },
-  { kind: "refund", at: { x: 6, y: 13 } },
-  { kind: "move", from: { x: 8, y: 15 }, to: { x: 8, y: 16 } },
-  { kind: "thunder", at: { x: 10, y: 17 } },
+  { kind: "place", at: { x: 10, y: 14 } },
+  { kind: "place", at: { x: 8, y: 12 } },
+  { kind: "place", at: { x: 5, y: 7 } },
+  { kind: "refund", at: { x: 5, y: 7 } },
+  { kind: "move", from: { x: 8, y: 12 }, to: { x: 8, y: 13 } },
+  { kind: "thunder", at: { x: 10, y: 14 } },
 ];
 
 // How far into BEATS each tip has played by the time you leave it. Step 0 and 1
@@ -428,22 +437,18 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     );
   }, []);
 
+  // The route runs bottom-centre, up and right to the checkpoint, then one long
+  // diagonal to the top — so the tips sit where it never goes. The opening one
+  // takes the bottom-left; every build tip then holds the SAME top-right corner,
+  // clear of all three placements (which land centre-left, 35%–70% down), so the
+  // reader's eye stops moving once the board starts changing under it.
   const tips: [ComponentChildren, Record<string, unknown>][] = [
-    // Upper-left: the only quadrant the route leaves alone. It runs the bottom
-    // edge, up the right, then diagonally across — so a tip anywhere else covers
-    // the runner during the one demo the player is meant to be watching.
-    [t("intro.tipRoute"), { top: "12%", left: "8%" }],
+    [t("intro.tipRoute"), { bottom: "6%", left: "2%" }],
     [t("intro.tipGoal"), { top: -12, left: 41 }],
-    [t("intro.tipBlocks", { count: INTRO_BRICKS }), {
-      top: "22%",
-      left: "12%",
-    }],
-    [t("intro.tipFix"), { top: "44%", left: "14%" }],
-    [t("intro.tipThunder", { count: INTRO_POWER }), {
-      top: "34%",
-      left: "14%",
-    }],
-    [null, { top: "22%", left: "12%" }],
+    [t("intro.tipBlocks", { count: INTRO_BRICKS }), { top: "6%", right: "4%" }],
+    [t("intro.tipFix"), { top: "6%", right: "4%" }],
+    [t("intro.tipThunder", { count: INTRO_POWER }), { top: "6%", right: "4%" }],
+    [null, { top: "6%", right: "4%" }],
   ];
 
   return (
