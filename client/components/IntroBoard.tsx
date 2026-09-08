@@ -361,18 +361,14 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   }, []);
 
   const advance = useCallback(() => {
-    // During the opening the tip is up for the whole route, so a click here is
-    // "carry on" rather than "next tip": it releases the runner from the stop on
-    // the checkpoint, or — if it is still walking — lands the outcome and hands
-    // over, the same thing a click does to a half-played build beat.
+    // The opening's click does both halves at once: it releases the runner AND
+    // moves the tip on. Holding the tip until the runner reached the exit made
+    // the click feel like it had only half worked — the board answered and the
+    // words didn't. The runner walks the rest of the route under the next tip,
+    // which is about the clock it is still filling in.
     if (step === 0) {
-      if (paused) {
-        setPaused(false);
-      } else {
-        setRun(undefined);
-        setSettled(bare.duration);
-        setStep(1);
-      }
+      haltedRef.current = true; // clicked past it; don't stop later
+      setStep(1); // the runner follows a beat later, below
       return;
     }
     setStep((s) => {
@@ -424,6 +420,16 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
       setPaused(true);
     });
   }, [step, haltAt]);
+
+  // The runner follows the click rather than racing it: the tip swaps at once,
+  // then the walk resumes a beat later. Same reason the build beats wait — the
+  // new words want a moment to land before the board moves under them. A no-op
+  // when the click came in mid-walk rather than at the stop.
+  useEffect(() => {
+    if (step !== 1 || !run) return;
+    const timer = setTimeout(() => setPaused(false), 450);
+    return () => clearTimeout(timer);
+  }, [step, run]);
 
   // Each build tip plays its beats after a beat's pause, so the tip is read
   // before the board moves under it. Beats land one at a time: three blocks
@@ -480,15 +486,18 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   }, [beatsDone]);
 
   const onFinish = useCallback(() => {
-    // The bare run: park its time on the clock and hand over to the goal tip.
-    if (step === 0) {
-      setRun(undefined);
-      setSettled(bare.duration);
-      setStep(1);
+    // Which run just ended is decided by the BEATS, not by the step: the opening
+    // tip now hands over the moment it is clicked, so the bare run routinely
+    // finishes with the step already moved on — and keying off the step would
+    // read that as the built run and close the tour early.
+    if (beatsDone >= LAST_BEAT) {
+      setTimeout(onDone, 1_000); // the built run: that was the tour
       return;
     }
-    setTimeout(onDone, 1_000); // the built run: that was the tour
-  }, [step, bare, onDone]);
+    setRun(undefined);
+    setSettled(bare.duration);
+    setStep((cur) => (cur === 0 ? 1 : cur));
+  }, [beatsDone, bare, onDone]);
 
   const onSlow = useCallback((thunder: Point) => {
     setBlocks((bs) =>
