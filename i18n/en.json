@@ -959,40 +959,28 @@
     "message": "Play",
     "description": "Tutorial tooltip button on the last tip that finishes the walkthrough and starts play."
   },
+  "intro.replay": {
+    "message": "Watch again",
+    "description": "Tutorial tooltip button on the last tip, beside Play: restarts the walkthrough from the beginning. The walkthrough is shown once per device, and the screen after it opens a ranked attempt, so this is the only way back to it."
+  },
+  "intro.tipRoute": {
+    "message": "The runner has to touch the checkpoint on its way out.",
+    "description": "Tutorial tip over the opening demo, where the runner walks the maze and visibly STOPS on the checkpoint. It states the one thing the demo can't: that the visit is compulsory. Everything else about the route (that the runner moves by itself, where it enters and leaves) is shown, so it is deliberately not said. \"runner\"/\"checkpoint\" are game terms (see glossary)."
+  },
+  "intro.tipGoal": {
+    "message": "That's your time. The longer, the better.",
+    "description": "Tutorial tip anchored on the clock, just after the opening run settles it. States the score and its direction as a rule — in this game a LONGER run beats a shorter one. Quotes no number: the clock beside it shows the value."
+  },
   "intro.tipBlocks": {
-    "message": "Blocks indicate how many you can place.",
-    "description": "Tutorial tip pointing at the block-budget chip. \"Blocks\" is the placeable piece (see glossary block)."
+    "message": "Place blocks and the runner has to go around them.",
+    "description": "Tutorial tip as blocks land on the board. Blocks are obstacles the runner detours around — never a path the player draws. Quotes no budget: a daily's is rolled per iteration (3 to 24 blocks), so the walkthrough's own three are not the game's. \"block\"/\"runner\" are game terms (see glossary)."
   },
-  "intro.tipThunders": {
-    "message": "Thunders indicate how many blocks you can upgrade.",
-    "description": "Tutorial tip pointing at the thunder-budget chip. \"Thunders\" is the slow-field piece; upgrading a block turns it into one (see glossary thunder)."
+  "intro.tipFix": {
+    "message": "Tap again to take a block back, or drag one to move it.",
+    "description": "Tutorial tip as the demo takes one block back and drags another a single cell. \"again\" follows the previous tip's tap: tapping a placed block upgrades it while a thunder is unspent, and removes it once none is left — one gesture, two steps. \"block\" is a game term (see glossary)."
   },
-  "intro.tipRunnerBottom": {
-    "message": "The runner is released from the bottom…",
-    "description": "Tutorial tip: first of three describing the runner's route. \"runner\" is the game term (see glossary). Trailing ellipsis continues into the next tip."
-  },
-  "intro.tipCheckpoint": {
-    "message": "…heads towards the checkpoint…",
-    "description": "Tutorial tip: second of three describing the runner's route. Leading and trailing ellipsis connect the three tips into one sentence."
-  },
-  "intro.tipTop": {
-    "message": "…and then out the top.",
-    "description": "Tutorial tip: third of three describing the runner's route. Leading ellipsis continues from the previous tip."
-  },
-  "intro.tipPlace": {
-    "message": "Place blocks to elongate the runner's path.",
-    "description": "Tutorial tip: placing blocks lengthens the runner's route. \"blocks\"/\"runner\" are game terms (see glossary)."
-  },
-  "intro.tipUpgrade": {
-    "message": "Upgrade blocks to slow the runner as they pass.",
-    "description": "Tutorial tip: upgrading a block into a thunder slows the runner. \"blocks\"/\"runner\" are game terms (see glossary)."
-  },
-  "intro.tipRefund": {
-    "message": "Tap a block again to refund it.",
-    "description": "Tutorial tip: tapping a placed block once more removes it and refunds its budget (the block, plus the thunder if it had been upgraded). Follows the upgrade tip in the tap cycle. \"block\"/\"thunder\" are game terms (see glossary)."
-  },
-  "intro.tipMove": {
-    "message": "Or drag a block to move it.",
-    "description": "Tutorial tip: a placed block can be dragged to a different cell. Reads as a continuation of the refund tip (\"Or …\"). \"block\" is a game term (see glossary)."
+  "intro.tipThunder": {
+    "message": "Tap a placed block to upgrade it into a thunder, which slows the runner.",
+    "description": "Tutorial tip as a placed block becomes a thunder. Explains the gesture (tapping a block you have already placed) and its effect together. Quotes no count: most dailies grant no thunder at all. \"block\"/\"thunder\"/\"runner\" are game terms (see glossary)."
   }
 }

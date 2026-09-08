@@ -321,11 +321,13 @@ double-write):**
   percentile-based), then fires "daily final" notifications and posts the day's
   results to Discord (`util/dailyAnnounce.ts` — the top ranked time and everyone
   tied for it, up to 10 names then a count; gold for a sole winner, chartreuse
-  for a shared top), then a **second, separate message** naming whoever reached
-  that winning time off the ranked board (`freePlayReaches` → `freePlayEmbed`;
-  its own 10-name cap, and a reach that BETTERED it carries its own time).
-  Rating flips `rated` before announcing, so these posts are also what unblocks
-  that day's live top-PB posts.
+  for a shared top), then a **second, separate message** carrying the day's
+  **top build** — the best-build board's top time, whoever reached it first and
+  everyone who matched them (`dayTopBuild` → the shared `pbEmbed`). Rating flips
+  `rated` before announcing, so these posts are also what unblocks that day's
+  live top-PB posts — and that second message IS the day's standing top-PB post
+  (it writes the `pb_top` marker), so a later free-play record supersedes it
+  rather than standing beside it.
 
 ## Domain model & invariants
 
@@ -622,15 +624,17 @@ a title link to the day's `/YYYYMMDD?board=` permalink:
   player bettering their own best, no one to pass). Each fresh post first greys
   out (`GREY`) the message it supersedes, reconstructed from the marker, so the
   channel highlights only the current record. A build **matching the announced
-  top** _edits_ the message with the tie count (chartreuse — "N players have
-  matched it"). The **same holder improving their own lead** _edits_ within a
-  12h window (`PB_EDIT_WINDOW_MS`), and posts a fresh message past it **or**
-  once the record has been matched in between (breaking a shared record is its
-  own event — the supreme→matched→retake-supreme case). Non-topping builds and
-  replays that don't take the top do nothing — so replaying an old board can't
-  resurface its record. The state is a **`pb_top` marker** (one row per
-  iteration: the announced holder, message id, time, tie count, and post time —
-  migrations v11–v13): `top_user` dedups a burst of leading saves and
+  top** _edits_ the message (chartreuse), which **names** the matchers — up to
+  `MAX_NAMES`, then a bare count; the grey-out path falls back to the count
+  because the marker stores only how many shared the top, which is all a
+  superseded message needs. The **same holder improving their own lead** _edits_
+  within a 12h window (`PB_EDIT_WINDOW_MS`), and posts a fresh message past it
+  **or** once the record has been matched in between (breaking a shared record
+  is its own event — the supreme→matched→retake-supreme case). Non-topping
+  builds and replays that don't take the top do nothing — so replaying an old
+  board can't resurface its record. The state is a **`pb_top` marker** (one row
+  per iteration: the announced holder, message id, time, tie count, and post
+  time — migrations v11–v13): `top_user` dedups a burst of leading saves and
   distinguishes a lead change; `holders` drives the tie edit and the
   break-the-seal repost; the message id + `announced_at` drive the
   edit-vs-repost window. `topPbToAnnounce` (replay-safe new-sole-top detection)
@@ -642,22 +646,27 @@ a title link to the day's `/YYYYMMDD?board=` permalink:
 - **Daily final** — posted by the `rate-dailies` cron once a day is rated (see
   the cron list), listing the ranked winners and nothing else. Links
   `?board=daily`.
-- **Free play** — a SECOND message from the same sweep, sent straight after the
-  summary and only when there is something to say (`freePlayEmbed` returns
-  `null` on an empty list, and the caller then sends nothing): the non-winners
-  whose best build that day reached the winning time. They can only have got
-  there off the ranked board, since the winners ARE the ranked top — so no "was
-  this free play?" flag is needed to find them (`freePlayReaches`). Up to 10
-  names then a count; a reach that BETTERED the winning time carries its own
-  time, an exact match is just a name. Gold when the best reach betters the
-  daily's top (an outright day's-best build), chartreuse when they all merely
-  match it (a shared record). Links `?board=pb` — these builds are on the
-  best-build board, not the ranked one. It is a separate **message**, not an
-  addendum inside the summary nor a second embed on the same post, precisely so
-  it can be **moderated independently**: it carries its own message id, so
-  deleting or editing it away leaves the day's ranked result standing. It also
-  restates the time it is measured against, so it reads on its own if that
-  happens (or if the summary post fails).
+- **Top build** — a SECOND message from the same sweep, sent straight after the
+  summary: the day's record on the best-build board, rendered by the **same
+  `pbEmbed`** as the live top-PB post above, because it is the same fact. The
+  sweep writes the `pb_top` marker from it, which is what lets the live path
+  edit or supersede this very message for the rest of the day instead of opening
+  a second lit record post. `dayTopBuild` returns `null` — and nothing is sent —
+  when the ranked winners ARE the top build and nobody joined them, since the
+  summary already said that; equal tops mean every winner is necessarily a
+  holder (a ranked run is a build like any other in `getIterationBests`), so an
+  equal COUNT is the whole of the duplicate case. It stays a separate
+  **message**, not an addendum inside the summary nor a second embed on the same
+  post, so it can be **moderated independently**: it carries its own message id,
+  so deleting or editing it away leaves the day's ranked result standing.
+
+  It used to be a "free play" post listing whoever had reached the RANKED
+  winning time off the ranked board, and that was wrong three ways at once: it
+  quoted a bar the best-build board is not measured against, it named everyone
+  above that bar rather than the record holders, and it excluded the daily's
+  winner for being a winner — even when their own free play held the day's top
+  build. The subject was never "who beat the ranked winner"; it is "what is the
+  best build of the day".
 
 Both are best-effort (never throw, awaited so this Deploy doesn't kill them mid
 flight) and no-op without a webhook configured. See the `DISCORD_*` env vars.

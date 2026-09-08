@@ -33,6 +33,7 @@ import {
   editResult,
   GOLD,
   GREY,
+  MAX_NAMES,
   postResult,
   type ResultEmbed,
 } from "./discordResults.ts";
@@ -109,13 +110,22 @@ export const decidePbAction = (
   return "none";
 };
 
-// The record post's embed. Gold for a sole holder, chartreuse once matched, with
-// the tie count appended. The title links to the day's PB board.
+// The record post's embed. Gold for a sole holder, chartreuse once matched. The
+// title links to the day's PB board.
+//
+// A matched top NAMES who matched it. A bare tally ("1 player has matched it")
+// tells you the record is shared without telling you the one thing you'd want to
+// know, and a day's top is shared by a handful of players at most. Past
+// MAX_NAMES it falls back to the count, as every list in this channel does — and
+// so does the grey-out path, which rebuilds a SUPERSEDED message from the marker
+// and has only its count stored (a message nobody is reading any more, so the
+// shape it collapses to costs nothing).
 export const pbEmbed = (
   name: string,
   time: number,
   count: number,
   day: Day,
+  matchers?: readonly string[],
 ): ResultEmbed => {
   const url = dayUrl(day, "pb");
   const date = formatNotifDate(day);
@@ -123,15 +133,23 @@ export const pbEmbed = (
     formatSeconds(time)
   }s**.`;
   const matched = count - 1;
-  const tally = ` ${matched} ${
-    matched === 1 ? "player has" : "players have"
-  } matched it.`;
+  const named = matchers?.length === matched && matched <= MAX_NAMES;
+
+  let description = opener;
+  if (matched === 1) {
+    description += named
+      ? ` Matched by **${matchers![0]}**.`
+      : " 1 player has matched it.";
+  } else if (matched > 1) {
+    description += named
+      ? ` Matched by:\n${matchers!.map((m) => `• ${m}`).join("\n")}`
+      : ` ${matched} players have matched it.`;
+  }
+
   return {
     title: `Top PB: ${date}`,
     url,
-    description: `${
-      count > 1 ? opener + tally : opener
-    }\n\n[Open the puzzle](${url})`,
+    description: `${description}\n\n[Open the puzzle](${url})`,
     color: count > 1 ? CHARTREUSE : GOLD,
   };
 };
@@ -146,9 +164,12 @@ const announce = async (
 ) => {
   if (bests.length === 0) return;
   const top = round2(Math.max(...bests.map((b) => b.best)));
-  const holders = bests.filter((b) => round2(b.best) === top);
-  // The earliest to reach the top time is the holder the post credits.
-  const holder = holders.reduce((a, b) => (a.at <= b.at ? a : b));
+  // Earliest-first: the first to reach the top time is the holder the post
+  // credits, and the rest are its matchers, in the order they got there.
+  const holders = bests
+    .filter((b) => round2(b.best) === top)
+    .sort((a, b) => a.at - b.at);
+  const holder = holders[0];
   const actorAtTop = holders.some((h) => h.user === actor);
 
   const stale = marker != null && marker.topUser === actor &&
@@ -170,7 +191,13 @@ const announce = async (
   );
   if (action === "none") return;
 
-  const embed = pbEmbed(holder.name, top, holders.length, day);
+  const embed = pbEmbed(
+    holder.name,
+    top,
+    holders.length,
+    day,
+    holders.slice(1).map((h) => h.name),
+  );
   if (action === "edit" && marker?.messageId) {
     // Edit the standing message; editPbTop leaves the window anchor untouched so a
     // burst of edits can't defer the past-window re-post.

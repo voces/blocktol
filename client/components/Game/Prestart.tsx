@@ -3,7 +3,7 @@ import { useContext, useEffect, useRef, useState } from "preact/compat";
 import { Board } from "../Board.tsx";
 import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
-import { initialBlocks, introCheckpoint } from "../IntroBoard.tsx";
+import { decoBlocks, decoCheckpoint } from "../IntroBoard.tsx";
 import { formatSeconds } from "../../../common/format.ts";
 import { startBoardRun } from "../../store/board.ts";
 import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
@@ -85,8 +85,8 @@ export const Prestart = () => {
           transitionBlock={undefined}
           power={-1}
           thunderHover={undefined}
-          blocks={initialBlocks}
-          checkpoint={introCheckpoint}
+          blocks={decoBlocks}
+          checkpoint={decoCheckpoint}
           invalid={false}
           run={undefined}
           onFinish={() => {}}

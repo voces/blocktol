@@ -235,45 +235,33 @@
     "message": "开始",
     "hash": "436e61016e26fcb773b9725745cbbf0afe7f001ea26041a814a7712c2925c442"
   },
+  "intro.replay": {
+    "message": "重新观看",
+    "hash": "acdf17a9599d40bb71e53b743e90ceb4cc6e1a6f44c302af81ff3d95c07f7d36"
+  },
   "intro.skip": {
     "message": "跳过",
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
   "intro.tipBlocks": {
-    "message": "方块数量表示你可以放置多少个。",
-    "hash": "3f53b445804256ebe025189fa8a5a4ea5181eb05188a1b0a4c1dc9b79797c9ff"
+    "message": "放置方块，奔跑者必须绕过它们。",
+    "hash": "59958721e1af3f66777c7ec675d81a61532fd96af4433d6969d1963e53bfdb0a"
   },
-  "intro.tipCheckpoint": {
-    "message": "……前往检查点……",
-    "hash": "d312bf2dd40ee0aa37f64aecfdc409ead62dc936b4f1e142984314d7bc22a294"
+  "intro.tipFix": {
+    "message": "再次点击可收回方块，或拖动它来移动。",
+    "hash": "186fd3cac44354ca1122de5e87d1de7b99e3dc8a331cc2ec23eb0abc9cf8271e"
   },
-  "intro.tipMove": {
-    "message": "或拖动方块来移动它。",
-    "hash": "20048da553b10bfb38381f5a9a288f58cf49c5503cf03cf1f19e2a4e496b6e91"
+  "intro.tipGoal": {
+    "message": "这是你的时间。越长越好。",
+    "hash": "544c6b163ecc388aa513c739acfa3f2a99e9eb5fa06001345d6d5218c7a834d3"
   },
-  "intro.tipPlace": {
-    "message": "放置方块来延长奔跑者的路径。",
-    "hash": "e82a6713a11d6e1eb5aa055fb7481558760ff530bbde00f63228b3113fe18321"
+  "intro.tipRoute": {
+    "message": "跑者离开前必须触碰检查点。",
+    "hash": "6c6a760a74c44b0843fbf375f5d24e224a4f55a4a2396e198fc1bc37501e3ccf"
   },
-  "intro.tipRefund": {
-    "message": "再次点击方块即可返还它。",
-    "hash": "07ba15b34ec4f93728ea15385ab4e7bfd0159af6fee59b3ac2fa8ce40e26ff1e"
-  },
-  "intro.tipRunnerBottom": {
-    "message": "奔跑者从底部出发……",
-    "hash": "6384caa449827dd9edbdc3b93a24955059b03ef0eba7a93b93824ceb3cf1a0ec"
-  },
-  "intro.tipThunders": {
-    "message": "雷电数量表示你可以升级多少个方块。",
-    "hash": "051008817b37d7d0330eadafc9fb87776c713fe4d19eceb2b6d632112dd10bee"
-  },
-  "intro.tipTop": {
-    "message": "……然后从顶部离开。",
-    "hash": "d36572b0edcb81f331ea810becfe1710ff9415a5b0cc7217d2dca9c910852ca6"
-  },
-  "intro.tipUpgrade": {
-    "message": "升级方块，让奔跑者经过时减速。",
-    "hash": "f2249be52d85d212850711b8fe2bcb4346e518494f42b501b2f9d32abc667072"
+  "intro.tipThunder": {
+    "message": "点击已放置的方块，将其升级为雷电，使奔跑者减速。",
+    "hash": "8773ef1817f4001b749a4253f06fa2b841e9d0c6be4d9bb48bee4724a5cde82f"
   },
   "mg.cameAlong": {
     "message": "此设备的 {runs} 已一并带入。",

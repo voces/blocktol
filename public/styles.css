@@ -478,6 +478,13 @@ a:hover {
   transform: translate(var(--arrow-x, -19px), var(--arrow-y, 0px));
 }
 
+/* The tip's buttons sit on one row, and the box is only as wide as the board
+   lets it be — so a two-word label ("Watch again") wrapped mid-phrase and
+   interleaved with the button beside it. They are labels, not prose. */
+.tooltip a {
+  white-space: nowrap;
+}
+
 /* Arrow as a pseudo-element on the tip so it's always flush to its edge
    (a separately-positioned arrow drifted out of alignment). */
 .tooltip::before {
