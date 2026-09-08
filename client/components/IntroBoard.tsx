@@ -115,7 +115,8 @@ type IntroBlock = Point & {
 };
 
 // The build, one beat per entry, in the order the real gesture happens: place,
-// tap to upgrade, tap again to take back, drag to move. That order is not a
+// tap to upgrade, tap again to take back, drag to move, place what came back.
+// That order is not a
 // preference — useInputEnd upgrades a tapped block whenever `power > 0` and only
 // removes it once there is no thunder left to spend, so a refund demonstrated
 // before the thunder would be showing a branch that cannot execute.
@@ -126,10 +127,19 @@ type IntroBlock = Point & {
 // beat reads as a placement that isn't working, then working: the drag has a
 // purpose rather than being a block sliding across open floor.
 //
+// The refund is followed by a RE-PLACE, and not for symmetry: without it the
+// tour finishes a brick short, and a walkthrough that ends holding a piece it
+// never spends is teaching the wrong lesson about a budget. It also gives the
+// refund a point — you take a block back in order to put it somewhere better —
+// and it goes last, so the maze is completed by a placement and the runner is
+// released the moment it lands. (14,13) is that spot because the drag's own
+// reroute turns the corner there: the block lands exactly on the runner's new
+// turn and pushes it out to the right wall.
+//
 // The times below are what the maze does, not what the tour displays — the clock
 // is the runner's stopwatch and holds through the whole build (see Clock):
 //
-//   4.60 → 5.25 → 5.25 → 5.68 → 10.28 → 9.85 → 13.51   (2.94x the bare run)
+//   4.60 → 5.25 → 5.25 → 5.68 → 10.28 → 9.85 → 13.51 → 14.38  (3.1x the bare run)
 type Beat =
   | { kind: "place"; at: Point }
   | { kind: "refund"; at: Point }
@@ -143,17 +153,23 @@ const BEATS: Beat[] = [
   { kind: "thunder", at: { x: 8, y: 17 } },
   { kind: "refund", at: { x: 7, y: 15 } },
   { kind: "move", from: { x: 11, y: 16 }, to: { x: 10, y: 16 } },
+  { kind: "place", at: { x: 14, y: 13 } },
 ];
 
 // How far into BEATS each tip has played by the time you leave it. Steps 0 and 1
 // are the opening run and the goal, so they touch nothing; the last tip owns the
-// refund AND the drag, and the built run starts under it.
-const BEATS_DONE = [0, 0, 3, 4, 6];
+// refund, the drag AND the re-place, and the built run starts under it.
+const BEATS_DONE = [0, 0, 3, 4, 7];
 const LAST_STEP = 4;
-// The drag is the final beat, so the maze is locked the moment it lands — the
-// earliest the runner can honestly be released, since a real build is finished
-// before the runner goes.
+// The maze is locked once the last beat lands — the earliest the runner can
+// honestly be released, since a real build is finished before the runner goes.
 const LAST_BEAT = BEATS.length;
+// The one beat that ANIMATES rather than landing instantly (see the drag effect
+// below). Both the effect and the beat scheduler need it: the effect to find the
+// beat wherever it sits, the scheduler to hold the next beat off until the block
+// has finished sliding instead of dropping one through the drag.
+const MOVE_BEAT = BEATS.findIndex((b) => b.kind === "move");
+const MOVE_MS = 900;
 
 const apply = (blocks: IntroBlock[], beat: Beat): IntroBlock[] => {
   const isAt = (b: IntroBlock, p: Point) =>
@@ -438,8 +454,10 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     if (step === 0 || step === 1) return;
     const from = BEATS_DONE[step - 1], to = BEATS_DONE[step];
     const timers: number[] = [];
+    let delay = 900;
     for (let i = from; i < to; i++) {
-      timers.push(setTimeout(() => settle(i + 1), 900 + (i - from) * 450));
+      timers.push(setTimeout(() => settle(i + 1), delay));
+      delay += BEATS[i].kind === "move" ? MOVE_MS + 100 : 450;
     }
     return () => timers.forEach(clearTimeout);
   }, [step, settle]);
@@ -452,8 +470,8 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
   // block stays drawn at the target while the overlay slides into it, which
   // reads as a second block placed where the drag was going.
   useEffect(() => {
-    const beat = BEATS[LAST_BEAT - 1];
-    if (beat.kind !== "move" || beatsDone !== LAST_BEAT) return;
+    const beat = BEATS[MOVE_BEAT];
+    if (beat.kind !== "move" || beatsDone !== MOVE_BEAT + 1) return;
     const mover = blocksRef.current.find((b) =>
       b.x === beat.to.x && b.y === beat.to.y && b.local
     );
@@ -467,16 +485,17 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
         setTransition(undefined);
         setDragMoved(false);
         setPlacing({ ...beat.to, placing: false });
-      }, 900),
+      }, MOVE_MS),
     ];
     return () => timers.forEach(clearTimeout);
   }, [beatsDone]);
 
-  // The built run, released once the last beat has landed AND its drag has
-  // finished animating — the maze is locked from that moment, which is the
-  // earliest it can honestly go, since a real build is finished before the
-  // runner runs. There is no separate finale step and no dead wait: it starts
-  // under the tip that was already up.
+  // The built run, released once the last beat has landed — the maze is locked
+  // from that moment, which is the earliest it can honestly go, since a real
+  // build is finished before the runner runs. The drag is no longer that beat,
+  // so there is nothing left animating: the scheduler holds the re-place off
+  // until the block has finished sliding. There is no separate finale step and
+  // no dead wait: the run starts under the tip that was already up.
   useEffect(() => {
     if (beatsDone < LAST_BEAT) return;
     const timer = setTimeout(() => {
@@ -542,8 +561,12 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     // between two lines about one piece.
     [t("intro.tipThunder"), { bottom: "15%", left: "45%" }],
     // (7,15), the block the refund takes back and the first thing this tip
-    // names: centre 40% across, top edge 75%.
-    [t("intro.tipFix"), { bottom: "25%", left: "40%" }],
+    // names: centre 40% across, top edge 75%. The box opens LEFT (hence `right`,
+    // which mirrors the anchor) into the empty half of the board — this tip owns
+    // three beats spread across the bottom, and a box opening rightward from
+    // here sat squarely on top of the re-placed block at (14,13), so the tour's
+    // last piece landed, and the runner then rounded it, behind the words.
+    [t("intro.tipFix"), { bottom: "25%", right: "60%" }],
   ];
 
   return (
