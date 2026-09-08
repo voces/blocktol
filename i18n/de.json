@@ -240,24 +240,24 @@
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
   "intro.tipBlocks": {
-    "message": "Blöcke zwingen ihn zum Umweg. Du hast {count, plural, one {# Block} other {# Blöcke}}.",
-    "hash": "6283fb0f5f01a0b788d0ea7c45b214c6fff6cd935b8c87e219514ecc7d7169a9"
+    "message": "Blöcke zwingen ihn zum Umweg. Der Chip zeigt, wie viele dir bleiben.",
+    "hash": "d91b144dc77c2171670f1753dc245feb81d1930439600057029a1e9509412b92"
   },
   "intro.tipFix": {
     "message": "Tippe einen Block an, um ihn zurückzuerhalten, oder ziehe ihn zum Verschieben.",
     "hash": "8d9f48939570a8dc993193a77a816ef4ce4b01ca6d975fca215da7259d7d20d2"
   },
   "intro.tipGoal": {
-    "message": "Das ist deine Zeit. Deine Aufgabe: sie zu vergrößern.",
-    "hash": "e35626c183cbfcbd91efcc78816f30a6e5efddff47dc52e23cd7f587ac530fe2"
+    "message": "Das ist deine Zeit. Je länger, desto besser.",
+    "hash": "544c6b163ecc388aa513c739acfa3f2a99e9eb5fa06001345d6d5218c7a834d3"
   },
   "intro.tipRoute": {
     "message": "Der Läufer muss auf dem Weg nach draußen den Kontrollpunkt berühren.",
     "hash": "6c6a760a74c44b0843fbf375f5d24e224a4f55a4a2396e198fc1bc37501e3ccf"
   },
   "intro.tipThunder": {
-    "message": "Verwandle einen in einen Thunder, um ihn zu verlangsamen. Du hast {count, plural, one {# Thunder} other {# Thunder}}.",
-    "hash": "43739185edc58a822c5eb80806fff7c2afb1259df9d71b275ceca31532af6225"
+    "message": "Rüste einen zu einem Thunder auf, um den vorbeiziehenden Runner zu verlangsamen.",
+    "hash": "417875caff803803a3dfb6cfbc5df9161cea4ed5f036884ec0fbd19c5224e9fd"
   },
   "mg.cameAlong": {
     "message": "{runs} von diesem Gerät kamen mit.",

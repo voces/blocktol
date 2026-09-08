@@ -240,24 +240,24 @@
     "hash": "28d03596d24eeb4eab2d6fe21ca1cb95be7cb1fa6f92933db05e2cc4f4cdfa06"
   },
   "intro.tipBlocks": {
-    "message": "Les blocs le forcent à contourner. Tu as {count, plural, one {# bloc} many {# blocs} other {# blocs}}.",
-    "hash": "6283fb0f5f01a0b788d0ea7c45b214c6fff6cd935b8c87e219514ecc7d7169a9"
+    "message": "Les blocs le forcent à contourner. La jauge indique ce qu'il te reste.",
+    "hash": "d91b144dc77c2171670f1753dc245feb81d1930439600057029a1e9509412b92"
   },
   "intro.tipFix": {
     "message": "Touche un bloc pour le récupérer, ou fais-le glisser pour le déplacer.",
     "hash": "8d9f48939570a8dc993193a77a816ef4ce4b01ca6d975fca215da7259d7d20d2"
   },
   "intro.tipGoal": {
-    "message": "Voici ton temps. Ton but : le rendre plus grand.",
-    "hash": "e35626c183cbfcbd91efcc78816f30a6e5efddff47dc52e23cd7f587ac530fe2"
+    "message": "Voilà ton temps. Plus il est long, mieux c'est.",
+    "hash": "544c6b163ecc388aa513c739acfa3f2a99e9eb5fa06001345d6d5218c7a834d3"
   },
   "intro.tipRoute": {
     "message": "Le coureur doit toucher le point de contrôle en chemin.",
     "hash": "6c6a760a74c44b0843fbf375f5d24e224a4f55a4a2396e198fc1bc37501e3ccf"
   },
   "intro.tipThunder": {
-    "message": "Transforme-en un en foudre pour le ralentir. Tu as {count, plural, one {# foudre} many {# foudres} other {# foudres}}.",
-    "hash": "43739185edc58a822c5eb80806fff7c2afb1259df9d71b275ceca31532af6225"
+    "message": "Transforme un bloc en thunder pour ralentir le runner qui passe.",
+    "hash": "417875caff803803a3dfb6cfbc5df9161cea4ed5f036884ec0fbd19c5224e9fd"
   },
   "mg.cameAlong": {
     "message": "{runs} de cet appareil ont été intégrées.",
