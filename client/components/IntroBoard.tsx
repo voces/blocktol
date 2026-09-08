@@ -10,6 +10,7 @@ import {
   useState,
 } from "preact/compat";
 import { Point } from "../../common/types.ts";
+import { formatSeconds } from "../../common/format.ts";
 import { localRun } from "./Game/helpers.ts";
 import { runnerTime } from "./Game/interaction.ts";
 import { t } from "../util/t.ts";
@@ -229,10 +230,19 @@ const Tip = ({ children, left, right, top, bottom, onSkip, onNext, last }: {
   </Tooltip>
 );
 
-// The clock reads the runner's own elapsed-seconds signal, so it ticks while the
-// runner walks and settles on the maze's time when it stops. Its own component
-// on purpose: that signal is written every frame, and reading it up in IntroBoard
-// would re-render Board — and the whole board — at that rate.
+// The game's own run clock, not a lookalike. `.hud__run` IS the build slot
+// "counting the live run up" (styles.css), which is exactly what this is — so
+// the tour gets the accent pill, the "seconds" label and the fixed-width digits
+// that keep a count-up from jittering the chip, and it sits in `.hud__controls`
+// on the RIGHT where the HUD's clock lives. Budgets left, clock right: the tour
+// should teach the strip the player is about to use, not a mirror of it.
+//
+// The one part not borrowed is `Timer`, which races wall-clock from its own
+// mount to a fixed total — it can neither stay in step with the runner nor hold
+// still across the halt on the checkpoint. The value comes off the runner's own
+// elapsed-seconds signal instead. Its own component for that reason too: the
+// signal is written every frame, and reading it up in IntroBoard would re-render
+// Board, and the whole board, at that rate.
 const Clock = (
   { settled, offset, holding }: {
     settled: number;
@@ -247,7 +257,12 @@ const Clock = (
 ) => {
   const live = runnerTime.value;
   const shown = live !== undefined ? offset + live : holding ? offset : settled;
-  return <span class="mono">{shown.toFixed(2)}s</span>;
+  return (
+    <div class="hud__run">
+      <span class="mono">{formatSeconds(shown)}</span>
+      <span class="hud__build-label">{t("hud.seconds")}</span>
+    </div>
+  );
 };
 
 export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
@@ -437,35 +452,41 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
     );
   }, []);
 
-  // The route runs bottom-centre, up and right to the checkpoint, then one long
-  // diagonal to the top — so the tips sit where it never goes. The opening one
-  // takes the bottom-left; every build tip then holds the SAME top-right corner,
-  // clear of all three placements (which land centre-left, 35%–70% down), so the
-  // reader's eye stops moving once the board starts changing under it.
+  // Anchors are the arrow's target, in board coordinates: a `left`/`right` of L%
+  // puts it at x = L% of the 20-cell board (`right` mirrors it and swings the box
+  // leftward, which is what keeps a right-hand target's box on the board), and a
+  // `top`/`bottom` does the same vertically, with `bottom` sitting the box ABOVE
+  // its target. So a block at cell (x, y) spans x/20 … (x+1)/20 across, and the
+  // tips below point at the exact piece each one is talking about — the way the
+  // old ones did, re-derived because every piece moved.
   const tips: [ComponentChildren, Record<string, unknown>][] = [
-    [t("intro.tipRoute"), { bottom: "6%", left: "2%" }],
-    [t("intro.tipGoal"), { top: -12, left: 41 }],
-    [t("intro.tipBlocks", { count: INTRO_BRICKS }), { top: "6%", right: "4%" }],
-    [t("intro.tipFix"), { top: "6%", right: "4%" }],
-    [t("intro.tipThunder", { count: INTRO_POWER }), { top: "6%", right: "4%" }],
-    [null, { top: "6%", right: "4%" }],
+    // The checkpoint (cells 13, 15): arrow on its top edge, box above and left.
+    [t("intro.tipRoute"), { bottom: "25%", right: "32.5%" }],
+    // The clock pill itself, now in the right-hand group above the board.
+    [t("intro.tipGoal"), { top: -12, right: 40 }],
+    // The middle of the three placements, (8,12) — the other two sit clear of
+    // the box, above-left and below-right of it.
+    [t("intro.tipBlocks", { count: INTRO_BRICKS }), {
+      bottom: "40%",
+      left: "42.5%",
+    }],
+    // The block the refund takes back, (5,7).
+    [t("intro.tipFix"), { bottom: "65%", left: "27.5%" }],
+    // The block that becomes the thunder, (10,14).
+    [t("intro.tipThunder", { count: INTRO_POWER }), {
+      bottom: "30%",
+      right: "47.5%",
+    }],
+    // The finale has no single subject — the runner is crossing the whole board
+    // — so the button sits in the one corner the route never enters.
+    [null, { top: "6%", left: "2%" }],
   ];
 
   return (
     <div class="onboarding">
+      {/* Same strip the game builds on: budgets left, clock right. */}
       <div class="hud">
         <div class="hud__chips">
-          {
-            /* The clock leads: it is the score, and until now the tour never put
-              a number on the thing it was asking the player to grow. */
-          }
-          <div class="hud__chip">
-            <Clock
-              settled={duration}
-              offset={clockOffset}
-              holding={leg === 1 || leg === 2}
-            />
-          </div>
           <div class="hud__chip">
             <BrickIcon />
             <span class="mono">{bricks}</span>
@@ -474,6 +495,13 @@ export const IntroBoard = ({ onDone }: { onDone: () => void }) => {
             <PowerIcon />
             <span class="mono">{power}</span>
           </div>
+        </div>
+        <div class="hud__controls">
+          <Clock
+            settled={duration}
+            offset={clockOffset}
+            holding={leg === 1 || leg === 2}
+          />
         </div>
       </div>
       <Board
