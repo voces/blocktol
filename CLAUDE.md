@@ -604,6 +604,56 @@ in-app copy localize from one source. In-app notifications are always written;
 push delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys
 set. `public/sw.js` is the service worker.
 
+**A push subscription dies quietly, so three things keep it alive.** The
+per-kind toggles are stored SETTINGS that gate the server's send decision — they
+say nothing about whether a device can still receive, which is why "toggled on
+but nothing arrives" was the shape of every report here.
+
+- **Rotation.** The browser retires subscriptions on its own (Chrome on Android
+  after a Play Services re-registration, a browser update, a long idle stretch,
+  or a `userVisibleOnly` budget revocation) and signals it with
+  `pushsubscriptionchange`. The SW handles it: it re-subscribes and re-registers
+  against the server there and then. It can't reach `localStorage` for the
+  device credential and there's no page open to ask, so `client/util/push.ts`
+  mirrors the id into **Cache Storage** (`blocktol-cred`, kept in the SW's
+  `activate` keep-set) — two same-origin stores, no new exposure. The VAPID
+  public key is likewise **injected into `sw.js`** by `util/assets.ts`, beside
+  the asset manifest, since `/api/pushConfig` isn't reachable without a page.
+  Without this the only recovery was the next app OPEN, and a daily-final push
+  is often what would have prompted one — the failure sustained itself.
+- **Key rotation.** A subscription minted under a retired VAPID key is
+  permanently undeliverable: the push service answers **403**, which is _not_
+  the 404/410 the fan-out prunes on, so the row survives forever and the client
+  cheerfully re-registers the same dead endpoint every boot. `subscribePush` now
+  compares the existing subscription's `applicationServerKey` against the
+  server's current one (`keyMatches`) and replaces it on a mismatch, dropping
+  the stale row server-side too. The send path deliberately **does not prune on
+  403** — unlike a 410 it's equally consistent with a misconfigured key pair,
+  and pruning would delete every subscription in one sweep; it logs
+  `push send rejected (vapid key)` instead.
+- **Honesty in the UI.** `pushState` (`client/util/push.ts`) carries what this
+  device can actually do — `ok` / `prompt` / `denied` / `unavailable` — and
+  Profile renders it above the toggles, so a blocked permission or a browser
+  without push says so instead of showing a switch that reads "on" and means
+  nothing. It reflects what the BROWSER reports; an OS-level block the browser
+  doesn't mirror (a revoked Android `POST_NOTIFICATIONS` grant) still reads as
+  `ok`.
+
+**Reading the push path in VictoriaLogs.** A successful send logs **nothing**,
+so an empty result for `"push send"` means "nothing failed", NOT "nothing was
+sent" — and remember telemetry only runs on the co-located instance, so an
+un-instrumented Deno Deploy process logs nothing either way. The positive
+signals are the two fan-out summaries, `daily-final notifications` and
+`lost-top notification` (both carry a `pushes` count; `pushes=0` is "opted in,
+but no live subscription"), and `push subscription pruned` — the one line a
+dying row now emits, since a 410 prune was previously silent and is exactly how
+a device goes quiet. Failures are `push send failed`,
+`push send rejected (vapid
+key)` (a rotated key — see above), `push send error`,
+and `push fan-out error`. Nothing is extracted at ingest, so filter on raw text
+first and unpack after:
+`_time:30d "daily-final notifications" | unpack_logfmt | fields _time, iteration, inApp, pushes`.
+
 **Discord results webhook (`util/discordResults.ts`):** a player-facing channel
 mirror, separate from `adminAlert`'s operator pings. Three posts, all rich
 embeds in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with
@@ -740,7 +790,15 @@ configuring that connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any
 non-empty value skips registering the `ensure-iterations`/`rate-dailies` crons —
 for a second instance on the shared DB),
 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
-`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app), and
+`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app —
+**silently**, and this has bitten prod once: with no key `/api/pushConfig`
+answers `{publicKey:null}`, clients can't subscribe, and the notify paths return
+before attempting a send, so nothing at all reaches the logs while the player's
+preference toggles still read "on". `curl -X POST <host>/api/pushConfig -d '{}'`
+is the check. Carrying the env across a host migration is the failure mode —
+existing `push_subscription` rows survive it untouched, since nothing ever sends
+and so nothing ever prunes. Restore the ORIGINAL pair where possible: new keys
+invalidate every live subscription with a 403, which is not pruned), and
 `DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
 alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset =
 alerts are no-ops), and `DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results

@@ -8,6 +8,10 @@
 let ASSET_VERSION = "dev";
 let PRECACHE = ["/", "/index.html"];
 let ICON = "/favicon.svg";
+// The server's VAPID public key, injected alongside the asset manifest so the
+// `pushsubscriptionchange` handler below can re-subscribe without a page open to
+// fetch it. Empty when push isn't configured server-side.
+let VAPID_PUBLIC_KEY = "";
 /* __ASSET_MANIFEST__ */
 
 // Per-build cache: bumping ASSET_VERSION (any precached asset changed) makes a
@@ -15,6 +19,14 @@ let ICON = "/favicon.svg";
 // change rarely, so they live in their own cache that survives version bumps.
 const ASSET_CACHE = `blocktol-assets-${ASSET_VERSION}`;
 const FONT_CACHE = "blocktol-fonts";
+// Where the page mirrors the device credential for the SW to read (see
+// client/util/push.ts). A service worker can't reach localStorage, and
+// `pushsubscriptionchange` fires with no page open to ask — so re-registering a
+// rotated subscription needs the id from a store both sides can see. Cache
+// Storage is the same same-origin exposure class as the localStorage copy it
+// mirrors, so this moves the credential between stores, not across a boundary.
+const CRED_CACHE = "blocktol-cred";
+const CRED_URL = "/__push-credential";
 const FONT_ORIGINS = [
   "https://fonts.googleapis.com",
   "https://fonts.gstatic.com",
@@ -38,7 +50,7 @@ self.addEventListener("activate", (event) => {
         await self.registration.navigationPreload.enable();
       }
       // Drop every cache from an older build; keep the current assets + fonts.
-      const keep = new Set([ASSET_CACHE, FONT_CACHE]);
+      const keep = new Set([ASSET_CACHE, FONT_CACHE, CRED_CACHE]);
       for (const key of await caches.keys()) {
         if (!keep.has(key)) await caches.delete(key);
       }
@@ -81,6 +93,11 @@ self.addEventListener("fetch", (event) => {
   // The API is always live; never serve it from a cache.
   if (url.pathname.startsWith("/api/")) return;
   if (url.protocol === "chrome-extension:") return;
+  // The credential mirror is SW-private state, not a served resource. The
+  // offline fallback below reaches for `caches.match()`, which searches EVERY
+  // cache — so leave this url to the network (a 404) rather than let a failed
+  // request be answered out of CRED_CACHE.
+  if (url.pathname === CRED_URL) return;
 
   // Navigations: network-first, so a fresh shell (and its new asset hashes) wins
   // online; fall back to the cached shell offline (the PWA still opens).
@@ -201,6 +218,90 @@ self.addEventListener("notificationclick", (event) => {
       if (!self.clients.openWindow) return;
       const opened = await self.clients.openWindow(url).catch(() => null);
       if (opened && "focus" in opened) await opened.focus().catch(() => {});
+    })(),
+  );
+});
+
+// ---- Subscription rotation ----
+
+// base64url VAPID key -> the Uint8Array applicationServerKey expects. Mirrors
+// client/util/push.ts's copy; the SW can't import from the bundle.
+const vapidKeyBytes = (base64) => {
+  const padded = base64.replace(/-/g, "+").replace(/_/g, "/") +
+    "=".repeat((4 - (base64.length % 4)) % 4);
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+};
+
+const readCredential = async () => {
+  try {
+    const cache = await caches.open(CRED_CACHE);
+    const hit = await cache.match(CRED_URL);
+    return hit ? (await hit.text()).trim() || null : null;
+  } catch {
+    return null;
+  }
+};
+
+const callApi = async (method, credential, body) =>
+  fetch(`/api/${method}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: credential },
+    body: JSON.stringify(body),
+  });
+
+// The browser can retire a push subscription on its own — Chrome on Android does
+// it after a Play Services re-registration, a browser update, or a long idle
+// stretch, and it's also how a userVisibleOnly budget revocation surfaces. The
+// endpoint we hold server-side is dead from that moment: sends 410 and the
+// fan-out prunes the row (server/util/notify.ts), leaving a player whose
+// preference toggles still read "on" receiving nothing.
+//
+// Without this handler the only recovery was syncPushSubscription() the next
+// time the app was OPENED — and a daily-final push is often the thing that would
+// have brought the player back, so the failure is self-sustaining. Re-subscribe
+// and re-register here, while the SW is awake and holding the event.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      const credential = await readCredential();
+      // No mirrored credential (the page has never run the current client) or no
+      // server key: nothing useful to do. The next app open re-registers.
+      if (!credential || !VAPID_PUBLIC_KEY) return;
+
+      try {
+        // Chrome fires this event WITHOUT populating newSubscription, so the
+        // common path is to mint one ourselves; Firefox hands one over. Either
+        // way the old subscription is already invalid by the time we're called.
+        const sub = event.newSubscription ||
+          await self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: vapidKeyBytes(VAPID_PUBLIC_KEY),
+          });
+        const json = sub.toJSON();
+        if (
+          !json.endpoint || !json.keys || !json.keys.p256dh || !json.keys.auth
+        ) return;
+
+        await callApi("subscribePush", credential, {
+          endpoint: json.endpoint,
+          keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+        });
+
+        // Drop the dead row when the browser told us which one it was. Chrome
+        // usually doesn't, and that's fine: the stale endpoint 410s on the next
+        // send and the fan-out prunes it then.
+        const old = event.oldSubscription && event.oldSubscription.endpoint;
+        if (old && old !== json.endpoint) {
+          await callApi("unsubscribePush", credential, { endpoint: old })
+            .catch(() => {});
+        }
+      } catch {
+        // Best-effort: permission revoked, offline, or the push service refused.
+        // syncPushSubscription() retries on the next app open.
+      }
     })(),
   );
 });

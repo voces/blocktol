@@ -4929,6 +4929,39 @@ a:hover {
   margin-top: 1px;
 }
 
+/* Why push isn't arriving, shown above the toggles when this device can't
+   actually deliver (blocked permission, no push support). Amber rather than red:
+   in-app notifications still work, so this is a degraded state, not a failure. */
+.push-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 4px 0 2px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.push-notice__text {
+  flex: 1;
+  min-width: 0;
+  font: 500 12px var(--font);
+  color: var(--warn);
+}
+
+.push-notice__action {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  background: transparent;
+  font: 600 12px var(--font);
+  color: var(--warn);
+  cursor: pointer;
+}
+
 /* On/off switch. */
 .switch {
   flex: none;

@@ -671,6 +671,22 @@
     "message": "A day you played locks its ranks",
     "description": "Push-preference row subtext for daily finalization."
   },
+  "profile.pushBlocked": {
+    "message": "Notifications are blocked in your browser or device settings",
+    "description": "Warning under the push-notification toggles: the browser (or the OS) has blocked notification permission, so nothing can be delivered even though the toggles are on."
+  },
+  "profile.pushAllow": {
+    "message": "Allow notifications to get these on this device",
+    "description": "Warning under the push-notification toggles: the player turned a preference on but has never granted notification permission. Accompanied by an Allow button."
+  },
+  "profile.pushAllowAction": {
+    "message": "Allow",
+    "description": "Button label that asks the browser for notification permission."
+  },
+  "profile.pushUnavailable": {
+    "message": "Push notifications aren't available on this device",
+    "description": "Warning under the push-notification toggles: this browser has no push support, or push isn't configured, so only in-app notifications will arrive."
+  },
   "profile.preferences": {
     "message": "Preferences",
     "description": "Section title for the appearance/zoom preferences."

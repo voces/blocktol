@@ -6,9 +6,23 @@
 //   - VAPID_SUBJECT      — a mailto: (or https:) contact the push services require
 //
 // Set the three as environment variables on the deployment (mark the private key
-// secret). Until they're set, notifications stay in-app only. Rotating the keys
-// invalidates existing subscriptions; the server prunes the dead ones as sends
-// 404/410 and clients re-subscribe on next load.
+// secret). Until they're set, notifications stay in-app only — silently: with no
+// key, /api/pushConfig answers `{publicKey:null}`, the client can't subscribe,
+// and notifyDailyFinals/notifyLostTop return before attempting a single send, so
+// NOTHING about the missing config appears in the logs. `curl -X POST
+// <host>/api/pushConfig -d '{}'` is the check; a null there means push is off.
+//
+// ROTATING the keys invalidates every existing subscription. This used to claim
+// the server prunes those "as sends 404/410 and clients re-subscribe on next
+// load" — it does not, and that assumption is exactly why a rotation was
+// undiagnosable. A subscription minted under a retired key fails with **403**,
+// which is neither 404 nor 410, so the fan-out does NOT prune it: the row
+// survives indefinitely and the client used to re-register the same dead
+// endpoint on every boot. Recovery is client-side — `keyMatches` in
+// client/util/push.ts compares the subscription's applicationServerKey against
+// this one and re-subscribes on a mismatch. So prefer restoring the ORIGINAL
+// pair over minting a new one: same keys means every live subscription keeps
+// working with no re-subscribe at all.
 //
 // Needs no permissions (WebCrypto only):
 //   deno run scripts/genVapidKeys.ts [mailto:you@example.com]
