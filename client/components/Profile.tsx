@@ -29,8 +29,13 @@ import { Modal } from "./Modal.tsx";
 import { MoveDevice } from "./MoveDevice.tsx";
 import { DeleteAccount } from "./DeleteAccount.tsx";
 import { Crown, Flag } from "./Notifications/icons.tsx";
-import { pushPermission, requestPushPermission } from "../util/push.ts";
+import {
+  pushPermission,
+  pushState,
+  requestPushPermission,
+} from "../util/push.ts";
 import type { NotificationPrefs, Theme } from "../../common/settings.ts";
+import type { PushStatus } from "../util/push.ts";
 import { locales, type MessageKey } from "../../common/i18n.ts";
 import { t } from "../util/t.ts";
 
@@ -255,6 +260,35 @@ const Stat = (
     <div class="profile-stat__label">{label}</div>
   </div>
 );
+
+// Why a preference that reads "on" still delivers nothing. The toggles are
+// stored settings that gate the SERVER's send decision; whether THIS device can
+// receive is separate state it never reflected, so a blocked permission or a
+// browser without push looked identical to a working setup. pushState carries
+// the real answer (client/util/push.ts).
+const PushNotice = ({ state }: { state: PushStatus }) => {
+  if (state === "ok" || state === "unknown") return null;
+  return (
+    <div class="push-notice">
+      <span class="push-notice__text">
+        {state === "denied"
+          ? t("profile.pushBlocked")
+          : state === "prompt"
+          ? t("profile.pushAllow")
+          : t("profile.pushUnavailable")}
+      </span>
+      {state === "prompt" && (
+        <button
+          type="button"
+          class="push-notice__action tapc"
+          onClick={() => requestPushPermission()}
+        >
+          {t("profile.pushAllowAction")}
+        </button>
+      )}
+    </div>
+  );
+};
 
 // One notification preference row: an icon tile, its copy, and an on/off switch.
 const NotifRow = (
@@ -529,6 +563,9 @@ const ProfileDialog = (
 
       <div class="pref">
         <div class="section-title">{t("profile.pushNotifications")}</div>
+        {(settings.notifications.lostTop ||
+          settings.notifications.dailyFinal) &&
+          <PushNotice state={pushState.value} />}
         <NotifRow
           icon={<Crown />}
           accent="var(--gold)"

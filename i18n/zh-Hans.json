@@ -711,9 +711,25 @@
     "message": "隐私与我们收集的数据",
     "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
   },
+  "profile.pushAllow": {
+    "message": "允许通知，即可在此设备上接收",
+    "hash": "4202221defaee9351b8ab3b07dc201b5ec702faef20b208fd27ccf8763ead250"
+  },
+  "profile.pushAllowAction": {
+    "message": "允许",
+    "hash": "e213c161d5cefa520c8dd4155c9569076d9a40406111465136a6f1b207045761"
+  },
+  "profile.pushBlocked": {
+    "message": "通知已在你的浏览器或设备设置中被阻止",
+    "hash": "5dc86da0b6fecfe3f0be2f0511f907bab2746e0d4b1f1f2d5d42182415db7863"
+  },
   "profile.pushNotifications": {
     "message": "推送通知",
     "hash": "a1fa4443fe4abe63d6a29c433e4e8f23604c6bda89d6cec04bc261b5021f74e4"
+  },
+  "profile.pushUnavailable": {
+    "message": "此设备不支持推送通知",
+    "hash": "9c66ae348ae100dbfb6f4d979ada041ab5cdaf534c1e6073261ab0d7f2031e9f"
   },
   "profile.rating": {
     "message": "评分",

@@ -604,6 +604,41 @@ in-app copy localize from one source. In-app notifications are always written;
 push delivery is opt-in per kind (`common/settings.ts`) and needs VAPID keys
 set. `public/sw.js` is the service worker.
 
+**A push subscription dies quietly, so three things keep it alive.** The
+per-kind toggles are stored SETTINGS that gate the server's send decision — they
+say nothing about whether a device can still receive, which is why "toggled on
+but nothing arrives" was the shape of every report here.
+
+- **Rotation.** The browser retires subscriptions on its own (Chrome on Android
+  after a Play Services re-registration, a browser update, a long idle stretch,
+  or a `userVisibleOnly` budget revocation) and signals it with
+  `pushsubscriptionchange`. The SW handles it: it re-subscribes and re-registers
+  against the server there and then. It can't reach `localStorage` for the
+  device credential and there's no page open to ask, so `client/util/push.ts`
+  mirrors the id into **Cache Storage** (`blocktol-cred`, kept in the SW's
+  `activate` keep-set) — two same-origin stores, no new exposure. The VAPID
+  public key is likewise **injected into `sw.js`** by `util/assets.ts`, beside
+  the asset manifest, since `/api/pushConfig` isn't reachable without a page.
+  Without this the only recovery was the next app OPEN, and a daily-final push
+  is often what would have prompted one — the failure sustained itself.
+- **Key rotation.** A subscription minted under a retired VAPID key is
+  permanently undeliverable: the push service answers **403**, which is _not_
+  the 404/410 the fan-out prunes on, so the row survives forever and the client
+  cheerfully re-registers the same dead endpoint every boot. `subscribePush` now
+  compares the existing subscription's `applicationServerKey` against the
+  server's current one (`keyMatches`) and replaces it on a mismatch, dropping
+  the stale row server-side too. The send path deliberately **does not prune on
+  403** — unlike a 410 it's equally consistent with a misconfigured key pair,
+  and pruning would delete every subscription in one sweep; it logs
+  `push send rejected (vapid key)` instead.
+- **Honesty in the UI.** `pushState` (`client/util/push.ts`) carries what this
+  device can actually do — `ok` / `prompt` / `denied` / `unavailable` — and
+  Profile renders it above the toggles, so a blocked permission or a browser
+  without push says so instead of showing a switch that reads "on" and means
+  nothing. It reflects what the BROWSER reports; an OS-level block the browser
+  doesn't mirror (a revoked Android `POST_NOTIFICATIONS` grant) still reads as
+  `ok`.
+
 **Discord results webhook (`util/discordResults.ts`):** a player-facing channel
 mirror, separate from `adminAlert`'s operator pings. Three posts, all rich
 embeds in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with

@@ -285,10 +285,24 @@ export const sendPush = async (
     await res.arrayBuffer().catch(() => {});
     const gone = res.status === 404 || res.status === 410;
     if (!res.ok && !gone) {
-      log.error("push send failed", {
-        status: res.status,
-        endpoint: sub.endpoint.slice(0, 60),
-      });
+      // A 403 is specifically "this subscription wasn't minted under the VAPID
+      // key signing this request" — i.e. the keys were rotated out from under
+      // it, and the endpoint is permanently undeliverable. Deliberately NOT
+      // pruned: unlike a 410 (the push service disowning one endpoint), a 403
+      // is equally consistent with a misconfigured key pair, and pruning on it
+      // would delete every subscription in a single sweep. The client detects
+      // the mismatch against /api/pushConfig and re-subscribes on its next boot
+      // (client/util/push.ts `keyMatches`); this log is how the rotation shows
+      // up in the meantime.
+      log.error(
+        res.status === 403
+          ? "push send rejected (vapid key)"
+          : "push send failed",
+        {
+          status: res.status,
+          endpoint: sub.endpoint.slice(0, 60),
+        },
+      );
     }
     return { ok: res.ok, gone, status: res.status };
   } catch (err) {

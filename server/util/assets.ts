@@ -3,7 +3,8 @@
 // assets once (lazily, on first request) and:
 //   - serve the app shell / manifest with `?v=<hash>` stamped onto their asset
 //     refs, so a content change becomes a NEW url no cache can answer staleley;
-//   - inject the version + precache list + notification-icon url into the SW;
+//   - inject the version + precache list + notification-icon url + VAPID public
+//     key into the SW;
 //   - mark any correctly-versioned asset immutable for a year, while the shell,
 //     SW, and manifest stay no-cache so new hashes always propagate.
 //
@@ -12,6 +13,7 @@
 // the SW cache, the push notification — kept serving from cache.
 
 import { join } from "@std/path/posix";
+import { getVapidPublicKey } from "./webpush.ts";
 
 // Same-origin assets whose url should carry a content hash. Everything else
 // (the shell, manifest, SW, the standalone debug pages) stays unversioned.
@@ -54,6 +56,11 @@ export const immutableFor = (
 export const stampAssets = (
   sources: { indexHtml: string; manifest: string; sw: string },
   version: VersionMap,
+  // The server's VAPID public key, injected into the SW so it can re-subscribe
+  // on `pushsubscriptionchange` with no page open to fetch it from
+  // /api/pushConfig. Public by definition (it's the applicationServerKey every
+  // client already holds). "" when push isn't configured.
+  vapidPublicKey: string | null = null,
 ): { shell: string; sw: string; manifest: string } => {
   const v = (p: string) => versioned(version, p);
 
@@ -87,6 +94,7 @@ export const stampAssets = (
       `ASSET_VERSION = ${JSON.stringify(assetVersion)};`,
       `PRECACHE = ${JSON.stringify(precache)};`,
       `ICON = ${JSON.stringify(v("/favicon.svg"))};`,
+      `VAPID_PUBLIC_KEY = ${JSON.stringify(vapidPublicKey ?? "")};`,
     ].join("\n"),
   );
 
@@ -124,7 +132,11 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
     readText("manifest.webmanifest"),
     readText("sw.js"),
   ]);
-  const stamped = stampAssets({ indexHtml, manifest, sw }, version);
+  const stamped = stampAssets(
+    { indexHtml, manifest, sw },
+    version,
+    getVapidPublicKey(),
+  );
 
   return {
     ...stamped,
