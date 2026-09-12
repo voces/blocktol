@@ -639,6 +639,21 @@ but nothing arrives" was the shape of every report here.
   doesn't mirror (a revoked Android `POST_NOTIFICATIONS` grant) still reads as
   `ok`.
 
+**Reading the push path in VictoriaLogs.** A successful send logs **nothing**,
+so an empty result for `"push send"` means "nothing failed", NOT "nothing was
+sent" — and remember telemetry only runs on the co-located instance, so an
+un-instrumented Deno Deploy process logs nothing either way. The positive
+signals are the two fan-out summaries, `daily-final notifications` and
+`lost-top notification` (both carry a `pushes` count; `pushes=0` is "opted in,
+but no live subscription"), and `push subscription pruned` — the one line a
+dying row now emits, since a 410 prune was previously silent and is exactly how
+a device goes quiet. Failures are `push send failed`,
+`push send rejected (vapid
+key)` (a rotated key — see above), `push send error`,
+and `push fan-out error`. Nothing is extracted at ingest, so filter on raw text
+first and unpack after:
+`_time:30d "daily-final notifications" | unpack_logfmt | fields _time, iteration, inApp, pushes`.
+
 **Discord results webhook (`util/discordResults.ts`):** a player-facing channel
 mirror, separate from `adminAlert`'s operator pings. Three posts, all rich
 embeds in the game's gold/chartreuse palette (`SUPREME_COLOR`/`PEAK_COLOR`) with

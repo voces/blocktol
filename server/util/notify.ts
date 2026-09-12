@@ -61,6 +61,15 @@ const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
   try {
     const res = await sendPush(sub, payload);
     if (res.gone) {
+      // Deleting a device's last subscription is the exact moment its player
+      // stops receiving anything while their preference toggles still read
+      // "on" — and it used to happen in total silence, which is why the state
+      // was undiagnosable from the logs. One line, only when a row actually
+      // dies.
+      log.info("push subscription pruned", {
+        status: res.status,
+        endpoint: sub.endpoint.slice(0, 60),
+      });
       await deleteSubscription(await sha256hex(sub.endpoint)).catch(() => {});
     }
   } catch (err) {
@@ -107,6 +116,11 @@ export const notifyLostTop = async (
       ),
       PUSH_CONCURRENCY,
     );
+    // The counterpart to notifyDailyFinals' summary below. Without it a
+    // lost-top push was invisible unless it failed, so "was anything even
+    // attempted for this player?" had no answer. `pushes: 0` is the
+    // interesting case — opted in, but no live subscription to send to.
+    log.info("lost-top notification", { iteration, pushes: subs.length });
   } catch (err) {
     log.error("notifyLostTop failed", { error: errText(err) });
   }
