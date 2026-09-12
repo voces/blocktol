@@ -790,7 +790,15 @@ configuring that connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any
 non-empty value skips registering the `ensure-iterations`/`rate-dailies` crons —
 for a second instance on the shared DB),
 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
-`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app), and
+`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app —
+**silently**, and this has bitten prod once: with no key `/api/pushConfig`
+answers `{publicKey:null}`, clients can't subscribe, and the notify paths return
+before attempting a send, so nothing at all reaches the logs while the player's
+preference toggles still read "on". `curl -X POST <host>/api/pushConfig -d '{}'`
+is the check. Carrying the env across a host migration is the failure mode —
+existing `push_subscription` rows survive it untouched, since nothing ever sends
+and so nothing ever prunes. Restore the ORIGINAL pair where possible: new keys
+invalidate every live subscription with a 403, which is not pruned), and
 `DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
 alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset =
 alerts are no-ops), and `DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results
