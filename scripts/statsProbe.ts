@@ -13,10 +13,16 @@
 // so "median percentile" here is the same number the profile shows today and the
 // before/after of a redesign is a fair comparison.
 //
-// The headline output is FIELD SIZE PER DAILY. Percentile-shaped stats need a
-// field; par-shaped stats (standing vs the best known time) do not. Which family
-// to build on is really a question about that one histogram, and it is the one
-// number heats change the most.
+// Read this as a snapshot of the game under ONE shared field. Once heats have
+// their own mazes, a puzzle's field IS its heat and nothing outside it ever plays
+// that board, so the field-size histogram below stops being a measurement and
+// becomes a product decision (whatever heat sizes you get) — treat it as the
+// upper bound a heat could reach, not as a prediction.
+//
+// What DOES transfer is everything shaped by the game rather than the field: the
+// spread of `standing`, how often a top time is shared, attempts-to-best, and
+// streaks. Those are properties of the puzzle design and carry into any heat
+// size, so they are the numbers worth calibrating a stat against.
 
 import { sql } from "../server/db/query.ts";
 
@@ -190,10 +196,11 @@ summarize("played (dailies)", playedRows.map((r) => Number(r.played)), (n) => St
 
 // `standing(time, min, best)` from common/standing.ts: where your best build
 // falls in the range between the unobstructed floor and the best time anyone has
-// posted on that puzzle. Field-size independent — it is defined for a field of
-// one — which is exactly why it survives heats where percentile does not. This
-// is the calibration for a "% of par" stat: if the spread here is wide, the stat
-// separates players; if everyone sits at 0.97, it does not.
+// posted on that puzzle. Here `best` is the observed maximum, which is the only
+// ceiling available today — but with per-heat mazes an observed ceiling is just
+// the heat's own best, so this is really a stand-in for a COMPUTED par stored on
+// the iteration. The spread is what matters either way: wide means a "% of par"
+// stat separates players, everyone at 0.97 means it does not.
 section("PAR-SHAPED: standing vs the best known time (all runs, free play included)");
 
 const standings = await sql<{ user: string; iteration: number; own: number; best: number; min: number }[]>`
