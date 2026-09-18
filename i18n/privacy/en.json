@@ -1,0 +1,198 @@
+{
+  "privacy.docTitle": {
+    "message": "Privacy & data — Blocktol",
+    "description": "The privacy page's browser-tab title. The \"&\" is a literal ampersand."
+  },
+  "privacy.back": {
+    "message": "Back to Blocktol",
+    "description": "Link at the top of the privacy page that returns to the game."
+  },
+  "privacy.title": {
+    "message": "Privacy & the data we collect",
+    "description": "The privacy page's main heading. The \"&\" is a literal ampersand."
+  },
+  "privacy.updated": {
+    "message": "Last updated {date}",
+    "description": "Under the heading: when the English policy text last changed. {date} is an already-localized date, e.g. \"17 September 2026\"."
+  },
+  "privacy.history": {
+    "message": "Change history",
+    "description": "Link beside the last-updated date to the public record (on GitHub) of every change ever made to this page's English text."
+  },
+  "privacy.translated": {
+    "message": "This page was translated automatically from English. If the two ever differ, the English version applies.",
+    "description": "Notice shown on every translated (non-English) copy of the privacy page."
+  },
+  "privacy.readEnglish": {
+    "message": "Read the English version",
+    "description": "Link after the translation notice to the English original of the page."
+  },
+  "privacy.intro": {
+    "message": "Blocktol is a daily maze-building game with no accounts — no sign-up, no email, no password. This page explains exactly what we store, why, and how you can get a copy of it or delete it.",
+    "description": "The privacy page's opening paragraph."
+  },
+  "privacy.who.heading": {
+    "message": "Who you are to us",
+    "description": "Section heading: how the game identifies a player without an account."
+  },
+  "privacy.who.body": {
+    "message": "When you first open the game your device generates a random anonymous ID and keeps it in your browser's local storage. That ID is how we recognise your builds and stats across visits. We don't know your name (unless you type a display name), your email, or your identity — just this random ID.",
+    "description": "Explains the anonymous per-device ID."
+  },
+  "privacy.store.heading": {
+    "message": "What we store",
+    "description": "Section heading for the list of stored data. Each list item is a short term followed by its explanation."
+  },
+  "privacy.store.id.term": {
+    "message": "Your anonymous ID",
+    "description": "Stored-data list item term."
+  },
+  "privacy.store.id.detail": {
+    "message": "The random identifier described above.",
+    "description": "Explanation for the \"Your anonymous ID\" list item."
+  },
+  "privacy.store.name.term": {
+    "message": "Display name",
+    "description": "Stored-data list item term: the name shown on leaderboards."
+  },
+  "privacy.store.name.detail": {
+    "message": "A random one to start; you can change it.",
+    "description": "Explanation for the \"Display name\" list item."
+  },
+  "privacy.store.gameplay.term": {
+    "message": "Your gameplay",
+    "description": "Stored-data list item term."
+  },
+  "privacy.store.gameplay.detail": {
+    "message": "The mazes you build, their times, and which attempts counted, so we can score the daily and show leaderboards. This includes any flags you place on a board to break a run into splits.",
+    "description": "Explanation for the \"Your gameplay\" list item. \"daily\", \"flags\", and \"splits\" are game terms (see the glossary)."
+  },
+  "privacy.store.prefs.term": {
+    "message": "Preferences",
+    "description": "Stored-data list item term: the player's settings."
+  },
+  "privacy.store.prefs.detail": {
+    "message": "Theme, language, zoom, and notification settings.",
+    "description": "Explanation for the \"Preferences\" list item."
+  },
+  "privacy.store.rating.term": {
+    "message": "Rating",
+    "description": "Stored-data list item term: the player's skill rating."
+  },
+  "privacy.store.rating.detail": {
+    "message": "Your ELO-style score across the days you've played.",
+    "description": "Explanation for the \"Rating\" list item. Keep \"ELO\" as-is."
+  },
+  "privacy.store.locale.term": {
+    "message": "Language",
+    "description": "Stored-data list item term: the player's language/region setting."
+  },
+  "privacy.store.locale.detail": {
+    "message": "The language you pick in the game, or your browser's, so notifications read in your language. Your timezone is used while you play to pick the right daily, but is not stored.",
+    "description": "Explanation for the \"Language\" list item."
+  },
+  "privacy.store.push.term": {
+    "message": "Push subscriptions",
+    "description": "Stored-data list item term: the browser's push-notification registration."
+  },
+  "privacy.store.push.detail": {
+    "message": "Only if you turn on notifications: the browser push endpoint needed to deliver them.",
+    "description": "Explanation for the \"Push subscriptions\" list item."
+  },
+  "privacy.store.diagnostics.term": {
+    "message": "Diagnostics",
+    "description": "Stored-data list item term: server logs and performance traces."
+  },
+  "privacy.store.diagnostics.detail": {
+    "message": "To keep the game fast and reliable, our servers record performance traces and error logs. These may include a scrambled (one-way hashed) version of your anonymous ID — never your name or the ID itself — so we can follow a single session when debugging. They live on our own infrastructure and are automatically deleted after about 30 days.",
+    "description": "Explanation for the \"Diagnostics\" list item."
+  },
+  "privacy.cookies.heading": {
+    "message": "Cookies",
+    "description": "Section heading."
+  },
+  "privacy.cookies.body": {
+    "message": "We don't use cookies, and we don't run any advertising or third-party tracking. The only thing stored on your device is the functional data the game needs to work (your ID, your in-progress build, and your settings), so there is no cookie banner to click through.",
+    "description": "The cookies section's text."
+  },
+  "privacy.others.heading": {
+    "message": "Who else sees it",
+    "description": "Section heading: which outside services process any data. Each list item is a short term followed by its explanation."
+  },
+  "privacy.others.intro": {
+    "message": "Our own servers and database run the game. Beyond that, a small number of services may process limited data on our behalf:",
+    "description": "Lead-in to the list of outside services; ends with a colon because the list follows."
+  },
+  "privacy.others.push.term": {
+    "message": "Push delivery",
+    "description": "Outside-services list item term."
+  },
+  "privacy.others.push.detail": {
+    "message": "If you enable notifications, your browser's push service (for example Google, Mozilla, or Apple) delivers them.",
+    "description": "Explanation for the \"Push delivery\" list item."
+  },
+  "privacy.others.fonts.term": {
+    "message": "Fonts",
+    "description": "Outside-services list item term."
+  },
+  "privacy.others.fonts.detail": {
+    "message": "The game's typeface is loaded from Google Fonts.",
+    "description": "Explanation for the \"Fonts\" list item. Keep \"Google Fonts\" as-is."
+  },
+  "privacy.others.discord.term": {
+    "message": "Discord",
+    "description": "Outside-services list item term: the Discord chat service. Keep \"Discord\" as-is."
+  },
+  "privacy.others.discord.detail": {
+    "message": "Each day's top results — display names and times — are posted to the Blocktol Discord server.",
+    "description": "Explanation for the \"Discord\" list item: the game automatically posts leaderboard winners to its community Discord server."
+  },
+  "privacy.others.never": {
+    "message": "We never sell your data, and we don't use it for advertising.",
+    "description": "Closing sentence of the outside-services section."
+  },
+  "privacy.rights.heading": {
+    "message": "Your rights",
+    "description": "Section heading: exporting or deleting your data."
+  },
+  "privacy.rights.intro": {
+    "message": "You can do both of these yourself, any time, from {place} in the game:",
+    "description": "Lead-in to the two cards (export / delete) below; ends with a colon. {place} is the in-game menu path, already localized, e.g. \"Profile → Account\"."
+  },
+  "privacy.rights.export.body": {
+    "message": "Downloads a JSON file with everything we hold about you — your profile, every run, your flags, your notifications, and your push subscriptions.",
+    "description": "Card text under the \"Export my data\" heading."
+  },
+  "privacy.rights.delete.body": {
+    "message": "Permanently removes your profile, name, preferences, flags, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player — with no way to connect them back to you — so the historical results of days other people competed in aren't rewritten. This can't be undone, and your device starts over as a brand-new player.",
+    "description": "Card text under the \"Delete my data\" heading."
+  },
+  "privacy.rights.open": {
+    "message": "Open in Blocktol",
+    "description": "Link at the bottom of each rights card that opens the game straight at that action."
+  },
+  "privacy.retention.heading": {
+    "message": "How long we keep it",
+    "description": "Section heading: data retention."
+  },
+  "privacy.retention.body": {
+    "message": "Your profile and builds are kept while you keep playing, so your stats and history stay intact. Delete your data (above) to remove them sooner. Diagnostic traces and logs are short-lived — automatically deleted after about 30 days.",
+    "description": "The retention section's text."
+  },
+  "privacy.contact.heading": {
+    "message": "Contact",
+    "description": "Section heading."
+  },
+  "privacy.contact.body": {
+    "message": "Questions about privacy? Email {email} or ask in the {discord}.",
+    "description": "{email} is the contact email address and {discord} is a link whose text is the untranslated name \"Blocktol Discord\" (the game's community chat server); arrange the sentence around them as your language needs."
+  },
+  "privacy.languages": {
+    "message": "Language",
+    "description": "Accessible label for the row of links at the bottom of the privacy page that switch it to another language."
+  },
+  "privacy.footer": {
+    "message": "Blocktol — a daily maze-building game.",
+    "description": "The privacy page's footer line."
+  }
+}

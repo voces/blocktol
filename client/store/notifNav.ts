@@ -52,6 +52,30 @@ export const entryIsPastDayLink = entryDay !== null &&
     localDay(),
   );
 
+// `?profile=account|delete` — a link into the Profile dialog at its Account
+// section, or straight to the delete-confirm sheet. The privacy page's rights
+// cards link here, so a player reading the page can act on it without hunting
+// for the controls. Read from the entry snapshot like the day link, and taken
+// once by Profile when it's able to open (see takeProfileRequest).
+export type ProfileRequest = "account" | "delete";
+const entryProfile = new URLSearchParams(entrySearch).get("profile");
+let profileRequest: ProfileRequest | null =
+  entryProfile === "account" || entryProfile === "delete" ? entryProfile : null;
+
+// Hand the pending request over exactly once, dropping the param from the bar
+// so a refresh doesn't reopen the sheet. (The dock's syncViewUrl would usually
+// rewrite the bar anyway, but only once it mounts, and only while it's
+// tracking a day.)
+export const takeProfileRequest = (): ProfileRequest | null => {
+  const req = profileRequest;
+  if (!req) return null;
+  profileRequest = null;
+  const url = new URL(location.href);
+  url.searchParams.delete("profile");
+  history.replaceState(history.state, "", url.pathname + url.search);
+  return req;
+};
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
 // Reflect the current view in the URL (replaceState — no history entry, so Back

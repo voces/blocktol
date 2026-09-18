@@ -6,6 +6,7 @@
 // new adapter — the batching/planning/validation below is vendor-agnostic.
 
 import {
+  CATALOGS,
   loadConfig,
   readJson,
   requiredPluralCategories,
@@ -22,6 +23,8 @@ export type TranslateRequest = {
   locale: string;
   entries: { key: string; message: string; description?: string }[];
   glossary: Glossary;
+  // The catalog's own register guidance (CatalogSpec.brief), if it has one.
+  brief?: string;
   // Validation errors from a previous attempt, fed back so the model self-corrects.
   notes?: string[];
 };
@@ -56,6 +59,7 @@ export const translateLocale = async (
   en: SourceCatalog,
   existing: TargetCatalog,
   glossary: Glossary,
+  brief?: string,
 ): Promise<TargetCatalog | null> => {
   const stale = await staleKeys(en, existing);
   const pruned = Object.keys(existing).some((k) => !(k in en));
@@ -80,6 +84,7 @@ export const translateLocale = async (
         locale,
         entries,
         glossary,
+        brief,
         notes,
       });
       const errors: string[] = [];
@@ -149,6 +154,7 @@ const userPrompt = (req: TranslateRequest): string => {
       cats.join(", ")
     } (plus any =N you keep from the source).`,
   ];
+  if (req.brief) lines.push(req.brief);
   if (req.notes?.length) {
     lines.push(
       `Your previous attempt had these problems — fix them:\n${
@@ -197,26 +203,28 @@ export const makeAnthropicTranslator = (): Translator => ({
 
 if (import.meta.main) {
   const { targets } = await loadConfig();
-  const en = await readJson<SourceCatalog>("en.json");
   const glossary = await readJson<Glossary>("glossary.json").catch(() => ({}));
   const translator = makeAnthropicTranslator();
   let wrote = 0;
-  for (const locale of targets) {
-    const existing = await readJson<TargetCatalog>(`${locale}.json`).catch(
-      () => ({}),
-    );
-    const next = await translateLocale(
-      translator,
-      locale,
-      en,
-      existing,
-      glossary,
-    );
-    if (next) {
-      await writeCatalog(locale, next);
-      console.log(`i18n:translate wrote i18n/${locale}.json`);
-      wrote++;
-    } else console.log(`i18n:translate ${locale} up to date`);
+  for (const { dir, brief } of CATALOGS) {
+    const en = await readJson<SourceCatalog>(`${dir}en.json`);
+    for (const locale of targets) {
+      const existing = await readJson<TargetCatalog>(`${dir}${locale}.json`)
+        .catch(() => ({}));
+      const next = await translateLocale(
+        translator,
+        locale,
+        en,
+        existing,
+        glossary,
+        brief,
+      );
+      if (next) {
+        await writeCatalog(dir, locale, next);
+        console.log(`i18n:translate wrote i18n/${dir}${locale}.json`);
+        wrote++;
+      } else console.log(`i18n:translate ${dir}${locale} up to date`);
+    }
   }
-  console.log(`i18n:translate done — ${wrote} locale(s) updated`);
+  console.log(`i18n:translate done — ${wrote} catalog(s) updated`);
 }

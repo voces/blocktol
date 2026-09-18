@@ -103,21 +103,54 @@ export const renderMessage = (
   return out;
 };
 
+// Match any BCP-47 tag against a set of catalog locales — exact tag, then
+// language-only prefix — or undefined when neither hits. Generic over the set so
+// a separately-compiled catalog (the server's privacy page) negotiates exactly
+// the way the app catalog does.
+export const matchLocale = <L extends string>(
+  locale: string | undefined,
+  available: readonly L[],
+): L | undefined => {
+  if (!locale) return undefined;
+  let canon = locale;
+  try {
+    canon = Intl.getCanonicalLocales(locale)[0] ?? locale;
+  } catch { /* malformed tag — fall through to the prefix match */ }
+  const lower = canon.toLowerCase();
+  for (const l of available) if (l.toLowerCase() === lower) return l;
+  const lang = lower.split("-")[0];
+  for (const l of available) {
+    if (l.toLowerCase().split("-")[0] === lang) return l;
+  }
+  return undefined;
+};
+
 // Resolve any BCP-47 tag (a viewer's runtime locale, a stored `user.locale`) to
 // a supported catalog locale — exact tag, then language-only prefix, then `en`.
 // The full tag still drives Intl formatting inside the message, so an `en-GB`
 // viewer gets `en` copy with British number/date conventions for free.
-export const resolveCatalog = (locale: string | undefined): Locale => {
-  if (!locale) return "en";
-  let canon = locale;
-  try {
-    canon = Intl.getCanonicalLocales(locale)[0] ?? locale;
-  } catch { /* malformed tag — fall through to prefix / en */ }
-  const lower = canon.toLowerCase();
-  for (const l of locales) if (l.toLowerCase() === lower) return l;
-  const lang = lower.split("-")[0];
-  for (const l of locales) if (l.toLowerCase().split("-")[0] === lang) return l;
-  return "en";
+export const resolveCatalog = (locale: string | undefined): Locale =>
+  matchLocale(locale, locales) ?? "en";
+
+// A language's name in its own tongue (endonym) — "Español", "日本語",
+// "Português (Brasil)" — for a language picker, which must be readable by
+// someone who doesn't read the current UI language. DisplayNames can lowercase
+// some (French, Spanish), so uppercase the first letter. Cached; Intl
+// constructors aren't free.
+const endonymCache = new Map<string, string>();
+export const endonym = (tag: string): string => {
+  let v = endonymCache.get(tag);
+  if (v === undefined) {
+    try {
+      const name = new Intl.DisplayNames(tag, { type: "language" }).of(tag) ??
+        tag;
+      v = name.charAt(0).toUpperCase() + name.slice(1);
+    } catch {
+      v = tag;
+    }
+    endonymCache.set(tag, v);
+  }
+  return v;
 };
 
 // Resolve a key to its compiled AST in the best-matching catalog, falling back

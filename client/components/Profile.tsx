@@ -36,27 +36,14 @@ import {
 } from "../util/push.ts";
 import type { NotificationPrefs, Theme } from "../../common/settings.ts";
 import type { PushStatus } from "../util/push.ts";
-import { locales, type MessageKey } from "../../common/i18n.ts";
-import { t } from "../util/t.ts";
-
-// A language's name in its own tongue (endonym), for the picker — "Español",
-// "日本語", "Português (Brasil)". DisplayNames can lowercase some (French,
-// Spanish), so uppercase the first letter. Cached; Intl constructors aren't free.
-const endonymCache = new Map<string, string>();
-const endonym = (tag: string): string => {
-  let v = endonymCache.get(tag);
-  if (v === undefined) {
-    try {
-      const name = new Intl.DisplayNames(tag, { type: "language" }).of(tag) ??
-        tag;
-      v = name.charAt(0).toUpperCase() + name.slice(1);
-    } catch {
-      v = tag;
-    }
-    endonymCache.set(tag, v);
-  }
-  return v;
-};
+import {
+  endonym,
+  locales,
+  type MessageKey,
+  resolveCatalog,
+} from "../../common/i18n.ts";
+import { t, uiLocale } from "../util/t.ts";
+import { takeProfileRequest } from "../store/notifNav.ts";
 
 // A compact custom language dropdown. A native <select> sizes to its widest
 // option (so the chevron floats far right of a short value like "System") and
@@ -323,13 +310,17 @@ const NotifRow = (
 );
 
 const ProfileDialog = (
-  { onClose, onMove, onDelete }: {
+  { onClose, onMove, onDelete, focusAccount }: {
     onClose: () => void;
     onMove: () => void;
     onDelete: () => void;
+    // Opened by a `?profile=account` link: land on the Account section rather
+    // than the top of the dialog.
+    focusAccount?: boolean;
   },
 ) => {
   const { dailyInProgress, viewMaze } = useContext(GameStateContext);
+  const accountRef = useRef<HTMLDivElement>(null);
   // Signal read: the dialog re-renders as the open-time refetch lands.
   const profile = profileSignal.value;
   const { settings, setSettings } = useSettings();
@@ -350,6 +341,10 @@ const ProfileDialog = (
   useEffect(() => {
     fetchProfile();
     fetchDiscordOnline();
+  }, []);
+
+  useEffect(() => {
+    if (focusAccount) accountRef.current?.scrollIntoView({ block: "start" });
   }, []);
 
   const startEdit = () => {
@@ -720,7 +715,7 @@ const ProfileDialog = (
         </a>
       </div>
 
-      <div class="pref">
+      <div class="pref" ref={accountRef}>
         <div class="section-title">{t("profile.account")}</div>
         <button
           type="button"
@@ -770,11 +765,17 @@ const ProfileDialog = (
           <span class="profile-action__chev" aria-hidden="true">›</span>
         </button>
 
+        {
+          /* Same window, in the viewer's language. Not a new tab: the page's
+             rights cards link back into the app (`?profile=`), and an iOS
+             home-screen app opens a new tab in a browser view with its OWN
+             storage — so "delete my data" there would act on a fresh anonymous
+             player, not this one. In the same window the link stays inside the
+             app, on this device's identity. */
+        }
         <a
           class="profile-privacy-link tapc"
-          href="/privacy.html"
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/privacy.html?lang=${resolveCatalog(uiLocale.value)}`}
         >
           {t("profile.privacy")}
         </a>
@@ -792,6 +793,21 @@ export const Profile = () => {
   // to the board. The delete-confirm sheet works the same way.
   const [moving, setMoving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [focusAccount, setFocusAccount] = useState(false);
+
+  // A `?profile=` entry link (the privacy page's rights cards): open the dialog
+  // on its Account section, or the delete-confirm sheet directly (its back
+  // button still leads to the dialog). Held while mid-daily — the profile is
+  // off-limits then — and taken once, so it can't fire again.
+  useEffect(() => {
+    if (dailyInProgress) return;
+    const req = takeProfileRequest();
+    if (req === "delete") setDeleting(true);
+    else if (req === "account") {
+      setFocusAccount(true);
+      setOpen(true);
+    }
+  }, [dailyInProgress]);
 
   // Hidden only while mid-run on today's ranked daily (mirrors the calendar
   // button) — no wandering off to the profile mid-run. Available on a past day
@@ -846,7 +862,11 @@ export const Profile = () => {
       </button>
       {open && (
         <ProfileDialog
-          onClose={() => setOpen(false)}
+          focusAccount={focusAccount}
+          onClose={() => {
+            setOpen(false);
+            setFocusAccount(false);
+          }}
           onMove={() => {
             setOpen(false);
             setMoving(true);

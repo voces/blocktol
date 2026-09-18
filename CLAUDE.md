@@ -167,9 +167,10 @@ restart gap.)
 middleware chain over `URLPattern`. Path params are type-derived from the route
 string. Every request flows: `beginLogger` → login-link routes → `extractUserId`
 → **`POST /api/:method`** → the `/YYYYMMDD` day-permalink (serves the SPA shell)
-→ `staticServe` → `endLogger`. A thrown `UserError` becomes a 400; anything else
-is a 500 — logged (`console.error` → VictoriaLogs) and recorded on the request
-span (`recordException` → VictoriaTraces).
+→ `/privacy.html` (rendered per language — see _Data rights_) → `staticServe` →
+`endLogger`. A thrown `UserError` becomes a 400; anything else is a 500 — logged
+(`console.error` → VictoriaLogs) and recorded on the request span
+(`recordException` → VictoriaTraces).
 
 **The API is one endpoint.** `server/routes/api.ts` owns a `handlers` registry;
 `POST /api/:method` looks the method up, zod-validates the body against
@@ -442,9 +443,23 @@ Other invariants:
   no-op on retry (the old id is gone), but `deleteAccount` is still **excluded
   from the client `RETRYABLE` allowlist** because on success the client mints a
   fresh local id + reloads, so a blind retry would act on the stale id. The
-  confirm is gated behind typing "DELETE" (`DeleteAccount.tsx`).
-  `public/privacy.html` is the static disclosure page linked from the same panel
-  (the SQL proxy is first-party infra, not listed as a third-party recipient).
+  confirm is gated behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html`
+  is the disclosure page linked from the same panel (the SQL proxy is
+  first-party infra, not listed as a third-party recipient). It is
+  **server-rendered in the reader's language** (`server/privacy/page.ts`: an
+  explicit `?lang` — the in-app link passes the player's chosen language — then
+  `Accept-Language`, then English), from its own catalog (see Localization),
+  with a translation notice + English link on non-English copies and a
+  per-language footer. Its "Last updated" is the hand-set `UPDATED` constant —
+  bump it for a change in what the page says, never for a translation — beside a
+  link to the public git history of `i18n/privacy/en.json`, the exact record. It
+  stays script-free: the rights cards link INTO the app rather than exporting or
+  erasing themselves — `/?profile=account` opens the Profile dialog on its
+  Account section, `/?profile=delete` the delete-confirm sheet
+  (`takeProfileRequest` in `store/notifNav.ts`, taken once by `Profile`). The
+  in-app link opens it in the **same window** on purpose: an iOS home-screen app
+  opens a new tab in a browser view with its own storage, where those links
+  would act on a fresh anonymous player instead of this one.
 
 ## Client architecture
 
@@ -736,6 +751,18 @@ message to an `I18nNode[]` AST (so **no ICU parser ships in the client bundle**
 per-key `MessageParams` type map from `en.json`, so a missing key or wrong
 argument at a `t(...)` call site is a **compile error** (the `BlocktolApi`
 type-derivation move).
+
+There is a **second catalog**, `i18n/privacy/` (`en.json` + a translation per
+target), for the privacy page's prose. `CATALOGS` in `scripts/i18nLib.ts` lists
+both; genI18n compiles each to its own module, and `i18n:check` /
+`i18n:translate` / `i18n:unused` treat them alike (same targets, glossary, and
+gate; the privacy one carries a translator `brief` for its register). It
+compiles to the **server-only** `server/privacy/catalog.generated.ts` so a page
+of prose doesn't ride along in every client bundle, and it's its own file so its
+git history is exactly the page's (the page links it). The page renders it
+through its own HTML walker (the server-side twin of `tJsx`) and borrows the app
+catalog for labels that name in-app controls ("Export my data"), so it says
+exactly what those buttons say.
 
 `common/i18n.ts` is the one runtime, pure and framework-free so server and
 client share it: `t(locale, key, params)` resolves the BCP-47 `locale` to a

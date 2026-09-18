@@ -19,6 +19,7 @@ on:
     branches-ignore: [prod]
     paths:
       - i18n/en.json
+      - i18n/privacy/en.json
       - i18n/config.json
       - i18n/glossary.json
       - scripts/i18n*.ts
