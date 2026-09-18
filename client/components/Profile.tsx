@@ -43,7 +43,7 @@ import {
   resolveCatalog,
 } from "../../common/i18n.ts";
 import { t, uiLocale } from "../util/t.ts";
-import { takeProfileRequest } from "../store/notifNav.ts";
+import { profileRequest, takeProfileRequest } from "../store/notifNav.ts";
 
 // A compact custom language dropdown. A native <select> sizes to its widest
 // option (so the chevron floats far right of a short value like "System") and
@@ -795,14 +795,16 @@ export const Profile = () => {
   const [deleting, setDeleting] = useState(false);
   const [focusAccount, setFocusAccount] = useState(false);
 
-  // A `?profile=` entry link (the privacy page's rights cards): open the dialog
-  // on its Account section, or the delete-confirm sheet directly (its back
-  // button still leads to the dialog). It opens even with today's daily
-  // outstanding, when the button below is hidden: the page promises export and
-  // erasure "any time", and a player's data rights can't wait on three ranked
-  // attempts. What it won't do is land over a live attempt and eat its clock —
-  // it's held through a build or run, and through boot (a resumed attempt may
-  // be about to start), then taken once, so it can't fire again.
+  // A profile request (see notifNav — the privacy page's `?profile=` links, or
+  // the prestart overlay's account link): open the dialog on its Account
+  // section, or the delete-confirm sheet directly (its back button still leads
+  // to the dialog). It opens even with today's daily outstanding, when the
+  // button below is hidden: the privacy page promises export and erasure "any
+  // time", and a player's data rights can't wait on three ranked attempts. What
+  // it won't do is land over a live attempt and eat its clock — it's held
+  // through a build or run, and through boot (a resumed attempt may be about to
+  // start), then taken once, so it can't fire again.
+  const pending = profileRequest.value;
   useEffect(() => {
     if (phase === "loading" || phase === "building" || phase === "running") {
       return;
@@ -813,7 +815,7 @@ export const Profile = () => {
       setFocusAccount(true);
       setOpen(true);
     }
-  }, [phase]);
+  }, [phase, pending]);
 
   const name = profile?.name || t("profile.anonymous");
 
@@ -821,7 +823,7 @@ export const Profile = () => {
   // button) — no wandering off to the profile mid-run. Available on a past day
   // (deep link / held across midnight), where the board isn't the live daily.
   // The sheets below still render then: the only way to open one without the
-  // button is the `?profile=` link above (or a dialog already open when the day
+  // button is a profile request above (or a dialog already open when the day
   // rolls over, which is better left open than yanked away).
   //
   // Once the (prefetched) profile is loaded, the button is the coloured letter

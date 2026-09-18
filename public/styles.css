@@ -740,6 +740,11 @@ a:hover {
   aspect-ratio: 1;
   z-index: 10;
   display: flex;
+  /* A column so the account footer (.prestart__account) sits in flow below the
+     content, which the auto margins keep centred in the space above it — in
+     flow rather than pinned, so on a small board it can never overlap the
+     start button. */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 24px;
@@ -804,6 +809,7 @@ a:hover {
 .prestart__content {
   position: relative;
   z-index: 2;
+  margin: auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -896,6 +902,30 @@ a:hover {
   justify-content: center;
   font-weight: 700;
   box-shadow: 0 10px 30px -8px var(--accent-soft);
+}
+
+/* The account footer: a quiet text link in the overlay's bottom padding. Pulled
+   down into that padding (negative margin) so it doesn't shift the content, and
+   padded for a comfortable tap target without looking like a button. */
+.prestart__account {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  margin: 4px 0 -14px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.prestart__account:hover,
+.prestart__account:focus-visible {
+  color: var(--color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Shared panel heading (Today / Previous days / Attempts). */

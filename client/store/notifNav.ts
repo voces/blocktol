@@ -52,27 +52,38 @@ export const entryIsPastDayLink = entryDay !== null &&
     localDay(),
   );
 
-// `?profile=account|delete` — a link into the Profile dialog at its Account
-// section, or straight to the delete-confirm sheet. The privacy page's rights
-// cards link here, so a player reading the page can act on it without hunting
-// for the controls. Read from the entry snapshot like the day link, and taken
-// once by Profile when it's able to open (see takeProfileRequest).
+// A pending request to open the profile somewhere other than its top: the
+// Account section, or straight to the delete-confirm sheet. Two sources, since
+// the profile BUTTON is hidden while today's daily is outstanding:
+//   - `?profile=account|delete` on the entry URL — the privacy page's rights
+//     cards link here, so a player reading the page can act on it without
+//     hunting for the controls. Read from the entry snapshot like the day link.
+//   - requestProfile, from a control outside the button (the prestart overlay's
+//     account link).
+// Profile takes it once, when it's able to open (see takeProfileRequest).
 export type ProfileRequest = "account" | "delete";
 const entryProfile = new URLSearchParams(entrySearch).get("profile");
-let profileRequest: ProfileRequest | null =
-  entryProfile === "account" || entryProfile === "delete" ? entryProfile : null;
+export const profileRequest = signal<ProfileRequest | null>(
+  entryProfile === "account" || entryProfile === "delete" ? entryProfile : null,
+);
 
-// Hand the pending request over exactly once, dropping the param from the bar
-// so a refresh doesn't reopen the sheet. (The dock's syncViewUrl would usually
-// rewrite the bar anyway, but only once it mounts, and only while it's
+export const requestProfile = (req: ProfileRequest) => {
+  profileRequest.value = req;
+};
+
+// Hand the pending request over exactly once, dropping an entry param from the
+// bar so a refresh doesn't reopen the sheet. (The dock's syncViewUrl would
+// usually rewrite the bar anyway, but only once it mounts, and only while it's
 // tracking a day.)
 export const takeProfileRequest = (): ProfileRequest | null => {
-  const req = profileRequest;
+  const req = profileRequest.peek();
   if (!req) return null;
-  profileRequest = null;
+  profileRequest.value = null;
   const url = new URL(location.href);
-  url.searchParams.delete("profile");
-  history.replaceState(history.state, "", url.pathname + url.search);
+  if (url.searchParams.has("profile")) {
+    url.searchParams.delete("profile");
+    history.replaceState(history.state, "", url.pathname + url.search);
+  }
   return req;
 };
 

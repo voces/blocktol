@@ -7,6 +7,7 @@ import { decoBlocks, decoCheckpoint } from "../IntroBoard.tsx";
 import { formatSeconds } from "../../../common/format.ts";
 import { startBoardRun } from "../../store/board.ts";
 import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
+import { requestProfile } from "../../store/notifNav.ts";
 import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -170,6 +171,20 @@ export const Prestart = () => {
             </Fragment>
           )}
       </div>
+      {
+        /* The way to the account controls while today's daily is outstanding —
+           the profile button is hidden until its attempts are spent, but export
+           and erasure can't wait on them. Understated on purpose: a footer to
+           the overlay, not a rival to the start button. Only here, between
+           attempts, never over a running one. */
+      }
+      <button
+        type="button"
+        class="prestart__account"
+        onClick={() => requestProfile("account")}
+      >
+        {t("prestart.account")}
+      </button>
     </div>
   );
 };
