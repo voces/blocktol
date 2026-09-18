@@ -3102,6 +3102,73 @@ a:hover {
   color: var(--text-faint);
 }
 
+/* The way into the rest of the list, sitting under the rows it extends. */
+.profile-rivals__more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+  padding: 10px 14px;
+  border: 0;
+  border-top: 1px solid var(--border-strong);
+  background: transparent;
+  font: 600 13px var(--font);
+  color: var(--accent-bright);
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-rivals__chev {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Head-to-head sheet: the whole list, searchable and sortable. Its rows are
+   the profile's (.profile-rival*); only the chrome above them is new. */
+.rivals-sheet {
+  padding: 0 0 calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.rivals__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 20px 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-mute);
+}
+
+.rivals__search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color);
+  font: 500 14px var(--font);
+}
+
+.rivals__search-input:focus {
+  outline: none;
+}
+
+/* Both switches on one line: which board the record is from, and the order. */
+.rivals__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 20px 10px;
+}
+
+.rivals-sheet .profile-rivals {
+  margin: 0 20px;
+}
+
 /* Copy-login-link action row. */
 .profile-action {
   display: flex;
