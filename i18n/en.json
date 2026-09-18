@@ -672,16 +672,16 @@
     "description": "Profile stat label: days one of the player's ranked attempts equalled the best build anyone has made on that board."
   },
   "profile.solvedSub": {
-    "message": "A ranked attempt equalled the board's top build",
-    "description": "Explains Days solved: the attempt matched the longest build anyone has made on that board, free play included."
+    "message": "Still the best build anyone has made",
+    "description": "Explains Days solved: on those days the player's ranked attempt is still the longest build anyone has made on that board, free play included. \"Still\" matters — the row drops a day again if someone later builds longer."
   },
   "profile.solvedFirstTry": {
     "message": "Solved on the first try",
     "description": "Profile stat label: days the player's FIRST ranked attempt equalled the board's top build."
   },
   "profile.solvedFirstTrySub": {
-    "message": "Your first attempt equalled it",
-    "description": "Explains Solved on the first try, following the Days solved row above it."
+    "message": "And it was your first attempt",
+    "description": "Explains Solved on the first try, reading on from the Days solved row above it: the same days, narrowed to those where the player's first ranked attempt was the one that did it."
   },
   "profile.ofDays": {
     "message": "{pct} of days",
