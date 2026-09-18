@@ -554,7 +554,7 @@ a:hover {
    Narrower: board on top, then result, attempts, calendar stacked — the
    attempts and calendar rows scroll within their own height so the board
    never moves. Board stays top-aligned (align-items: start); the scrolling
-   panels opt back into filling their track with align-self: stretch.
+   rail opts back into filling its track with align-self: stretch.
    Nothing here clips the board's scale(2) zoom spill — the side panels only
    clip their OWN content, not the centred board sibling. */
 @media (min-width: 1200px) {
@@ -575,6 +575,14 @@ a:hover {
   .game__rail {
     grid-area: rail;
     gap: var(--rail-gap);
+    /* .game is align-items: start (the board must stay top-aligned), so the
+       rail would size to its CONTENT and the runs' flex: 1 below would have no
+       bounded track to fill — the list grew past the fixed .game height, which
+       clips without scrolling, so the rows below the fold were unreachable on
+       desktop. Stretch puts the rail back on its spanned track's height, which
+       is what makes .attempts an actual scroll container. (Mobile never hit
+       this: the whole .game scrolls there.) */
+    align-self: stretch;
     min-height: 0;
   }
 
