@@ -55,8 +55,24 @@ export const RivalRow = (
         </span>
       </div>
       <div class="profile-rival__nums">
+        {
+          /* Brightness marks who is AHEAD, not whose number it is: yours first
+            either way, but a record you are losing puts their figure forward
+            rather than highlighting your own smaller one. Level reads level,
+            with both figures lit. */
+        }
         <span class="profile-rival__record mono">
-          <b>{record.won}</b>–<span>{record.lost}</span>
+          <span
+            class={record.won < record.lost ? "profile-rival__behind" : ""}
+          >
+            {record.won}
+          </span>
+          <span class="profile-rival__dash">–</span>
+          <span
+            class={record.lost < record.won ? "profile-rival__behind" : ""}
+          >
+            {record.lost}
+          </span>
         </span>
         <span class="profile-rival__small mono">
           {t("profile.tied", { count: record.tied })}
