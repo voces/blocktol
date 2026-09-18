@@ -2691,9 +2691,13 @@ a:hover {
   }
 }
 
-/* Profile dialog content padding (the move sheet manages its own). */
+/* Profile dialog content padding (the move sheet manages its own).
+   The whole dialog runs on one spacing scale: 24 at the sheet's edges, 20
+   between sections, 8 between the cards inside a section, and the shared
+   .section-title's own 10 under a heading. Before, stat sections sat 16 apart
+   and preference sections 14, which read as the rhythm changing halfway down. */
 .profile-sheet {
-  padding: 24px 20px calc(22px + env(safe-area-inset-bottom, 0px));
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 1200px) {
@@ -2749,7 +2753,7 @@ a:hover {
   align-items: center;
   gap: 14px;
   min-height: 52px;
-  margin: 8px 0 18px;
+  margin: 8px 0 20px;
   padding-right: 38px;
 }
 
@@ -2885,7 +2889,7 @@ a:hover {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .profile-stat {
@@ -2922,10 +2926,47 @@ a:hover {
   margin: 0 2px;
 }
 
+/* Desktop: the dialog widens instead of running on. The left column is the
+   half you read (ranked, free play, head-to-head) and the right the half you
+   operate (notifications, preferences, community, account), so the split is by
+   what a section is FOR, not by what fits. Below the breakpoint the columns
+   stack in source order and the sheet is exactly as it was on mobile. Shares
+   the 1200px breakpoint the centred card already uses — one desktop, not two. */
+.profile-cols {
+  display: grid;
+  /* Stacked, the gap IS the gap between two sections, so it matches the 20 the
+     sections keep between themselves; side by side it becomes the gutter. */
+  gap: 20px;
+  align-items: start;
+}
+
+.profile-col > :last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 1200px) {
+  .modal__sheet.profile-sheet {
+    max-width: 940px;
+    padding: 24px;
+  }
+
+  .profile-cols {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 24px;
+  }
+
+  /* A hairline instead of a wider gutter: the two halves are one dialog, and
+     the rule keeps the right column's cards from reading as a second sheet. */
+  .profile-col--side {
+    border-left: 1px solid var(--border);
+    padding-left: 24px;
+  }
+}
+
 /* A stat block: its section title (and, for head-to-head, the board switch)
    over whatever the block shows. */
 .profile-block {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .profile-block__head {
@@ -3019,7 +3060,7 @@ a:hover {
 .profile-tally__cell {
   flex: 1;
   min-width: 0;
-  padding: 14px 8px;
+  padding: 14px 10px;
   text-align: center;
 }
 
@@ -3328,7 +3369,7 @@ a:hover {
 
 /* Preferences: appearance segmented control + zoom slider. */
 .pref {
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .pref__row {
@@ -3633,7 +3674,7 @@ a:hover {
 /* Quiet text link under the account rows, out to the static privacy page. */
 .profile-privacy-link {
   display: block;
-  margin-top: 12px;
+  margin-top: 16px;
   text-align: center;
   font: 500 12px var(--font);
   color: var(--text-mute);
