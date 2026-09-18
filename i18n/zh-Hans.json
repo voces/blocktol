@@ -624,8 +624,8 @@
     "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
   },
   "profile.boards": {
-    "message": "关卡",
-    "hash": "4fcd39dd9263c46f599ba309607c1900e26b7f28008154cf18320a18ed6effc6"
+    "message": "每日谜题",
+    "hash": "bae8227e10bdb4c02b240475ecbab50348de36383ee9ff73f95fb45aab7cce39"
   },
   "profile.boardsPlayed": {
     "message": "已游玩",
@@ -700,8 +700,8 @@
     "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
   },
   "profile.metBoards": {
-    "message": "{count, plural, other {共同 # 个关卡}}",
-    "hash": "54bd6c0b46c6babb04ae1dece8d232a394eebb30a20669c7af5acf2603c4a5c4"
+    "message": "{count, plural, other {共同参与 # 个每日谜题}}",
+    "hash": "08733fd8dd82c057f829cd31a83c76436e2daea615e3a06e9ea7ec170c61bd00"
   },
   "profile.metDays": {
     "message": "{count, plural, other {共同 # 天}}",
@@ -788,20 +788,20 @@
     "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
   },
   "profile.solved": {
-    "message": "通关天数",
-    "hash": "51490305e2376e5954593caaa586b5f5085cd70096c78bcfbadd82895f0b37a6"
+    "message": "三次内解出",
+    "hash": "2eccb72885b9f3d10578ddde46eee7c56b1d425e16041267cc7ed0b5abb25ed8"
   },
   "profile.solvedFirstTry": {
-    "message": "首次尝试通关",
-    "hash": "fc3b5f710b0e0a8261c255fc0f70696a12e134d6fdc8ce50e67deb792b39e848"
+    "message": "首次尝试解出",
+    "hash": "00867c4e94f5be171c500b81005698845db40b9aa320ef2b46ff24cb96751797"
   },
   "profile.solvedFirstTrySub": {
-    "message": "而且这是你的首次尝试",
-    "hash": "e617814cb0432aa3bdbee531cec692b3b070577465383bb33dd327f234f29934"
+    "message": "首次尝试即达当日最佳迷宫",
+    "hash": "f9285b6c0149ec4dbff9abd4e73152d9777b73a05f9c7e98c0d03c5e4d4d94f4"
   },
   "profile.solvedSub": {
-    "message": "至今仍是所有人建造的最长路线",
-    "hash": "29bd0bc522389896b1bfce28de9d86e4a406efcab09e8b87fb928a4e3aa7e628"
+    "message": "或在第二、三次尝试解出",
+    "hash": "2ac656277cf8407953685d4e097140faa345fe0443fc94cc95e4e35278297f58"
   },
   "profile.streak": {
     "message": "连续天数",
