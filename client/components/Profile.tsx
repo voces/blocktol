@@ -785,7 +785,7 @@ const ProfileDialog = (
 };
 
 export const Profile = () => {
-  const { dailyInProgress } = useContext(GameStateContext);
+  const { dailyInProgress, phase } = useContext(GameStateContext);
   const profile = profileSignal.value;
   const [open, setOpen] = useState(false);
   // The move sheet replaces the dialog rather than stacking over it: opening it
@@ -797,69 +797,79 @@ export const Profile = () => {
 
   // A `?profile=` entry link (the privacy page's rights cards): open the dialog
   // on its Account section, or the delete-confirm sheet directly (its back
-  // button still leads to the dialog). Held while mid-daily — the profile is
-  // off-limits then — and taken once, so it can't fire again.
+  // button still leads to the dialog). It opens even with today's daily
+  // outstanding, when the button below is hidden: the page promises export and
+  // erasure "any time", and a player's data rights can't wait on three ranked
+  // attempts. What it won't do is land over a live attempt and eat its clock —
+  // it's held through a build or run, and through boot (a resumed attempt may
+  // be about to start), then taken once, so it can't fire again.
   useEffect(() => {
-    if (dailyInProgress) return;
+    if (phase === "loading" || phase === "building" || phase === "running") {
+      return;
+    }
     const req = takeProfileRequest();
     if (req === "delete") setDeleting(true);
     else if (req === "account") {
       setFocusAccount(true);
       setOpen(true);
     }
-  }, [dailyInProgress]);
-
-  // Hidden only while mid-run on today's ranked daily (mirrors the calendar
-  // button) — no wandering off to the profile mid-run. Available on a past day
-  // (deep link / held across midnight), where the board isn't the live daily.
-  if (dailyInProgress) return null;
+  }, [phase]);
 
   const name = profile?.name || t("profile.anonymous");
 
+  // The button is hidden while on today's ranked daily (mirrors the calendar
+  // button) — no wandering off to the profile mid-run. Available on a past day
+  // (deep link / held across midnight), where the board isn't the live daily.
+  // The sheets below still render then: the only way to open one without the
+  // button is the `?profile=` link above (or a dialog already open when the day
+  // rolls over, which is better left open than yanked away).
+  //
   // Once the (prefetched) profile is loaded, the button is the coloured letter
   // avatar; until then, the neutral person glyph.
   return (
     <>
-      <button
-        type="button"
-        class={"profile tapc " +
-          (profile ? "profile-avatar-btn" : "icon-button")}
-        style={profile ? { background: avatarColor(getId()) } : undefined}
-        onClick={() => setOpen(true)}
-        // Warm the profile the moment intent shows — pointerenter covers mouse
-        // hover and the first touch, onFocus covers keyboard. fetchProfile
-        // coalesces/rate-limits, so repeated events don't spam requests.
-        onPointerEnter={() => {
-          fetchProfile();
-          fetchDiscordOnline();
-        }}
-        onFocus={() => {
-          fetchProfile();
-          fetchDiscordOnline();
-        }}
-        title={t("profile.title")}
-        aria-label={t("profile.open")}
-      >
-        {profile
-          ? (
-            <span class="profile-avatar-btn__initial">
-              {avatarInitial(profile.name)}
-            </span>
-          )
-          : (
-            <svg
-              class="profile__avatar"
-              width={20}
-              height={20}
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <circle cx={12} cy={8} r={4} />
-              <path d="M12 14c-4.42 0-7.5 2.5-7.5 5.6 0 .77.63 1.4 1.4 1.4h12.2c.77 0 1.4-.63 1.4-1.4C19.5 16.5 16.42 14 12 14Z" />
-            </svg>
-          )}
-      </button>
+      {!dailyInProgress && (
+        <button
+          type="button"
+          class={"profile tapc " +
+            (profile ? "profile-avatar-btn" : "icon-button")}
+          style={profile ? { background: avatarColor(getId()) } : undefined}
+          onClick={() => setOpen(true)}
+          // Warm the profile the moment intent shows — pointerenter covers mouse
+          // hover and the first touch, onFocus covers keyboard. fetchProfile
+          // coalesces/rate-limits, so repeated events don't spam requests.
+          onPointerEnter={() => {
+            fetchProfile();
+            fetchDiscordOnline();
+          }}
+          onFocus={() => {
+            fetchProfile();
+            fetchDiscordOnline();
+          }}
+          title={t("profile.title")}
+          aria-label={t("profile.open")}
+        >
+          {profile
+            ? (
+              <span class="profile-avatar-btn__initial">
+                {avatarInitial(profile.name)}
+              </span>
+            )
+            : (
+              <svg
+                class="profile__avatar"
+                width={20}
+                height={20}
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx={12} cy={8} r={4} />
+                <path d="M12 14c-4.42 0-7.5 2.5-7.5 5.6 0 .77.63 1.4 1.4 1.4h12.2c.77 0 1.4-.63 1.4-1.4C19.5 16.5 16.42 14 12 14Z" />
+              </svg>
+            )}
+        </button>
+      )}
       {open && (
         <ProfileDialog
           focusAccount={focusAccount}

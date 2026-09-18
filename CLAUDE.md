@@ -457,8 +457,11 @@ Other invariants:
   erasing themselves — `/?profile=account` opens the Profile dialog on its
   Account section, `/?profile=delete` the delete-confirm sheet
   (`takeProfileRequest` in `store/notifNav.ts`, taken once by `Profile`). The
-  in-app link opens it in the **same window** on purpose: an iOS home-screen app
-  opens a new tab in a browser view with its own storage, where those links
+  link works even with today's daily outstanding, when the profile BUTTON is
+  hidden (data rights can't wait on three ranked attempts) — it's held only
+  through boot and a live build/run, so it never lands over an attempt's clock.
+  The in-app link opens it in the **same window** on purpose: an iOS home-screen
+  app opens a new tab in a browser view with its own storage, where those links
   would act on a fresh anonymous player instead of this one.
 
 ## Client architecture
