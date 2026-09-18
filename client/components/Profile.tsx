@@ -284,11 +284,15 @@ const SolveRow = (
     </div>
     <div class="profile-row__fig">
       <div class="profile-row__value mono">{value ?? "—"}</div>
-      {!!value && of > 0 && (
-        <div class="profile-row__small mono">
-          {t("profile.ofDays", { pct: formatPercent(value / of) })}
-        </div>
-      )}
+      {
+        /* Shown at zero too ("0% of days"), so a row keeps its height whether
+          or not the player has solved anything yet. */
+      }
+      <div class="profile-row__small mono">
+        {value !== null && of > 0
+          ? t("profile.ofDays", { pct: formatPercent(value / of) })
+          : "—"}
+      </div>
     </div>
   </div>
 );
