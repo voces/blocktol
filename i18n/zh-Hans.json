@@ -796,12 +796,12 @@
     "hash": "fc3b5f710b0e0a8261c255fc0f70696a12e134d6fdc8ce50e67deb792b39e848"
   },
   "profile.solvedFirstTrySub": {
-    "message": "你的首次尝试就追平了它",
-    "hash": "1d9de3c4ec8e44986da7be1abcf03132553fb58cb6188e28c57abe9a44af91d7"
+    "message": "而且这是你的首次尝试",
+    "hash": "e617814cb0432aa3bdbee531cec692b3b070577465383bb33dd327f234f29934"
   },
   "profile.solvedSub": {
-    "message": "排名尝试追平该关卡的最佳构建",
-    "hash": "5a4f65907a2c705d5e0d1a1a1ff4c63c54dbfa15c242bfc72bc4a1231ebf76c0"
+    "message": "至今仍是所有人建造的最长路线",
+    "hash": "29bd0bc522389896b1bfce28de9d86e4a406efcab09e8b87fb928a4e3aa7e628"
   },
   "profile.streak": {
     "message": "连续天数",

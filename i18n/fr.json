@@ -796,12 +796,12 @@
     "hash": "fc3b5f710b0e0a8261c255fc0f70696a12e134d6fdc8ce50e67deb792b39e848"
   },
   "profile.solvedFirstTrySub": {
-    "message": "Ta première tentative l'a égalé",
-    "hash": "1d9de3c4ec8e44986da7be1abcf03132553fb58cb6188e28c57abe9a44af91d7"
+    "message": "Et c'était votre première tentative",
+    "hash": "e617814cb0432aa3bdbee531cec692b3b070577465383bb33dd327f234f29934"
   },
   "profile.solvedSub": {
-    "message": "Une tentative classée a égalé le meilleur tracé du plateau",
-    "hash": "5a4f65907a2c705d5e0d1a1a1ff4c63c54dbfa15c242bfc72bc4a1231ebf76c0"
+    "message": "Toujours la plus longue construction jamais réalisée",
+    "hash": "29bd0bc522389896b1bfce28de9d86e4a406efcab09e8b87fb928a4e3aa7e628"
   },
   "profile.streak": {
     "message": "Série de jours",
