@@ -3153,7 +3153,15 @@ a:hover {
   color: var(--color);
 }
 
-.profile-rival__record span {
+/* The separator is punctuation, not a figure — it sat brighter than the number
+   beside it while it inherited the record's own colour. */
+.profile-rival__dash {
+  color: var(--text-faint);
+  font-weight: 400;
+  margin: 0 1px;
+}
+
+.profile-rival__behind {
   color: var(--text-mute);
 }
 
