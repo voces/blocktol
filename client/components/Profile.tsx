@@ -690,18 +690,23 @@ const ProfileDialog = (
           />
         </div>
         <div class="profile-rows">
-          <SolveRow
-            icon={<Target />}
-            title={t("profile.solved")}
-            sub={t("profile.solvedSub")}
-            value={profile?.solved ?? null}
-            of={profile?.daysPlayed ?? 0}
-          />
+          {
+            /* First try leads: its count is a subset of the row below, so the
+              rarer figure reads first and "Or on attempt two or three" lands
+              as a continuation of it. */
+          }
           <SolveRow
             icon={<Bolt />}
             title={t("profile.solvedFirstTry")}
             sub={t("profile.solvedFirstTrySub")}
             value={profile?.solvedFirstTry ?? null}
+            of={profile?.daysPlayed ?? 0}
+          />
+          <SolveRow
+            icon={<Target />}
+            title={t("profile.solved")}
+            sub={t("profile.solvedSub")}
+            value={profile?.solved ?? null}
             of={profile?.daysPlayed ?? 0}
           />
         </div>

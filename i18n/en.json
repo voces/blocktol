@@ -668,20 +668,20 @@
     "description": "Line under Day streak showing the player's longest streak ever, in days."
   },
   "profile.solved": {
-    "message": "Days solved",
-    "description": "Profile stat label: days one of the player's ranked attempts equalled the best build anyone has made on that board."
+    "message": "Solved in three",
+    "description": "Profile stat label, sitting under Solved first try: days ANY of the three daily attempts built the best maze anyone has made on that daily. \"three\" is the three attempts a daily allows."
   },
   "profile.solvedSub": {
-    "message": "Still the best build anyone has made",
-    "description": "Explains Days solved: on those days the player's ranked attempt is still the longest build anyone has made on that board, free play included. \"Still\" matters — the row drops a day again if someone later builds longer."
+    "message": "Or on attempt two or three",
+    "description": "Explains Solved in three, reading on from the Solved first try row above it: the same achievement, reached on a later attempt."
   },
   "profile.solvedFirstTry": {
-    "message": "Solved on the first try",
-    "description": "Profile stat label: days the player's FIRST ranked attempt equalled the board's top build."
+    "message": "Solved first try",
+    "description": "Profile stat label: days the player's FIRST daily attempt built the best maze anyone has made on that daily. See glossary SOLVE."
   },
   "profile.solvedFirstTrySub": {
-    "message": "And it was your first attempt",
-    "description": "Explains Solved on the first try, reading on from the Days solved row above it: the same days, narrowed to those where the player's first ranked attempt was the one that did it."
+    "message": "The day's best maze, attempt one",
+    "description": "Explains Solved first try: the maze matches the best anyone has built on that daily, and it came from the first of the three attempts."
   },
   "profile.ofDays": {
     "message": "{pct} of days",
@@ -693,15 +693,15 @@
   },
   "profile.supremes": {
     "message": "Supremes",
-    "description": "Profile stat label: boards where the player's build is the top one and nobody has matched it. See glossary SUPREME."
+    "description": "Profile stat label in the free-play tally: dailies where this player's build is the top one and nobody has matched it. See glossary SUPREME."
   },
   "profile.boardsPlayed": {
     "message": "Played",
-    "description": "Profile stat label: how many boards the player has built on, beside the total number of boards."
+    "description": "Profile stat label in the free-play tally: how many dailies the player has built a maze on."
   },
   "profile.boards": {
-    "message": "Boards",
-    "description": "Profile stat label: how many boards exist in total."
+    "message": "Dailies",
+    "description": "Profile stat label in the free-play tally: how many dailies exist to play. See glossary DAILY."
   },
   "profile.headToHead": {
     "message": "Head-to-head",
@@ -720,8 +720,8 @@
     "description": "Line under a rival's name: how many days both players made ranked attempts."
   },
   "profile.metBoards": {
-    "message": "{count, plural, one {# board} other {# boards}} in common",
-    "description": "Line under a rival's name: how many boards both players have built on."
+    "message": "{count, plural, one {# daily} other {# dailies}} in common",
+    "description": "Line under a rival's name on the PB board: how many dailies both players have built a maze on."
   },
   "profile.tied": {
     "message": "{count} tied",
@@ -733,7 +733,7 @@
   },
   "profile.records": {
     "message": "Records",
-    "description": "Profile stat label: boards where the player's best build shares the top with someone else. See glossary RECORD."
+    "description": "Profile stat label in the free-play tally: dailies where the player's best build shares the top with someone else. See glossary RECORD."
   },
   "profile.pushNotifications": {
     "message": "Push notifications",
