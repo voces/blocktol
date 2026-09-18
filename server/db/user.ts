@@ -177,6 +177,7 @@ export const getUserStats = async (user: string) => {
   `;
 
   const u = userRows[0];
+  const allRivals = mergeRivals(daily, pb);
   const { current, best } = streaks(
     days.map((d) => String(d.day).slice(0, 10)),
     String(total[0]?.today ?? "").slice(0, 10),
@@ -201,8 +202,11 @@ export const getUserStats = async (user: string) => {
     records: Number(boards[0]?.records ?? 0),
     boardsPlayed: Number(boards[0]?.played ?? 0),
     boards: Number(total[0]?.boards ?? 0),
-    // Head-to-head, one row per rival, both boards merged
-    rivals: mergeRivals(daily, pb),
+    // Head-to-head: enough rivals for the profile's own list, plus the total
+    // so it can offer the rest. The full list is its own call (getUserRivals),
+    // fetched when the player opens it rather than on every boot.
+    rivals: allRivals.slice(0, RIVAL_PREVIEW),
+    rivalCount: allRivals.length,
   };
 };
 
@@ -241,11 +245,15 @@ const rivals = (user: string, rankedOnly: string) =>
     ORDER BY met DESC
     LIMIT ${RIVAL_CAP}`;
 
-// Rivals shown on the profile, most-met first. A pair needs this many meetings
-// on a board before that board's record appears: a 1–0 from a single shared day
-// is noise, not a rivalry.
+// A pair needs this many meetings on a board before that board's record
+// appears: a 1–0 from a single shared day is noise, not a rivalry.
 const RIVAL_MINIMUM = 5;
-const RIVAL_CAP = 25;
+// Rows the profile itself shows, most-met first, with a way into the rest.
+const RIVAL_PREVIEW = 4;
+// Ceiling on one query's rows. Comfortably past any real heat today, and the
+// list is one grouped pass over the viewer's own runs either way — the point is
+// that a runaway field can't make the profile response unbounded.
+const RIVAL_CAP = 500;
 
 // One row per rival carrying both boards, with the id hashed to its avatar hue
 // on the way out. A rival appears if EITHER board has enough meetings; the
@@ -278,6 +286,19 @@ const mergeRivals = (daily: RivalRow[], pb: RivalRow[]) => {
       (b.daily?.met ?? 0) - (a.daily?.met ?? 0) ||
       (b.pb?.met ?? 0) - (a.pb?.met ?? 0)
     );
+};
+
+// Every rival with a record on either board, for the head-to-head sheet the
+// profile's short list opens. Same shape and same rules as the profile's rows
+// (see mergeRivals); it is a separate call so the full list is fetched when a
+// player asks for it rather than riding on every boot.
+export const getUserRivals = async (user: string) => {
+  const [daily, pb] = await sql<[RivalRow[], RivalRow[]]>`
+    ${raw(rivals(user, "AND r.ranked = TRUE"))};
+
+    ${raw(rivals(user, ""))};
+  `;
+  return mergeRivals(daily, pb);
 };
 
 // The ranked daily attempts (at most three, by construction of the `ranked`

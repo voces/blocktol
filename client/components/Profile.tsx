@@ -17,11 +17,7 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../common/settings.ts";
-import {
-  avatarColor,
-  avatarColorFromHue,
-  avatarInitial,
-} from "../../common/avatar.ts";
+import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import { DISCORD_INVITE } from "../../common/constants.ts";
 import { discordOnline, fetchDiscordOnline } from "../store/discord.ts";
 import { getId } from "../util/id.ts";
@@ -30,6 +26,7 @@ import { GameStateContext } from "./Game/useGameState.ts";
 import { Modal } from "./Modal.tsx";
 import { MoveDevice } from "./MoveDevice.tsx";
 import { DeleteAccount } from "./DeleteAccount.tsx";
+import { type Board, BoardSwitch, RivalRow, RivalsSheet } from "./Rivals.tsx";
 import { Crown, Flag } from "./Notifications/icons.tsx";
 import {
   pushPermission,
@@ -325,72 +322,45 @@ const Bolt = () => (
   </svg>
 );
 
-// Head-to-head, last block in the sheet: one row per rival, with a switch for
-// which board the record comes from. The two boards are the standings' own —
-// DAILY (the ranked attempts on days both played) and PB (best builds on boards
-// both played) — and a row shows one of them at a time, never both: a record
-// only reads clearly when its pool is named once, at the top.
-const Rivals = ({ rivals }: { rivals: ProfileData["rivals"] }) => {
-  const [board, setBoard] = useState<"daily" | "pb">("daily");
+// Head-to-head, last block in the sheet: the rivals met most often, with a
+// switch for which board the record comes from (see Rivals.tsx). Only the first
+// few rows live here; the rest are a tap away rather than a scroll, so the
+// block stays a stat and doesn't become a directory.
+const Rivals = (
+  { rivals, total, onSeeAll }: {
+    rivals: ProfileData["rivals"];
+    total: number;
+    onSeeAll: () => void;
+  },
+) => {
+  const [board, setBoard] = useState<Board>("daily");
   const rows = rivals.filter((r) => r[board]);
   return (
     <div class="profile-block">
       <div class="profile-block__head">
         <div class="section-title">{t("profile.headToHead")}</div>
-        <div
-          class="pref__seg"
-          role="group"
-          aria-label={t("profile.headToHead")}
-        >
-          {(["daily", "pb"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              class={"pref__seg-btn tapc" +
-                (board === value ? " pref__seg-btn--active" : "")}
-              aria-pressed={board === value}
-              onClick={() => setBoard(value)}
-            >
-              {value === "daily"
-                ? t("profile.boardDaily")
-                : t("profile.boardPb")}
-            </button>
-          ))}
-        </div>
+        <BoardSwitch board={board} onChange={setBoard} />
       </div>
       <div class="profile-rivals">
         {rows.length
-          ? rows.map((rival) => {
-            const record = rival[board]!;
-            return (
-              <div class="profile-rival" key={rival.name + rival.hue}>
-                <span
-                  class="profile-rival__avatar"
-                  style={{ background: avatarColorFromHue(rival.hue) }}
-                  aria-hidden="true"
-                >
-                  {avatarInitial(rival.name)}
-                </span>
-                <div class="profile-rival__who">
-                  <span class="profile-rival__name">{rival.name}</span>
-                  <span class="profile-rival__sub">
-                    {board === "daily"
-                      ? t("profile.metDays", { count: record.met })
-                      : t("profile.metBoards", { count: record.met })}
-                  </span>
-                </div>
-                <div class="profile-rival__nums">
-                  <span class="profile-rival__record mono">
-                    <b>{record.won}</b>–<span>{record.lost}</span>
-                  </span>
-                  <span class="profile-rival__small mono">
-                    {t("profile.tied", { count: record.tied })}
-                  </span>
-                </div>
-              </div>
-            );
-          })
+          ? rows.map((rival) => (
+            <RivalRow
+              key={rival.name + rival.hue}
+              rival={rival}
+              board={board}
+            />
+          ))
           : <div class="profile-rivals__empty">{t("profile.noRivals")}</div>}
+        {total > rows.length && (
+          <button
+            type="button"
+            class="profile-rivals__more tapc"
+            onClick={onSeeAll}
+          >
+            <span>{t("profile.seeAllRivals", { count: total })}</span>
+            <span class="profile-rivals__chev" aria-hidden="true">›</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -458,10 +428,11 @@ const NotifRow = (
 );
 
 const ProfileDialog = (
-  { onClose, onMove, onDelete, focusAccount }: {
+  { onClose, onMove, onDelete, onRivals, focusAccount }: {
     onClose: () => void;
     onMove: () => void;
     onDelete: () => void;
+    onRivals: () => void;
     // Opened by a `?profile=account` link: land on the Account section rather
     // than the top of the dialog.
     focusAccount?: boolean;
@@ -755,7 +726,13 @@ const ProfileDialog = (
         </div>
       </div>
 
-      {!!profile?.rivals.length && <Rivals rivals={profile.rivals} />}
+      {!!profile?.rivals.length && (
+        <Rivals
+          rivals={profile.rivals}
+          total={profile.rivalCount}
+          onSeeAll={onRivals}
+        />
+      )}
 
       <div class="pref">
         <div class="section-title">{t("profile.pushNotifications")}</div>
@@ -993,6 +970,7 @@ export const Profile = () => {
   // closes the dialog; its back button reopens the dialog, its close dismisses
   // to the board. The delete-confirm sheet works the same way.
   const [moving, setMoving] = useState(false);
+  const [rivalsOpen, setRivalsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [focusAccount, setFocusAccount] = useState(false);
 
@@ -1084,10 +1062,23 @@ export const Profile = () => {
             setOpen(false);
             setMoving(true);
           }}
+          onRivals={() => {
+            setOpen(false);
+            setRivalsOpen(true);
+          }}
           onDelete={() => {
             setOpen(false);
             setDeleting(true);
           }}
+        />
+      )}
+      {rivalsOpen && (
+        <RivalsSheet
+          onBack={() => {
+            setRivalsOpen(false);
+            setOpen(true);
+          }}
+          onClose={() => setRivalsOpen(false)}
         />
       )}
       {moving && (

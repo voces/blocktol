@@ -25,6 +25,7 @@ import { pushConfig } from "./push/config.ts";
 import { subscribePush } from "./push/subscribe.ts";
 import { unsubscribePush } from "./push/unsubscribe.ts";
 import { rename } from "./rename.ts";
+import { rivals } from "./rivals.ts";
 import { reportClientError } from "./reportClientError.ts";
 import { setSettings } from "./setSettings.ts";
 
@@ -42,6 +43,7 @@ const handlers = {
   best,
   standings,
   getProfile,
+  rivals,
   rename,
   merge,
   moveInfo,

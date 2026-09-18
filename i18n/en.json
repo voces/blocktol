@@ -731,6 +731,34 @@
     "message": "No records yet — they start after five meetings.",
     "description": "Shown in place of the head-to-head list when no rival has been met often enough on the selected board."
   },
+  "profile.seeAllRivals": {
+    "message": "See all {count} players",
+    "description": "Row at the end of the profile's head-to-head list, opening the full list. {count} is how many players the viewer has a record against."
+  },
+  "rivals.search": {
+    "message": "Find a player",
+    "description": "Placeholder in the head-to-head sheet's search box."
+  },
+  "rivals.sort": {
+    "message": "Sort",
+    "description": "Accessible label for the head-to-head sheet's sort switch (Most met / Closest)."
+  },
+  "rivals.sortMet": {
+    "message": "Most met",
+    "description": "Sort option: rivals the viewer has played against most often first."
+  },
+  "rivals.sortClose": {
+    "message": "Closest",
+    "description": "Sort option: the most even rivalries first — often met, and won and lost in similar numbers."
+  },
+  "rivals.loading": {
+    "message": "Loading…",
+    "description": "Shown in the head-to-head sheet while the full list is being fetched."
+  },
+  "rivals.noMatch": {
+    "message": "No player by that name",
+    "description": "Shown in the head-to-head sheet when the search box matches nobody."
+  },
   "profile.records": {
     "message": "Records",
     "description": "Profile stat label in the free-play tally: dailies where the player's best build shares the top with someone else. See glossary RECORD."

@@ -787,6 +787,10 @@
     "message": "保存",
     "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
   },
+  "profile.seeAllRivals": {
+    "message": "查看全部 {count} 名玩家",
+    "hash": "79ada315fb70521d891ef5a75efb508993954b96859d3ca7b76d8dd288ec4e4e"
+  },
   "profile.solved": {
     "message": "排位赛中解开",
     "hash": "fc82dd3622c56bfd7a65a1eebc81325ff51eb5866117eafbd63e2c3e24884c55"
@@ -870,6 +874,30 @@
   "profile.zoomSub": {
     "message": "触摸时放大棋盘。",
     "hash": "ae679914ecf9d1786f752e9b5ccf4f3f747a0287255450bb36a870499b1fce03"
+  },
+  "rivals.loading": {
+    "message": "加载中…",
+    "hash": "ba3bbbe10d8bef66441c88536ce7b8e724e2829b59a3da658654f4961cd61ae5"
+  },
+  "rivals.noMatch": {
+    "message": "未找到该名玩家",
+    "hash": "8e48f6635b1295e9753fa9ed81d88771af6b115d660668153896cbc1ad991839"
+  },
+  "rivals.search": {
+    "message": "查找玩家",
+    "hash": "af5185f77767cd949da2cc6ad90ec9bce6d62db8517b470a77b1f24f9487de54"
+  },
+  "rivals.sort": {
+    "message": "排序",
+    "hash": "bec69036aa27e7fab7d44cad3909477b76631c39ba46fd7841ea71aae7e5a735"
+  },
+  "rivals.sortClose": {
+    "message": "势均力敌",
+    "hash": "63eaa6b03cfe075bf926b23e81c047f2104e6aa16271cdd20d0dd4dc9eea48a9"
+  },
+  "rivals.sortMet": {
+    "message": "对战最多",
+    "hash": "fa2998b5c3f45399f10f4183db8c690fd303a772d1983ff4a767e74e07b5676b"
   },
   "splits.addFlag": {
     "message": "添加旗帜",
