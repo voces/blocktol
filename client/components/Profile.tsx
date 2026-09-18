@@ -617,346 +617,366 @@ const ProfileDialog = (
           )}
       </div>
 
-      <div class="profile-block">
-        <div class="section-title">{t("profile.ranked")}</div>
-        <div class="profile-stats">
-          <Stat
-            value={profile
-              ? (
-                <Fragment>
-                  <span style={{ color: "var(--gold)" }}>
-                    {profile.wonSole}
-                  </span>
-                  <span class="profile-stat__dot">·</span>
-                  <span style={{ color: "var(--peak)" }}>
-                    {profile.wonShared}
-                  </span>
-                </Fragment>
-              )
-              : "—"}
-            label={t("profile.daysWon")}
-            sub={t("profile.daysWonSub")}
-          />
-          <Stat
-            value={profile && profile.rankedDays > 0
-              ? formatPercent(
-                (profile.wonSole + profile.wonShared) / profile.rankedDays,
-              )
-              : "—"}
-            label={t("profile.winRate")}
-            sub={profile
-              ? t("profile.winRateSub", {
-                won: profile.wonSole + profile.wonShared,
-                days: profile.rankedDays,
-              })
-              : undefined}
-          />
-          <Stat
-            value={profile ? String(profile.streak) : "—"}
-            label={t("profile.streak")}
-            color={profile && profile.streak > 0 ? "var(--warn)" : undefined}
-            sub={profile
-              ? t("profile.streakSub", { best: profile.bestStreak })
-              : undefined}
-          />
-        </div>
-        <div class="profile-rows">
-          {
-            /* First try leads: its count is a subset of the row below, so the
+      {
+        /* Two columns on desktop, one everywhere else (see .profile-cols): the
+           left is the half a player reads, the right the half they operate. */
+      }
+      <div class="profile-cols">
+        <div class="profile-col">
+          <div class="profile-block">
+            <div class="section-title">{t("profile.ranked")}</div>
+            <div class="profile-stats">
+              <Stat
+                value={profile
+                  ? (
+                    <Fragment>
+                      <span style={{ color: "var(--gold)" }}>
+                        {profile.wonSole}
+                      </span>
+                      <span class="profile-stat__dot">·</span>
+                      <span style={{ color: "var(--peak)" }}>
+                        {profile.wonShared}
+                      </span>
+                    </Fragment>
+                  )
+                  : "—"}
+                label={t("profile.daysWon")}
+                sub={t("profile.daysWonSub")}
+              />
+              <Stat
+                value={profile && profile.rankedDays > 0
+                  ? formatPercent(
+                    (profile.wonSole + profile.wonShared) / profile.rankedDays,
+                  )
+                  : "—"}
+                label={t("profile.winRate")}
+                sub={profile
+                  ? t("profile.winRateSub", {
+                    won: profile.wonSole + profile.wonShared,
+                    days: profile.rankedDays,
+                  })
+                  : undefined}
+              />
+              <Stat
+                value={profile ? String(profile.streak) : "—"}
+                label={t("profile.streak")}
+                color={profile && profile.streak > 0
+                  ? "var(--warn)"
+                  : undefined}
+                sub={profile
+                  ? t("profile.streakSub", { best: profile.bestStreak })
+                  : undefined}
+              />
+            </div>
+            <div class="profile-rows">
+              {
+                /* First try leads: its count is a subset of the row below, so the
               rarer figure reads first and "Or on attempt two or three" lands
               as a continuation of it. */
-          }
-          <SolveRow
-            icon={<Bolt />}
-            title={t("profile.solvedFirstTry")}
-            sub={t("profile.solvedFirstTrySub")}
-            value={profile?.solvedFirstTry ?? null}
-            of={profile?.daysPlayed ?? 0}
-          />
-          <SolveRow
-            icon={<Target />}
-            title={t("profile.solved")}
-            sub={t("profile.solvedSub")}
-            value={profile?.solved ?? null}
-            of={profile?.daysPlayed ?? 0}
-          />
-        </div>
-      </div>
+              }
+              <SolveRow
+                icon={<Bolt />}
+                title={t("profile.solvedFirstTry")}
+                sub={t("profile.solvedFirstTrySub")}
+                value={profile?.solvedFirstTry ?? null}
+                of={profile?.daysPlayed ?? 0}
+              />
+              <SolveRow
+                icon={<Target />}
+                title={t("profile.solved")}
+                sub={t("profile.solvedSub")}
+                value={profile?.solved ?? null}
+                of={profile?.daysPlayed ?? 0}
+              />
+            </div>
+          </div>
 
-      <div class="profile-block">
-        <div class="section-title">{t("profile.freePlay")}</div>
-        <div class="profile-tally">
-          {
-            /* A player with no supreme gets three cells, not a zero: nobody
+          <div class="profile-block">
+            <div class="section-title">{t("profile.freePlay")}</div>
+            <div class="profile-tally">
+              {
+                /* A player with no supreme gets three cells, not a zero: nobody
               holds more than a handful of boards alone, so the cell would read
               empty for almost everyone. */
-          }
-          {!!profile?.supremes && (
-            <div class="profile-tally__cell">
-              <div
-                class="profile-tally__value mono"
-                style={{ color: "var(--gold)" }}
-              >
-                {profile.supremes}
+              }
+              {!!profile?.supremes && (
+                <div class="profile-tally__cell">
+                  <div
+                    class="profile-tally__value mono"
+                    style={{ color: "var(--gold)" }}
+                  >
+                    {profile.supremes}
+                  </div>
+                  <div class="profile-tally__label">
+                    {t("profile.supremes")}
+                  </div>
+                </div>
+              )}
+              <div class="profile-tally__cell">
+                <div
+                  class="profile-tally__value mono"
+                  style={{ color: "var(--peak)" }}
+                >
+                  {profile ? profile.records : "—"}
+                </div>
+                <div class="profile-tally__label">{t("profile.records")}</div>
               </div>
-              <div class="profile-tally__label">{t("profile.supremes")}</div>
+              <div class="profile-tally__cell">
+                <div class="profile-tally__value mono">
+                  {profile ? profile.boardsPlayed : "—"}
+                </div>
+                <div class="profile-tally__label">
+                  {t("profile.boardsPlayed")}
+                </div>
+              </div>
+              <div class="profile-tally__cell">
+                <div class="profile-tally__value mono">
+                  {profile ? profile.boards : "—"}
+                </div>
+                <div class="profile-tally__label">{t("profile.boards")}</div>
+              </div>
             </div>
+          </div>
+
+          {!!profile?.rivals.length && (
+            <Rivals
+              rivals={profile.rivals}
+              total={profile.rivalCount}
+              onSeeAll={onRivals}
+            />
           )}
-          <div class="profile-tally__cell">
-            <div
-              class="profile-tally__value mono"
-              style={{ color: "var(--peak)" }}
-            >
-              {profile ? profile.records : "—"}
-            </div>
-            <div class="profile-tally__label">{t("profile.records")}</div>
-          </div>
-          <div class="profile-tally__cell">
-            <div class="profile-tally__value mono">
-              {profile ? profile.boardsPlayed : "—"}
-            </div>
-            <div class="profile-tally__label">{t("profile.boardsPlayed")}</div>
-          </div>
-          <div class="profile-tally__cell">
-            <div class="profile-tally__value mono">
-              {profile ? profile.boards : "—"}
-            </div>
-            <div class="profile-tally__label">{t("profile.boards")}</div>
-          </div>
-        </div>
-      </div>
-
-      {!!profile?.rivals.length && (
-        <Rivals
-          rivals={profile.rivals}
-          total={profile.rivalCount}
-          onSeeAll={onRivals}
-        />
-      )}
-
-      <div class="pref">
-        <div class="section-title">{t("profile.pushNotifications")}</div>
-        {(settings.notifications.lostTop ||
-          settings.notifications.dailyFinal) &&
-          <PushNotice state={pushState.value} />}
-        <NotifRow
-          icon={<Crown />}
-          accent="var(--gold)"
-          title={t("profile.notifLostTopTitle")}
-          sub={t("profile.notifLostTopSub")}
-          on={settings.notifications.lostTop}
-          onChange={(v) => setNotif({ lostTop: v })}
-        />
-        <NotifRow
-          icon={<Flag />}
-          accent="var(--accent)"
-          title={t("profile.notifDailyTitle")}
-          sub={t("profile.notifDailySub")}
-          on={settings.notifications.dailyFinal}
-          onChange={(v) => setNotif({ dailyFinal: v })}
-        />
-      </div>
-
-      <div class="pref">
-        <div class="section-title">{t("profile.preferences")}</div>
-
-        <div class="pref__row">
-          <div class="pref__label">{t("profile.appearance")}</div>
-          <div
-            class="pref__seg"
-            role="group"
-            aria-label={t("profile.appearance")}
-          >
-            {themes.map((themeName) => (
-              <button
-                key={themeName}
-                type="button"
-                class={"pref__seg-btn tapc" +
-                  (settings.theme === themeName
-                    ? " pref__seg-btn--active"
-                    : "")}
-                aria-pressed={settings.theme === themeName}
-                onClick={() => setSettings({ theme: themeName })}
-              >
-                {t(THEME_KEY[themeName])}
-              </button>
-            ))}
-          </div>
         </div>
 
-        <div class="pref__row">
-          <div class="pref__label">{t("profile.language")}</div>
-          {
-            /* Custom dropdown (not a native select): each option is an endonym
-              so it stays recognizable whatever language the UI is in. */
-          }
-          <LanguageSelect
-            value={settings.language}
-            onChange={(v) => setSettings({ language: v })}
-          />
-        </div>
-
-        {touch && (
-          <div class="pref__row pref__row--stack">
-            <div class="pref__head">
-              <div>
-                <div class="pref__label">{t("profile.zoom")}</div>
-                <div class="pref__sub">{t("profile.zoomSub")}</div>
-              </div>
-              <div class="pref__value mono">
-                {settings.zoom <= ZOOM_MIN
-                  ? t("profile.zoomOff")
-                  : `${formatDecimal(settings.zoom, { min: 1, max: 1 })}×`}
-              </div>
-            </div>
-            <input
-              class="pref__slider"
-              type="range"
-              min={ZOOM_MIN}
-              max={ZOOM_MAX}
-              step={0.1}
-              value={settings.zoom}
-              aria-label={t("profile.zoom")}
-              onInput={(e) =>
-                setSettings({ zoom: Number(e.currentTarget.value) })}
+        <div class="profile-col profile-col--side">
+          <div class="pref">
+            <div class="section-title">{t("profile.pushNotifications")}</div>
+            {(settings.notifications.lostTop ||
+              settings.notifications.dailyFinal) &&
+              <PushNotice state={pushState.value} />}
+            <NotifRow
+              icon={<Crown />}
+              accent="var(--gold)"
+              title={t("profile.notifLostTopTitle")}
+              sub={t("profile.notifLostTopSub")}
+              on={settings.notifications.lostTop}
+              onChange={(v) => setNotif({ lostTop: v })}
+            />
+            <NotifRow
+              icon={<Flag />}
+              accent="var(--accent)"
+              title={t("profile.notifDailyTitle")}
+              sub={t("profile.notifDailySub")}
+              on={settings.notifications.dailyFinal}
+              onChange={(v) => setNotif({ dailyFinal: v })}
             />
           </div>
-        )}
 
-        {
-          /* Delay before the placing zoom kicks in, so a quick tap-to-place
+          <div class="pref">
+            <div class="section-title">{t("profile.preferences")}</div>
+
+            <div class="pref__row">
+              <div class="pref__label">{t("profile.appearance")}</div>
+              <div
+                class="pref__seg"
+                role="group"
+                aria-label={t("profile.appearance")}
+              >
+                {themes.map((themeName) => (
+                  <button
+                    key={themeName}
+                    type="button"
+                    class={"pref__seg-btn tapc" +
+                      (settings.theme === themeName
+                        ? " pref__seg-btn--active"
+                        : "")}
+                    aria-pressed={settings.theme === themeName}
+                    onClick={() => setSettings({ theme: themeName })}
+                  >
+                    {t(THEME_KEY[themeName])}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div class="pref__row">
+              <div class="pref__label">{t("profile.language")}</div>
+              {
+                /* Custom dropdown (not a native select): each option is an endonym
+              so it stays recognizable whatever language the UI is in. */
+              }
+              <LanguageSelect
+                value={settings.language}
+                onChange={(v) => setSettings({ language: v })}
+              />
+            </div>
+
+            {touch && (
+              <div class="pref__row pref__row--stack">
+                <div class="pref__head">
+                  <div>
+                    <div class="pref__label">{t("profile.zoom")}</div>
+                    <div class="pref__sub">{t("profile.zoomSub")}</div>
+                  </div>
+                  <div class="pref__value mono">
+                    {settings.zoom <= ZOOM_MIN
+                      ? t("profile.zoomOff")
+                      : `${formatDecimal(settings.zoom, { min: 1, max: 1 })}×`}
+                  </div>
+                </div>
+                <input
+                  class="pref__slider"
+                  type="range"
+                  min={ZOOM_MIN}
+                  max={ZOOM_MAX}
+                  step={0.1}
+                  value={settings.zoom}
+                  aria-label={t("profile.zoom")}
+                  onInput={(e) =>
+                    setSettings({ zoom: Number(e.currentTarget.value) })}
+                />
+              </div>
+            )}
+
+            {
+              /* Delay before the placing zoom kicks in, so a quick tap-to-place
              finishes before the board magnifies. Touch-only, and moot when the
              zoom itself is off (1×) — hidden then. */
-        }
-        {touch && settings.zoom > ZOOM_MIN && (
-          <div class="pref__row pref__row--stack">
-            <div class="pref__head">
-              <div>
-                <div class="pref__label">{t("profile.zoomDelay")}</div>
-                <div class="pref__sub">{t("profile.zoomDelaySub")}</div>
+            }
+            {touch && settings.zoom > ZOOM_MIN && (
+              <div class="pref__row pref__row--stack">
+                <div class="pref__head">
+                  <div>
+                    <div class="pref__label">{t("profile.zoomDelay")}</div>
+                    <div class="pref__sub">{t("profile.zoomDelaySub")}</div>
+                  </div>
+                  <div class="pref__value mono">
+                    {settings.zoomDelay <= ZOOM_DELAY_MIN
+                      ? t("profile.zoomDelayInstant")
+                      : t("profile.zoomDelayValue", { ms: settings.zoomDelay })}
+                  </div>
+                </div>
+                <input
+                  class="pref__slider"
+                  type="range"
+                  min={ZOOM_DELAY_MIN}
+                  max={ZOOM_DELAY_MAX}
+                  step={25}
+                  value={settings.zoomDelay}
+                  aria-label={t("profile.zoomDelay")}
+                  onInput={(e) =>
+                    setSettings({ zoomDelay: Number(e.currentTarget.value) })}
+                />
               </div>
-              <div class="pref__value mono">
-                {settings.zoomDelay <= ZOOM_DELAY_MIN
-                  ? t("profile.zoomDelayInstant")
-                  : t("profile.zoomDelayValue", { ms: settings.zoomDelay })}
-              </div>
-            </div>
-            <input
-              class="pref__slider"
-              type="range"
-              min={ZOOM_DELAY_MIN}
-              max={ZOOM_DELAY_MAX}
-              step={25}
-              value={settings.zoomDelay}
-              aria-label={t("profile.zoomDelay")}
-              onInput={(e) =>
-                setSettings({ zoomDelay: Number(e.currentTarget.value) })}
-            />
+            )}
           </div>
-        )}
-      </div>
 
-      <div class="pref">
-        <div class="section-title">{t("profile.community")}</div>
-        <a
-          class="community-card tapc"
-          href={`https://discord.gg/${DISCORD_INVITE}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <span class="community-card__tile" aria-hidden="true">
-            <DiscordIcon />
-          </span>
-          <div class="community-card__text">
-            <div class="community-card__title">{t("profile.discordTitle")}</div>
-            <div class="community-card__sub">
-              {t("profile.discordSub")}
-            </div>
-            {
-              /* Always rendered so the card's height is stable whether or not
+          <div class="pref">
+            <div class="section-title">{t("profile.community")}</div>
+            <a
+              class="community-card tapc"
+              href={`https://discord.gg/${DISCORD_INVITE}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span class="community-card__tile" aria-hidden="true">
+                <DiscordIcon />
+              </span>
+              <div class="community-card__text">
+                <div class="community-card__title">
+                  {t("profile.discordTitle")}
+                </div>
+                <div class="community-card__sub">
+                  {t("profile.discordSub")}
+                </div>
+                {
+                  /* Always rendered so the card's height is stable whether or not
                  the count is known yet. The dot greys out while the count is
                  unknown and when it's a genuine zero — a live-green dot only
                  reads right when someone's actually on. */
-            }
-            <div class="community-card__online mono">
-              <span
-                class={"community-card__dot" +
-                  (online ? "" : " community-card__dot--idle")}
-                aria-hidden="true"
-              />
-              {online == null ? " " : t("profile.online", { count: online })}
-            </div>
+                }
+                <div class="community-card__online mono">
+                  <span
+                    class={"community-card__dot" +
+                      (online ? "" : " community-card__dot--idle")}
+                    aria-hidden="true"
+                  />
+                  {online == null
+                    ? " "
+                    : t("profile.online", { count: online })}
+                </div>
+              </div>
+              <span class="community-card__ext" aria-hidden="true">
+                <ExternalIcon />
+              </span>
+            </a>
           </div>
-          <span class="community-card__ext" aria-hidden="true">
-            <ExternalIcon />
-          </span>
-        </a>
-      </div>
 
-      <div class="pref" ref={accountRef}>
-        <div class="section-title">{t("profile.account")}</div>
-        <button
-          type="button"
-          class="profile-action profile-action--row tapc"
-          onClick={onMove}
-        >
-          <LinkIcon />
-          <div class="profile-action__text">
-            <div class="profile-action__title">{t("move.title")}</div>
-            <div class="profile-action__sub">
-              {t("profile.moveSub")}
-            </div>
-          </div>
-          <span class="profile-action__chev" aria-hidden="true">›</span>
-        </button>
+          <div class="pref" ref={accountRef}>
+            <div class="section-title">{t("profile.account")}</div>
+            <button
+              type="button"
+              class="profile-action profile-action--row tapc"
+              onClick={onMove}
+            >
+              <LinkIcon />
+              <div class="profile-action__text">
+                <div class="profile-action__title">{t("move.title")}</div>
+                <div class="profile-action__sub">
+                  {t("profile.moveSub")}
+                </div>
+              </div>
+              <span class="profile-action__chev" aria-hidden="true">›</span>
+            </button>
 
-        <button
-          type="button"
-          class="profile-action profile-action--row tapc"
-          onClick={downloadData}
-          disabled={exporting}
-        >
-          <DownloadIcon />
-          <div class="profile-action__text">
-            <div class="profile-action__title">
-              {exporting ? t("profile.exporting") : t("profile.exportData")}
-            </div>
-            <div class="profile-action__sub">
-              {t("profile.exportSub")}
-            </div>
-          </div>
-          <span class="profile-action__chev" aria-hidden="true">›</span>
-        </button>
+            <button
+              type="button"
+              class="profile-action profile-action--row tapc"
+              onClick={downloadData}
+              disabled={exporting}
+            >
+              <DownloadIcon />
+              <div class="profile-action__text">
+                <div class="profile-action__title">
+                  {exporting ? t("profile.exporting") : t("profile.exportData")}
+                </div>
+                <div class="profile-action__sub">
+                  {t("profile.exportSub")}
+                </div>
+              </div>
+              <span class="profile-action__chev" aria-hidden="true">›</span>
+            </button>
 
-        <button
-          type="button"
-          class="profile-action profile-action--row profile-action--danger tapc"
-          onClick={onDelete}
-        >
-          <TrashIcon />
-          <div class="profile-action__text">
-            <div class="profile-action__title">{t("del.title")}</div>
-            <div class="profile-action__sub">
-              {t("profile.deleteSub")}
-            </div>
-          </div>
-          <span class="profile-action__chev" aria-hidden="true">›</span>
-        </button>
+            <button
+              type="button"
+              class="profile-action profile-action--row profile-action--danger tapc"
+              onClick={onDelete}
+            >
+              <TrashIcon />
+              <div class="profile-action__text">
+                <div class="profile-action__title">{t("del.title")}</div>
+                <div class="profile-action__sub">
+                  {t("profile.deleteSub")}
+                </div>
+              </div>
+              <span class="profile-action__chev" aria-hidden="true">›</span>
+            </button>
 
-        {
-          /* Same window, in the viewer's language. Not a new tab: the page's
+            {
+              /* Same window, in the viewer's language. Not a new tab: the page's
              rights cards link back into the app (`?profile=`), and an iOS
              home-screen app opens a new tab in a browser view with its OWN
              storage — so "delete my data" there would act on a fresh anonymous
              player, not this one. In the same window the link stays inside the
              app, on this device's identity. */
-        }
-        <a
-          class="profile-privacy-link tapc"
-          href={`/privacy.html?lang=${resolveCatalog(uiLocale.value)}`}
-        >
-          {t("profile.privacy")}
-        </a>
+            }
+            <a
+              class="profile-privacy-link tapc"
+              href={`/privacy.html?lang=${resolveCatalog(uiLocale.value)}`}
+            >
+              {t("profile.privacy")}
+            </a>
+          </div>
+        </div>
       </div>
     </Modal>
   );
