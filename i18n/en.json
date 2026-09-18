@@ -668,20 +668,20 @@
     "description": "Line under Day streak showing the player's longest streak ever, in days."
   },
   "profile.solved": {
-    "message": "Solved in three",
-    "description": "Profile stat label, sitting under Solved first try: days ANY of the three daily attempts built the best maze anyone has made on that daily. \"three\" is the three attempts a daily allows."
+    "message": "Solved in ranked",
+    "description": "Profile stat label, under Solved first try: days ANY of the three daily attempts built the best maze anyone has made on that daily (so it includes the first-try days above). \"in ranked\" names the mode, as opposed to free play — avoid a wording that could mean \"solved it eventually\". See glossary RANKED, SOLVE."
   },
   "profile.solvedSub": {
-    "message": "Or on attempt two or three",
-    "description": "Explains Solved in three, reading on from the Solved first try row above it: the same achievement, reached on a later attempt."
+    "message": "100% on any ranked run",
+    "description": "Explains Solved in ranked, reading on from the row above: the same 100% run, reached on any of the three daily attempts rather than only the first."
   },
   "profile.solvedFirstTry": {
     "message": "Solved first try",
-    "description": "Profile stat label: days the player's FIRST daily attempt built the best maze anyone has made on that daily. See glossary SOLVE."
+    "description": "Profile stat label: days the player's FIRST daily attempt built the best maze anyone has made on that daily. Sits above the Solved in ranked row. See glossary SOLVE."
   },
   "profile.solvedFirstTrySub": {
-    "message": "The day's best maze, attempt one",
-    "description": "Explains Solved first try: the maze matches the best anyone has built on that daily, and it came from the first of the three attempts."
+    "message": "100% on the first run",
+    "description": "Explains Solved first try. \"100%\" is the figure the runs panel already shows for a run that matches the best build known on that daily; \"the first run\" is the first of the three daily attempts."
   },
   "profile.ofDays": {
     "message": "{pct} of days",
