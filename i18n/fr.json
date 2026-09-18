@@ -788,20 +788,20 @@
     "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
   },
   "profile.solved": {
-    "message": "Résolu en trois",
-    "hash": "2eccb72885b9f3d10578ddde46eee7c56b1d425e16041267cc7ed0b5abb25ed8"
+    "message": "Résolus en classé",
+    "hash": "fc82dd3622c56bfd7a65a1eebc81325ff51eb5866117eafbd63e2c3e24884c55"
   },
   "profile.solvedFirstTry": {
     "message": "Résolu du premier coup",
     "hash": "00867c4e94f5be171c500b81005698845db40b9aa320ef2b46ff24cb96751797"
   },
   "profile.solvedFirstTrySub": {
-    "message": "Le meilleur labyrinthe du jour, dès la première tentative",
-    "hash": "f9285b6c0149ec4dbff9abd4e73152d9777b73a05f9c7e98c0d03c5e4d4d94f4"
+    "message": "100 % dès la première course",
+    "hash": "b4a789d759c7e191407f11c18673c33831ff60929822305c93e519d9169973a7"
   },
   "profile.solvedSub": {
-    "message": "Ou à la deuxième ou troisième tentative",
-    "hash": "2ac656277cf8407953685d4e097140faa345fe0443fc94cc95e4e35278297f58"
+    "message": "100 % sur une course classée",
+    "hash": "c61d3bcc9bc29c07e4b999d3ad2171bfe524ee72a4480ed7d1031949cab4f3da"
   },
   "profile.streak": {
     "message": "Série de jours",
