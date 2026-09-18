@@ -36,27 +36,14 @@ import {
 } from "../util/push.ts";
 import type { NotificationPrefs, Theme } from "../../common/settings.ts";
 import type { PushStatus } from "../util/push.ts";
-import { locales, type MessageKey } from "../../common/i18n.ts";
-import { t } from "../util/t.ts";
-
-// A language's name in its own tongue (endonym), for the picker — "Español",
-// "日本語", "Português (Brasil)". DisplayNames can lowercase some (French,
-// Spanish), so uppercase the first letter. Cached; Intl constructors aren't free.
-const endonymCache = new Map<string, string>();
-const endonym = (tag: string): string => {
-  let v = endonymCache.get(tag);
-  if (v === undefined) {
-    try {
-      const name = new Intl.DisplayNames(tag, { type: "language" }).of(tag) ??
-        tag;
-      v = name.charAt(0).toUpperCase() + name.slice(1);
-    } catch {
-      v = tag;
-    }
-    endonymCache.set(tag, v);
-  }
-  return v;
-};
+import {
+  endonym,
+  locales,
+  type MessageKey,
+  resolveCatalog,
+} from "../../common/i18n.ts";
+import { t, uiLocale } from "../util/t.ts";
+import { profileRequest, takeProfileRequest } from "../store/notifNav.ts";
 
 // A compact custom language dropdown. A native <select> sizes to its widest
 // option (so the chevron floats far right of a short value like "System") and
@@ -323,13 +310,17 @@ const NotifRow = (
 );
 
 const ProfileDialog = (
-  { onClose, onMove, onDelete }: {
+  { onClose, onMove, onDelete, focusAccount }: {
     onClose: () => void;
     onMove: () => void;
     onDelete: () => void;
+    // Opened by a `?profile=account` link: land on the Account section rather
+    // than the top of the dialog.
+    focusAccount?: boolean;
   },
 ) => {
   const { dailyInProgress, viewMaze } = useContext(GameStateContext);
+  const accountRef = useRef<HTMLDivElement>(null);
   // Signal read: the dialog re-renders as the open-time refetch lands.
   const profile = profileSignal.value;
   const { settings, setSettings } = useSettings();
@@ -350,6 +341,10 @@ const ProfileDialog = (
   useEffect(() => {
     fetchProfile();
     fetchDiscordOnline();
+  }, []);
+
+  useEffect(() => {
+    if (focusAccount) accountRef.current?.scrollIntoView({ block: "start" });
   }, []);
 
   const startEdit = () => {
@@ -720,7 +715,7 @@ const ProfileDialog = (
         </a>
       </div>
 
-      <div class="pref">
+      <div class="pref" ref={accountRef}>
         <div class="section-title">{t("profile.account")}</div>
         <button
           type="button"
@@ -770,11 +765,17 @@ const ProfileDialog = (
           <span class="profile-action__chev" aria-hidden="true">›</span>
         </button>
 
+        {
+          /* Same window, in the viewer's language. Not a new tab: the page's
+             rights cards link back into the app (`?profile=`), and an iOS
+             home-screen app opens a new tab in a browser view with its OWN
+             storage — so "delete my data" there would act on a fresh anonymous
+             player, not this one. In the same window the link stays inside the
+             app, on this device's identity. */
+        }
         <a
           class="profile-privacy-link tapc"
-          href="/privacy.html"
-          target="_blank"
-          rel="noopener noreferrer"
+          href={`/privacy.html?lang=${resolveCatalog(uiLocale.value)}`}
         >
           {t("profile.privacy")}
         </a>
@@ -784,7 +785,7 @@ const ProfileDialog = (
 };
 
 export const Profile = () => {
-  const { dailyInProgress } = useContext(GameStateContext);
+  const { dailyInProgress, phase } = useContext(GameStateContext);
   const profile = profileSignal.value;
   const [open, setOpen] = useState(false);
   // The move sheet replaces the dialog rather than stacking over it: opening it
@@ -792,61 +793,92 @@ export const Profile = () => {
   // to the board. The delete-confirm sheet works the same way.
   const [moving, setMoving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [focusAccount, setFocusAccount] = useState(false);
 
-  // Hidden only while mid-run on today's ranked daily (mirrors the calendar
-  // button) — no wandering off to the profile mid-run. Available on a past day
-  // (deep link / held across midnight), where the board isn't the live daily.
-  if (dailyInProgress) return null;
+  // A profile request (see notifNav — the privacy page's `?profile=` links, or
+  // the prestart overlay's account link): open the dialog on its Account
+  // section, or the delete-confirm sheet directly (its back button still leads
+  // to the dialog). It opens even with today's daily outstanding, when the
+  // button below is hidden: the privacy page promises export and erasure "any
+  // time", and a player's data rights can't wait on three ranked attempts. What
+  // it won't do is land over a live attempt and eat its clock — it's held
+  // through a build or run, and through boot (a resumed attempt may be about to
+  // start), then taken once, so it can't fire again.
+  const pending = profileRequest.value;
+  useEffect(() => {
+    if (phase === "loading" || phase === "building" || phase === "running") {
+      return;
+    }
+    const req = takeProfileRequest();
+    if (req === "delete") setDeleting(true);
+    else if (req === "account") {
+      setFocusAccount(true);
+      setOpen(true);
+    }
+  }, [phase, pending]);
 
   const name = profile?.name || t("profile.anonymous");
 
+  // The button is hidden while on today's ranked daily (mirrors the calendar
+  // button) — no wandering off to the profile mid-run. Available on a past day
+  // (deep link / held across midnight), where the board isn't the live daily.
+  // The sheets below still render then: the only way to open one without the
+  // button is a profile request above (or a dialog already open when the day
+  // rolls over, which is better left open than yanked away).
+  //
   // Once the (prefetched) profile is loaded, the button is the coloured letter
   // avatar; until then, the neutral person glyph.
   return (
     <>
-      <button
-        type="button"
-        class={"profile tapc " +
-          (profile ? "profile-avatar-btn" : "icon-button")}
-        style={profile ? { background: avatarColor(getId()) } : undefined}
-        onClick={() => setOpen(true)}
-        // Warm the profile the moment intent shows — pointerenter covers mouse
-        // hover and the first touch, onFocus covers keyboard. fetchProfile
-        // coalesces/rate-limits, so repeated events don't spam requests.
-        onPointerEnter={() => {
-          fetchProfile();
-          fetchDiscordOnline();
-        }}
-        onFocus={() => {
-          fetchProfile();
-          fetchDiscordOnline();
-        }}
-        title={t("profile.title")}
-        aria-label={t("profile.open")}
-      >
-        {profile
-          ? (
-            <span class="profile-avatar-btn__initial">
-              {avatarInitial(profile.name)}
-            </span>
-          )
-          : (
-            <svg
-              class="profile__avatar"
-              width={20}
-              height={20}
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <circle cx={12} cy={8} r={4} />
-              <path d="M12 14c-4.42 0-7.5 2.5-7.5 5.6 0 .77.63 1.4 1.4 1.4h12.2c.77 0 1.4-.63 1.4-1.4C19.5 16.5 16.42 14 12 14Z" />
-            </svg>
-          )}
-      </button>
+      {!dailyInProgress && (
+        <button
+          type="button"
+          class={"profile tapc " +
+            (profile ? "profile-avatar-btn" : "icon-button")}
+          style={profile ? { background: avatarColor(getId()) } : undefined}
+          onClick={() => setOpen(true)}
+          // Warm the profile the moment intent shows — pointerenter covers mouse
+          // hover and the first touch, onFocus covers keyboard. fetchProfile
+          // coalesces/rate-limits, so repeated events don't spam requests.
+          onPointerEnter={() => {
+            fetchProfile();
+            fetchDiscordOnline();
+          }}
+          onFocus={() => {
+            fetchProfile();
+            fetchDiscordOnline();
+          }}
+          title={t("profile.title")}
+          aria-label={t("profile.open")}
+        >
+          {profile
+            ? (
+              <span class="profile-avatar-btn__initial">
+                {avatarInitial(profile.name)}
+              </span>
+            )
+            : (
+              <svg
+                class="profile__avatar"
+                width={20}
+                height={20}
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx={12} cy={8} r={4} />
+                <path d="M12 14c-4.42 0-7.5 2.5-7.5 5.6 0 .77.63 1.4 1.4 1.4h12.2c.77 0 1.4-.63 1.4-1.4C19.5 16.5 16.42 14 12 14Z" />
+              </svg>
+            )}
+        </button>
+      )}
       {open && (
         <ProfileDialog
-          onClose={() => setOpen(false)}
+          focusAccount={focusAccount}
+          onClose={() => {
+            setOpen(false);
+            setFocusAccount(false);
+          }}
           onMove={() => {
             setOpen(false);
             setMoving(true);

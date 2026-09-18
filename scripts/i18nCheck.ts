@@ -8,6 +8,7 @@
 // heals every failure this reports.
 
 import {
+  CATALOGS,
   loadConfig,
   readJson,
   sha256,
@@ -17,52 +18,64 @@ import {
 } from "./i18nLib.ts";
 import { parseMessage } from "./i18nParse.ts";
 
-const en = await readJson<SourceCatalog>("en.json");
-const enKeys = Object.keys(en);
 const { targets } = await loadConfig();
 
 const errors: string[] = [];
+let keyCount = 0;
 
-// The source must itself be valid ICU (a bad en.json message would break every
-// downstream translation).
-for (const key of enKeys) {
-  try {
-    parseMessage(en[key].message);
-  } catch (e) {
-    errors.push(`en/${key}: ICU parse error: ${(e as Error).message}`);
-  }
-}
+// Every catalog is held to the same bar. Errors name the catalog's directory
+// (`privacy/de/privacy.intro`) so a failure in one is easy to place.
+for (const { dir } of CATALOGS) {
+  const en = await readJson<SourceCatalog>(`${dir}en.json`);
+  const enKeys = Object.keys(en);
+  keyCount += enKeys.length;
 
-const hashes = new Map<string, string>();
-for (const key of enKeys) hashes.set(key, await sha256(en[key].message));
-
-for (const locale of targets) {
-  let target: TargetCatalog;
-  try {
-    target = await readJson<TargetCatalog>(`${locale}.json`);
-  } catch {
-    errors.push(
-      `${locale}: missing catalog (i18n/${locale}.json) — run i18n:translate`,
-    );
-    continue;
-  }
+  // The source must itself be valid ICU (a bad en.json message would break every
+  // downstream translation).
   for (const key of enKeys) {
-    const entry = target[key];
-    if (!entry) {
-      errors.push(`${locale}/${key}: missing translation`);
-      continue;
+    try {
+      parseMessage(en[key].message);
+    } catch (e) {
+      errors.push(`${dir}en/${key}: ICU parse error: ${(e as Error).message}`);
     }
-    if (entry.hash !== hashes.get(key)) {
-      errors.push(`${locale}/${key}: stale (source changed since translation)`);
-      continue;
-    }
-    errors.push(
-      ...validateTranslation(locale, key, entry.message, en[key].message),
-    );
   }
-  for (const key of Object.keys(target)) {
-    if (!(key in en)) {
-      errors.push(`${locale}/${key}: orphaned (not in en.json)`);
+
+  const hashes = new Map<string, string>();
+  for (const key of enKeys) hashes.set(key, await sha256(en[key].message));
+
+  for (const locale of targets) {
+    let target: TargetCatalog;
+    try {
+      target = await readJson<TargetCatalog>(`${dir}${locale}.json`);
+    } catch {
+      errors.push(
+        `${dir}${locale}: missing catalog (i18n/${dir}${locale}.json) — run i18n:translate`,
+      );
+      continue;
+    }
+    for (const key of enKeys) {
+      const entry = target[key];
+      if (!entry) {
+        errors.push(`${dir}${locale}/${key}: missing translation`);
+        continue;
+      }
+      if (entry.hash !== hashes.get(key)) {
+        errors.push(
+          `${dir}${locale}/${key}: stale (source changed since translation)`,
+        );
+        continue;
+      }
+      // Validated under the bare locale (it drives the CLDR plural check); the
+      // directory is prefixed onto the messages afterwards.
+      errors.push(
+        ...validateTranslation(locale, key, entry.message, en[key].message)
+          .map((e) => `${dir}${e}`),
+      );
+    }
+    for (const key of Object.keys(target)) {
+      if (!(key in en)) {
+        errors.push(`${dir}${locale}/${key}: orphaned (not in en.json)`);
+      }
     }
   }
 }
@@ -73,5 +86,5 @@ if (errors.length) {
   Deno.exit(1);
 }
 console.log(
-  `i18n:check ok — ${enKeys.length} keys × ${targets.length} target locale(s)`,
+  `i18n:check ok — ${keyCount} keys in ${CATALOGS.length} catalog(s) × ${targets.length} target locale(s)`,
 );

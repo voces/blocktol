@@ -7,21 +7,57 @@
 //                      invalidates (marks stale) every translation of it.
 // i18n/config.json   — { "targets": ["de", "es", ...] } the locales the pipeline
 //                      maintains (en is the implicit source; en-XA etc. are not
-//                      real targets).
+//                      real targets). Shared by every catalog below, as is
+//                      i18n/glossary.json.
 
 import { collectParams, parseMessage } from "./i18nParse.ts";
 
 const I18N_DIR = new URL("../i18n/", import.meta.url);
+
+// Every catalog the pipeline maintains. Each is a directory under i18n/ holding
+// the source `en.json` and one machine translation per target locale, compiled
+// by genI18n to its own module; check / translate / unused treat them alike.
+//   - the app's UI copy, which the client bundles (and the server's push copy
+//     reads);
+//   - the privacy page's, rendered by the server alone. Kept apart so a page of
+//     prose doesn't ride along in every client bundle (it would roughly double
+//     the catalog), and so its English source is a file whose git history is
+//     exactly the page's — the page links that history (server/privacy/page.ts).
+export type CatalogSpec = {
+  // Directory under i18n/, with a trailing slash ("" for the app catalog).
+  dir: string;
+  // The generated module, relative to the repo root.
+  out: string;
+  // Extra translator guidance for this catalog's register, beyond the shared
+  // game-UI brief (see i18nTranslate.ts).
+  brief?: string;
+};
+
+export const CATALOGS: CatalogSpec[] = [
+  { dir: "", out: "common/i18n.generated.ts" },
+  {
+    dir: "privacy/",
+    out: "server/privacy/catalog.generated.ts",
+    brief:
+      `These strings are the game's privacy notice, rendered as a web page — not
+tight UI, so the length guidance doesn't apply. Translate each one completely
+and faithfully in clear, plain language: don't shorten, summarise, soften, or
+add anything (the English version is authoritative). Keep product and service
+names (Blocktol, Discord, Google Fonts, Google, Mozilla, Apple, JSON, ELO) as-is.`,
+  },
+];
 
 export type SourceEntry = { message: string; description?: string };
 export type TargetEntry = { message: string; hash: string };
 export type SourceCatalog = Record<string, SourceEntry>;
 export type TargetCatalog = Record<string, TargetEntry>;
 
+// `name` is relative to i18n/ — a catalog's files are `${spec.dir}<locale>.json`.
 export const readJson = async <T>(name: string): Promise<T> =>
   JSON.parse(await Deno.readTextFile(new URL(name, I18N_DIR)));
 
 export const writeCatalog = async (
+  dir: string,
   locale: string,
   catalog: TargetCatalog,
 ): Promise<void> => {
@@ -29,18 +65,9 @@ export const writeCatalog = async (
   const sorted: TargetCatalog = {};
   for (const k of Object.keys(catalog).sort()) sorted[k] = catalog[k];
   await Deno.writeTextFile(
-    new URL(`${locale}.json`, I18N_DIR),
+    new URL(`${dir}${locale}.json`, I18N_DIR),
     JSON.stringify(sorted, null, 2) + "\n",
   );
-};
-
-export const fileExists = async (name: string): Promise<boolean> => {
-  try {
-    await Deno.stat(new URL(name, I18N_DIR));
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 export const loadConfig = async (): Promise<{ targets: string[] }> => {

@@ -563,6 +563,10 @@
     "message": "新",
     "hash": "18fdd549b2ed367ac0c74cbec1214644728515b30edbcb78e7d322757a7c8359"
   },
+  "prestart.account": {
+    "message": "账户与隐私",
+    "hash": "85850f39470eeab91a35c373122a201024c4f9d954be234c0efbb046367ad060"
+  },
   "prestart.attempt": {
     "message": "第 {n} / {total} 次尝试",
     "hash": "719a4597e683a1d95a6d9f1afb8c0f7a2eb0e0553f54662db79831e2fad68228"

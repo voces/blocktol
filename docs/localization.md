@@ -35,6 +35,8 @@ formatting; one engine, no per-surface divergence.
   auto-fixer behind a `Translator` seam), `i18n:unused` (dead-key gate), and the
   Translate GitHub Action (edit `en.json`, push, the PR translates itself). Six
   launch locales: `es`, `pt-BR`, `fr`, `de`, `ja`, `zh-Hans`.
+- **The privacy page** — a second, server-only catalog (`i18n/privacy/`) the
+  same pipeline maintains; the page negotiates `?lang` / `Accept-Language`.
 
 ## Remaining polish (optional, non-blocking)
 
@@ -61,6 +63,12 @@ formatting; one engine, no per-surface divergence.
 
 ## Deliberately English (unchanged)
 
-Discord posts (shared community channel), `public/privacy.html` (legal),
-install-time/SEO metadata in the static shell, the board (no text). The `DELETE`
-confirm sentinel **is** localized (glossary-pinned).
+Discord posts (shared community channel), install-time/SEO metadata in the
+static shell, the board (no text). The `DELETE` confirm sentinel **is**
+localized (glossary-pinned).
+
+The privacy page used to be on this list ("legal"), but a notice has to be
+intelligible to the people it's addressed to, and the game addresses them in
+their language — so it's now translated like everything else, from its own
+catalog (`i18n/privacy/`, server-rendered; see CLAUDE.md → _Data rights_). A
+translated copy says so and links the English, which prevails.

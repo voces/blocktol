@@ -1,0 +1,198 @@
+{
+  "privacy.back": {
+    "message": "返回 Blocktol",
+    "hash": "2ded685ef9f4b6f9a021f7b2bd21926f2ca5d939c324db95d5b9a6406e631332"
+  },
+  "privacy.contact.body": {
+    "message": "对隐私有疑问？请发送邮件至 {email}，或在 {discord} 中询问。",
+    "hash": "80be4c53a7053c203e4d9994837edec9845d1e055869f4c4da49db9239f4d4b2"
+  },
+  "privacy.contact.heading": {
+    "message": "联系我们",
+    "hash": "2b5c3d26721ae9c350cf3009318b626f0fc8a90b4a2ac0ca8099c05aa849282e"
+  },
+  "privacy.cookies.body": {
+    "message": "我们不使用 Cookie，也不运行任何广告或第三方追踪。存储在你设备上的唯一内容是游戏运行所需的功能性数据（你的 ID、你进行中的建造，以及你的设置），因此没有需要点击处理的 Cookie 横幅。",
+    "hash": "744a642c9b8aac084c482057705efa12d8ed7aed8e6a11d5196e45052a1aee38"
+  },
+  "privacy.cookies.heading": {
+    "message": "Cookie",
+    "hash": "141395eb35564fe50baa1839eb43315ec1880ae19f53b926611a483029a5a603"
+  },
+  "privacy.docTitle": {
+    "message": "隐私与数据 — Blocktol",
+    "hash": "e58f9eb6f220fcf1ffe433efec1d8f3407fcf12ac8759bc0f6f263afb119fcf1"
+  },
+  "privacy.footer": {
+    "message": "Blocktol — 一款每日迷宫建造游戏。",
+    "hash": "2c60840c5bc476c16d30c14a2111199bf597bf5acbfb58ea2eaf700518384da6"
+  },
+  "privacy.history": {
+    "message": "更改历史",
+    "hash": "964de7c92efed6df5691a3c05dd99b3796e103ba8696692a5b6cdeee3f5d61fd"
+  },
+  "privacy.intro": {
+    "message": "Blocktol 是一款每日迷宫建造游戏，无需账户——无需注册、无需邮箱、无需密码。本页面确切说明我们存储什么、为什么存储，以及你如何获取其副本或将其删除。",
+    "hash": "1122c2fda98d7da426c41db76896d03d1d08daf707f5cb4f22524f10fd60ae0f"
+  },
+  "privacy.languages": {
+    "message": "语言",
+    "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
+  },
+  "privacy.others.discord.detail": {
+    "message": "每天的最佳成绩——显示名称与用时——都会发布到 Blocktol 的 Discord 服务器。",
+    "hash": "38f79612aae41fa69346b22c5d164bb6ab4a80296e3ac228d8b5b4c2ca6fcd91"
+  },
+  "privacy.others.discord.term": {
+    "message": "Discord",
+    "hash": "053bc65874ad6098e58c41c57b378a2f36b0220e5e0b46722245e6c2f796818c"
+  },
+  "privacy.others.fonts.detail": {
+    "message": "游戏的字体从 Google Fonts 加载。",
+    "hash": "4e7148dd82a7ad9dbc937a100ba225bb5fa423dd292fe4df0f5e3a2aace11c73"
+  },
+  "privacy.others.fonts.term": {
+    "message": "字体",
+    "hash": "3680fcad01f4bfc678163dfbc491364f806ab832b75b1a04756709e42da8af7a"
+  },
+  "privacy.others.heading": {
+    "message": "还有谁能看到它",
+    "hash": "e80578316188d2f3153b3e49da8a7f76c0caadd29462c608f7f85ce557c2c87a"
+  },
+  "privacy.others.intro": {
+    "message": "我们自己的服务器与数据库运行着这款游戏。除此之外，少数服务可能代表我们处理有限的数据：",
+    "hash": "4ffd96571327848d4db86d60595208430e7fa9775fd1a961773be05e54bef869"
+  },
+  "privacy.others.never": {
+    "message": "我们绝不出售你的数据，也不将其用于广告。",
+    "hash": "10b9ce670ca5de371417fbf79a6fa00c8d8fb972f10d99d36cbc74390fca8efe"
+  },
+  "privacy.others.push.detail": {
+    "message": "如果你开启通知，你浏览器的推送服务（例如 Google、Mozilla 或 Apple）会负责投递它们。",
+    "hash": "b8fbff5bb316a0d11f783d566e9bca0ef708bae60e40a2bcba065ecf90949286"
+  },
+  "privacy.others.push.term": {
+    "message": "推送投递",
+    "hash": "548cf71685801bbc44c06fbe58b694d0dbf9a80d2293c2ba8e8a536e36ead8d9"
+  },
+  "privacy.readEnglish": {
+    "message": "阅读英文版本",
+    "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
+  },
+  "privacy.retention.body": {
+    "message": "只要你持续游玩，你的个人资料与建造就会被保留，以使你的统计数据与历史记录保持完整。使用（上文所述的）删除数据功能可更早地移除它们。诊断追踪与日志则是短期的——在约 30 天后自动删除。",
+    "hash": "ea7060ed4b734cca921efde13cc182ad01afd8bb08bd359364fe5b5611a7f5ad"
+  },
+  "privacy.retention.heading": {
+    "message": "我们保留数据多久",
+    "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
+  },
+  "privacy.rights.delete.body": {
+    "message": "永久删除你的个人资料、名称、偏好设置、旗标、通知以及推送订阅，并将你建造的每个迷宫与你解除关联。你的建造会作为匿名玩家保留在过往排行榜上——无法再关联回你——因此其他人参与竞争的那些天的历史成绩不会被改写。此操作无法撤销，你的设备将作为一名全新玩家重新开始。",
+    "hash": "7bacb18c7f6a0f60970ec8faad58a93565357a3486dea07fc9a1e06eecce9d1d"
+  },
+  "privacy.rights.export.body": {
+    "message": "下载一个 JSON 文件，其中包含我们持有的关于你的一切——你的个人资料、每一次游玩、你的旗标、你的通知，以及你的推送订阅。",
+    "hash": "bd43631c4f9a402ac65761fc3d6b116ba213f91f1282c0a36fd70cf2fbc4873e"
+  },
+  "privacy.rights.heading": {
+    "message": "你的权利",
+    "hash": "08440e966836527e8f38135621ce658a5a9dd031396b6d1af5d72fe6dccd9f15"
+  },
+  "privacy.rights.intro": {
+    "message": "你随时都可以在游戏中的 {place} 自行完成以下两项操作：",
+    "hash": "dd7646341a1e57e67151235bbf03235ab44182aa4a656b9da0a75540d6024385"
+  },
+  "privacy.rights.open": {
+    "message": "在 Blocktol 中打开",
+    "hash": "62aac8e66146c1e3967f314813c435b98bb2bfe9ef53a55ef4286a7cffd5ac8d"
+  },
+  "privacy.store.diagnostics.detail": {
+    "message": "为使游戏保持快速与可靠，我们的服务器会记录性能追踪与错误日志。这些数据可能包含你匿名 ID 的加扰（单向哈希）版本——绝不会是你的姓名或 ID 本身——以便我们在调试时跟踪单次会话。它们保存在我们自己的基础设施上，并在约 30 天后自动删除。",
+    "hash": "ead316e651af0163dbfa6266922dd317a763dad5e7e78dc28ebf710e732f7b08"
+  },
+  "privacy.store.diagnostics.term": {
+    "message": "诊断数据",
+    "hash": "268f14bbfe119c1e92150583af960a086d7db9619a097f8aa72ff6779842f610"
+  },
+  "privacy.store.gameplay.detail": {
+    "message": "你建造的迷宫、它们的用时，以及哪些尝试计入成绩，以便我们为每日挑战评分并展示排行榜。这包括你在棋盘上放置的、用于将一次游玩拆分为分段的旗标。",
+    "hash": "1e64086f7f91c8005135329c8d607dbc7152f405e711426f2e2b2bb2bf05c810"
+  },
+  "privacy.store.gameplay.term": {
+    "message": "你的游戏内容",
+    "hash": "aa64cb4d6a8dbca29bc038f79a084da2955598c28a9bbe3e1215691e0641b9ba"
+  },
+  "privacy.store.heading": {
+    "message": "我们存储什么",
+    "hash": "ef301e760ee7818fd519ab87b5bd95493f14cb373818b0c1b607b45e89520b3b"
+  },
+  "privacy.store.id.detail": {
+    "message": "上文所述的随机标识符。",
+    "hash": "208d33d4a056e12585a7dd9b08b08e00e7b83795b7a830e7932a1b907b44f78d"
+  },
+  "privacy.store.id.term": {
+    "message": "你的匿名 ID",
+    "hash": "dd29575c8c9220b5424c3bf9b3f074594b40fecba4d286062dcca3d5a0ac913c"
+  },
+  "privacy.store.locale.detail": {
+    "message": "你在游戏中选择的语言，或你浏览器的语言，以便通知以你的语言显示。你的时区在你游玩时用于选择正确的每日挑战，但不会被存储。",
+    "hash": "c263f9b60422f39bc947e1eddd7290384cba345f43159617633827aa2749d7ac"
+  },
+  "privacy.store.locale.term": {
+    "message": "语言",
+    "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
+  },
+  "privacy.store.name.detail": {
+    "message": "初始为随机生成；你可以更改它。",
+    "hash": "ecef5bdd07a726a15dc7cbe15d6d3755efcd2a4aee620e3e93f349389b041ac4"
+  },
+  "privacy.store.name.term": {
+    "message": "显示名称",
+    "hash": "2b7f6a84de917e387539dbe441ca22056e793d738e6c50db30c3f569e4448df3"
+  },
+  "privacy.store.prefs.detail": {
+    "message": "主题、语言、缩放以及通知设置。",
+    "hash": "72d0056a6a27c0b0a9454dc28602e77d4ef7293fe5de96482e7ab8a05c519b26"
+  },
+  "privacy.store.prefs.term": {
+    "message": "偏好设置",
+    "hash": "66962f72a08883733c35df6f82a049b929f9579f19c4bc083ac99bead602eab3"
+  },
+  "privacy.store.push.detail": {
+    "message": "仅当你开启通知时：投递通知所需的浏览器推送端点。",
+    "hash": "a3603d9c4a05be1e4fae445e7635c6f4af6717a6fbabe92c0b2ef4a5ff28a16a"
+  },
+  "privacy.store.push.term": {
+    "message": "推送订阅",
+    "hash": "6c4d767659a6d8a16daed43a087f6ee95aedf25f7dd96e53c4a2e28f936fd6ff"
+  },
+  "privacy.store.rating.detail": {
+    "message": "你在所游玩天数中的 ELO 式评分。",
+    "hash": "a12a3f379e3be557338a06a363cb26b06aebcff07425aaff2432b1f71adbd846"
+  },
+  "privacy.store.rating.term": {
+    "message": "评分",
+    "hash": "9f29530464f730bd28f137cfc9ea941af137187b57c21e8ff5fefed520764d99"
+  },
+  "privacy.title": {
+    "message": "隐私与我们收集的数据",
+    "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "privacy.translated": {
+    "message": "本页面由英文自动翻译而来。如两者有出入，以英文版本为准。",
+    "hash": "ca0be3ed18b3b72566720bf1ae6965025dad3d1acc006a0b88a3a2e99512359f"
+  },
+  "privacy.updated": {
+    "message": "最后更新于 {date}",
+    "hash": "ffc581c7a222d2e0a937fda1841bb375332108233e3f9ef51fcbc220d911c15b"
+  },
+  "privacy.who.body": {
+    "message": "当你首次打开游戏时，你的设备会生成一个随机的匿名 ID，并将其保存在浏览器的本地存储中。我们正是通过该 ID 在你多次访问时识别你的建造与统计数据。我们不知道你的姓名（除非你输入了显示名称）、你的邮箱，或你的身份——只有这个随机 ID。",
+    "hash": "a70b267c182d0ec1599b50f8ba5430c138803aa42f0819ac6004fecbc1a223e9"
+  },
+  "privacy.who.heading": {
+    "message": "你对我们而言是谁",
+    "hash": "c7bc29b282cb745da958355a0ff05b3891b9a0c10e1784ace1f7485b43b08b86"
+  }
+}

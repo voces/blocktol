@@ -223,6 +223,10 @@
     "message": "Starting…",
     "description": "Transient label on the start button while the attempt is opening. Trailing ellipsis."
   },
+  "prestart.account": {
+    "message": "Account & privacy",
+    "description": "Small, understated link at the bottom of the start-attempt screen that opens the player's account settings (export or delete their data, move to another device, the privacy page). The \"&\" is a literal ampersand."
+  },
   "today.title": {
     "message": "Today",
     "description": "Section title above today's result chips (ranked result + personal best)."
