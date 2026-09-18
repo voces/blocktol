@@ -1,9 +1,11 @@
+import { avatarHue } from "../../common/avatar.ts";
 import { randomName } from "../../common/random/name.ts";
 import { parseSettings } from "../../common/settings.ts";
 import { alertAdmin } from "../util/adminAlert.ts";
 import { hashUserId } from "../util/hashUserId.ts";
 import { log } from "../util/logging.ts";
 import { deserializeRun } from "../util/run.ts";
+import { streaks } from "../util/streak.ts";
 import { format, raw, sql } from "./query.ts";
 
 // The most runs the attempts panel loads for one player on one iteration. High
@@ -79,112 +81,203 @@ export const updateUserLocale = (id: string, locale: string) =>
     INSERT INTO user (id, locale) VALUES (${id}, ${locale})
     ON DUPLICATE KEY UPDATE locale = ${locale};`;
 
-// The profile's headline figures, in one round trip:
-//   1. the user's own row (display name, rating, join date);
-//   2. dailies played (distinct iterations with a ranked daily run, abandoned
-//      or not — mirrors the runs panel counting spent attempts) and the best-
-//      ever build (any run, daily or free). NB: this "Played" is deliberately
-//      NOT the `user.plays` column — that's the narrower rating counter (rated +
-//      completed + rankable); see getRatingParticipants for the contrast;
-//   3. the iteration of that best build (so the card can open it);
-//   4. per-day ranked standings — the user's best daily time vs every OTHER
-//      player's best daily time that day — from which the median percentile and
-//      the count of days finished on top (100%) are derived.
-// Only iterations the user actually played bound the ranking join, so it stays
-// proportional to their history rather than the whole field.
+// The profile's stats, in one round trip. Every figure is derived from the runs
+// already stored — nothing here needs a new column:
+//   1. the user's own row (display name, rating, join date, settings);
+//   2. RANKED, over closed (rated) days with a field: the days they took the top
+//      time alone or shared, and how many such days there were (the win rate's
+//      denominator). A day nobody else played is skipped — there is no field to
+//      win — the same rule the calendar's per-day ranking uses;
+//   3. SOLVES: days where a ranked attempt equalled the best build anyone has
+//      made on that board, and the subset where the FIRST attempt did. The bar
+//      is the board's current best, free play included, so a solve is lost again
+//      if someone later builds longer — it means "nobody has ever done better",
+//      not "best on the day";
+//   4. FREE PLAY: boards where their best build is the board's top, alone
+//      (supreme) or shared (record), boards played, and how many boards exist;
+//   5. the dates they made ranked attempts on, for the streak (computed in
+//      server/util/streak.ts);
+//   6. HEAD-TO-HEAD per rival, on both boards: ranked days both played, and
+//      boards both built on. Rows ship `name` + `hue`, never the rival's id —
+//      the raw id is the bearer credential (see common/avatar.ts).
+// Each half of a comparison is a per-iteration MAX over the same `time` column,
+// so equality is exact: the two sides read the identical stored value.
 export const getUserStats = async (user: string) => {
-  const [userRows, totals, bestRows, ranks] = await sql<[
+  const [userRows, ranked, solves, boards, total, days, daily, pb] = await sql<[
     {
       name: string | null;
       rating: number;
       joined: number;
       settings: string | null;
     }[],
-    { played: number | null; bestBuild: number | null }[],
-    { iteration: number }[],
-    {
-      iteration: number;
-      less: number;
-      equal: number;
-      more: number;
-      others: number;
-    }[],
+    { days: number; sole: number; shared: number }[],
+    { solved: number; firstTry: number }[],
+    { supremes: number; records: number; played: number }[],
+    { boards: number; today: string }[],
+    { day: string }[],
+    RivalRow[],
+    RivalRow[],
   ]>`
     SELECT name, rating, UNIX_TIMESTAMP(created) * 1000 joined, settings
     FROM user WHERE id = ${user};
 
-    SELECT
-      COUNT(DISTINCT CASE WHEN daily = TRUE THEN iteration END) played,
-      ROUND(MAX(CASE WHEN void = FALSE THEN time END), 2) bestBuild
-    FROM run WHERE user = ${user};
-
-    SELECT iteration
-    FROM run
-    WHERE user = ${user} AND void = FALSE
-    ORDER BY time DESC, created ASC
-    LIMIT 1;
-
-    SELECT me.iteration iteration,
-           SUM(CASE WHEN other.t < me.t THEN 1 ELSE 0 END) less,
-           SUM(CASE WHEN other.t = me.t THEN 1 ELSE 0 END) equal,
-           SUM(CASE WHEN other.t > me.t THEN 1 ELSE 0 END) more,
-           COUNT(other.u) others
+    SELECT COUNT(*) days,
+           SUM(CASE WHEN mine > others THEN 1 ELSE 0 END) sole,
+           SUM(CASE WHEN mine = others THEN 1 ELSE 0 END) shared
     FROM (
-      SELECT iteration, MAX(time) t
-      FROM run
-      WHERE user = ${user} AND daily = TRUE AND void = FALSE
+      SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) mine,
+             MAX(CASE WHEN r.user != ${user} THEN r.time END) others
+      FROM iteration i
+      JOIN run r ON r.iteration = i.id AND r.ranked = TRUE AND r.void = FALSE
+      WHERE i.rated = TRUE
+      GROUP BY i.id
+      HAVING mine IS NOT NULL AND others IS NOT NULL
+    ) field;
+
+    SELECT SUM(CASE WHEN mine.best = top.best THEN 1 ELSE 0 END) solved,
+           SUM(CASE WHEN mine.first = top.best THEN 1 ELSE 0 END) firstTry
+    FROM (
+      SELECT iteration, MAX(time) best, MAX(CASE WHEN rn = 1 THEN time END) first
+      FROM (
+        SELECT iteration, time,
+               ROW_NUMBER() OVER (PARTITION BY iteration ORDER BY created) rn
+        FROM run
+        WHERE user = ${user} AND ranked = TRUE AND void = FALSE
+      ) attempts
       GROUP BY iteration
-    ) me
+    ) mine
+    JOIN (
+      SELECT iteration, MAX(time) best FROM run WHERE void = FALSE
+      GROUP BY iteration
+    ) top ON top.iteration = mine.iteration;
+
+    SELECT
+      SUM(CASE WHEN others.best IS NULL OR mine.best > others.best THEN 1 ELSE 0 END) supremes,
+      SUM(CASE WHEN mine.best = others.best THEN 1 ELSE 0 END) records,
+      COUNT(*) played
+    FROM (
+      SELECT iteration, MAX(time) best FROM run
+      WHERE user = ${user} AND void = FALSE GROUP BY iteration
+    ) mine
     LEFT JOIN (
-      SELECT iteration, user u, MAX(time) t
-      FROM run
-      WHERE user != ${user} AND daily = TRUE AND void = FALSE
-        AND iteration IN (
-          SELECT iteration FROM run
-          WHERE user = ${user} AND daily = TRUE AND void = FALSE
-          GROUP BY iteration
-        )
-      GROUP BY iteration, user
-    ) other ON other.iteration = me.iteration
-    GROUP BY me.iteration;
+      SELECT iteration, MAX(time) best FROM run
+      WHERE user != ${user} AND void = FALSE GROUP BY iteration
+    ) others ON others.iteration = mine.iteration;
+
+    SELECT COUNT(*) boards, CAST(CURDATE() AS char) today
+    FROM iteration WHERE created <= CURDATE();
+
+    SELECT DISTINCT CAST(i.created AS char) day
+    FROM run r JOIN iteration i ON i.id = r.iteration
+    WHERE r.user = ${user} AND r.ranked = TRUE AND r.void = FALSE;
+
+    ${raw(rivals(user, "AND r.ranked = TRUE"))};
+
+    ${raw(rivals(user, ""))};
   `;
 
   const u = userRows[0];
-
-  // Ranked daily percentile per played day (self-excluded), mirroring the
-  // calendar's per-day ranking: skip days nobody else played (no field to rank
-  // against); a day nobody beat is a full 100% (a "1").
-  const percentiles: number[] = [];
-  let hundreds = 0;
-  for (const r of ranks) {
-    const others = Number(r.others);
-    if (others === 0) continue;
-    const pct = Number(r.more) === 0
-      ? 1
-      : (Number(r.less) + Number(r.equal) / 2) / others;
-    percentiles.push(pct);
-    if (pct === 1) hundreds++;
-  }
-
-  percentiles.sort((a, b) => a - b);
-  const n = percentiles.length;
-  const medianPercentile = n === 0
-    ? null
-    : n % 2 === 1
-    ? percentiles[(n - 1) / 2]
-    : (percentiles[n / 2 - 1] + percentiles[n / 2]) / 2;
+  const { current, best } = streaks(
+    days.map((d) => String(d.day).slice(0, 10)),
+    String(total[0]?.today ?? "").slice(0, 10),
+  );
 
   return {
     name: u?.name ?? null,
     rating: u?.rating ?? 1000,
     joined: u ? Number(u.joined) : null,
-    played: Number(totals[0]?.played ?? 0),
-    bestBuild: totals[0]?.bestBuild ?? null,
-    bestBuildIteration: bestRows[0]?.iteration ?? null,
-    hundreds,
-    medianPercentile,
     settings: parseSettings(u?.settings ?? null),
+    // Ranked
+    rankedDays: Number(ranked[0]?.days ?? 0),
+    wonSole: Number(ranked[0]?.sole ?? 0),
+    wonShared: Number(ranked[0]?.shared ?? 0),
+    daysPlayed: days.length,
+    streak: current,
+    bestStreak: best,
+    solved: Number(solves[0]?.solved ?? 0),
+    solvedFirstTry: Number(solves[0]?.firstTry ?? 0),
+    // Free play
+    supremes: Number(boards[0]?.supremes ?? 0),
+    records: Number(boards[0]?.records ?? 0),
+    boardsPlayed: Number(boards[0]?.played ?? 0),
+    boards: Number(total[0]?.boards ?? 0),
+    // Head-to-head, one row per rival, both boards merged
+    rivals: mergeRivals(daily, pb),
   };
+};
+
+type RivalRow = {
+  user: string;
+  name: string | null;
+  met: number;
+  won: number;
+  lost: number;
+  tied: number;
+};
+
+// A rival's record on one board: the viewer's best time per iteration against
+// every other player's, over the iterations they both ran. `rankedOnly` narrows
+// both sides to ranked attempts (the daily board); empty counts every non-void
+// run (the PB board). Written as SQL text so the two boards are one query each
+// with no duplicated shape.
+const rivals = (user: string, rankedOnly: string) =>
+  format`
+    SELECT o.user user, u.name name, COUNT(*) met,
+           SUM(CASE WHEN m.t > o.t THEN 1 ELSE 0 END) won,
+           SUM(CASE WHEN m.t < o.t THEN 1 ELSE 0 END) lost,
+           SUM(CASE WHEN m.t = o.t THEN 1 ELSE 0 END) tied
+    FROM (
+      SELECT iteration, MAX(time) t FROM run r
+      WHERE r.user = ${user} AND r.void = FALSE ${raw(rankedOnly)}
+      GROUP BY iteration
+    ) m
+    JOIN (
+      SELECT iteration, user, MAX(time) t FROM run r
+      WHERE r.user != ${user} AND r.void = FALSE ${raw(rankedOnly)}
+      GROUP BY iteration, user
+    ) o ON o.iteration = m.iteration
+    JOIN user u ON u.id = o.user
+    GROUP BY o.user, u.name
+    ORDER BY met DESC
+    LIMIT ${RIVAL_CAP}`;
+
+// Rivals shown on the profile, most-met first. A pair needs this many meetings
+// on a board before that board's record appears: a 1–0 from a single shared day
+// is noise, not a rivalry.
+const RIVAL_MINIMUM = 5;
+const RIVAL_CAP = 25;
+
+// One row per rival carrying both boards, with the id hashed to its avatar hue
+// on the way out. A rival appears if EITHER board has enough meetings; the
+// board that doesn't reach the minimum comes back null and the client shows a
+// dash for it.
+const mergeRivals = (daily: RivalRow[], pb: RivalRow[]) => {
+  const record = (r: RivalRow | undefined) =>
+    r && Number(r.met) >= RIVAL_MINIMUM
+      ? {
+        met: Number(r.met),
+        won: Number(r.won),
+        lost: Number(r.lost),
+        tied: Number(r.tied),
+      }
+      : null;
+  const byUser = new Map<string, { name: string | null }>();
+  for (const r of [...daily, ...pb]) byUser.set(r.user, { name: r.name });
+  const dailyBy = new Map(daily.map((r) => [r.user, r]));
+  const pbBy = new Map(pb.map((r) => [r.user, r]));
+
+  return [...byUser]
+    .map(([id, { name }]) => ({
+      name: name ?? "anonymous",
+      hue: avatarHue(id),
+      daily: record(dailyBy.get(id)),
+      pb: record(pbBy.get(id)),
+    }))
+    .filter((r) => r.daily || r.pb)
+    .sort((a, b) =>
+      (b.daily?.met ?? 0) - (a.daily?.met ?? 0) ||
+      (b.pb?.met ?? 0) - (a.pb?.met ?? 0)
+    );
 };
 
 // The ranked daily attempts (at most three, by construction of the `ranked`

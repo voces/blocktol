@@ -639,21 +639,101 @@
     "message": "Rating",
     "description": "Label under the player's numeric rating in the profile header."
   },
-  "profile.played": {
+  "profile.ranked": {
+    "message": "Ranked",
+    "description": "Section title in the profile for the player's ranked-daily stats."
+  },
+  "profile.daysWon": {
+    "message": "Days won",
+    "description": "Profile stat label: days the player had the top ranked time, counting only closed days with other players."
+  },
+  "profile.daysWonSub": {
+    "message": "alone · shared",
+    "description": "Line under Days won naming its two figures: won alone (a supreme) and won shared (a record). See glossary SUPREME, RECORD."
+  },
+  "profile.winRate": {
+    "message": "Win rate",
+    "description": "Profile stat label: share of the player's closed ranked days that they won."
+  },
+  "profile.winRateSub": {
+    "message": "{won} of {days} days",
+    "description": "Line under Win rate: how many days were won out of how many counted."
+  },
+  "profile.streak": {
+    "message": "Day streak",
+    "description": "Profile stat label: consecutive days the player has made ranked attempts."
+  },
+  "profile.streakSub": {
+    "message": "best {best}",
+    "description": "Line under Day streak showing the player's longest streak ever, in days."
+  },
+  "profile.solved": {
+    "message": "Days solved",
+    "description": "Profile stat label: days one of the player's ranked attempts equalled the best build anyone has made on that board."
+  },
+  "profile.solvedSub": {
+    "message": "A ranked attempt equalled the board's top build",
+    "description": "Explains Days solved: the attempt matched the longest build anyone has made on that board, free play included."
+  },
+  "profile.solvedFirstTry": {
+    "message": "Solved on the first try",
+    "description": "Profile stat label: days the player's FIRST ranked attempt equalled the board's top build."
+  },
+  "profile.solvedFirstTrySub": {
+    "message": "Your first attempt equalled it",
+    "description": "Explains Solved on the first try, following the Days solved row above it."
+  },
+  "profile.ofDays": {
+    "message": "{pct} of days",
+    "description": "Small figure beside a solve count, e.g. \"13% of days\". {pct} already carries its percent sign."
+  },
+  "profile.freePlay": {
+    "message": "Free play",
+    "description": "Section title in the profile for stats from replaying past boards. See glossary FREE PLAY."
+  },
+  "profile.supremes": {
+    "message": "Supremes",
+    "description": "Profile stat label: boards where the player's build is the top one and nobody has matched it. See glossary SUPREME."
+  },
+  "profile.boardsPlayed": {
     "message": "Played",
-    "description": "Profile stat label: number of dailies the player has played."
+    "description": "Profile stat label: how many boards the player has built on, beside the total number of boards."
+  },
+  "profile.boards": {
+    "message": "Boards",
+    "description": "Profile stat label: how many boards exist in total."
+  },
+  "profile.headToHead": {
+    "message": "Head-to-head",
+    "description": "Section title in the profile for the player's records against each other player."
+  },
+  "profile.boardDaily": {
+    "message": "Daily",
+    "description": "Switch option showing head-to-head records from the daily board (ranked attempts). Matches the standings' DAILY label."
+  },
+  "profile.boardPb": {
+    "message": "PB",
+    "description": "Switch option showing head-to-head records from the best-build board. Matches the standings' PB label."
+  },
+  "profile.metDays": {
+    "message": "{count, plural, one {# day} other {# days}} together",
+    "description": "Line under a rival's name: how many days both players made ranked attempts."
+  },
+  "profile.metBoards": {
+    "message": "{count, plural, one {# board} other {# boards}} in common",
+    "description": "Line under a rival's name: how many boards both players have built on."
+  },
+  "profile.tied": {
+    "message": "{count} tied",
+    "description": "Small figure beside a head-to-head record: how many of the meetings ended level."
+  },
+  "profile.noRivals": {
+    "message": "No records yet — they start after five meetings.",
+    "description": "Shown in place of the head-to-head list when no rival has been met often enough on the selected board."
   },
   "profile.records": {
     "message": "Records",
-    "description": "Profile stat label: number of days the player holds/held a record. See glossary RECORD."
-  },
-  "profile.medianPercentile": {
-    "message": "Median percentile",
-    "description": "Profile stat label: the player's median field percentile across dailies."
-  },
-  "profile.bestBuild": {
-    "message": "Best build",
-    "description": "Label on the profile's best-build tile (the player's longest time ever); tapping reviews that maze."
+    "description": "Profile stat label: boards where the player's best build shares the top with someone else. See glossary RECORD."
   },
   "profile.pushNotifications": {
     "message": "Push notifications",
