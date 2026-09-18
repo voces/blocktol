@@ -334,7 +334,13 @@ const Rivals = (
   },
 ) => {
   const [board, setBoard] = useState<Board>("daily");
-  const rows = rivals.filter((r) => r[board]);
+  // Two columns fit five rivals beside the settings column; stacked, the block
+  // would run long, so it shows one fewer. Same breakpoint as .profile-cols —
+  // the list follows the layout, not the device. Slicing here (rather than
+  // hiding a row in CSS) keeps the "see all" row honest: with exactly five
+  // rivals, a narrow screen shows four and still offers the fifth.
+  const wide = useMediaQuery("(min-width: 1200px)");
+  const rows = rivals.filter((r) => r[board]).slice(0, wide ? 5 : 4);
   return (
     <div class="profile-block">
       <div class="profile-block__head">

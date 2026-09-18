@@ -248,8 +248,12 @@ const rivals = (user: string, rankedOnly: string) =>
 // A pair needs this many meetings on a board before that board's record
 // appears: a 1–0 from a single shared day is noise, not a rivalry.
 const RIVAL_MINIMUM = 5;
-// Rows the profile itself shows, most-met first, with a way into the rest.
-const RIVAL_PREVIEW = 4;
+// Rows sent for the profile's own list, most-met first, with a way into the
+// rest. Five is what the desktop dialog's two-column layout fits beside the
+// settings column; stacked, the client shows one fewer (see Profile.tsx) — it
+// slices rather than the CSS hiding a row, so a player with exactly five rivals
+// still gets a "see all" into the fifth.
+const RIVAL_PREVIEW = 5;
 // Ceiling on one query's rows. Comfortably past any real heat today, and the
 // list is one grouped pass over the viewer's own runs either way — the point is
 // that a runaway field can't make the profile response unbounded.
