@@ -1,0 +1,198 @@
+{
+  "privacy.back": {
+    "message": "Volver a Blocktol",
+    "hash": "2ded685ef9f4b6f9a021f7b2bd21926f2ca5d939c324db95d5b9a6406e631332"
+  },
+  "privacy.contact.body": {
+    "message": "¿Preguntas sobre privacidad? Escribe a {email} o pregunta en el {discord}.",
+    "hash": "80be4c53a7053c203e4d9994837edec9845d1e055869f4c4da49db9239f4d4b2"
+  },
+  "privacy.contact.heading": {
+    "message": "Contacto",
+    "hash": "2b5c3d26721ae9c350cf3009318b626f0fc8a90b4a2ac0ca8099c05aa849282e"
+  },
+  "privacy.cookies.body": {
+    "message": "No usamos cookies y no ejecutamos ninguna publicidad ni rastreo de terceros. Lo único que se almacena en tu dispositivo son los datos funcionales que el juego necesita para funcionar (tu ID, tu construcción en curso y tus ajustes), así que no hay ningún banner de cookies que aceptar.",
+    "hash": "744a642c9b8aac084c482057705efa12d8ed7aed8e6a11d5196e45052a1aee38"
+  },
+  "privacy.cookies.heading": {
+    "message": "Cookies",
+    "hash": "141395eb35564fe50baa1839eb43315ec1880ae19f53b926611a483029a5a603"
+  },
+  "privacy.docTitle": {
+    "message": "Privacidad y datos — Blocktol",
+    "hash": "e58f9eb6f220fcf1ffe433efec1d8f3407fcf12ac8759bc0f6f263afb119fcf1"
+  },
+  "privacy.footer": {
+    "message": "Blocktol — un juego diario de construcción de laberintos.",
+    "hash": "2c60840c5bc476c16d30c14a2111199bf597bf5acbfb58ea2eaf700518384da6"
+  },
+  "privacy.history": {
+    "message": "Historial de cambios",
+    "hash": "964de7c92efed6df5691a3c05dd99b3796e103ba8696692a5b6cdeee3f5d61fd"
+  },
+  "privacy.intro": {
+    "message": "Blocktol es un juego diario de construcción de laberintos sin cuentas: sin registro, sin correo electrónico, sin contraseña. Esta página explica exactamente qué almacenamos, por qué, y cómo puedes obtener una copia de ello o eliminarlo.",
+    "hash": "1122c2fda98d7da426c41db76896d03d1d08daf707f5cb4f22524f10fd60ae0f"
+  },
+  "privacy.languages": {
+    "message": "Idioma",
+    "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
+  },
+  "privacy.others.discord.detail": {
+    "message": "Los mejores resultados de cada día —nombres visibles y tiempos— se publican en el servidor de Discord de Blocktol.",
+    "hash": "38f79612aae41fa69346b22c5d164bb6ab4a80296e3ac228d8b5b4c2ca6fcd91"
+  },
+  "privacy.others.discord.term": {
+    "message": "Discord",
+    "hash": "053bc65874ad6098e58c41c57b378a2f36b0220e5e0b46722245e6c2f796818c"
+  },
+  "privacy.others.fonts.detail": {
+    "message": "La tipografía del juego se carga desde Google Fonts.",
+    "hash": "4e7148dd82a7ad9dbc937a100ba225bb5fa423dd292fe4df0f5e3a2aace11c73"
+  },
+  "privacy.others.fonts.term": {
+    "message": "Fuentes",
+    "hash": "3680fcad01f4bfc678163dfbc491364f806ab832b75b1a04756709e42da8af7a"
+  },
+  "privacy.others.heading": {
+    "message": "Quién más lo ve",
+    "hash": "e80578316188d2f3153b3e49da8a7f76c0caadd29462c608f7f85ce557c2c87a"
+  },
+  "privacy.others.intro": {
+    "message": "Nuestros propios servidores y base de datos hacen funcionar el juego. Más allá de eso, un pequeño número de servicios puede procesar datos limitados en nuestro nombre:",
+    "hash": "4ffd96571327848d4db86d60595208430e7fa9775fd1a961773be05e54bef869"
+  },
+  "privacy.others.never": {
+    "message": "Nunca vendemos tus datos y no los usamos para publicidad.",
+    "hash": "10b9ce670ca5de371417fbf79a6fa00c8d8fb972f10d99d36cbc74390fca8efe"
+  },
+  "privacy.others.push.detail": {
+    "message": "Si activas las notificaciones, el servicio de push de tu navegador (por ejemplo Google, Mozilla o Apple) las entrega.",
+    "hash": "b8fbff5bb316a0d11f783d566e9bca0ef708bae60e40a2bcba065ecf90949286"
+  },
+  "privacy.others.push.term": {
+    "message": "Entrega de push",
+    "hash": "548cf71685801bbc44c06fbe58b694d0dbf9a80d2293c2ba8e8a536e36ead8d9"
+  },
+  "privacy.readEnglish": {
+    "message": "Leer la versión en inglés",
+    "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
+  },
+  "privacy.retention.body": {
+    "message": "Tu perfil y tus construcciones se conservan mientras sigas jugando, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para borrarlos antes. Las trazas de diagnóstico y los registros son de corta duración: se eliminan automáticamente después de unos 30 días.",
+    "hash": "ea7060ed4b734cca921efde13cc182ad01afd8bb08bd359364fe5b5611a7f5ad"
+  },
+  "privacy.retention.heading": {
+    "message": "Cuánto tiempo lo conservamos",
+    "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
+  },
+  "privacy.rights.delete.body": {
+    "message": "Elimina permanentemente tu perfil, nombre, preferencias, banderines, notificaciones y suscripciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones pasadas como un jugador anónimo —sin ninguna forma de conectarlas de nuevo contigo—, para que no se reescriban los resultados históricos de los días en que otras personas compitieron. Esto no se puede deshacer, y tu dispositivo empieza de nuevo como un jugador completamente nuevo.",
+    "hash": "7bacb18c7f6a0f60970ec8faad58a93565357a3486dea07fc9a1e06eecce9d1d"
+  },
+  "privacy.rights.export.body": {
+    "message": "Descarga un archivo JSON con todo lo que tenemos sobre ti: tu perfil, cada carrera, tus banderines, tus notificaciones y tus suscripciones push.",
+    "hash": "bd43631c4f9a402ac65761fc3d6b116ba213f91f1282c0a36fd70cf2fbc4873e"
+  },
+  "privacy.rights.heading": {
+    "message": "Tus derechos",
+    "hash": "08440e966836527e8f38135621ce658a5a9dd031396b6d1af5d72fe6dccd9f15"
+  },
+  "privacy.rights.intro": {
+    "message": "Puedes hacer ambas cosas por ti mismo, en cualquier momento, desde {place} en el juego:",
+    "hash": "dd7646341a1e57e67151235bbf03235ab44182aa4a656b9da0a75540d6024385"
+  },
+  "privacy.rights.open": {
+    "message": "Abrir en Blocktol",
+    "hash": "62aac8e66146c1e3967f314813c435b98bb2bfe9ef53a55ef4286a7cffd5ac8d"
+  },
+  "privacy.store.diagnostics.detail": {
+    "message": "Para mantener el juego rápido y fiable, nuestros servidores registran trazas de rendimiento y registros de errores. Estos pueden incluir una versión cifrada (con hash de un solo sentido) de tu ID anónimo, nunca tu nombre ni el ID en sí, para poder seguir una sola sesión al depurar. Residen en nuestra propia infraestructura y se eliminan automáticamente después de unos 30 días.",
+    "hash": "ead316e651af0163dbfa6266922dd317a763dad5e7e78dc28ebf710e732f7b08"
+  },
+  "privacy.store.diagnostics.term": {
+    "message": "Diagnósticos",
+    "hash": "268f14bbfe119c1e92150583af960a086d7db9619a097f8aa72ff6779842f610"
+  },
+  "privacy.store.gameplay.detail": {
+    "message": "Los laberintos que construyes, sus tiempos y qué intentos contaron, para poder puntuar el diario y mostrar las clasificaciones. Esto incluye cualquier banderín que coloques en un tablero para dividir una carrera en parciales.",
+    "hash": "1e64086f7f91c8005135329c8d607dbc7152f405e711426f2e2b2bb2bf05c810"
+  },
+  "privacy.store.gameplay.term": {
+    "message": "Tu juego",
+    "hash": "aa64cb4d6a8dbca29bc038f79a084da2955598c28a9bbe3e1215691e0641b9ba"
+  },
+  "privacy.store.heading": {
+    "message": "Qué almacenamos",
+    "hash": "ef301e760ee7818fd519ab87b5bd95493f14cb373818b0c1b607b45e89520b3b"
+  },
+  "privacy.store.id.detail": {
+    "message": "El identificador aleatorio descrito arriba.",
+    "hash": "208d33d4a056e12585a7dd9b08b08e00e7b83795b7a830e7932a1b907b44f78d"
+  },
+  "privacy.store.id.term": {
+    "message": "Tu ID anónimo",
+    "hash": "dd29575c8c9220b5424c3bf9b3f074594b40fecba4d286062dcca3d5a0ac913c"
+  },
+  "privacy.store.locale.detail": {
+    "message": "El idioma que eliges en el juego, o el de tu navegador, para que las notificaciones se lean en tu idioma. Tu zona horaria se usa mientras juegas para elegir el diario correcto, pero no se almacena.",
+    "hash": "c263f9b60422f39bc947e1eddd7290384cba345f43159617633827aa2749d7ac"
+  },
+  "privacy.store.locale.term": {
+    "message": "Idioma",
+    "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
+  },
+  "privacy.store.name.detail": {
+    "message": "Uno aleatorio para empezar; puedes cambiarlo.",
+    "hash": "ecef5bdd07a726a15dc7cbe15d6d3755efcd2a4aee620e3e93f349389b041ac4"
+  },
+  "privacy.store.name.term": {
+    "message": "Nombre visible",
+    "hash": "2b7f6a84de917e387539dbe441ca22056e793d738e6c50db30c3f569e4448df3"
+  },
+  "privacy.store.prefs.detail": {
+    "message": "Tema, idioma, zoom y ajustes de notificaciones.",
+    "hash": "72d0056a6a27c0b0a9454dc28602e77d4ef7293fe5de96482e7ab8a05c519b26"
+  },
+  "privacy.store.prefs.term": {
+    "message": "Preferencias",
+    "hash": "66962f72a08883733c35df6f82a049b929f9579f19c4bc083ac99bead602eab3"
+  },
+  "privacy.store.push.detail": {
+    "message": "Solo si activas las notificaciones: el endpoint de push del navegador necesario para entregarlas.",
+    "hash": "a3603d9c4a05be1e4fae445e7635c6f4af6717a6fbabe92c0b2ef4a5ff28a16a"
+  },
+  "privacy.store.push.term": {
+    "message": "Suscripciones push",
+    "hash": "6c4d767659a6d8a16daed43a087f6ee95aedf25f7dd96e53c4a2e28f936fd6ff"
+  },
+  "privacy.store.rating.detail": {
+    "message": "Tu puntuación de estilo ELO a lo largo de los días que has jugado.",
+    "hash": "a12a3f379e3be557338a06a363cb26b06aebcff07425aaff2432b1f71adbd846"
+  },
+  "privacy.store.rating.term": {
+    "message": "Puntuación",
+    "hash": "9f29530464f730bd28f137cfc9ea941af137187b57c21e8ff5fefed520764d99"
+  },
+  "privacy.title": {
+    "message": "Privacidad y los datos que recopilamos",
+    "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "privacy.translated": {
+    "message": "Esta página se tradujo automáticamente del inglés. Si las dos versiones difieren, prevalece la versión en inglés.",
+    "hash": "ca0be3ed18b3b72566720bf1ae6965025dad3d1acc006a0b88a3a2e99512359f"
+  },
+  "privacy.updated": {
+    "message": "Última actualización: {date}",
+    "hash": "ffc581c7a222d2e0a937fda1841bb375332108233e3f9ef51fcbc220d911c15b"
+  },
+  "privacy.who.body": {
+    "message": "Cuando abres el juego por primera vez, tu dispositivo genera un ID aleatorio y anónimo y lo guarda en el almacenamiento local de tu navegador. Ese ID es la forma en que reconocemos tus construcciones y estadísticas entre visitas. No conocemos tu nombre (a menos que escribas un nombre visible), tu correo electrónico ni tu identidad: solo este ID aleatorio.",
+    "hash": "a70b267c182d0ec1599b50f8ba5430c138803aa42f0819ac6004fecbc1a223e9"
+  },
+  "privacy.who.heading": {
+    "message": "Quién eres para nosotros",
+    "hash": "c7bc29b282cb745da958355a0ff05b3891b9a0c10e1784ace1f7485b43b08b86"
+  }
+}
