@@ -615,9 +615,21 @@
     "message": "外观",
     "hash": "3907fa7f80722a6fc58cd8c1bd30abf7638095d6774f183b6e831b7093957d1b"
   },
-  "profile.bestBuild": {
-    "message": "最佳搭建",
-    "hash": "676049cef880921948d99c5638210b3cd6c39a41b733da353891d9076c06136b"
+  "profile.boardDaily": {
+    "message": "每日",
+    "hash": "b36c2611dcdfa190ede846948d9aba8f39581de0177cbd98586506019f979b75"
+  },
+  "profile.boardPb": {
+    "message": "个人最佳",
+    "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
+  },
+  "profile.boards": {
+    "message": "每日谜题",
+    "hash": "bae8227e10bdb4c02b240475ecbab50348de36383ee9ff73f95fb45aab7cce39"
+  },
+  "profile.boardsPlayed": {
+    "message": "已游玩",
+    "hash": "900b1e4c46b4edab74897019997447324dd8c0b529bb7a61eb5b4d90907340f0"
   },
   "profile.cancel": {
     "message": "取消",
@@ -630,6 +642,14 @@
   "profile.community": {
     "message": "社区",
     "hash": "bb501d7877eb7ddbd40baf7990e8058212e8140a2e6ceaaf2d54a6412b770bfd"
+  },
+  "profile.daysWon": {
+    "message": "获胜天数",
+    "hash": "ea07bc4305c4a466a5367aeb52fa7e6d9caae68ecc345674a48050bc9af8e3f3"
+  },
+  "profile.daysWonSub": {
+    "message": "独占 · 并列",
+    "hash": "5d48f0b44df4454aa384992bb039b8c9b5affe08fab542abb4cec4ad42641a5a"
   },
   "profile.deleteSub": {
     "message": "删除你的个人资料并解除搭建关联",
@@ -659,6 +679,14 @@
     "message": "准备中…",
     "hash": "5d1fa38bcf0d88ca03d187718fd6cf8ad128f288f66d402d331476a85774d08d"
   },
+  "profile.freePlay": {
+    "message": "自由模式",
+    "hash": "02a7ebf54a83b32df76b4d893b3aa5ed8e43be7a5a5e39a68e3b909a687a8f9a"
+  },
+  "profile.headToHead": {
+    "message": "对战",
+    "hash": "4c1fec0f5620835ed91cdedbe355c66a44c0f41cd8320096600d7e046d589c96"
+  },
   "profile.joinedLabel": {
     "message": "加入于 {date}",
     "hash": "ae2412fb005b47299128e0e4a9aa89bcc72ae73c04c3c8bc1a8b8a9046ed8b41"
@@ -671,13 +699,21 @@
     "message": "系统",
     "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
   },
-  "profile.medianPercentile": {
-    "message": "中位百分位",
-    "hash": "5e7ad4b35b400cc7e6ea424e845280a7c50808a1897f73cc06c3687b529995bd"
+  "profile.metBoards": {
+    "message": "{count, plural, other {共同参与 # 个每日谜题}}",
+    "hash": "08733fd8dd82c057f829cd31a83c76436e2daea615e3a06e9ea7ec170c61bd00"
+  },
+  "profile.metDays": {
+    "message": "{count, plural, other {共同 # 天}}",
+    "hash": "063a774b6d090a73a8406f37783db220d029846478d3280b9fcc03b6c789f6a0"
   },
   "profile.moveSub": {
     "message": "扫描二维码或复制你的登录链接",
     "hash": "0337b8438ebaa15ee6c289d75049f7af7caa88a1c896f8a02d9af6d4e0db80e7"
+  },
+  "profile.noRivals": {
+    "message": "暂无记录——相遇五次后开始记录。",
+    "hash": "2e51e0a4194c28f8db4bd729bb5e5a1721fb678ddf9e9a202286af3a9fda2521"
   },
   "profile.notifDailySub": {
     "message": "你参与的某天已锁定排名",
@@ -695,6 +731,10 @@
     "message": "失去榜首",
     "hash": "e0e368df0f182850bfd5eb5d34e9ebfb9ee92703d68cdfbe25bfa43a97a18c0e"
   },
+  "profile.ofDays": {
+    "message": "占 {pct} 天",
+    "hash": "f5bef672d1456e8967e2b89a0bf0e52da1521aed59a37f5faa227588986d5f7b"
+  },
   "profile.online": {
     "message": "{count} 人在线",
     "hash": "12dd108ecbbc58747f8d3aaf271f1964529890aebe3e8c3939e6a166b7c07ce8"
@@ -702,10 +742,6 @@
   "profile.open": {
     "message": "打开个人资料",
     "hash": "7234213a42c2635bb19176b6ec3c8d639e0d5db2b8ceb4e01f5f0d1c29d46b81"
-  },
-  "profile.played": {
-    "message": "已参与",
-    "hash": "900b1e4c46b4edab74897019997447324dd8c0b529bb7a61eb5b4d90907340f0"
   },
   "profile.preferences": {
     "message": "偏好设置",
@@ -735,6 +771,10 @@
     "message": "此设备不支持推送通知",
     "hash": "9c66ae348ae100dbfb6f4d979ada041ab5cdaf534c1e6073261ab0d7f2031e9f"
   },
+  "profile.ranked": {
+    "message": "排名赛",
+    "hash": "1f4f6aeccaf8b95d32b61bc38389336bc145da297fd7d217ddd47b315be8a4fe"
+  },
   "profile.rating": {
     "message": "评分",
     "hash": "9f29530464f730bd28f137cfc9ea941af137187b57c21e8ff5fefed520764d99"
@@ -746,6 +786,34 @@
   "profile.save": {
     "message": "保存",
     "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
+  },
+  "profile.solved": {
+    "message": "排位赛中解开",
+    "hash": "fc82dd3622c56bfd7a65a1eebc81325ff51eb5866117eafbd63e2c3e24884c55"
+  },
+  "profile.solvedFirstTry": {
+    "message": "首次尝试解出",
+    "hash": "00867c4e94f5be171c500b81005698845db40b9aa320ef2b46ff24cb96751797"
+  },
+  "profile.solvedFirstTrySub": {
+    "message": "首次跑动达到100%",
+    "hash": "b4a789d759c7e191407f11c18673c33831ff60929822305c93e519d9169973a7"
+  },
+  "profile.solvedSub": {
+    "message": "任意排位赛跑动达到100%",
+    "hash": "c61d3bcc9bc29c07e4b999d3ad2171bfe524ee72a4480ed7d1031949cab4f3da"
+  },
+  "profile.streak": {
+    "message": "连续天数",
+    "hash": "4575171b4873ea0c62c3a5187abdeab21f3fc1acecf792c189dc6cdf5e2b5326"
+  },
+  "profile.streakSub": {
+    "message": "最佳 {best}",
+    "hash": "aeee3f064c683d72d3e87181b5e929be07616281530977cd4fc0b6d537405565"
+  },
+  "profile.supremes": {
+    "message": "至尊",
+    "hash": "dd98994badce95387ab0b6c50e55974e90a2f8958b326ff1f9979a280e16662d"
   },
   "profile.themeDark": {
     "message": "深色",
@@ -759,9 +827,21 @@
     "message": "跟随系统",
     "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
   },
+  "profile.tied": {
+    "message": "{count} 次平局",
+    "hash": "86400d06c7d3c1b4ee9d949b45b01e97ffacad58bfa9d4bd99c94c3364336041"
+  },
   "profile.title": {
     "message": "个人资料",
     "hash": "d696a35bdd1883da07a8d6c41bb7a3153381b23aa197629ee273479a6eaa5a9c"
+  },
+  "profile.winRate": {
+    "message": "胜率",
+    "hash": "4be2547225845431916762b2491bdb2675eacf74dd5c14580b19671763c4aec9"
+  },
+  "profile.winRateSub": {
+    "message": "{days} 天中获胜 {won} 天",
+    "hash": "0e4020a41c2dc983557c4f609df3e1e6f08424bb928f2b47dfbbad016bbf7dd3"
   },
   "profile.zoom": {
     "message": "放置时缩放",

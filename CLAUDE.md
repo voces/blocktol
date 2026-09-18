@@ -417,6 +417,21 @@ Other invariants:
   so a maze that reroutes the runner clear of a fixed thunder's slow can in
   principle come in under it (see `scripts/comparePathing.ts`) — `standing`
   clamps a below-`min` time to 0.
+- **Profile stats (`getUserStats`)** are all derived from stored runs — no
+  column of their own. A day counts once the iteration is `rated` (closed for
+  every timezone), and only days with a field: **days won** splits sole (gold)
+  from shared (lime), never breaking a tie by who got there first, which would
+  favour early timezones. A **solve** is a ranked attempt equal to the board's
+  CURRENT best build, free play included, so it means "nobody has ever done
+  better" and is lost again when someone builds longer — deliberately live, not
+  frozen at the day's close. **Free play** is one tally (supremes · records ·
+  boards played · boards), with no denominator behind the holdings: a completion
+  bar there would invite grinding every board to its ceiling. **Head-to-head**
+  ships one row per rival with both boards' records (daily = ranked days both
+  played, pb = boards both built on), each appearing only after 5 meetings, and
+  carries `name` + `hue`, never the rival's id. What it deliberately does NOT
+  show is anything measuring the player against a computed ceiling: telling the
+  leader they could do better is what makes a record feel like a chore.
 - **Identity / move / merge:** the UUID in the `authorization` header _is_ the
   bearer credential — there's no password, so possession alone _is_ the whole
   authorization. That's a sensitive credential: anyone who obtains it can act as

@@ -615,9 +615,21 @@
     "message": "Erscheinungsbild",
     "hash": "3907fa7f80722a6fc58cd8c1bd30abf7638095d6774f183b6e831b7093957d1b"
   },
-  "profile.bestBuild": {
-    "message": "Bester Bau",
-    "hash": "676049cef880921948d99c5638210b3cd6c39a41b733da353891d9076c06136b"
+  "profile.boardDaily": {
+    "message": "Daily",
+    "hash": "b36c2611dcdfa190ede846948d9aba8f39581de0177cbd98586506019f979b75"
+  },
+  "profile.boardPb": {
+    "message": "PB",
+    "hash": "f9085bf3a4e33576e4e0c0d46bcbff81eb47265d015846a96edea91b2bd4445b"
+  },
+  "profile.boards": {
+    "message": "Dailies",
+    "hash": "bae8227e10bdb4c02b240475ecbab50348de36383ee9ff73f95fb45aab7cce39"
+  },
+  "profile.boardsPlayed": {
+    "message": "Gespielt",
+    "hash": "900b1e4c46b4edab74897019997447324dd8c0b529bb7a61eb5b4d90907340f0"
   },
   "profile.cancel": {
     "message": "Abbrechen",
@@ -630,6 +642,14 @@
   "profile.community": {
     "message": "Community",
     "hash": "bb501d7877eb7ddbd40baf7990e8058212e8140a2e6ceaaf2d54a6412b770bfd"
+  },
+  "profile.daysWon": {
+    "message": "Gewonnene Tage",
+    "hash": "ea07bc4305c4a466a5367aeb52fa7e6d9caae68ecc345674a48050bc9af8e3f3"
+  },
+  "profile.daysWonSub": {
+    "message": "allein · geteilt",
+    "hash": "5d48f0b44df4454aa384992bb039b8c9b5affe08fab542abb4cec4ad42641a5a"
   },
   "profile.deleteSub": {
     "message": "Profil löschen und Bauten trennen",
@@ -659,6 +679,14 @@
     "message": "Wird vorbereitet…",
     "hash": "5d1fa38bcf0d88ca03d187718fd6cf8ad128f288f66d402d331476a85774d08d"
   },
+  "profile.freePlay": {
+    "message": "Freies Spiel",
+    "hash": "02a7ebf54a83b32df76b4d893b3aa5ed8e43be7a5a5e39a68e3b909a687a8f9a"
+  },
+  "profile.headToHead": {
+    "message": "Direktvergleich",
+    "hash": "4c1fec0f5620835ed91cdedbe355c66a44c0f41cd8320096600d7e046d589c96"
+  },
   "profile.joinedLabel": {
     "message": "beigetreten {date}",
     "hash": "ae2412fb005b47299128e0e4a9aa89bcc72ae73c04c3c8bc1a8b8a9046ed8b41"
@@ -671,13 +699,21 @@
     "message": "System",
     "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
   },
-  "profile.medianPercentile": {
-    "message": "Medianperzentil",
-    "hash": "5e7ad4b35b400cc7e6ea424e845280a7c50808a1897f73cc06c3687b529995bd"
+  "profile.metBoards": {
+    "message": "{count, plural, one {# Daily} other {# Dailies}} gemeinsam",
+    "hash": "08733fd8dd82c057f829cd31a83c76436e2daea615e3a06e9ea7ec170c61bd00"
+  },
+  "profile.metDays": {
+    "message": "{count, plural, one {# Tag} other {# Tage}} gemeinsam",
+    "hash": "063a774b6d090a73a8406f37783db220d029846478d3280b9fcc03b6c789f6a0"
   },
   "profile.moveSub": {
     "message": "Code scannen oder Login-Link kopieren",
     "hash": "0337b8438ebaa15ee6c289d75049f7af7caa88a1c896f8a02d9af6d4e0db80e7"
+  },
+  "profile.noRivals": {
+    "message": "Noch keine Bilanz – sie beginnt nach fünf Begegnungen.",
+    "hash": "2e51e0a4194c28f8db4bd729bb5e5a1721fb678ddf9e9a202286af3a9fda2521"
   },
   "profile.notifDailySub": {
     "message": "Ein gespielter Tag fixiert seine Ränge",
@@ -695,6 +731,10 @@
     "message": "Spitzenplatz verloren",
     "hash": "e0e368df0f182850bfd5eb5d34e9ebfb9ee92703d68cdfbe25bfa43a97a18c0e"
   },
+  "profile.ofDays": {
+    "message": "{pct} der Tage",
+    "hash": "f5bef672d1456e8967e2b89a0bf0e52da1521aed59a37f5faa227588986d5f7b"
+  },
   "profile.online": {
     "message": "{count} online",
     "hash": "12dd108ecbbc58747f8d3aaf271f1964529890aebe3e8c3939e6a166b7c07ce8"
@@ -702,10 +742,6 @@
   "profile.open": {
     "message": "Profil öffnen",
     "hash": "7234213a42c2635bb19176b6ec3c8d639e0d5db2b8ceb4e01f5f0d1c29d46b81"
-  },
-  "profile.played": {
-    "message": "Gespielt",
-    "hash": "900b1e4c46b4edab74897019997447324dd8c0b529bb7a61eb5b4d90907340f0"
   },
   "profile.preferences": {
     "message": "Einstellungen",
@@ -735,6 +771,10 @@
     "message": "Push-Benachrichtigungen sind auf diesem Gerät nicht verfügbar",
     "hash": "9c66ae348ae100dbfb6f4d979ada041ab5cdaf534c1e6073261ab0d7f2031e9f"
   },
+  "profile.ranked": {
+    "message": "Ranked",
+    "hash": "1f4f6aeccaf8b95d32b61bc38389336bc145da297fd7d217ddd47b315be8a4fe"
+  },
   "profile.rating": {
     "message": "Wertung",
     "hash": "9f29530464f730bd28f137cfc9ea941af137187b57c21e8ff5fefed520764d99"
@@ -746,6 +786,34 @@
   "profile.save": {
     "message": "Speichern",
     "hash": "1509f561f2416598629b886ad7d3c05a7e221e4e0675c84bbff4ee6d9e03913d"
+  },
+  "profile.solved": {
+    "message": "Ranked gelöst",
+    "hash": "fc82dd3622c56bfd7a65a1eebc81325ff51eb5866117eafbd63e2c3e24884c55"
+  },
+  "profile.solvedFirstTry": {
+    "message": "Beim ersten Versuch gelöst",
+    "hash": "00867c4e94f5be171c500b81005698845db40b9aa320ef2b46ff24cb96751797"
+  },
+  "profile.solvedFirstTrySub": {
+    "message": "100 % beim ersten Lauf",
+    "hash": "b4a789d759c7e191407f11c18673c33831ff60929822305c93e519d9169973a7"
+  },
+  "profile.solvedSub": {
+    "message": "100 % bei einem beliebigen Ranked-Lauf",
+    "hash": "c61d3bcc9bc29c07e4b999d3ad2171bfe524ee72a4480ed7d1031949cab4f3da"
+  },
+  "profile.streak": {
+    "message": "Tagesserie",
+    "hash": "4575171b4873ea0c62c3a5187abdeab21f3fc1acecf792c189dc6cdf5e2b5326"
+  },
+  "profile.streakSub": {
+    "message": "Bestwert {best}",
+    "hash": "aeee3f064c683d72d3e87181b5e929be07616281530977cd4fc0b6d537405565"
+  },
+  "profile.supremes": {
+    "message": "Supremes",
+    "hash": "dd98994badce95387ab0b6c50e55974e90a2f8958b326ff1f9979a280e16662d"
   },
   "profile.themeDark": {
     "message": "Dunkel",
@@ -759,9 +827,21 @@
     "message": "System",
     "hash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a"
   },
+  "profile.tied": {
+    "message": "{count} unentschieden",
+    "hash": "86400d06c7d3c1b4ee9d949b45b01e97ffacad58bfa9d4bd99c94c3364336041"
+  },
   "profile.title": {
     "message": "Profil",
     "hash": "d696a35bdd1883da07a8d6c41bb7a3153381b23aa197629ee273479a6eaa5a9c"
+  },
+  "profile.winRate": {
+    "message": "Siegquote",
+    "hash": "4be2547225845431916762b2491bdb2675eacf74dd5c14580b19671763c4aec9"
+  },
+  "profile.winRateSub": {
+    "message": "{won} von {days} Tagen",
+    "hash": "0e4020a41c2dc983557c4f609df3e1e6f08424bb928f2b47dfbbad016bbf7dd3"
   },
   "profile.zoom": {
     "message": "Zoom beim Platzieren",

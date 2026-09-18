@@ -1,14 +1,12 @@
 import { Fragment, h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
-import { formatDecimal, formatSeconds } from "../../common/format.ts";
-import { formatPercentile } from "../../common/formatPercentile.ts";
-import { percentileBand } from "../../common/percentileColor.ts";
+import { formatDecimal } from "../../common/format.ts";
 import { api } from "../api.ts";
-import { showDay } from "../store/board.ts";
 import {
   fetchProfile,
   patchProfile,
   profile as profileSignal,
+  type ProfileData,
 } from "../store/profile.ts";
 import { useMediaQuery } from "../hooks/useMediaQuery.ts";
 import { useSettings } from "../hooks/useSettings.ts";
@@ -19,7 +17,11 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../common/settings.ts";
-import { avatarColor, avatarInitial } from "../../common/avatar.ts";
+import {
+  avatarColor,
+  avatarColorFromHue,
+  avatarInitial,
+} from "../../common/avatar.ts";
 import { DISCORD_INVITE } from "../../common/constants.ts";
 import { discordOnline, fetchDiscordOnline } from "../store/discord.ts";
 import { getId } from "../util/id.ts";
@@ -234,9 +236,12 @@ const ExternalIcon = () => (
 );
 
 const Stat = (
-  { value, label, color }: {
-    value: string;
+  { value, label, sub, color }: {
+    value: h.JSX.Element | string;
     label: string;
+    // A line of context under the label ("29 of 75 days") — what the figure is
+    // out of, so the tile reads without the brief that produced it.
+    sub?: string;
     color?: string;
   },
 ) => (
@@ -245,8 +250,151 @@ const Stat = (
       {value}
     </div>
     <div class="profile-stat__label">{label}</div>
+    {sub && <div class="profile-stat__sub">{sub}</div>}
   </div>
 );
+
+const formatPercent = (share: number) =>
+  `${formatDecimal(share * 100, { min: 0, max: 0 })}%`;
+
+// A solve: a ranked attempt that equalled the best build anyone has made on
+// that board. The bar is the board's CURRENT best (free play included), so a
+// solve is lost again if someone later builds longer — it says "nobody has ever
+// done better", which is why it carries the win colour rather than a percentile.
+const SolveRow = (
+  { icon, title, sub, value, of }: {
+    icon: h.JSX.Element;
+    title: string;
+    sub: string;
+    value: number | null;
+    of: number;
+  },
+) => (
+  <div class="profile-row">
+    <span
+      class="profile-row__tile"
+      style={{ color: "var(--win)" }}
+      aria-hidden="true"
+    >
+      {icon}
+    </span>
+    <div class="profile-row__text">
+      <div class="profile-row__title">{title}</div>
+      <div class="profile-row__sub">{sub}</div>
+    </div>
+    <div class="profile-row__fig">
+      <div class="profile-row__value mono">{value ?? "—"}</div>
+      {
+        /* Shown at zero too ("0% of days"), so a row keeps its height whether
+          or not the player has solved anything yet. */
+      }
+      <div class="profile-row__small mono">
+        {value !== null && of > 0
+          ? t("profile.ofDays", { pct: formatPercent(value / of) })
+          : "—"}
+      </div>
+    </div>
+  </div>
+);
+
+const Target = () => (
+  <svg
+    width={18}
+    height={18}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width={2}
+    aria-hidden="true"
+  >
+    <circle cx={12} cy={12} r={8.5} />
+    <circle cx={12} cy={12} r={4.5} />
+    <circle cx={12} cy={12} r={1.2} fill="currentColor" />
+  </svg>
+);
+
+const Bolt = () => (
+  <svg
+    width={18}
+    height={18}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path d="M13.5 2 4.5 13.5h6l-1 8.5 9-11.5h-6z" />
+  </svg>
+);
+
+// Head-to-head, last block in the sheet: one row per rival, with a switch for
+// which board the record comes from. The two boards are the standings' own —
+// DAILY (the ranked attempts on days both played) and PB (best builds on boards
+// both played) — and a row shows one of them at a time, never both: a record
+// only reads clearly when its pool is named once, at the top.
+const Rivals = ({ rivals }: { rivals: ProfileData["rivals"] }) => {
+  const [board, setBoard] = useState<"daily" | "pb">("daily");
+  const rows = rivals.filter((r) => r[board]);
+  return (
+    <div class="profile-block">
+      <div class="profile-block__head">
+        <div class="section-title">{t("profile.headToHead")}</div>
+        <div
+          class="pref__seg"
+          role="group"
+          aria-label={t("profile.headToHead")}
+        >
+          {(["daily", "pb"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              class={"pref__seg-btn tapc" +
+                (board === value ? " pref__seg-btn--active" : "")}
+              aria-pressed={board === value}
+              onClick={() => setBoard(value)}
+            >
+              {value === "daily"
+                ? t("profile.boardDaily")
+                : t("profile.boardPb")}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div class="profile-rivals">
+        {rows.length
+          ? rows.map((rival) => {
+            const record = rival[board]!;
+            return (
+              <div class="profile-rival" key={rival.name + rival.hue}>
+                <span
+                  class="profile-rival__avatar"
+                  style={{ background: avatarColorFromHue(rival.hue) }}
+                  aria-hidden="true"
+                >
+                  {avatarInitial(rival.name)}
+                </span>
+                <div class="profile-rival__who">
+                  <span class="profile-rival__name">{rival.name}</span>
+                  <span class="profile-rival__sub">
+                    {board === "daily"
+                      ? t("profile.metDays", { count: record.met })
+                      : t("profile.metBoards", { count: record.met })}
+                  </span>
+                </div>
+                <div class="profile-rival__nums">
+                  <span class="profile-rival__record mono">
+                    <b>{record.won}</b>–<span>{record.lost}</span>
+                  </span>
+                  <span class="profile-rival__small mono">
+                    {t("profile.tied", { count: record.tied })}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+          : <div class="profile-rivals__empty">{t("profile.noRivals")}</div>}
+      </div>
+    </div>
+  );
+};
 
 // Why a preference that reads "on" still delivers nothing. The toggles are
 // stored settings that gate the SERVER's send decision; whether THIS device can
@@ -319,7 +467,6 @@ const ProfileDialog = (
     focusAccount?: boolean;
   },
 ) => {
-  const { dailyInProgress, viewMaze } = useContext(GameStateContext);
   const accountRef = useRef<HTMLDivElement>(null);
   // Signal read: the dialog re-renders as the open-time refetch lands.
   const profile = profileSignal.value;
@@ -365,26 +512,6 @@ const ProfileDialog = (
     }).catch(() => setSaving(false));
   };
 
-  // Best build opens on the board (a static review), same route the today-result
-  // uses: stage that day's board, then overlay the best maze. Available whenever
-  // we're not mid-run on today's live ranked daily (free play / replay / a past
-  // day is unlocked then) — dailyInProgress mirrors the profile button's own gate.
-  const bestIteration = profile?.bestBuildIteration ?? null;
-  const canView = !dailyInProgress && bestIteration != null;
-  const viewBest = () => {
-    if (!canView) return;
-    onClose();
-    // Fetch the best maze and stage the day's board in parallel (two round
-    // trips become one), overlaying once both land — skipped if a newer
-    // navigation superseded the stage.
-    Promise.all([
-      showDay(bestIteration!),
-      api.best({ iteration: bestIteration! }),
-    ]).then(([staged, best]) => {
-      if (staged && !("error" in best)) viewMaze(best.maze);
-    });
-  };
-
   // Download everything the game holds about this player as a JSON file (GDPR
   // access/portability). The server assembles the document (see exportData.ts);
   // here we just offer it as a browser download.
@@ -423,7 +550,6 @@ const ProfileDialog = (
   const initial = avatarInitial(profile?.name);
   const color = avatarColor(getId());
   const joined = joinedLabel(profile?.joined ?? null);
-  const median = profile?.medianPercentile;
 
   return (
     <Modal class="profile-sheet" onClose={onClose}>
@@ -520,41 +646,116 @@ const ProfileDialog = (
           )}
       </div>
 
-      <div class="profile-stats">
-        <Stat
-          value={profile ? String(profile.played) : "—"}
-          label={t("profile.played")}
-        />
-        <Stat
-          value={profile ? String(profile.hundreds) : "—"}
-          label={t("profile.records")}
-          color={profile && profile.hundreds > 0 ? "var(--peak)" : undefined}
-        />
-        <Stat
-          value={typeof median === "number"
-            ? `p${formatPercentile(median)}`
-            : "—"}
-          label={t("profile.medianPercentile")}
-          color={typeof median === "number"
-            ? percentileBand(median)
-            : undefined}
-        />
+      <div class="profile-block">
+        <div class="section-title">{t("profile.ranked")}</div>
+        <div class="profile-stats">
+          <Stat
+            value={profile
+              ? (
+                <Fragment>
+                  <span style={{ color: "var(--gold)" }}>
+                    {profile.wonSole}
+                  </span>
+                  <span class="profile-stat__dot">·</span>
+                  <span style={{ color: "var(--peak)" }}>
+                    {profile.wonShared}
+                  </span>
+                </Fragment>
+              )
+              : "—"}
+            label={t("profile.daysWon")}
+            sub={t("profile.daysWonSub")}
+          />
+          <Stat
+            value={profile && profile.rankedDays > 0
+              ? formatPercent(
+                (profile.wonSole + profile.wonShared) / profile.rankedDays,
+              )
+              : "—"}
+            label={t("profile.winRate")}
+            sub={profile
+              ? t("profile.winRateSub", {
+                won: profile.wonSole + profile.wonShared,
+                days: profile.rankedDays,
+              })
+              : undefined}
+          />
+          <Stat
+            value={profile ? String(profile.streak) : "—"}
+            label={t("profile.streak")}
+            color={profile && profile.streak > 0 ? "var(--warn)" : undefined}
+            sub={profile
+              ? t("profile.streakSub", { best: profile.bestStreak })
+              : undefined}
+          />
+        </div>
+        <div class="profile-rows">
+          {
+            /* First try leads: its count is a subset of the row below, so the
+              rarer figure reads first and "Or on attempt two or three" lands
+              as a continuation of it. */
+          }
+          <SolveRow
+            icon={<Bolt />}
+            title={t("profile.solvedFirstTry")}
+            sub={t("profile.solvedFirstTrySub")}
+            value={profile?.solvedFirstTry ?? null}
+            of={profile?.daysPlayed ?? 0}
+          />
+          <SolveRow
+            icon={<Target />}
+            title={t("profile.solved")}
+            sub={t("profile.solvedSub")}
+            value={profile?.solved ?? null}
+            of={profile?.daysPlayed ?? 0}
+          />
+        </div>
       </div>
 
-      <button
-        type="button"
-        class={"profile-best" +
-          (canView ? " profile-best--clickable tapc" : "")}
-        onClick={canView ? viewBest : undefined}
-        disabled={!canView}
-      >
-        <div class="profile-best__label">{t("profile.bestBuild")}</div>
-        <div class="profile-best__value mono">
-          {profile?.bestBuild != null
-            ? `${formatSeconds(profile.bestBuild, { min: 0 })}s`
-            : "—"}
+      <div class="profile-block">
+        <div class="section-title">{t("profile.freePlay")}</div>
+        <div class="profile-tally">
+          {
+            /* A player with no supreme gets three cells, not a zero: nobody
+              holds more than a handful of boards alone, so the cell would read
+              empty for almost everyone. */
+          }
+          {!!profile?.supremes && (
+            <div class="profile-tally__cell">
+              <div
+                class="profile-tally__value mono"
+                style={{ color: "var(--gold)" }}
+              >
+                {profile.supremes}
+              </div>
+              <div class="profile-tally__label">{t("profile.supremes")}</div>
+            </div>
+          )}
+          <div class="profile-tally__cell">
+            <div
+              class="profile-tally__value mono"
+              style={{ color: "var(--peak)" }}
+            >
+              {profile ? profile.records : "—"}
+            </div>
+            <div class="profile-tally__label">{t("profile.records")}</div>
+          </div>
+          <div class="profile-tally__cell">
+            <div class="profile-tally__value mono">
+              {profile ? profile.boardsPlayed : "—"}
+            </div>
+            <div class="profile-tally__label">{t("profile.boardsPlayed")}</div>
+          </div>
+          <div class="profile-tally__cell">
+            <div class="profile-tally__value mono">
+              {profile ? profile.boards : "—"}
+            </div>
+            <div class="profile-tally__label">{t("profile.boards")}</div>
+          </div>
         </div>
-      </button>
+      </div>
+
+      {!!profile?.rivals.length && <Rivals rivals={profile.rivals} />}
 
       <div class="pref">
         <div class="section-title">{t("profile.pushNotifications")}</div>

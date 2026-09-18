@@ -2889,41 +2889,217 @@ a:hover {
   margin-top: 2px;
 }
 
-/* Best build — a wide tile, clickable to review the maze on the board. */
-.profile-best {
+/* What the figure is out of ("29 of 75 days"), so a tile reads on its own. */
+.profile-stat__sub {
+  font: 500 10px var(--font);
+  color: var(--text-faint);
+  margin-top: 1px;
+}
+
+/* The separator between a tile's two figures (won alone · shared). */
+.profile-stat__dot {
+  color: var(--text-faint);
+  font-weight: 400;
+  margin: 0 2px;
+}
+
+/* A stat block: its section title (and, for head-to-head, the board switch)
+   over whatever the block shows. */
+.profile-block {
+  margin-bottom: 16px;
+}
+
+.profile-block__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  margin: 0 0 18px;
-  padding: 14px 16px;
+  gap: 10px;
+}
+
+/* A pill sitting on the sheet reads as an outline unless its track is a step
+   above the surface behind it — the runs panel's pill fills with --surface
+   because it sits on the page, so here it fills with --surface-2. */
+.profile-sheet .pref__seg {
+  background: var(--surface-2);
+  margin-bottom: 10px;
+}
+
+/* Solve rows: an icon tile, what the stat means, and the figure. */
+.profile-rows {
+  padding: 2px 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface-2);
-  text-align: left;
 }
 
-.profile-best--clickable {
-  cursor: pointer;
-  transition: background 0.12s ease;
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
 }
 
-.profile-best--clickable:hover {
-  background: var(--surface-3);
+.profile-row + .profile-row {
+  border-top: 1px solid var(--border-strong);
 }
 
-.profile-best__label {
+.profile-row__tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.profile-row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-row__title {
+  font: 600 14px var(--font);
+  color: var(--color);
+}
+
+.profile-row__sub {
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+  margin-top: 1px;
+}
+
+.profile-row__fig {
+  flex: none;
+  text-align: right;
+}
+
+.profile-row__value {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color);
+}
+
+.profile-row__small {
+  font: 500 11px var(--font);
+  color: var(--text-faint);
+}
+
+/* Free play in one tally, read as a progression through the library: boards
+   held alone, boards shared, boards played, boards that exist. */
+.profile-tally {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.profile-tally__cell {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 8px;
+  text-align: center;
+}
+
+.profile-tally__cell + .profile-tally__cell {
+  border-left: 1px solid var(--border);
+}
+
+.profile-tally__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color);
+}
+
+.profile-tally__label {
+  font: 500 11px var(--font);
+  color: var(--text-mute);
+  margin-top: 2px;
+}
+
+/* Head-to-head: the standings row's shape, one rival per row. */
+.profile-rivals {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.profile-rivals__empty {
+  padding: 10px 14px;
+  font: 500 12px var(--font);
+  color: var(--text-mute);
+}
+
+.profile-rival {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+}
+
+.profile-rival__avatar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font: 700 15px var(--font);
+  color: #fff;
+}
+
+.profile-rival__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.profile-rival__name {
+  font: 600 15px var(--font);
+  color: var(--color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-rival__sub {
   font: 500 11px var(--font);
   color: var(--text-mute);
 }
 
-/* Neutral, not the accent blue — blue is a mid-percentile band in this app's
-   ramp, and best build carries no percentile, so it shouldn't imply one. */
-.profile-best__value {
-  font-size: 22px;
+.profile-rival__nums {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* Wins lead in the text colour, losses recede — the pair reads as "yours
+   against theirs" without a second hue fighting the record states. */
+.profile-rival__record {
+  font-size: 18px;
   font-weight: 700;
+  line-height: 1;
   color: var(--color);
+}
+
+.profile-rival__record span {
+  color: var(--text-mute);
+}
+
+.profile-rival__small {
+  font: 500 11px var(--font);
+  color: var(--text-faint);
 }
 
 /* Copy-login-link action row. */
