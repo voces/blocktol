@@ -83,7 +83,7 @@ export const boot = method(bootBody, true)(
       linkedStandings,
     ] = await Promise.all([
       getDailySummary.handler({ timeZone }, req),
-      getProfile.handler({}, req),
+      getProfile.handler({ timeZone }, req),
       standings.handler({ timeZone }, req),
       getNotifications.handler({}, req),
       getBoard.handler({ timeZone }, req),

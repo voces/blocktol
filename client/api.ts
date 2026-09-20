@@ -188,7 +188,7 @@ export const primeBoot = (
   // [method, the input its boot-time consumer sends, slice picker]
   const single: [string, unknown, (b: MessageMap["boot"]) => unknown][] = [
     ["getDailySummary", { timeZone: tz }, (b) => b.summary],
-    ["getProfile", {}, (b) => b.profile],
+    ["getProfile", { timeZone: tz }, (b) => b.profile],
     ["standings", { timeZone: tz }, (b) => b.standings],
     ["getNotifications", {}, (b) => b.notifications],
     ["getBoard", { timeZone: tz }, (b) => b.board],

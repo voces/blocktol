@@ -94,7 +94,13 @@ export const updateUserLocale = (id: string, locale: string) =>
 //      if someone later builds longer — it means "nobody has ever done better",
 //      not "best on the day";
 //   4. FREE PLAY: boards where their best build is the board's top, alone
-//      (supreme) or shared (record), boards played, and how many boards exist;
+//      (supreme) or shared (record), boards played, and how many boards exist.
+//      `today` is the CALLER'S local date (routes/profile.ts), never the
+//      database's CURDATE(): the gen cron runs a day ahead of UTC, so a board
+//      dated later than the player's own today exists but is not theirs to play
+//      yet, and counting it made the denominator read one high for every player
+//      west of UTC through their evening. It is also the streak's "today" for
+//      the same reason;
 //   5. the dates they made ranked attempts on, for the streak (computed in
 //      server/util/streak.ts);
 //   6. HEAD-TO-HEAD per rival, on both boards: ranked days both played, and
@@ -102,7 +108,7 @@ export const updateUserLocale = (id: string, locale: string) =>
 //      the raw id is the bearer credential (see common/avatar.ts).
 // Each half of a comparison is a per-iteration MAX over the same `time` column,
 // so equality is exact: the two sides read the identical stored value.
-export const getUserStats = async (user: string) => {
+export const getUserStats = async (user: string, today: string) => {
   const [userRows, ranked, solves, boards, total, days, daily, pb] = await sql<[
     {
       name: string | null;
@@ -113,7 +119,7 @@ export const getUserStats = async (user: string) => {
     { days: number; sole: number; shared: number }[],
     { solved: number; firstTry: number }[],
     { supremes: number; records: number; played: number }[],
-    { boards: number; today: string }[],
+    { boards: number }[],
     { day: string }[],
     RivalRow[],
     RivalRow[],
@@ -164,8 +170,7 @@ export const getUserStats = async (user: string) => {
       WHERE user != ${user} AND void = FALSE GROUP BY iteration
     ) others ON others.iteration = mine.iteration;
 
-    SELECT COUNT(*) boards, CAST(CURDATE() AS char) today
-    FROM iteration WHERE created <= CURDATE();
+    SELECT COUNT(*) boards FROM iteration WHERE created <= ${today};
 
     SELECT DISTINCT CAST(i.created AS char) day
     FROM run r JOIN iteration i ON i.id = r.iteration
@@ -180,7 +185,7 @@ export const getUserStats = async (user: string) => {
   const allRivals = mergeRivals(daily, pb);
   const { current, best } = streaks(
     days.map((d) => String(d.day).slice(0, 10)),
-    String(total[0]?.today ?? "").slice(0, 10),
+    today,
   );
 
   return {

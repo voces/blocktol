@@ -1,6 +1,7 @@
 import { signal } from "@preact/signals";
 import { api, MessageMap } from "../api.ts";
 import { keyedQuery } from "./query.ts";
+import { getTimeZone } from "../util/timeZone.ts";
 
 export type ProfileData = MessageMap["getProfile"];
 
@@ -12,7 +13,7 @@ export const profile = signal<ProfileData | undefined>(undefined);
 // However many times intent fires, at most one request per freshness window;
 // a failed fetch frees the window so the next intent retries.
 const fetchOnce = keyedQuery(async () => {
-  const p = await api.getProfile({});
+  const p = await api.getProfile({ timeZone: getTimeZone() });
   if (!p || "error" in p) throw new Error("failed to fetch profile");
   profile.value = p;
   return p;

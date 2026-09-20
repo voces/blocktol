@@ -14,3 +14,16 @@ export const dailyParts = (timeZone: string) => {
 
   return { month, day, year };
 };
+
+// The caller's local calendar date as `YYYY-MM-DD` — the shape an iteration's
+// `created` DATE is stored and compared as (see createIteration). Anything that
+// asks "which dailies exist for THIS player" wants this, not the database's
+// CURDATE(): the server runs UTC, so a player west of it spends the evening
+// with a UTC "today" whose daily their local day hasn't reached, and a player
+// east of it reaches their local today while UTC is still on the day before.
+export const dailyDate = (timeZone: string) => {
+  const { year, month, day } = dailyParts(timeZone);
+  return `${year}-${pad(month)}-${pad(day)}`;
+};
+
+const pad = (n: number) => String(n).padStart(2, "0");

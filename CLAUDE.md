@@ -426,12 +426,19 @@ Other invariants:
   better" and is lost again when someone builds longer — deliberately live, not
   frozen at the day's close. **Free play** is one tally (supremes · records ·
   boards played · boards), with no denominator behind the holdings: a completion
-  bar there would invite grinding every board to its ceiling. **Head-to-head**
-  ships one row per rival with both boards' records (daily = ranked days both
-  played, pb = boards both built on), each appearing only after 5 meetings, and
-  carries `name` + `hue`, never the rival's id. What it deliberately does NOT
-  show is anything measuring the player against a computed ceiling: telling the
-  leader they could do better is what makes a record feel like a chore.
+  bar there would invite grinding every board to its ceiling. That "boards"
+  total — and the streak's notion of today — is measured against the **caller's
+  local date**: `getProfile` takes a `timeZone` like every other daily-facing
+  method (optional, UTC fallback for a legacy cached client), never the DB's
+  `CURDATE()`. The gen cron runs a day ahead of UTC, so a board dated past the
+  player's own today exists but isn't theirs to play; counting it read the
+  denominator one high for every player west of UTC through their evening.
+  **Head-to-head** ships one row per rival with both boards' records (daily =
+  ranked days both played, pb = boards both built on), each appearing only after
+  5 meetings, and carries `name` + `hue`, never the rival's id. What it
+  deliberately does NOT show is anything measuring the player against a computed
+  ceiling: telling the leader they could do better is what makes a record feel
+  like a chore.
 - **Identity / move / merge:** the UUID in the `authorization` header _is_ the
   bearer credential — there's no password, so possession alone _is_ the whole
   authorization. That's a sensitive credential: anyone who obtains it can act as
