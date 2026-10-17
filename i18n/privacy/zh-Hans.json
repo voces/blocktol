@@ -28,8 +28,8 @@
     "hash": "2b5c3d26721ae9c350cf3009318b626f0fc8a90b4a2ac0ca8099c05aa849282e"
   },
   "privacy.contact.operator": {
-    "message": "Blocktol 由 Robert Coe 运营，他负责本页面所涉及的数据。",
-    "hash": "a67e558f40b65b6c657fa135fe4aeb461cabde5d978ec54474af44f11a8dd214"
+    "message": "Blocktol 由位于美国的 Robert Coe 运营，他负责本页面上的数据。",
+    "hash": "5f726d42b223e4f8afbe0932a8f898f341905efbfc7f26293bb2c066e5a2d89c"
   },
   "privacy.cookies.body": {
     "message": "我们不使用 Cookie，也不运行任何广告或第三方追踪。存储在你设备上的唯一内容是游戏运行所需的功能性数据（你的 ID、你进行中的建造，以及你的设置），因此没有需要点击处理的 Cookie 横幅。",
