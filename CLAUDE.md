@@ -611,8 +611,10 @@ saver's flush on `pagehide`/hidden).
   ranked run than were spent — instead of re-enabling a button that would burn a
   second one), `standings`, `profile`, `notifications`, `notifNav` (deep-link
   routing — effectively the app's router), `connection` (drives the Disconnected
-  overlay), `dailyItems`, `discord`. `store/query.ts` is not a data store but
-  the shared coalesce/dedupe/stale-window cache primitive the others build on.
+  overlay — blocking, except over a staged free-play board, which plays offline
+  and gets a non-blocking pill instead), `dailyItems`, `discord`.
+  `store/query.ts` is not a data store but the shared
+  coalesce/dedupe/stale-window cache primitive the others build on.
 - `client/components/Game/interaction.ts` holds pointer-frequency board state as
   signals so a drag only re-renders the board, not the tree.
 

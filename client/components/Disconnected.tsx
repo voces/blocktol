@@ -2,7 +2,9 @@ import { useEffect, useState } from "preact/compat";
 import { h } from "preact";
 import { t } from "../util/t.ts";
 
-export const Disconnected = () => {
+// `compact` is the non-blocking form: a small pill over the top of the page,
+// for a board that needs no network to keep playing (free play — see App).
+export const Disconnected = ({ compact }: { compact?: boolean }) => {
   const [ellipse, setEllipse] = useState(1);
 
   useEffect(() => {
@@ -13,6 +15,21 @@ export const Disconnected = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  const dots = (
+    <span style={{ display: "inline-block", width: 0 }}>
+      {".".repeat(ellipse)}
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <div class="disconnected-pill" role="status">
+        {t("common.connecting")}
+        {dots}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -31,11 +48,7 @@ export const Disconnected = () => {
       }}
     >
       {t("common.connecting")}
-      <span
-        style={{ display: "inline-block", width: 0 }}
-      >
-        {".".repeat(ellipse)}
-      </span>
+      {dots}
     </div>
   );
 };
