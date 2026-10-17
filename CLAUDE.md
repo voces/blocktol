@@ -172,20 +172,29 @@ middleware chain over `URLPattern`. Path params are type-derived from the route
 string. Every request flows: `beginLogger` → login-link routes → `extractUserId`
 → **`POST /api/:method`** → the `/YYYYMMDD` day-permalink (serves the SPA shell)
 → `/privacy.html` (rendered per language — see _Data rights_) → `staticServe` →
-`endLogger`. A thrown `UserError` becomes a 400; anything else is a 500 — logged
+`endLogger`. A thrown `UserError` becomes a 400 (its `NotFoundError` subclass —
+e.g. an unknown iteration id — a 404); anything else is a 500 — logged
 (`console.error` → VictoriaLogs) and recorded on the request span
-(`recordException` → VictoriaTraces).
+(`recordException` → VictoriaTraces). Every response — the router's own
+fallbacks included — leaves through `withSecurityHeaders`
+(`middleware/securityHeaders.ts`, applied in `index.ts`): nosniff,
+`Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, HSTS, and a
+deliberately minimal CSP (`frame-ancestors`/`base-uri`/`object-src` only — a
+full policy needs a browser pass over the app, SW, debug and privacy pages
+first).
 
 **The API is one endpoint.** `server/routes/api.ts` owns a `handlers` registry;
-`POST /api/:method` looks the method up, zod-validates the body against
-`handler.validation`, calls `handler.handler`, and JSON-encodes the result. The
-exported `BlocktolApi` type is _derived from the registry_ and is the only thing
-the client imports — add a route by adding a `{ validation, handler }` (see
-`routes/apiHelpers.ts`'s `method(...)` helper) to that object and the client's
-typed `api.<method>()` appears automatically. A handler returning
-`{ status: >=500 }` (or throwing) is reported; 4xx are treated as expected
-client faults. (`setFlags` — `routes/iteration/flags.ts` — is the splits tape's
-one write; see the flags invariant below.)
+`POST /api/:method` looks the method up (own keys only — `/api/constructor` is a
+404), reads the body under a 64 KiB cap (`MAX_BODY_BYTES`, ~5× a full 400-piece
+commit; over it is a 413), zod-validates it against `handler.validation`, calls
+`handler.handler`, and JSON-encodes the result. The exported `BlocktolApi` type
+is _derived from the registry_ and is the only thing the client imports — add a
+route by adding a `{ validation, handler }` (see `routes/apiHelpers.ts`'s
+`method(...)` helper) to that object and the client's typed `api.<method>()`
+appears automatically. A handler returning `{ status: >=500 }` (or throwing) is
+reported; 4xx are treated as expected client faults. (`setFlags` —
+`routes/iteration/flags.ts` — is the splits tape's one write; see the flags
+invariant below.)
 
 **`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
 that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
@@ -489,14 +498,23 @@ Other invariants:
   authorization. That's a sensitive credential: anyone who obtains it can act as
   (or merge away) that user, so it must be protected like one. But possession is
   deliberately made _sufficient_ — that's exactly what powers "move to device":
-  it issues a `/login/:id` (or `/l/:id`) link/QR, and holding two ids authorizes
-  folding them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the
-  loser row in one transaction; a nonexistent primary is a 400). The merge must
-  not mint attempts: on any iteration where the primary already has a ranked
+  it issues a `/#l=<id>` link/QR (`signInLink`, `client/util/id.ts` — the id
+  rides the URL **fragment**, which never reaches the server, because a path
+  segment lands verbatim in nginx's access log and Deno's OTel span
+  `url.full`/`url.path`, neither of which app code can scrub). The legacy
+  `/login/:id` and `/l/:id` path forms still work for links already in the wild;
+  our own log lines redact them (`redactPath` in `middleware/beginLogger.ts`),
+  but the span and nginx still see those. Holding two ids authorizes folding
+  them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the loser
+  row in one transaction; a nonexistent primary is a 400). The merge must not
+  mint attempts: on any iteration where the primary already has a ranked
   attempt, the secondary's runs there move as history (`ranked`/`daily` cleared)
   — otherwise `daily`'s best-ranked re-point would make it best-of-six — and
   `pb_top.top_user` (no FK) is rewritten to the primary. The client-side gate is
-  `MoveGate`/`MoveDevice`.
+  `MoveGate`/`MoveDevice`. `extractUserId` admits only the id shape ever minted
+  (`[A-Za-z0-9_-]{1,36}` — `user.id` is char(36)); any other header is treated
+  exactly like a missing one (anonymous, so authed methods 401), logged by
+  length only.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
@@ -734,6 +752,16 @@ but nothing arrives" was the shape of every report here.
   doesn't mirror (a revoked Android `POST_NOTIFICATIONS` grant) still reads as
   `ok`.
 
+The endpoint is client-supplied and the server POSTs to it, so `subscribePush`
+accepts only `isPushEndpoint` (`util/webpush.ts`): https on the default port to
+an allowlisted browser push service (FCM, Mozilla autopush, WNS, Apple) — never
+an arbitrary url (SSRF into the box's loopback services). A user keeps at most
+`MAX_SUBSCRIPTIONS_PER_USER` (10) rows; the upsert bumps `created` (so it reads
+"last registered") and prunes the stalest past the cap. A pre-allowlist row that
+fails the check is skipped at send (logged once per host,
+`push endpoint refused`), not pruned. `unsubscribePush` deletes only the
+caller's own row.
+
 **Reading the push path in VictoriaLogs.** A successful send logs **nothing**,
 so an empty result for `"push send"` means "nothing failed", NOT "nothing was
 sent" — and remember telemetry only runs on the co-located instance, so an
@@ -814,7 +842,12 @@ a title link to the day's `/YYYYMMDD?board=` permalink:
   best build of the day".
 
 Both are best-effort (never throw, awaited so this Deploy doesn't kill them mid
-flight) and no-op without a webhook configured. See the `DISCORD_*` env vars.
+flight, each fetch bounded by a timeout) and no-op without a webhook configured.
+Player-written text never reaches Discord raw: names go through `escapeDiscord`
+(`util/discordText.ts` — markdown metacharacters escaped, `://` broken so a name
+can't be a masked or bare link, newlines flattened) inside `pbEmbed` /
+`dailyEmbed`, an id quoted in an admin alert through `discordCode`, and both
+webhooks send `allowed_mentions: { parse: [] }`. See the `DISCORD_*` env vars.
 
 ## Localization (i18n)
 
@@ -970,9 +1003,12 @@ represent nesting and VL can't query what it can't see as a field). Two escape
 hatches in the same module: `errText(err)` renders a caught value to one field
 (an Error's stack, else stringified — use it as `{ error: errText(err) }`), and
 `coerceFlat(record)` flattens an `unknown`-typed record (client error payloads)
-by stringifying any non-primitive value. No timestamp in the payload — Deno's
-OTel stamps `_time`; a second would duplicate it. `level=` also gives Grafana a
-field to colour rows by.
+by stringifying any non-primitive value. Keys are reduced to `[A-Za-z0-9_.-]` on
+output, and `reportClientError` namespaces its payload as `client.<key>` (≤20
+keys, values cut to 4000 chars), so a client can neither forge fields nor
+override request context like `userHash` — its stack is `client.error`. No
+timestamp in the payload — Deno's OTel stamps `_time`; a second would duplicate
+it. `level=` also gives Grafana a field to colour rows by.
 
 **Build SHA / stale-client reload.** `common/version.ts` (`export const SHA`) is
 generated at build time by `scripts/genVersion.ts` — the `version` task, which

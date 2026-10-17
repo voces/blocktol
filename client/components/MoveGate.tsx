@@ -9,6 +9,7 @@ import {
   getCleanLink,
   getId,
   getPendingLink,
+  signInLink,
   startFreshId,
 } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
@@ -282,7 +283,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
 
   const copyLink = () => {
     navigator.clipboard?.writeText(
-      new URL("/l/" + localId, location.origin).href,
+      signInLink(localId!),
     );
     setCopied(true);
     setLinkSaved(true);
@@ -547,7 +548,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
 
   // 2c — switch, gated behind saving the current profile's link.
   if (mode === "switch" && self && other) {
-    const url = new URL("/l/" + localId, location.origin).href;
+    const url = signInLink(localId!);
     return sheetFrame(
       t("mg.switchToTitle", { name: other.name ?? t("mg.fbIt") }),
       <div class="mg-body">

@@ -1,3 +1,4 @@
+import { NotFoundError } from "../util/UserError.ts";
 import { sql } from "./query.ts";
 
 // One row per player on an iteration's daily board: their best ranked-daily
@@ -123,6 +124,7 @@ export const getStandingsMeta = (iteration: number) =>
     FROM iteration
     WHERE id = ${iteration};
   `.then((r) => {
-    if (!r[0]) throw new Error(`Iteration ${iteration} does not exist`);
+    // A client-supplied id: a 404, not a 500 + error log.
+    if (!r[0]) throw new NotFoundError(`Iteration ${iteration} does not exist`);
     return r[0];
   });

@@ -67,16 +67,60 @@ export type BlocktolApi = {
   >;
 };
 
+// The largest body a legitimate client sends is a commitRun/updateRun carrying a
+// full 400-piece maze (the zod cap): ~13 KB of JSON. 64 KiB leaves ample room
+// (a client error report's stack included) while refusing a multi-MB body before
+// it is buffered, parsed, or handed to zod. Asserted against a real 400-piece
+// body in api.test.ts.
+export const MAX_BODY_BYTES = 64 * 1024;
+
+// Read the body as text, refusing (null) once it passes `limit` bytes. The
+// declared content-length short-circuits the common case; the counted stream
+// read covers a chunked or lying one, and cancels rather than drains the rest.
+export const readBodyLimited = async (
+  req: Request,
+  limit: number,
+): Promise<string | null> => {
+  const declared = Number(req.headers.get("content-length"));
+  if (declared > limit) return null;
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let off = 0;
+  for (const c of chunks) {
+    bytes.set(c, off);
+    off += c.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+};
+
 const isStatusObj = is.object({ status: is.number });
 const isErrorObj = is.object({ error: is.unknown });
 
 export const api: Handler<"method"> = async (req, { method }) => {
-  if (!(method in handlers)) {
+  // Own keys only: `in` walks the prototype, so `/api/constructor` (or
+  // `toString`, `__proto__`) "found" a method and then 500'd calling it.
+  if (!Object.hasOwn(handlers, method)) {
     return Response.json({ error: "unknown method" }, { status: 404 });
   }
 
   const handler = handlers[method as keyof typeof handlers];
-  const text = await req.text();
+  const text = await readBodyLimited(req, MAX_BODY_BYTES);
+  if (text === null) {
+    return Response.json({ error: "body too large" }, { status: 413 });
+  }
   let body: unknown;
   try {
     if (text !== "") body = JSON.parse(text);

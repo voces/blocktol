@@ -48,6 +48,7 @@ import {
   postResult,
   type ResultEmbed,
 } from "./discordResults.ts";
+import { escapeDiscord } from "./discordText.ts";
 import { errText, log } from "./logging.ts";
 import { pbEmbed } from "./pbBoard.ts";
 
@@ -104,6 +105,8 @@ export const dailyEmbed = (
 ): ResultEmbed => {
   const url = dayUrl(day, "daily");
   const date = formatNotifDate(day);
+  // Display names are player-written markdown; escape before they're set in it.
+  winners = winners.map(escapeDiscord);
   const t = `${formatSeconds(time)}s`;
   const solo = winners.length === 1;
 

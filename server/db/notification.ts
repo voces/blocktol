@@ -247,9 +247,21 @@ export const getUsersSettings = (users: string[]) => {
   );
 };
 
+// At most this many push subscriptions per user. A player has a handful of
+// devices; the cap exists so one id can't grow the table (and every fan-out to
+// it) without bound. Generous enough that a real player never meets it.
+export const MAX_SUBSCRIPTIONS_PER_USER = 10;
+
 // Store (or move) a push subscription. The endpoint's SHA-256 is the key, so a
 // device that re-subscribes (or switches accounts via a move link) upserts its
 // one row rather than duplicating. Keys refresh in case the browser rotated them.
+//
+// `created` is bumped on every upsert, so it reads as "last registered": the
+// client re-registers on every boot, which makes it a liveness stamp. The second
+// statement then prunes the user's stalest rows past the cap — keeping this row
+// first whatever the clock says, so the device registering right now is never
+// the one dropped. Both statements are idempotent, so the retrying `sql` is safe.
+// (The derived table is how MariaDB accepts a LIMIT inside an IN subquery.)
 export const upsertSubscription = (
   user: string,
   endpointHash: string,
@@ -264,11 +276,32 @@ export const upsertSubscription = (
       user = VALUES(user),
       endpoint = VALUES(endpoint),
       p256dh = VALUES(p256dh),
-      auth = VALUES(auth);
+      auth = VALUES(auth),
+      created = current_timestamp();
+    DELETE FROM push_subscription
+    WHERE user = ${user}
+      AND endpoint_hash NOT IN (
+        SELECT endpoint_hash FROM (
+          SELECT endpoint_hash FROM push_subscription
+          WHERE user = ${user}
+          ORDER BY endpoint_hash = ${endpointHash} DESC, created DESC
+          LIMIT ${MAX_SUBSCRIPTIONS_PER_USER}
+        ) keep
+      );
   `;
 
+// Server-side prune of a subscription the push service disowned (404/410) —
+// whoever owns it, since the endpoint itself is dead.
 export const deleteSubscription = (endpointHash: string) =>
   sql`DELETE FROM push_subscription WHERE endpoint_hash = ${endpointHash};`;
+
+// A player dropping a subscription (unsubscribePush): scoped to the caller, so
+// knowing someone else's endpoint isn't enough to cut off their pushes.
+export const deleteOwnSubscription = (user: string, endpointHash: string) =>
+  sql`
+    DELETE FROM push_subscription
+    WHERE endpoint_hash = ${endpointHash} AND user = ${user};
+  `;
 
 export const getSubscriptions = (user: string) =>
   sql<PushSubscriptionRow[]>`

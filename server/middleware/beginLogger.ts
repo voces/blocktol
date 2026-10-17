@@ -8,9 +8,19 @@ type LogData = {
 
 export const logMap = new WeakMap<Request, LogData>();
 
-// The request path (no origin), shared by the start/finish log lines.
+// A sign-in link's path segment IS the bearer credential (`/l/<id>`,
+// `/login/<id>` — see routes/loginLink.ts), and these routes run before
+// extractUserId, so nothing hashes it first. Redact the segment (and anything
+// after it, query included) before a path reaches a log line: VictoriaLogs is
+// readable without the credential, so the raw id must never land there.
+const LOGIN_LINK = /^\/(l|login)\/[^?#]*(?:[?#].*)?$/;
+
+export const redactPath = (path: string) => path.replace(LOGIN_LINK, "/$1/:id");
+
+// The request path (no origin), shared by the start/finish log lines, with any
+// sign-in credential redacted.
 export const routeOf = (req: Request) =>
-  req.url.slice(new URL(req.url).origin.length);
+  redactPath(req.url.slice(new URL(req.url).origin.length));
 
 export const beginLogger: Handler = (req, _, prev) => {
   logMap.set(req, { start: Date.now() });

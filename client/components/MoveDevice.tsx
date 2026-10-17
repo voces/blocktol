@@ -1,6 +1,6 @@
 import { h } from "preact";
 import { useRef, useState } from "preact/compat";
-import { getId } from "../util/id.ts";
+import { getId, signInLink } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
 import { Modal } from "./Modal.tsx";
 import { QrCode } from "./QrCode.tsx";
@@ -45,7 +45,7 @@ const ShieldIcon = () => (
 /**
  * The "move to another device" sheet: a QR of the sign-in link plus the link
  * itself to copy. Scanning it (or opening the link) signs the other device in as
- * this user — see the `/l/:id` route and getId(). It replaces the profile dialog
+ * this user — see signInLink() and getId(). It replaces the profile dialog
  * (not stacked over it): back (‹) returns to the profile, close (× / backdrop)
  * dismisses to the board.
  */
@@ -56,7 +56,7 @@ export const MoveDevice = (
     onClose: () => void;
   },
 ) => {
-  const url = new URL("/l/" + getId(), location.origin).href;
+  const url = signInLink(getId());
   const display = url.replace(/^https?:\/\//, "");
   const [copied, setCopied] = useState(false);
   const copiedTimeout = useRef(-1);

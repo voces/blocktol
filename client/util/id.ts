@@ -25,9 +25,26 @@ const randomId = () => {
   return n.toString(36).padStart(ID_LENGTH, "0");
 };
 
-// The id embedded in a sign-in link, if the current URL is one: `/login/<id>`
-// (long) and `/l/<id>` (the move-to-device short alias). Null otherwise.
+// The sign-in link for an id — what "move to device" shows as a QR and copies.
+// The id rides the URL FRAGMENT (`/#l=<id>`), which a browser never sends: a
+// path segment reaches the server, where nginx's access log and Deno's OTel
+// request span (`url.full` / `url.path`, which app code can't overwrite) record
+// it verbatim, and the id is the whole bearer credential.
+export const signInLink = (id: string) =>
+  new URL("/#l=" + encodeURIComponent(id), location.origin).href;
+
+// The id embedded in a sign-in link, if the current URL is one: `/#l=<id>` (the
+// current form — see signInLink), or the legacy path forms still in the wild in
+// old QRs and saved links, `/login/<id>` (long) and `/l/<id>` (the short alias).
+// Null otherwise.
 const linkIdFromPath = () => {
+  if (location.hash.startsWith("#l=")) {
+    try {
+      return decodeURIComponent(location.hash.slice(3)) || null;
+    } catch {
+      return null;
+    }
+  }
   if (location.pathname.startsWith("/login/")) {
     return location.pathname.slice(7);
   }
@@ -81,7 +98,7 @@ export const startFreshId = () => {
   return id;
 };
 
-// Drop the /l/<id> (or /login/<id>) from the URL so a refresh doesn't re-open the
+// Drop the #l=<id> (or legacy /l/<id>, /login/<id>) from the URL so a refresh doesn't re-open the
 // gate after a decision is made.
 export const clearLinkFromUrl = () => {
   if (linkIdFromPath()) history.replaceState(null, "", "/");
