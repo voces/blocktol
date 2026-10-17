@@ -389,28 +389,6 @@ export const allRunsByIteration = (user: string, iteration: number) =>
     }));
   });
 
-export const dailyAttempts = (
-  user: string,
-  year: number,
-  month: number,
-  day: number,
-) =>
-  sql<{ time: number }[]>`
-    SELECT time
-    FROM run
-    WHERE user = ${user}
-      AND iteration = (
-        SELECT id
-        FROM iteration
-        WHERE YEAR(created) = ${year}
-          AND MONTH(created) = ${month}
-          AND DAY(created) = ${day}
-        LIMIT 1
-      )
-    ORDER BY created ASC
-    LIMIT 3;
-  `.then((r) => r.map((r) => r.time));
-
 const pad = (n: number) => String(n).padStart(2, "0");
 const dateStr = ([y, m, d]: [number, number, number]) =>
   `${y}-${pad(m)}-${pad(d)}`;

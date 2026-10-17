@@ -3,12 +3,13 @@ import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
 } from "../../../db/iteration.ts";
-import { updateCurrentRun } from "../../../db/run.ts";
+import { getLatestRun, updateCurrentRun } from "../../../db/run.ts";
 import { onPbBuild } from "../../../util/pbBoard.ts";
 import { errText, log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
+import { piece } from "./piece.ts";
 
 // Whether the save commits (daily attempt) or stays void until execution (free
 // play) is derived server-side in updateCurrentRun from the run itself — the
@@ -20,9 +21,7 @@ const updateRunBody = z.object({
   // no legal maze can carry more than that many pieces; cap well above it (400) so
   // an oversized array is rejected by zod before validateRun pays to walk it — the
   // budget check in validateRun is per-piece and runs only after the full parse.
-  blocks: z.array(
-    z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
-  ).max(400),
+  blocks: z.array(piece).max(400),
 });
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);
@@ -45,7 +44,18 @@ export const updateRun = method(updateRunBody, true)(
     }
 
     const validation = validateRun(iteration, blocks);
-    if (!validation.ok) return { error: validation.reason, status: 400 };
+    if (!validation.ok) {
+      // A caller with no run on this iteration has no build to save — every
+      // run row comes through the board gate (startRun; util/boardAccess.ts) —
+      // so answer what a legal save would have: expired, nothing persisted.
+      // Echoing validateRun's reason instead would make this an oracle on a
+      // board the caller can't see: probe one cell per request and "invalid
+      // path" maps the fixed pieces, "too many blocks" the budget.
+      if (!(await getLatestRun(userId, iterationId))) {
+        return { expired: true as const };
+      }
+      return { error: validation.reason, status: 400 };
+    }
     const { path, duration, slows } = validation;
 
     // Must finish within the request: the new Deploy tears down the isolate

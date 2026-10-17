@@ -1,9 +1,10 @@
 import { sql } from "./query.ts";
 
 // Every row we hold that belongs to one user, for their "export my data" (GDPR
-// access / portability). Five result sets in one round trip: the user row, all
+// access / portability). Six result sets in one round trip: the user row, all
 // their runs (void included — it's their data, even abandoned attempts), their
-// notification history, their push subscriptions, and their board flags.
+// notification history, their push subscriptions, their board flags, and the
+// Discord top-PB records currently announced under their id (pb_top).
 // Timestamps come back as epoch millis (UNIX_TIMESTAMP * 1000) so the caller
 // ships plain numbers rather than the proxy's datetime strings. The route shapes these into the export
 // document (see routes/exportData.ts) — deserializing the maze blob, parsing the
@@ -49,6 +50,14 @@ export type ExportFlagRow = {
   data: string;
 };
 
+export type ExportPbTopRow = {
+  iteration: number;
+  message_id: string | null;
+  top_time: number | null;
+  holders: number;
+  announced_at: number | null;
+};
+
 export const exportUserData = (userId: string) =>
   sql<[
     ExportUserRow[],
@@ -56,6 +65,7 @@ export const exportUserData = (userId: string) =>
     ExportNotificationRow[],
     ExportPushRow[],
     ExportFlagRow[],
+    ExportPbTopRow[],
   ]>`
     SELECT id, name, rating, plays, settings, locale,
            UNIX_TIMESTAMP(created) * 1000 created
@@ -74,4 +84,8 @@ export const exportUserData = (userId: string) =>
     FROM push_subscription WHERE user = ${userId};
 
     SELECT iteration, data FROM flag WHERE user = ${userId} ORDER BY iteration ASC;
+
+    SELECT iteration, message_id, top_time, holders,
+           UNIX_TIMESTAMP(announced_at) * 1000 announced_at
+    FROM pb_top WHERE top_user = ${userId} ORDER BY iteration ASC;
   `;

@@ -144,7 +144,11 @@ diverge — the server's accepted time must equal what the client previewed.
   section).
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `cachedSolver`, per iteration shape), so what the
-  audit script accepts is exactly what the write path accepts. Any change that
+  audit script accepts is exactly what the write path accepts. It first rejects
+  any piece whose anchor isn't a whole cell in `1..17` (a piece is 2×2, so that
+  keeps it off the border ring) — the solver reads an off-grid cell as free, so
+  this can't be left to it; the run endpoints' shared zod `piece` schema
+  (`routes/iteration/run/piece.ts`) enforces the same bounds. Any change that
   shifts timing or equal-length tie-breaking requires a
   `scripts/comparePathing.ts` audit/retime before it ships.
 
@@ -317,12 +321,16 @@ double-write):**
   preview deployments don't run `Deno.cron`, so a dev/gappy env would otherwise
   hit "no daily available". `ensureDailyIterationId` (same file) backfills a
   missing day **on demand** in the daily read path (board/start/daily/standings,
-  capped at tomorrow UTC so a future deep link can't leak a puzzle). That
-  per-request path once raced the cron — two isolates both check-then-create a
-  duplicate — but `iteration.created` is now a **UNIQUE `DATE`** (migration v14,
-  the column narrowed from a timestamp since a puzzle is for a calendar day, not
-  an instant), so the loser's INSERT is rejected instead of standing: **the DB
-  is the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
+  capped at tomorrow UTC so a future deep link can't leak a puzzle, and floored
+  at the earliest existing iteration — or yesterday UTC on an empty table — so a
+  script walking dates backwards can't mass-generate boards and starve
+  `rate-dailies`; see `util/backfillWindow.ts`; the cron calls `newIteration`
+  directly, so neither bound applies to it). That per-request path once raced
+  the cron — two isolates both check-then-create a duplicate — but
+  `iteration.created` is now a **UNIQUE `DATE`** (migration v14, the column
+  narrowed from a timestamp since a puzzle is for a calendar day, not an
+  instant), so the loser's INSERT is rejected instead of standing: **the DB is
+  the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
   board's `date`; the client needs no special parsing — a `DATE` deserialises to
   `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
   midnight, and the board caption formats it in UTC.
@@ -342,14 +350,16 @@ double-write):**
 ## Domain model & invariants
 
 Tables: `user`, `iteration`, `block` (an iteration's fixed pieces, kind
-`block|thunder`), `run`, `notification`, `push_subscription`. Key run flags —
-get these right, they encode the whole competitive model:
+`block|thunder`), `run`, `notification`, `push_subscription`, `flag`, `pb_top`.
+Key run flags — get these right, they encode the whole competitive model:
 
 - **`ranked`** — this run is one of the daily's three counting attempts.
   Recorded **only at `startRun`**, because it depends on the player's _claimed
   local day_ (from their timezone), and a daily's legal window spans ~50h of
   server time so it can't be inferred later from `created`. Read everywhere
-  else.
+  else. The claimed zone must be a named IANA zone (`util/dailyParts.ts`):
+  ECMA-402 also accepts raw offsets like `"+23:59"`, which would stretch that
+  window past the real −12..+14 range, so offset zones are a `UserError`.
 - **`daily`** — the single _counted_ result among a user's ranked runs (the best
   one). Re-pointed as builds save (`updateCurrentRun`).
 - **`void`** — abandoned/not-yet-counted. A **ranked** attempt is inserted at
@@ -397,13 +407,25 @@ Other invariants:
   the old flip-void path (no `blocks`). Trusting the client on free play is
   deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
   the time from the submitted maze — only the 60s budget is client-enforced.
-- **Free play is ungated except for today's own daily.** Any past date is
-  replayable at any time; the only board `getBoard` gates is _today's_ daily —
-  it can't be free-played until its three ranked attempts are spent (no
-  previewing/practising the puzzle you're about to rank). So a day that just
-  rolled over is immediately replayable even while the new day's daily is still
-  outstanding. A locked board answers a plain **`{ incomplete: true }` (200),
-  never an error** — "not yet" is a state, not a fault, and it leaks nothing
+- **Free play is gated only on the player's own today and later.**
+  `util/boardAccess.ts` (`checkBoardAccess`) is the one gate, for `getBoard` (so
+  `boot` and `dayView` too), a free-play `startRun` (numeric iteration) and
+  `commitRun` (both shapes; it carries the client's `timeZone`, and a cached
+  client that sends none is read as the westernmost zone, `Etc/GMT+12`). Every
+  day before the caller's local today is **open** — any past date, including the
+  one that just rolled over, is replayable at once, even with today's daily
+  still outstanding. Their own today is **locked** until they have opened three
+  `ranked` attempts on it (no previewing/practising the puzzle you're about to
+  rank), and a later day is locked outright: tomorrow's iteration exists (the
+  gen cron runs a day ahead), and before this gate it was one request away.
+  `updateRun` with no run on the iteration answers `expired` rather than
+  `validateRun`'s reason, which would map a locked board cell by cell. This is
+  deliberately **minimal** anti-cheat: "today" is the timezone the client
+  claims, and a throwaway id that spends three attempts unlocks the board too;
+  neither is worth more machinery when multi-accounting and solvers are open
+  anyway. A locked `getBoard` answers a plain **`{ incomplete: true }` (200),
+  never an error** (a locked free-play `startRun`/`commitRun` is a 403 — no
+  honest client asks) — "not yet" is a state, not a fault, and it leaks nothing
   either way. It used to 403 unless the caller passed `soft`, which only `boot`
   did; every other path that legitimately lands on an unfinished today (the
   regrade refetch, a notification tap, `boot`'s own linked-day slice for a today
@@ -454,51 +476,58 @@ Other invariants:
   our own log lines redact them (`redactPath` in `middleware/beginLogger.ts`),
   but the span and nginx still see those. Holding two ids authorizes folding
   them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the loser
-  row in one transaction). The client-side gate is `MoveGate`/`MoveDevice`.
-  `extractUserId` admits only the id shape ever minted (`[A-Za-z0-9_-]{1,36}` —
-  `user.id` is char(36)); any other header is treated exactly like a missing one
-  (anonymous, so authed methods 401), logged by length only.
+  row in one transaction; a nonexistent primary is a 400). The merge must not
+  mint attempts: on any iteration where the primary already has a ranked
+  attempt, the secondary's runs there move as history (`ranked`/`daily` cleared)
+  — otherwise `daily`'s best-ranked re-point would make it best-of-six — and
+  `pb_top.top_user` (no FK) is rewritten to the primary. The client-side gate is
+  `MoveGate`/`MoveDevice`. `extractUserId` admits only the id shape ever minted
+  (`[A-Za-z0-9_-]{1,36}` — `user.id` is char(36)); any other header is treated
+  exactly like a missing one (anonymous, so authed methods 401), logged by
+  length only.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
-  notifications, push endpoints, board flags) as one JSON document the client
-  offers as a download. `deleteAccount` (`routes/deleteAccount.ts` →
-  `db/deleteAccount.ts`, `anonymizeUser`) is **anonymize-in-place, not a row
-  delete**: it hard-deletes the caller's push subscriptions + notifications +
-  flags (private annotations nothing else is computed from), then rotates
-  `user.id` to a fresh random UUID and clears `name`/`settings`/`locale`. The
-  runs ride along via `FK_run_user ON UPDATE CASCADE`, so the player's build
-  history survives as one distinct **anonymous** competitor — the day's field,
-  others' percentiles, and the applied ELO deltas aren't rewritten, and every
-  `JOIN user` still resolves. The new id is never returned, so the link to the
-  person is gone (anonymization, not pseudonymization). The op is an idempotent
-  no-op on retry (the old id is gone), but `deleteAccount` is still **excluded
-  from the client `RETRYABLE` allowlist** because on success the client mints a
-  fresh local id + reloads, so a blind retry would act on the stale id. The
-  confirm is gated behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html`
-  is the disclosure page linked from the same panel (the SQL proxy is
-  first-party infra, not listed as a third-party recipient). It is
-  **server-rendered in the reader's language** (`server/privacy/page.ts`: an
-  explicit `?lang` — the in-app link passes the player's chosen language — then
-  `Accept-Language`, then English), from its own catalog (see Localization),
-  with a translation notice + English link on non-English copies and a
-  per-language footer. Its "Last updated" is the hand-set `UPDATED` constant —
-  bump it for a change in what the page says, never for a translation — beside a
-  link to the public git history of `i18n/privacy/en.json`, the exact record. It
-  stays script-free: the rights cards link INTO the app rather than exporting or
-  erasing themselves — `/?profile=account` opens the Profile dialog on its
-  Account section, `/?profile=delete` the delete-confirm sheet
-  (`takeProfileRequest` in `store/notifNav.ts`, taken once by `Profile`). The
-  link works even with today's daily outstanding, when the profile BUTTON is
-  hidden (data rights can't wait on three ranked attempts) — it's held only
-  through boot and a live build/run, so it never lands over an attempt's clock.
-  In-app, the same request (`requestProfile`) is raised by the prestart
-  overlay's quiet "Account & privacy" footer — the route to those controls while
-  the button is hidden, deliberately a text link rather than the button itself,
-  which drew too much attention on the start screen. The in-app link opens it in
-  the **same window** on purpose: an iOS home-screen app opens a new tab in a
-  browser view with its own storage, where those links would act on a fresh
-  anonymous player instead of this one.
+  notifications, push endpoints, board flags, the top-PB records it holds) as
+  one JSON document the client offers as a download. `deleteAccount`
+  (`routes/deleteAccount.ts` → `db/deleteAccount.ts`, `anonymizeUser`) is
+  **anonymize-in-place, not a row delete**: it hard-deletes the caller's push
+  subscriptions + notifications + flags (private annotations nothing else is
+  computed from), then rotates `user.id` to a fresh random UUID and clears
+  `name`/`settings`/`locale` (and points `pb_top.top_user`, which has no FK to
+  cascade, at the new id). The runs ride along via
+  `FK_run_user ON UPDATE CASCADE`, so the player's build history survives as one
+  distinct **anonymous** competitor — the day's field, others' percentiles, and
+  the applied ELO deltas aren't rewritten, and every `JOIN user` still resolves.
+  The new id is never returned, so the link to the person is gone
+  (anonymization, not pseudonymization). The op is an idempotent no-op on retry
+  (the old id is gone), but `deleteAccount` is still **excluded from the client
+  `RETRYABLE` allowlist** because on success the client mints a fresh local id +
+  reloads, so a blind retry would act on the stale id. The confirm is gated
+  behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html` is the
+  disclosure page linked from the same panel (the SQL proxy is first-party
+  infra, not listed as a third-party recipient). It is **server-rendered in the
+  reader's language** (`server/privacy/page.ts`: an explicit `?lang` — the
+  in-app link passes the player's chosen language — then `Accept-Language`, then
+  English), from its own catalog (see Localization), with a translation notice +
+  English link on non-English copies and a per-language footer. Its "Last
+  updated" is the hand-set `UPDATED` constant — bump it for a change in what the
+  page says, never for a translation — beside a link to the public git history
+  of `i18n/privacy/en.json`, the exact record. It stays script-free: the rights
+  cards link INTO the app rather than exporting or erasing themselves —
+  `/?profile=account` opens the Profile dialog on its Account section,
+  `/?profile=delete` the delete-confirm sheet (`takeProfileRequest` in
+  `store/notifNav.ts`, taken once by `Profile`). The link works even with
+  today's daily outstanding, when the profile BUTTON is hidden (data rights
+  can't wait on three ranked attempts) — it's held only through boot and a live
+  build/run, so it never lands over an attempt's clock. In-app, the same request
+  (`requestProfile`) is raised by the prestart overlay's quiet "Account &
+  privacy" footer — the route to those controls while the button is hidden,
+  deliberately a text link rather than the button itself, which drew too much
+  attention on the start screen. The in-app link opens it in the **same window**
+  on purpose: an iOS home-screen app opens a new tab in a browser view with its
+  own storage, where those links would act on a fresh anonymous player instead
+  of this one.
 
 ## Client architecture
 

@@ -1,9 +1,8 @@
 // GET a buildable board WITHOUT starting a run (free play). Free play stages
-// the board and only opens a run on the first placement. Any date is
-// free-playable at any time — the ONLY gate is today's OWN daily, which can't
-// be previewed or practiced before its three ranked attempts are spent. So a
-// past day (including one that just rolled over) is always replayable, even
-// while today's daily is still outstanding.
+// the board and only opens a run on the first placement. Which boards are
+// stageable is util/boardAccess.ts's call: every day before the player's local
+// today is open, as is one they have spent their three ranked attempts on; their
+// own today (before that) and anything later is locked.
 
 import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
@@ -12,7 +11,8 @@ import { errText, log } from "../../util/logging.ts";
 import { getFlags } from "../../db/flags.ts";
 import { getIteration, getIterationOtherBest } from "../../db/iteration.ts";
 import { ensureDailyIterationId } from "../../util/newIteration.ts";
-import { dailyAttempts, getOwnBest } from "../../db/user.ts";
+import { getOwnBest } from "../../db/user.ts";
+import { checkBoardAccess } from "../../util/boardAccess.ts";
 import { iterationAttempts } from "../../util/attempts.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
 import { method } from "../apiHelpers.ts";
@@ -24,14 +24,13 @@ const getBoardBody = z.object({
 
 export const getBoard = method(getBoardBody, true)(
   async ({ userId, timeZone, iteration: inputIteration }, req) => {
-    const { year, month, day } = dailyParts(timeZone);
-    const todayId = await ensureDailyIterationId(year, month, day);
-    const iteration = inputIteration ?? todayId;
+    const iteration = inputIteration ?? await (() => {
+      const { year, month, day } = dailyParts(timeZone);
+      return ensureDailyIterationId(year, month, day);
+    })();
 
-    // The gate applies ONLY to today's own daily: it can't be free-played before
-    // its three ranked attempts are spent (no previewing/practising the puzzle
-    // you're about to rank). Every other date is ungated — replayable anytime,
-    // even with today's daily still outstanding.
+    // The gate (util/boardAccess.ts): a past day, or one whose ranked attempts
+    // are spent, is open; the caller's own today or a later day is locked.
     //
     // The locked answer is a plain { incomplete } (200), never an error. It used
     // to 403 unless the caller opted into `soft`, and only boot ever did — so
@@ -42,10 +41,10 @@ export const getBoard = method(getBoardBody, true)(
     // reportClientError from inside the api proxy, before the caller can swallow
     // it, so each one logged an error server-side even where the call site was
     // written to ignore it. Nothing ever wanted the error: "not yet" is a state,
-    // not a fault, and it leaks nothing either way.
-    if (iteration === todayId) {
-      const todayAttempts = await dailyAttempts(userId, year, month, day);
-      if (todayAttempts.length < 3) return { incomplete: true as const };
+    // not a fault, and it leaks nothing either way — the same answer for today
+    // and for a future day, layout-free.
+    if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
+      return { incomplete: true as const };
     }
 
     const [data, ownBest, otherBest, attempts, flags] = await Promise.all([
