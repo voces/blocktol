@@ -196,7 +196,7 @@
     "description": "Section heading: data retention."
   },
   "privacy.retention.body": {
-    "message": "Your profile and builds are kept while you play, so your stats and history stay intact. Delete your data (above) to remove them sooner. Diagnostics are deleted after about 30 days, and server access logs after 14 days.",
+    "message": "Your profile and builds are kept while you play, so your stats and history stay intact. Delete your data (above) to remove them sooner. In-app notifications are deleted after 90 days, and a profile that never played is removed after 30 days. Diagnostics are deleted after about 30 days, and server access logs after 14 days.",
     "description": "The retention section's text."
   },
   "privacy.children.heading": {

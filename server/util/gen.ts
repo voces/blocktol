@@ -5,6 +5,7 @@ import {
 import { alertAdmin } from "./adminAlert.ts";
 import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
+import { pruneStaleData } from "./retention.ts";
 
 const ONE_MINUTE = 1_000 * 60;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
@@ -105,9 +106,13 @@ const checkRatingLiveness = async () => {
 // staging box, or the EC2 cohost while Deno Deploy still runs the crons) doesn't
 // double-generate. The write path is already race-safe, but skipping the
 // duplicate work is cleaner.
+//
+// Each run ends with the retention sweep (util/retention.ts): old notifications
+// and never-used profiles, in bounded batches.
 if (!Deno.env.get("DISABLE_CRONS")) {
   Deno.cron("ensure-iterations", "0 * * * *", async () => {
     await ensureIterations(31);
     await checkRatingLiveness();
+    await pruneStaleData();
   });
 }
