@@ -107,6 +107,14 @@
     "message": "To keep the game fast and reliable, our servers record performance traces and error logs. These may include a scrambled (one-way hashed) version of your anonymous ID — never your name or the ID itself — so we can follow a single session when debugging. They live on our own infrastructure and are automatically deleted after about 30 days.",
     "description": "Explanation for the \"Diagnostics\" list item."
   },
+  "privacy.store.logs.term": {
+    "message": "Server access logs",
+    "description": "Term in the \"What we store\" list: the web server's standard request log."
+  },
+  "privacy.store.logs.detail": {
+    "message": "Our web server logs each request: your IP address, browser type, and the page requested. Kept 14 days for security and troubleshooting, then deleted.",
+    "description": "Explanation for the \"Server access logs\" list item."
+  },
   "privacy.cookies.heading": {
     "message": "Cookies",
     "description": "Section heading."
@@ -114,6 +122,14 @@
   "privacy.cookies.body": {
     "message": "We don't use cookies, and we don't run any advertising or third-party tracking. The only thing stored on your device is the functional data the game needs to work (your ID, your in-progress build, and your settings), so there is no cookie banner to click through.",
     "description": "The cookies section's text."
+  },
+  "privacy.basis.heading": {
+    "message": "Why we use it",
+    "description": "Section heading: the legal basis for processing the data."
+  },
+  "privacy.basis.body": {
+    "message": "To run the game you're playing (scoring, history, leaderboards), and to keep it secure and working (logs and diagnostics). Push notifications are sent only with your consent; turn them off any time.",
+    "description": "The legal basis paragraph (GDPR: performance of the service / legitimate interests, and consent for push). Keep it plain, not legalistic."
   },
   "privacy.others.heading": {
     "message": "Who else sees it",
@@ -131,25 +147,25 @@
     "message": "If you enable notifications, your browser's push service (for example Google, Mozilla, or Apple) delivers them.",
     "description": "Explanation for the \"Push delivery\" list item."
   },
-  "privacy.others.fonts.term": {
-    "message": "Fonts",
-    "description": "Outside-services list item term."
-  },
-  "privacy.others.fonts.detail": {
-    "message": "The game's typeface is loaded from Google Fonts.",
-    "description": "Explanation for the \"Fonts\" list item. Keep \"Google Fonts\" as-is."
-  },
   "privacy.others.discord.term": {
     "message": "Discord",
     "description": "Outside-services list item term: the Discord chat service. Keep \"Discord\" as-is."
   },
   "privacy.others.discord.detail": {
-    "message": "Each day's top results — display names and times — are posted to the Blocktol Discord server.",
+    "message": "Each day's top results (display names and times) are posted to the Blocktol Discord server. Those posts stay even if you delete your data.",
     "description": "Explanation for the \"Discord\" list item: the game automatically posts leaderboard winners to its community Discord server."
   },
   "privacy.others.never": {
     "message": "We never sell your data, and we don't use it for advertising.",
     "description": "Closing sentence of the outside-services section."
+  },
+  "privacy.transfers.heading": {
+    "message": "Where it's processed",
+    "description": "Section heading: where in the world the data is processed."
+  },
+  "privacy.transfers.body": {
+    "message": "Our servers are in the United States, so your data is processed there. Discord and your browser's push service may also process it outside your country.",
+    "description": "International transfers paragraph. \"Discord\" is a product name; keep it untranslated."
   },
   "privacy.rights.heading": {
     "message": "Your rights",
@@ -164,8 +180,12 @@
     "description": "Card text under the \"Export my data\" heading."
   },
   "privacy.rights.delete.body": {
-    "message": "Permanently removes your profile, name, preferences, flags, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player — with no way to connect them back to you — so the historical results of days other people competed in aren't rewritten. This can't be undone, and your device starts over as a brand-new player.",
+    "message": "Permanently removes your profile, name, preferences, flags, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player — with no way to connect them back to you — so the historical results of days other people competed in aren't rewritten. Names already posted to Discord stay there. This can't be undone, and your device starts over as a brand-new player.",
     "description": "Card text under the \"Delete my data\" heading."
+  },
+  "privacy.rights.more": {
+    "message": "You can also change your display name any time, ask us about your data, or complain to your local data protection authority.",
+    "description": "Paragraph after the export/delete cards listing the remaining rights."
   },
   "privacy.rights.open": {
     "message": "Open in Blocktol",
@@ -176,12 +196,24 @@
     "description": "Section heading: data retention."
   },
   "privacy.retention.body": {
-    "message": "Your profile and builds are kept while you keep playing, so your stats and history stay intact. Delete your data (above) to remove them sooner. Diagnostic traces and logs are short-lived — automatically deleted after about 30 days.",
+    "message": "Your profile and builds are kept while you play, so your stats and history stay intact. Delete your data (above) to remove them sooner. Diagnostics are deleted after about 30 days, and server access logs after 14 days.",
     "description": "The retention section's text."
+  },
+  "privacy.children.heading": {
+    "message": "Children",
+    "description": "Section heading about children's use of the game."
+  },
+  "privacy.children.body": {
+    "message": "Blocktol isn't meant for children under 13, and we don't knowingly collect their personal information. If a child has entered personal information, such as a real name as their display name, contact us and we'll remove it.",
+    "description": "Children paragraph (minimum age 13)."
   },
   "privacy.contact.heading": {
     "message": "Contact",
     "description": "Section heading."
+  },
+  "privacy.contact.operator": {
+    "message": "Blocktol is run by Robert Coe, based in the United States, who is responsible for the data on this page.",
+    "description": "Names the person who operates the game and is the data controller. \"Robert Coe\" is a personal name: keep it exactly as is."
   },
   "privacy.contact.body": {
     "message": "Questions about privacy? Email {email} or ask in the {discord}.",

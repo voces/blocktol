@@ -17,7 +17,16 @@ import { getVapidPublicKey } from "./webpush.ts";
 
 // Same-origin assets whose url should carry a content hash. Everything else
 // (the shell, manifest, SW, the standalone debug pages) stays unversioned.
-const FINGERPRINTED = ["/js/index.js", "/styles.css", "/favicon.svg"] as const;
+const FINGERPRINTED = [
+  "/js/index.js",
+  "/styles.css",
+  "/fonts/fonts.css",
+  "/favicon.svg",
+] as const;
+
+// The self-hosted font files (public/fonts/) carry a hash of their bytes in
+// their names, so the url itself is the version: changed bytes are a new file.
+const CONTENT_ADDRESSED_FONT = /^\/fonts\/[a-z0-9-]+-[0-9a-f]{8}\.woff2$/;
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
@@ -68,6 +77,7 @@ export const stampAssets = (
   // it's served no-cache and carries the versioned icon itself.
   const shell = sources.indexHtml
     .replaceAll('href="/styles.css"', `href="${v("/styles.css")}"`)
+    .replaceAll('href="/fonts/fonts.css"', `href="${v("/fonts/fonts.css")}"`)
     .replaceAll('src="/js/index.js"', `src="${v("/js/index.js")}"`)
     .replaceAll('href="/favicon.svg"', `href="${v("/favicon.svg")}"`);
 
@@ -85,6 +95,7 @@ export const stampAssets = (
     "/",
     "/index.html",
     v("/styles.css"),
+    v("/fonts/fonts.css"),
     v("/js/index.js"),
     v("/favicon.svg"),
   ];
@@ -153,7 +164,9 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
   return {
     ...stamped,
     cacheControlFor: (pathname, search, mtime) =>
-      mtime?.getTime() === hashedAt[pathname]
+      CONTENT_ADDRESSED_FONT.test(pathname)
+        ? IMMUTABLE
+        : mtime?.getTime() === hashedAt[pathname]
         ? immutableFor(version, pathname, search)
         : null,
   };
