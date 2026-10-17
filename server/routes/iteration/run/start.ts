@@ -18,6 +18,7 @@ import { cachedSolver, pathDuration } from "../../../../common/pathing.ts";
 import type { Point } from "../../../../common/types.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { iterationAttempts } from "../../../util/attempts.ts";
+import { checkBoardAccess } from "../../../util/boardAccess.ts";
 
 const startRunBody = z.object({
   iteration: z.union([z.literal("daily"), z.number().min(1)]),
@@ -35,7 +36,18 @@ export const startRun = method(startRunBody, true)(
     let iteration: number;
     if (inputIteration === "daily") {
       iteration = await ensureDailyIterationId(year, month, day);
-    } else iteration = inputIteration;
+    } else {
+      iteration = inputIteration;
+      // A numbered start is free play, and it hands back the board — so it
+      // answers to the same gate as getBoard (util/boardAccess.ts), including
+      // recording a preview. The normal client only starts a board it was just
+      // shown, which passed this gate, so a locked answer here is someone
+      // asking for a board they can't see: an error, not getBoard's quiet
+      // { incomplete }, and nothing of the layout.
+      if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
+        return { error: "board locked", status: 403 };
+      }
+    }
 
     // Fetched before dbStartRun so the run about to be created isn't counted —
     // these are the attempts already completed, for the client's attempts panel.
@@ -53,11 +65,26 @@ export const startRun = method(startRunBody, true)(
 
     // Must finish within the request: the new Deploy tears down the isolate
     // after the response, so a still-pending write can be killed mid-flight.
+    let refused: boolean;
     try {
-      await dbStartRun(iteration, userId, data.min, year, month, day);
+      ({ refused } = await dbStartRun(
+        iteration,
+        userId,
+        data.min,
+        year,
+        month,
+        day,
+      ));
     } catch (err) {
       log.error(req, "failed to start run", { error: errText(err) });
       return { error: "failed to start run", status: 500 };
+    }
+    // The player previewed this daily (saw it while it was still rankable to
+    // their west — util/boardAccess.ts) and this start would have been a ranked
+    // attempt: no run was opened. An honest client can't reach this — it only
+    // ranks its own local today, which it can never preview.
+    if (refused) {
+      return { error: "already previewed this daily", status: 403 };
     }
 
     const best = Math.max(otherBest ?? 0, ownBest ?? 0, data.min);

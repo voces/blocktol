@@ -18,6 +18,7 @@ import {
 } from "../../../db/run.ts";
 import { getIteration } from "../../../db/iteration.ts";
 import { onPbBuild } from "../../../util/pbBoard.ts";
+import { checkBoardAccess } from "../../../util/boardAccess.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { errText, log } from "../../../util/logging.ts";
 import { method } from "../../apiHelpers.ts";
@@ -42,6 +43,24 @@ export const commitRun = method(commitRunBody, true)(
     // insertFreePlayRun). Null on the legacy flip-void path — that client already
     // has the row's created from getBoard and never renders an optimistic row.
     let created: number | null = null;
+
+    // The board gate (util/boardAccess.ts), for both shapes: a commit inserts a
+    // run into the iteration's live PB field (and, on a still-rankable day, a run
+    // row that startRun's @priorRuns would count), so it must not land on a
+    // board the caller can't see — nor answer with validateRun's reasons, which
+    // would let a locked board be mapped cell by cell. No timeZone rides a
+    // commit, so this can't grant a fresh preview; it honours one already
+    // granted, which is the only way an honest client reaches a commit on a
+    // still-rankable day it hasn't ranked.
+    try {
+      if (await checkBoardAccess(userId, iteration) === "locked") {
+        return { error: "board locked", status: 403 };
+      }
+    } catch (err) {
+      log.error(req, "failed to check board access", { error: errText(err) });
+      return { error: "failed to commit run", status: 500 };
+    }
+
     try {
       if (blocks && clientId) {
         const data = await getIteration(iteration);

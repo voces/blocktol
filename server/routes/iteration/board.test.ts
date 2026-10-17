@@ -5,13 +5,20 @@ import { extractUserId } from "../../middleware/userid.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
 import { ensureDailyIterationId } from "../../util/newIteration.ts";
 import { dayView } from "../dayView.ts";
+import { getIteration } from "../../db/iteration.ts";
+import { validateRun } from "../../util/validateRun.ts";
 import { getBoard } from "./board.ts";
+import { commitRun } from "./run/commit.ts";
+import { startRun } from "./run/start.ts";
+import { updateRun } from "./run/update.ts";
 
-// getBoard's free-play gate: only TODAY's own daily is gated, and a locked board
-// is a plain { incomplete } rather than an error (the client relays every error
-// response to reportClientError, so a routine "not yet" must not be one); every
-// other date is always free-playable. Against the real (dev) database — the gate
-// lives in SQL. Skipped wholesale when SQL_PASSWORD isn't available.
+// The board gate (util/boardAccess.ts) behind getBoard, a free-play start and a
+// commit: a locked board is a plain { incomplete } from getBoard rather than an
+// error (the client relays every error response to reportClientError, so a
+// routine "not yet" must not be one); a closed day is always free-playable; a
+// future day is locked everywhere; a westward-rankable day is a recorded
+// preview. Against the real (dev) database — the gate reads run/preview rows.
+// Skipped wholesale when SQL_PASSWORD isn't available.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -81,6 +88,113 @@ Deno.test({
         "blocks" in board && "checkpoint" in board,
         "past day returns a real board",
       );
+    } finally {
+      await sql`DELETE FROM user WHERE id = ${user};`;
+    }
+  },
+});
+
+// The day after UTC today: its iteration already exists in prod (the gen cron
+// runs a day ahead); ensureDailyIterationId backfills it here if not. For a UTC
+// caller it is a future day.
+const tomorrowUtc = () => {
+  const t = new Date(Date.now() + 86_400_000);
+  return ensureDailyIterationId(
+    t.getUTCFullYear(),
+    t.getUTCMonth() + 1,
+    t.getUTCDate(),
+  );
+};
+
+Deno.test({
+  name: "board gate: a future day is locked on every surface, layout-free",
+  ignore: !live,
+  fn: async () => {
+    const user = await testUser();
+    const req = authed(user);
+    try {
+      const tomorrow = await tomorrowUtc();
+      const board = await getBoard.handler(
+        { iteration: tomorrow, timeZone: "UTC" },
+        req,
+      );
+      assertEquals(board, { incomplete: true });
+
+      const started = await startRun.handler(
+        { iteration: tomorrow, timeZone: "UTC" },
+        req,
+      );
+      assert("error" in started, "a free-play start must not open tomorrow");
+      assert(!("blocks" in started), "and must carry no layout");
+
+      const committed = await commitRun.handler(
+        { iteration: tomorrow, blocks: [{ x: 2, y: 2 }], clientId: "t" },
+        req,
+      );
+      assert("error" in committed, "a commit must not land on tomorrow");
+
+      // A save with no run behind it answers expired whatever the maze, so
+      // validateRun's reasons can't map the board cell by cell.
+      const probe = await updateRun.handler(
+        { iteration: tomorrow, blocks: [{ x: 0, y: 0 }] },
+        req,
+      );
+      assertEquals(probe, { expired: true });
+
+      const runs = await sql<{ n: number }[]>`
+        SELECT COUNT(1) n FROM run WHERE user = ${user};`;
+      assertEquals(Number(runs[0].n), 0, "nothing was written");
+    } finally {
+      await sql`DELETE FROM user WHERE id = ${user};`;
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "board gate: a westward-rankable day opens as a preview that forfeits ranking it",
+  ignore: !live,
+  fn: async () => {
+    const user = await testUser();
+    const req = authed(user);
+    try {
+      // The day still current in UTC−12 — rankable there — is always in the
+      // past for Kiritimati (UTC+14), 26 hours ahead.
+      const { year, month, day } = dailyParts("Etc/GMT+12");
+      const westDay = await ensureDailyIterationId(year, month, day);
+
+      const board = await getBoard.handler(
+        { iteration: westDay, timeZone: "Pacific/Kiritimati" },
+        req,
+      );
+      assert("blocks" in board, "a preview hands back the board");
+      const markers = await sql<{ n: number }[]>`
+        SELECT COUNT(1) n FROM preview
+        WHERE user = ${user} AND iteration = ${westDay};`;
+      assertEquals(Number(markers[0].n), 1, "and records the preview");
+
+      // Now claim the western zone, where that day IS today: no ranked attempt.
+      const ranked = await startRun.handler(
+        { iteration: "daily", timeZone: "Etc/GMT+12" },
+        req,
+      );
+      assert("error" in ranked, "a previewed daily can't be ranked");
+      const runs = await sql<{ n: number }[]>`
+        SELECT COUNT(1) n FROM run WHERE user = ${user};`;
+      assertEquals(Number(runs[0].n), 0, "no attempt was opened");
+
+      // Free play on it stays open: a commit carries no timezone, but the
+      // preview it was granted stands.
+      const data = await getIteration(westDay);
+      const cell = [{ x: 2, y: 2 }, { x: 4, y: 4 }, { x: 6, y: 6 }]
+        .find((c) => validateRun(data, [c]).ok);
+      if (cell) {
+        const committed = await commitRun.handler(
+          { iteration: westDay, blocks: [cell], clientId: crypto.randomUUID() },
+          req,
+        );
+        assert(!("error" in committed), "a granted preview commits");
+      }
     } finally {
       await sql`DELETE FROM user WHERE id = ${user};`;
     }
