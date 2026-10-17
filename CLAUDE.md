@@ -387,7 +387,12 @@ Other invariants:
   a legacy cached client that still `startRun`+`updateRun`+bare-committed hits
   the old flip-void path (no `blocks`). Trusting the client on free play is
   deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
-  the time from the submitted maze — only the 60s budget is client-enforced.
+  the time from the submitted maze — only the 60s budget is client-enforced. The
+  ranked server window (`updateCurrentRun`) is an elapsed-seconds `< 61`,
+  deliberately: over whole-second timestamps `< 60` closed 0–1s _before_ the
+  true 60s, more than `SAVE_GRACE_MS` covers; `< 61` never closes before
+  insert + 60s and at most 1s after. Freshness is computed once (`@fresh`) and
+  gates the UPDATE, so `saved` always matches whether the write happened.
 - **Free play is ungated except for today's own daily.** Any past date is
   replayable at any time; the only board `getBoard` gates is _today's_ daily —
   it can't be free-played until its three ranked attempts are spent (no
