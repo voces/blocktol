@@ -3,6 +3,22 @@
     "message": "返回 Blocktol",
     "hash": "2ded685ef9f4b6f9a021f7b2bd21926f2ca5d939c324db95d5b9a6406e631332"
   },
+  "privacy.basis.body": {
+    "message": "用于运行你正在玩的游戏（计分、历史记录、排行榜），以及保持其安全和正常运作（日志和诊断）。推送通知仅在获得你同意后发送；你可以随时关闭。",
+    "hash": "ecced141f16f5095ad46c3e97d6a48e127a0908e47f0d221e962bbea7d8afdb0"
+  },
+  "privacy.basis.heading": {
+    "message": "我们为何使用它",
+    "hash": "376548c338b9f9e54845820f07499504fafaf44504b22087f621e094faa9e406"
+  },
+  "privacy.children.body": {
+    "message": "Blocktol 并非面向 13 岁以下的儿童，我们也不会在知情的情况下收集他们的个人信息。如果某位儿童输入了个人信息，例如将真实姓名用作显示名称，请联系我们，我们会将其删除。",
+    "hash": "9b8a8ed96a52dbdc8e779fa7d4ac1269629cebced4bfffbf0d89e7624e751ea7"
+  },
+  "privacy.children.heading": {
+    "message": "儿童",
+    "hash": "3583a358a585b13b6d6228f12d2baf3ef937fcf50bed4a521b70f95a520bc933"
+  },
   "privacy.contact.body": {
     "message": "对隐私有疑问？请发送邮件至 {email}，或在 {discord} 中询问。",
     "hash": "80be4c53a7053c203e4d9994837edec9845d1e055869f4c4da49db9239f4d4b2"
@@ -10,6 +26,10 @@
   "privacy.contact.heading": {
     "message": "联系我们",
     "hash": "2b5c3d26721ae9c350cf3009318b626f0fc8a90b4a2ac0ca8099c05aa849282e"
+  },
+  "privacy.contact.operator": {
+    "message": "Blocktol 由 Robert Coe 运营，他负责本页面所涉及的数据。",
+    "hash": "a67e558f40b65b6c657fa135fe4aeb461cabde5d978ec54474af44f11a8dd214"
   },
   "privacy.cookies.body": {
     "message": "我们不使用 Cookie，也不运行任何广告或第三方追踪。存储在你设备上的唯一内容是游戏运行所需的功能性数据（你的 ID、你进行中的建造，以及你的设置），因此没有需要点击处理的 Cookie 横幅。",
@@ -40,20 +60,12 @@
     "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
   },
   "privacy.others.discord.detail": {
-    "message": "每天的最佳成绩——显示名称与用时——都会发布到 Blocktol 的 Discord 服务器。",
-    "hash": "38f79612aae41fa69346b22c5d164bb6ab4a80296e3ac228d8b5b4c2ca6fcd91"
+    "message": "每天的最佳成绩（显示名称和时间）会发布到 Blocktol 的 Discord 服务器。即使你删除了自己的数据，这些帖子仍会保留。",
+    "hash": "0262507ff50fd53f99eedaffc085f4cbbf3ff7cff5cc155686b265445b0e3f32"
   },
   "privacy.others.discord.term": {
     "message": "Discord",
     "hash": "053bc65874ad6098e58c41c57b378a2f36b0220e5e0b46722245e6c2f796818c"
-  },
-  "privacy.others.fonts.detail": {
-    "message": "游戏的字体从 Google Fonts 加载。",
-    "hash": "4e7148dd82a7ad9dbc937a100ba225bb5fa423dd292fe4df0f5e3a2aace11c73"
-  },
-  "privacy.others.fonts.term": {
-    "message": "字体",
-    "hash": "3680fcad01f4bfc678163dfbc491364f806ab832b75b1a04756709e42da8af7a"
   },
   "privacy.others.heading": {
     "message": "还有谁能看到它",
@@ -80,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "只要你持续游玩，你的个人资料与建造就会被保留，以使你的统计数据与历史记录保持完整。使用（上文所述的）删除数据功能可更早地移除它们。诊断追踪与日志则是短期的——在约 30 天后自动删除。",
-    "hash": "ea7060ed4b734cca921efde13cc182ad01afd8bb08bd359364fe5b5611a7f5ad"
+    "message": "你的个人资料和构建会在你游玩期间保留，这样你的统计数据和历史记录就能保持完整。若要更早删除它们，请删除你的数据（见上文）。诊断数据约在 30 天后删除，服务器访问日志在 14 天后删除。",
+    "hash": "10d2866dc1c9c0fe963414abc2d86841e1f93ff37dbc4377a882eaaf0b1a613b"
   },
   "privacy.retention.heading": {
     "message": "我们保留数据多久",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "永久删除你的个人资料、名称、偏好设置、旗标、通知以及推送订阅，并将你建造的每个迷宫与你解除关联。你的建造会作为匿名玩家保留在过往排行榜上——无法再关联回你——因此其他人参与竞争的那些天的历史成绩不会被改写。此操作无法撤销，你的设备将作为一名全新玩家重新开始。",
-    "hash": "7bacb18c7f6a0f60970ec8faad58a93565357a3486dea07fc9a1e06eecce9d1d"
+    "message": "永久删除你的个人资料、名称、偏好设置、旗标、通知和推送订阅，并将你构建过的每一个迷宫与你解除关联。你的构建会作为匿名玩家留在过往的排行榜上——无法再追溯到你——这样其他人参与竞争的那些天的历史成绩就不会被改写。已经发布到 Discord 的名称仍会保留在那里。此操作无法撤销，你的设备将作为一名全新玩家重新开始。",
+    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
   },
   "privacy.rights.export.body": {
     "message": "下载一个 JSON 文件，其中包含我们持有的关于你的一切——你的个人资料、每一次游玩、你的旗标、你的通知，以及你的推送订阅。",
@@ -102,6 +114,10 @@
   "privacy.rights.intro": {
     "message": "你随时都可以在游戏中的 {place} 自行完成以下两项操作：",
     "hash": "dd7646341a1e57e67151235bbf03235ab44182aa4a656b9da0a75540d6024385"
+  },
+  "privacy.rights.more": {
+    "message": "你还可以随时更改你的显示名称、向我们查询你的数据，或向你当地的数据保护机构投诉。",
+    "hash": "84cb67fd0953f1bd5db8244b66927099934b8708e18cb1bbe0ef5fb286151b58"
   },
   "privacy.rights.open": {
     "message": "在 Blocktol 中打开",
@@ -143,6 +159,14 @@
     "message": "语言",
     "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
   },
+  "privacy.store.logs.detail": {
+    "message": "我们的网络服务器会记录每一次请求：你的 IP 地址、浏览器类型以及所请求的页面。出于安全和故障排查目的保留 14 天，之后删除。",
+    "hash": "0a80508f6854562cb6f1b176815bfa9eb4a4b5ef1dd29c3d707dea298645ca8d"
+  },
+  "privacy.store.logs.term": {
+    "message": "服务器访问日志",
+    "hash": "674089f26f5684d03c2cf0f55028e818e9f5a21b33da9cb44b94b5c510ee04e9"
+  },
   "privacy.store.name.detail": {
     "message": "初始为随机生成；你可以更改它。",
     "hash": "ecef5bdd07a726a15dc7cbe15d6d3755efcd2a4aee620e3e93f349389b041ac4"
@@ -178,6 +202,14 @@
   "privacy.title": {
     "message": "隐私与我们收集的数据",
     "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "privacy.transfers.body": {
+    "message": "我们的服务器位于美国，因此你的数据在那里处理。Discord 和你浏览器的推送服务也可能在你所在国家之外处理这些数据。",
+    "hash": "6329a57a011f751dea5851eace623e34e4cdacc6e5e1ff77d1797ecfb990c34b"
+  },
+  "privacy.transfers.heading": {
+    "message": "数据在何处处理",
+    "hash": "1c8d851e7b22fcffb8402d578fe25986e708bb12b01786021ed18b71b3e5d3e9"
   },
   "privacy.translated": {
     "message": "本页面由英文自动翻译而来。如两者有出入，以英文版本为准。",

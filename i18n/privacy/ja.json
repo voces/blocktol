@@ -3,6 +3,22 @@
     "message": "Blocktolに戻る",
     "hash": "2ded685ef9f4b6f9a021f7b2bd21926f2ca5d939c324db95d5b9a6406e631332"
   },
+  "privacy.basis.body": {
+    "message": "あなたがプレイしているゲームを運営するため（スコア記録、履歴、リーダーボード）、そしてゲームを安全かつ正常に動作させるため（ログと診断）に利用します。プッシュ通知はあなたの同意がある場合にのみ送信され、いつでもオフにできます。",
+    "hash": "ecced141f16f5095ad46c3e97d6a48e127a0908e47f0d221e962bbea7d8afdb0"
+  },
+  "privacy.basis.heading": {
+    "message": "利用目的",
+    "hash": "376548c338b9f9e54845820f07499504fafaf44504b22087f621e094faa9e406"
+  },
+  "privacy.children.body": {
+    "message": "Blocktol は13歳未満のお子様を対象としておらず、当社はお子様の個人情報を故意に収集することはありません。お子様が、表示名に本名を使うなどして個人情報を入力した場合は、当社までご連絡ください。削除いたします。",
+    "hash": "9b8a8ed96a52dbdc8e779fa7d4ac1269629cebced4bfffbf0d89e7624e751ea7"
+  },
+  "privacy.children.heading": {
+    "message": "お子様について",
+    "hash": "3583a358a585b13b6d6228f12d2baf3ef937fcf50bed4a521b70f95a520bc933"
+  },
   "privacy.contact.body": {
     "message": "プライバシーに関するご質問は？ {email}までメールを送るか、{discord}でお尋ねください。",
     "hash": "80be4c53a7053c203e4d9994837edec9845d1e055869f4c4da49db9239f4d4b2"
@@ -10,6 +26,10 @@
   "privacy.contact.heading": {
     "message": "お問い合わせ",
     "hash": "2b5c3d26721ae9c350cf3009318b626f0fc8a90b4a2ac0ca8099c05aa849282e"
+  },
+  "privacy.contact.operator": {
+    "message": "Blocktol は Robert Coe が運営しており、同人がこのページのデータに責任を負います。",
+    "hash": "a67e558f40b65b6c657fa135fe4aeb461cabde5d978ec54474af44f11a8dd214"
   },
   "privacy.cookies.body": {
     "message": "私たちはクッキーを使わず、広告や第三者によるトラッキングも一切行いません。あなたのデバイスに保存されるのは、ゲームの動作に必要な機能的データ（あなたのID、進行中のビルド、設定）だけです。そのため、クリックして同意するクッキーバナーもありません。",
@@ -40,20 +60,12 @@
     "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
   },
   "privacy.others.discord.detail": {
-    "message": "毎日のトップの結果 — 表示名とタイム — はBlocktol Discordサーバーに投稿されます。",
-    "hash": "38f79612aae41fa69346b22c5d164bb6ab4a80296e3ac228d8b5b4c2ca6fcd91"
+    "message": "毎日のトップ結果（表示名とタイム）は、Blocktol のDiscordサーバーに投稿されます。これらの投稿は、あなたがデータを削除しても残ります。",
+    "hash": "0262507ff50fd53f99eedaffc085f4cbbf3ff7cff5cc155686b265445b0e3f32"
   },
   "privacy.others.discord.term": {
     "message": "Discord",
     "hash": "053bc65874ad6098e58c41c57b378a2f36b0220e5e0b46722245e6c2f796818c"
-  },
-  "privacy.others.fonts.detail": {
-    "message": "ゲームの書体はGoogle Fontsから読み込まれます。",
-    "hash": "4e7148dd82a7ad9dbc937a100ba225bb5fa423dd292fe4df0f5e3a2aace11c73"
-  },
-  "privacy.others.fonts.term": {
-    "message": "フォント",
-    "hash": "3680fcad01f4bfc678163dfbc491364f806ab832b75b1a04756709e42da8af7a"
   },
   "privacy.others.heading": {
     "message": "他に誰が見るのか",
@@ -80,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "あなたのプロフィールとビルドは、プレイを続けている間は保持され、統計や履歴がそのまま残ります。より早く削除するには、（上記の）データ削除を行ってください。診断トレースとログは短命で、約30日後に自動的に削除されます。",
-    "hash": "ea7060ed4b734cca921efde13cc182ad01afd8bb08bd359364fe5b5611a7f5ad"
+    "message": "あなたのプロフィールとビルドは、プレイしている間は保持されるため、統計と履歴はそのまま維持されます。より早く削除するには、（上記の）データ削除を行ってください。診断データは約30日後に、サーバーアクセスログは14日後に削除されます。",
+    "hash": "10d2866dc1c9c0fe963414abc2d86841e1f93ff37dbc4377a882eaaf0b1a613b"
   },
   "privacy.retention.heading": {
     "message": "どのくらいの期間保持するか",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "あなたのプロフィール、名前、設定、フラッグ、通知、プッシュ購読を完全に削除し、あなたが作ったすべての迷路をあなたとの結びつきから切り離します。あなたのビルドは匿名のプレイヤーとして過去のリーダーボードに残ります — あなたに結びつける手段はありません — そのため、他の人が競った日々の過去の結果が書き換えられることはありません。これは取り消せず、あなたのデバイスは全く新しいプレイヤーとして最初からやり直します。",
-    "hash": "7bacb18c7f6a0f60970ec8faad58a93565357a3486dea07fc9a1e06eecce9d1d"
+    "message": "あなたのプロフィール、名前、設定、フラッグ、通知、プッシュ購読を永久に削除し、あなたが作ったすべての迷路をあなたから切り離します。あなたのビルドは、匿名のプレイヤーとして過去のリーダーボードに残り、あなたと結び付ける方法はなくなります。これは、他の人が競った日の過去の結果が書き換えられないようにするためです。すでにDiscordに投稿された名前はそのまま残ります。この操作は取り消せず、あなたのデバイスはまったく新しいプレイヤーとして最初からやり直すことになります。",
+    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
   },
   "privacy.rights.export.body": {
     "message": "私たちが保持しているあなたに関するすべて — あなたのプロフィール、すべてのラン、あなたのフラッグ、通知、プッシュ購読 — を含むJSONファイルをダウンロードします。",
@@ -102,6 +114,10 @@
   "privacy.rights.intro": {
     "message": "これらはどちらも、いつでもゲーム内の{place}から自分で行えます：",
     "hash": "dd7646341a1e57e67151235bbf03235ab44182aa4a656b9da0a75540d6024385"
+  },
+  "privacy.rights.more": {
+    "message": "また、いつでも表示名を変更したり、ご自身のデータについて当社に問い合わせたり、お住まいの地域のデータ保護当局に苦情を申し立てたりすることができます。",
+    "hash": "84cb67fd0953f1bd5db8244b66927099934b8708e18cb1bbe0ef5fb286151b58"
   },
   "privacy.rights.open": {
     "message": "Blocktolで開く",
@@ -143,6 +159,14 @@
     "message": "言語",
     "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
   },
+  "privacy.store.logs.detail": {
+    "message": "当社のWebサーバーは、各リクエストを記録します。あなたのIPアドレス、ブラウザの種類、リクエストされたページです。セキュリティとトラブルシューティングのため14日間保持し、その後削除します。",
+    "hash": "0a80508f6854562cb6f1b176815bfa9eb4a4b5ef1dd29c3d707dea298645ca8d"
+  },
+  "privacy.store.logs.term": {
+    "message": "サーバーアクセスログ",
+    "hash": "674089f26f5684d03c2cf0f55028e818e9f5a21b33da9cb44b94b5c510ee04e9"
+  },
   "privacy.store.name.detail": {
     "message": "最初はランダムなものですが、変更できます。",
     "hash": "ecef5bdd07a726a15dc7cbe15d6d3755efcd2a4aee620e3e93f349389b041ac4"
@@ -178,6 +202,14 @@
   "privacy.title": {
     "message": "プライバシーと収集するデータ",
     "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "privacy.transfers.body": {
+    "message": "当社のサーバーはアメリカ合衆国にあるため、あなたのデータはそこで処理されます。Discord およびお使いのブラウザのプッシュサービスも、あなたの国外でデータを処理する場合があります。",
+    "hash": "6329a57a011f751dea5851eace623e34e4cdacc6e5e1ff77d1797ecfb990c34b"
+  },
+  "privacy.transfers.heading": {
+    "message": "処理される場所",
+    "hash": "1c8d851e7b22fcffb8402d578fe25986e708bb12b01786021ed18b71b3e5d3e9"
   },
   "privacy.translated": {
     "message": "このページは英語から自動翻訳されました。両者に相違がある場合は、英語版が優先されます。",

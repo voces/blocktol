@@ -3,6 +3,22 @@
     "message": "Volver a Blocktol",
     "hash": "2ded685ef9f4b6f9a021f7b2bd21926f2ca5d939c324db95d5b9a6406e631332"
   },
+  "privacy.basis.body": {
+    "message": "Para ejecutar el juego al que estás jugando (puntuación, historial, clasificaciones) y para mantenerlo seguro y funcionando (registros y diagnósticos). Las notificaciones push solo se envían con tu consentimiento; desactívalas cuando quieras.",
+    "hash": "ecced141f16f5095ad46c3e97d6a48e127a0908e47f0d221e962bbea7d8afdb0"
+  },
+  "privacy.basis.heading": {
+    "message": "Por qué lo usamos",
+    "hash": "376548c338b9f9e54845820f07499504fafaf44504b22087f621e094faa9e406"
+  },
+  "privacy.children.body": {
+    "message": "Blocktol no está destinado a menores de 13 años, y no recopilamos a sabiendas su información personal. Si un menor ha introducido información personal, como un nombre real como nombre visible, contáctanos y la eliminaremos.",
+    "hash": "9b8a8ed96a52dbdc8e779fa7d4ac1269629cebced4bfffbf0d89e7624e751ea7"
+  },
+  "privacy.children.heading": {
+    "message": "Menores",
+    "hash": "3583a358a585b13b6d6228f12d2baf3ef937fcf50bed4a521b70f95a520bc933"
+  },
   "privacy.contact.body": {
     "message": "¿Preguntas sobre privacidad? Escribe a {email} o pregunta en el {discord}.",
     "hash": "80be4c53a7053c203e4d9994837edec9845d1e055869f4c4da49db9239f4d4b2"
@@ -10,6 +26,10 @@
   "privacy.contact.heading": {
     "message": "Contacto",
     "hash": "2b5c3d26721ae9c350cf3009318b626f0fc8a90b4a2ac0ca8099c05aa849282e"
+  },
+  "privacy.contact.operator": {
+    "message": "Blocktol es gestionado por Robert Coe, quien es responsable de los datos de esta página.",
+    "hash": "a67e558f40b65b6c657fa135fe4aeb461cabde5d978ec54474af44f11a8dd214"
   },
   "privacy.cookies.body": {
     "message": "No usamos cookies y no ejecutamos ninguna publicidad ni rastreo de terceros. Lo único que se almacena en tu dispositivo son los datos funcionales que el juego necesita para funcionar (tu ID, tu construcción en curso y tus ajustes), así que no hay ningún banner de cookies que aceptar.",
@@ -40,20 +60,12 @@
     "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
   },
   "privacy.others.discord.detail": {
-    "message": "Los mejores resultados de cada día —nombres visibles y tiempos— se publican en el servidor de Discord de Blocktol.",
-    "hash": "38f79612aae41fa69346b22c5d164bb6ab4a80296e3ac228d8b5b4c2ca6fcd91"
+    "message": "Los mejores resultados de cada día (nombres visibles y tiempos) se publican en el servidor de Discord de Blocktol. Esas publicaciones permanecen aunque elimines tus datos.",
+    "hash": "0262507ff50fd53f99eedaffc085f4cbbf3ff7cff5cc155686b265445b0e3f32"
   },
   "privacy.others.discord.term": {
     "message": "Discord",
     "hash": "053bc65874ad6098e58c41c57b378a2f36b0220e5e0b46722245e6c2f796818c"
-  },
-  "privacy.others.fonts.detail": {
-    "message": "La tipografía del juego se carga desde Google Fonts.",
-    "hash": "4e7148dd82a7ad9dbc937a100ba225bb5fa423dd292fe4df0f5e3a2aace11c73"
-  },
-  "privacy.others.fonts.term": {
-    "message": "Fuentes",
-    "hash": "3680fcad01f4bfc678163dfbc491364f806ab832b75b1a04756709e42da8af7a"
   },
   "privacy.others.heading": {
     "message": "Quién más lo ve",
@@ -80,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Tu perfil y tus construcciones se conservan mientras sigas jugando, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para borrarlos antes. Las trazas de diagnóstico y los registros son de corta duración: se eliminan automáticamente después de unos 30 días.",
-    "hash": "ea7060ed4b734cca921efde13cc182ad01afd8bb08bd359364fe5b5611a7f5ad"
+    "message": "Tu perfil y tus construcciones se conservan mientras juegas, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para eliminarlos antes. Los diagnósticos se eliminan después de unos 30 días, y los registros de acceso del servidor después de 14 días.",
+    "hash": "10d2866dc1c9c0fe963414abc2d86841e1f93ff37dbc4377a882eaaf0b1a613b"
   },
   "privacy.retention.heading": {
     "message": "Cuánto tiempo lo conservamos",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Elimina permanentemente tu perfil, nombre, preferencias, banderines, notificaciones y suscripciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones pasadas como un jugador anónimo —sin ninguna forma de conectarlas de nuevo contigo—, para que no se reescriban los resultados históricos de los días en que otras personas compitieron. Esto no se puede deshacer, y tu dispositivo empieza de nuevo como un jugador completamente nuevo.",
-    "hash": "7bacb18c7f6a0f60970ec8faad58a93565357a3486dea07fc9a1e06eecce9d1d"
+    "message": "Elimina de forma permanente tu perfil, nombre, preferencias, banderas, notificaciones y suscripciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones pasadas como un jugador anónimo —sin ninguna forma de volver a relacionarlas contigo— para que no se reescriban los resultados históricos de los días en que otras personas compitieron. Los nombres ya publicados en Discord permanecen allí. Esto no se puede deshacer, y tu dispositivo empieza de cero como un jugador totalmente nuevo.",
+    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
   },
   "privacy.rights.export.body": {
     "message": "Descarga un archivo JSON con todo lo que tenemos sobre ti: tu perfil, cada carrera, tus banderines, tus notificaciones y tus suscripciones push.",
@@ -102,6 +114,10 @@
   "privacy.rights.intro": {
     "message": "Puedes hacer ambas cosas por ti mismo, en cualquier momento, desde {place} en el juego:",
     "hash": "dd7646341a1e57e67151235bbf03235ab44182aa4a656b9da0a75540d6024385"
+  },
+  "privacy.rights.more": {
+    "message": "También puedes cambiar tu nombre visible cuando quieras, preguntarnos sobre tus datos o presentar una reclamación ante tu autoridad local de protección de datos.",
+    "hash": "84cb67fd0953f1bd5db8244b66927099934b8708e18cb1bbe0ef5fb286151b58"
   },
   "privacy.rights.open": {
     "message": "Abrir en Blocktol",
@@ -143,6 +159,14 @@
     "message": "Idioma",
     "hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1"
   },
+  "privacy.store.logs.detail": {
+    "message": "Nuestro servidor web registra cada solicitud: tu dirección IP, el tipo de navegador y la página solicitada. Se conservan 14 días por seguridad y para resolución de problemas, y luego se eliminan.",
+    "hash": "0a80508f6854562cb6f1b176815bfa9eb4a4b5ef1dd29c3d707dea298645ca8d"
+  },
+  "privacy.store.logs.term": {
+    "message": "Registros de acceso del servidor",
+    "hash": "674089f26f5684d03c2cf0f55028e818e9f5a21b33da9cb44b94b5c510ee04e9"
+  },
   "privacy.store.name.detail": {
     "message": "Uno aleatorio para empezar; puedes cambiarlo.",
     "hash": "ecef5bdd07a726a15dc7cbe15d6d3755efcd2a4aee620e3e93f349389b041ac4"
@@ -178,6 +202,14 @@
   "privacy.title": {
     "message": "Privacidad y los datos que recopilamos",
     "hash": "5d8c387153317832efb0d32ca4a89127f9fd69a668652d44dffb167a35a97a32"
+  },
+  "privacy.transfers.body": {
+    "message": "Nuestros servidores están en los Estados Unidos, por lo que tus datos se procesan allí. Discord y el servicio de notificaciones push de tu navegador también pueden procesarlos fuera de tu país.",
+    "hash": "6329a57a011f751dea5851eace623e34e4cdacc6e5e1ff77d1797ecfb990c34b"
+  },
+  "privacy.transfers.heading": {
+    "message": "Dónde se procesa",
+    "hash": "1c8d851e7b22fcffb8402d578fe25986e708bb12b01786021ed18b71b3e5d3e9"
   },
   "privacy.translated": {
     "message": "Esta página se tradujo automáticamente del inglés. Si las dos versiones difieren, prevalece la versión en inglés.",
