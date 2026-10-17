@@ -279,3 +279,12 @@ export const getLatestRun = (
       })
       : null
   );
+
+// How many ranked attempts the player has opened on an iteration — void ones
+// included, since abandoning an attempt still spends it. The board gate
+// (util/boardAccess.ts) opens a day's free play once this reaches three.
+export const rankedAttemptCount = (user: string, iteration: number) =>
+  sql<{ n: number }[]>`
+    SELECT COUNT(1) n FROM run
+    WHERE user = ${user} AND iteration = ${iteration} AND ranked = TRUE;
+  `.then((r) => Number(r[0]?.n ?? 0));

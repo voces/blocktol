@@ -110,6 +110,17 @@ export const getDailyIterationId = (year: number, month: number, day: number) =>
     ORDER BY id
     LIMIT 1`.then((r) => r[0]?.id);
 
+// The earliest day any iteration exists for, as UTC-midnight epoch ms (null on
+// an empty table) — the on-demand backfill's lower bound (util/backfillWindow).
+// Read as Y/M/D numbers rather than the DATE itself so the result doesn't
+// depend on how a transport serialises a DATE.
+export const getEarliestIterationDay = () =>
+  sql<{ y: number | null; m: number | null; d: number | null }[]>`
+    SELECT YEAR(MIN(created)) y, MONTH(MIN(created)) m, DAY(MIN(created)) d
+    FROM iteration`.then(([r]) =>
+    r?.y == null ? null : Date.UTC(r.y, r.m! - 1, r.d!)
+  );
+
 export const getDailyIteration = (year: number, month: number, day: number) =>
   getDailyIterationId(year, month, day).then((id) =>
     id ? getIteration(id) : undefined

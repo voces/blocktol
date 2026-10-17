@@ -23,8 +23,14 @@ const safeJson = (raw: string): unknown => {
 // identifies the subscription is included).
 export const exportData = method(z.object({}).optional(), true)(
   async ({ userId }) => {
-    const [users, runs, notifications, subscriptions, flags] =
-      await exportUserData(userId);
+    const [
+      users,
+      runs,
+      notifications,
+      subscriptions,
+      flags,
+      pbTops,
+    ] = await exportUserData(userId);
     const u = users[0];
 
     return {
@@ -67,6 +73,14 @@ export const exportData = method(z.object({}).optional(), true)(
       flags: flags.map((f) => ({
         iteration: f.iteration,
         cells: deserializeFlags(f.data),
+      })),
+      // Days whose Discord top-PB post currently names the player as holder.
+      pbRecords: pbTops.map((t) => ({
+        iteration: t.iteration,
+        messageId: t.message_id,
+        time: t.top_time == null ? null : Number(t.top_time),
+        holders: Number(t.holders),
+        announcedAt: t.announced_at == null ? null : Number(t.announced_at),
       })),
     };
   },

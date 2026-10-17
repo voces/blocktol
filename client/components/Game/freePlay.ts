@@ -15,6 +15,7 @@ import { Point } from "../../../common/types.ts";
 import { api } from "../../api.ts";
 import { getId } from "../../util/id.ts";
 import { storage } from "../../util/storage.ts";
+import { getTimeZone } from "../../util/timeZone.ts";
 
 const KEY = "blocktol.freeplay";
 
@@ -106,6 +107,12 @@ type OutboxEntry = {
   // entry waits (and ages out) rather than landing on someone else's board.
   user: string;
   at: number;
+  // The zone the run was built in, for the server's board gate (a board is
+  // only committable before "today" in it, or once its ranked attempts are
+  // spent). Captured at execution rather than re-read at send, so a replay
+  // after travel is judged where the run was played. Absent on entries queued
+  // by an older bundle; the server reads that as the westernmost zone.
+  timeZone?: string;
 };
 
 const readOutbox = (): OutboxEntry[] => {
@@ -143,6 +150,7 @@ const send = (entry: OutboxEntry): Promise<CommitResult> => {
     iteration: entry.iteration,
     blocks: entry.blocks,
     clientId: entry.clientId,
+    timeZone: entry.timeZone,
   }).then((r) => {
     if (settled(r)) dropFromOutbox(entry.clientId);
     return r;
@@ -163,6 +171,7 @@ export const commitFreePlay = (
     blocks,
     user: getId(),
     at: Date.now(),
+    timeZone: getTimeZone(),
   };
   writeOutbox([
     ...readOutbox().filter((e) => e.clientId !== entry.clientId),
