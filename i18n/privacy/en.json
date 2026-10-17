@@ -212,7 +212,7 @@
     "description": "Section heading."
   },
   "privacy.contact.operator": {
-    "message": "Blocktol is run by Robert Coe, who is responsible for the data on this page.",
+    "message": "Blocktol is run by Robert Coe, based in the United States, who is responsible for the data on this page.",
     "description": "Names the person who operates the game and is the data controller. \"Robert Coe\" is a personal name: keep it exactly as is."
   },
   "privacy.contact.body": {
