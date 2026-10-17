@@ -238,6 +238,54 @@ export const pushConfigured = (): boolean => !!(vapidPublic && vapidPrivate);
 // public by definition. null when push isn't configured.
 export const getVapidPublicKey = (): string | null => vapidPublic ?? null;
 
+// ---- which endpoints we'll POST to ----
+
+// A subscription's endpoint is client-supplied and the server POSTs to it, so an
+// open `url()` made us an SSRF gadget (localhost, the SQL proxy, the box's
+// loopback-only VictoriaLogs) and a request amplifier. Only the browser push
+// services are legitimate targets — every mainstream browser routes Web Push
+// through its vendor's service:
+//   - Chrome / Chromium Android, Opera, Samsung Internet, Brave, Vivaldi: FCM
+//     (`fcm.googleapis.com`; long-lived subscriptions from the GCM era still
+//     carry `android.googleapis.com`, and some Chrome builds hand out
+//     `jmt17.google.com`).
+//   - Firefox (and forks): Mozilla autopush, `updates.push.services.mozilla.com`
+//     (suffix-matched, for its regional/legacy hosts).
+//   - Edge: WNS, `<region>.notify.windows.com`.
+//   - Safari (macOS 13+, iOS 16.4+ home-screen apps): `web.push.apple.com`
+//     (suffix-matched on push.apple.com).
+// What's left out is self-hosted push (UnifiedPush on de-Googled Android): its
+// endpoint is any host at all, which is exactly what this closes.
+const PUSH_HOSTS = new Set([
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "jmt17.google.com",
+]);
+const PUSH_HOST_SUFFIXES = [
+  ".push.services.mozilla.com",
+  ".notify.windows.com",
+  ".push.apple.com",
+];
+
+// https, default port, no credentials, and an allowlisted host.
+export const isPushEndpoint = (endpoint: string): boolean => {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.port !== "") return false;
+  if (url.username || url.password) return false;
+  const host = url.hostname.toLowerCase();
+  return PUSH_HOSTS.has(host) ||
+    PUSH_HOST_SUFFIXES.some((s) => host.endsWith(s));
+};
+
+// Hosts already reported as refused, so a pre-allowlist row (stored before the
+// subscribe route checked) logs once per process rather than on every send.
+const refusedHosts = new Set<string>();
+
 export type WebPushSubscription = {
   endpoint: string;
   p256dh: string; // client public key, base64url (65-byte point)
@@ -258,6 +306,22 @@ export const sendPush = async (
   now: number = Date.now(),
 ): Promise<SendResult> => {
   if (!vapidPublic || !vapidPrivate) return { ok: false, gone: false };
+  if (!isPushEndpoint(sub.endpoint)) {
+    // A row stored before subscribe enforced the allowlist: skip it rather
+    // than migrate. Not pruned — a real browser endpoint this list misses
+    // should stay recoverable by widening the list, not be deleted by it.
+    let host = "invalid";
+    try {
+      host = new URL(sub.endpoint).host;
+    } catch { /* unparseable — "invalid" */ }
+    if (!refusedHosts.has(host)) {
+      refusedHosts.add(host);
+      log.warn("push endpoint refused (not an allowlisted push service)", {
+        host,
+      });
+    }
+    return { ok: false, gone: false };
+  }
   try {
     const origin = new URL(sub.endpoint).origin;
     const jwt = await signVapidJwt(
@@ -280,6 +344,8 @@ export const sendPush = async (
         "Authorization": `vapid t=${jwt}, k=${vapidPublic}`,
       },
       body,
+      // Never follow a redirect off the allowlisted host.
+      redirect: "manual",
     });
     // Drain the body so the connection can be reused/closed.
     await res.arrayBuffer().catch(() => {});

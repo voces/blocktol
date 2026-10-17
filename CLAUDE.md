@@ -687,6 +687,16 @@ but nothing arrives" was the shape of every report here.
   doesn't mirror (a revoked Android `POST_NOTIFICATIONS` grant) still reads as
   `ok`.
 
+The endpoint is client-supplied and the server POSTs to it, so `subscribePush`
+accepts only `isPushEndpoint` (`util/webpush.ts`): https on the default port to
+an allowlisted browser push service (FCM, Mozilla autopush, WNS, Apple) — never
+an arbitrary url (SSRF into the box's loopback services). A user keeps at most
+`MAX_SUBSCRIPTIONS_PER_USER` (10) rows; the upsert bumps `created` (so it reads
+"last registered") and prunes the stalest past the cap. A pre-allowlist row that
+fails the check is skipped at send (logged once per host,
+`push endpoint refused`), not pruned. `unsubscribePush` deletes only the
+caller's own row.
+
 **Reading the push path in VictoriaLogs.** A successful send logs **nothing**,
 so an empty result for `"push send"` means "nothing failed", NOT "nothing was
 sent" — and remember telemetry only runs on the co-located instance, so an

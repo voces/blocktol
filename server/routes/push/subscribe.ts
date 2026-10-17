@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { upsertSubscription } from "../../db/notification.ts";
 import { updateUserLocale } from "../../db/user.ts";
-import { sha256hex } from "../../util/webpush.ts";
+import { isPushEndpoint, sha256hex } from "../../util/webpush.ts";
 import { method } from "../apiHelpers.ts";
 
 // Register this client's Web Push subscription against the signed-in user. The
@@ -11,11 +11,20 @@ import { method } from "../apiHelpers.ts";
 // moved accounts) upserts one row rather than duplicating. The locale is a
 // property of the user (any future server-rendered surface can reuse it), so it
 // lands on the user row, not the subscription.
+//
+// The endpoint is where the server will POST, so it must be a real browser push
+// service (isPushEndpoint — https + an allowlisted host), never an arbitrary
+// url. The keys are base64url: p256dh a 65-byte P-256 point (87 chars), auth a
+// 16-byte secret (22 chars); the bounds leave slack for padding without letting
+// a body park kilobytes in the row.
+const base64url = /^[A-Za-z0-9_-]+={0,2}$/;
 const body = z.object({
-  endpoint: z.string().url(),
+  endpoint: z.string().max(2048).refine(isPushEndpoint, {
+    message: "not a supported push service endpoint",
+  }),
   keys: z.object({
-    p256dh: z.string().min(1),
-    auth: z.string().min(1),
+    p256dh: z.string().min(80).max(100).regex(base64url),
+    auth: z.string().min(16).max(32).regex(base64url),
   }),
   // A BCP-47 tag from the client (Intl.DateTimeFormat().resolvedOptions()).
   // Capped here; canonicalised (or dropped) below before it's stored.
