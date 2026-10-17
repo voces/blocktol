@@ -21,6 +21,7 @@ import { onPbBuild } from "../../../util/pbBoard.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { errText, log } from "../../../util/logging.ts";
 import { method } from "../../apiHelpers.ts";
+import { piece } from "./piece.ts";
 
 const commitRunBody = z.object({
   iteration: z.number().min(1),
@@ -29,9 +30,7 @@ const commitRunBody = z.object({
   // through to the flip-void path below.
   // Capped at 400 (> the board's 324 interior cells) so an oversized maze is
   // rejected before validateRun's per-piece walk — see updateRun for the bound.
-  blocks: z.array(
-    z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
-  ).max(400).optional(),
+  blocks: z.array(piece).max(400).optional(),
   clientId: z.string().min(1).max(64).optional(),
 });
 

@@ -144,7 +144,11 @@ diverge — the server's accepted time must equal what the client previewed.
   section).
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `cachedSolver`, per iteration shape), so what the
-  audit script accepts is exactly what the write path accepts. Any change that
+  audit script accepts is exactly what the write path accepts. It first rejects
+  any piece whose anchor isn't a whole cell in `1..17` (a piece is 2×2, so that
+  keeps it off the border ring) — the solver reads an off-grid cell as free, so
+  this can't be left to it; the run endpoints' shared zod `piece` schema
+  (`routes/iteration/run/piece.ts`) enforces the same bounds. Any change that
   shifts timing or equal-length tie-breaking requires a
   `scripts/comparePathing.ts` audit/retime before it ships.
 

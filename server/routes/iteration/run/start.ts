@@ -12,6 +12,7 @@ import { getIteration, getIterationOtherBest } from "../../../db/iteration.ts";
 import { ensureDailyIterationId } from "../../../util/newIteration.ts";
 import { dailyParts } from "../../../util/dailyParts.ts";
 import { method } from "../../apiHelpers.ts";
+import { pieceCoords } from "./piece.ts";
 import { startRun as dbStartRun, updateCurrentRun } from "../../../db/run.ts";
 import { getOwnBest } from "../../../db/user.ts";
 import { cachedSolver, pathDuration } from "../../../../common/pathing.ts";
@@ -25,7 +26,7 @@ const startRunBody = z.object({
   // The move that started the run (free play starts on the first placement, so
   // its opening block rides along with the start to save a round-trip). Only a
   // plain brick — the first action can't be a thunder/move/delete.
-  block: z.object({ x: z.number(), y: z.number() }).optional(),
+  block: pieceCoords.optional(),
 });
 
 export const startRun = method(startRunBody, true)(

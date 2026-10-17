@@ -9,6 +9,7 @@ import { errText, log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
+import { piece } from "./piece.ts";
 
 // Whether the save commits (daily attempt) or stays void until execution (free
 // play) is derived server-side in updateCurrentRun from the run itself — the
@@ -20,9 +21,7 @@ const updateRunBody = z.object({
   // no legal maze can carry more than that many pieces; cap well above it (400) so
   // an oversized array is rejected by zod before validateRun pays to walk it — the
   // budget check in validateRun is per-piece and runs only after the full parse.
-  blocks: z.array(
-    z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
-  ).max(400),
+  blocks: z.array(piece).max(400),
 });
 
 const getIterationOtherBest = trailer(getIterationOtherBestRaw);

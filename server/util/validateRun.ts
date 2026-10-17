@@ -12,6 +12,17 @@ export type IterationShape = {
   blocks: ValidationBlock[];
 };
 
+// The placeable range of a piece's anchor (its top-left cell). A piece covers
+// a 2×2 footprint (anchor + `offsets`), and the 20×20 board's interior is cells
+// 1..18 (0 and 19 are the border ring), so an anchor at 1..17 keeps the whole
+// footprint inside — the same clamp the client's placement applies
+// (useInputStart). Shared with the API's zod piece schema so both gates agree.
+export const PIECE_MIN = 1;
+export const PIECE_MAX = 17;
+
+const onBoard = (n: number) =>
+  Number.isInteger(n) && n >= PIECE_MIN && n <= PIECE_MAX;
+
 export type RunValidation =
   | { ok: true; duration: number; slows: Slow[]; path: Point[] }
   | {
@@ -33,6 +44,17 @@ export const validateRun = (
   }
   if (playerBlocks.filter((b) => b.thunder).length > iteration.power) {
     return { ok: false, reason: "too many slows" };
+  }
+
+  // Defense in depth behind the zod schema: the solver indexes `grid[y][x]`, and
+  // a fractional or off-board coordinate reads `undefined` there — i.e. FREE —
+  // so it would happily place a piece inside the border, over a fixed block, or
+  // half-overlapping another piece (and serializeRun would then mangle 4.5,4
+  // into "4.54"). Only whole, on-board anchors are pieces at all; overlap among
+  // those (duplicates included) and with the day's pieces / checkpoint is then
+  // the solver's job, below.
+  if (!playerBlocks.every((b) => onBoard(b.x) && onBoard(b.y))) {
+    return { ok: false, reason: "invalid path" };
   }
 
   let path: Point[] | undefined;
