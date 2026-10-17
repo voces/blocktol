@@ -26,7 +26,8 @@ bundler config.
 ```bash
 deno task dev        # bundle (watch) + run server (watch) — local dev
 deno task start      # run the server once (prod-style)
-deno task build      # bundle client -> public/js/{index.js,pathing.js}
+deno task build      # bundle + minify client -> public/js/{index.js,pathing.js}; map -> sourcemaps/<SHA>/
+deno task symbolicate <clientSha> < stack.txt   # minified client stack -> source positions
 deno task test       # run the test suite
 deno task migrate    # apply pending DB migrations (usually automatic on boot)
 deno task preview    # static-serve ./ (inspect public/ pages)
@@ -1089,6 +1090,14 @@ Dry-run by default, `--apply` to write; run locally against an env with
 - `comparePathing.ts` — quantify a pathing change against all stored runs before
   shipping it (with `--apply`, writes recomputed optimal times).
 - `comparePathViz.ts`, `genVapidKeys.ts` — path visualization / VAPID keygen.
+- `symbolicate.ts` (`deno task symbolicate <clientSha> < stack.txt`) — maps a
+  minified client stack (`client.error`) back to source. The client bundle is
+  minified and its map is never served (browsers don't apply maps to
+  `error.stack` anyway); `build` moves it to `sourcemaps/<SHA>/` (gitignored,
+  newest 20 kept), keyed by the `clientSha` each request logs. With no stored
+  map the script rebuilds that commit in a temp worktree: the bundle is
+  deterministic and an external map leaves its bytes unchanged, so the rebuild
+  matches given the same Deno version.
 
 ## Conventions
 

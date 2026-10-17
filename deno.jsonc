@@ -40,9 +40,16 @@
     "i18n:check": "deno run --no-check --allow-read=i18n scripts/i18nCheck.ts",
     "i18n:unused": "deno run --no-check --allow-read=i18n,common,server,client scripts/i18nUnused.ts",
     "i18n:translate": "deno run --no-check --allow-read --allow-write=i18n --allow-env --allow-net --allow-sys scripts/i18nTranslate.ts",
-    "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
-    "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
-    "build": "deno task i18n && deno task version && deno task bundle && deno task bundle:pathing",
+    // Minified (~47% smaller; output is deterministic, so assets.ts's `?v` hash
+    // is stable). The external source map doesn't change the JS; `build` moves
+    // it out of public/ (never served) into sourcemaps/<SHA>/ for
+    // `deno task symbolicate`, which turns a relayed client stack back into
+    // source positions.
+    "bundle": "deno bundle --unstable-bundle --platform browser --minify --sourcemap=external client/index.ts -o public/js/index.js",
+    "sourcemap:stash": "deno run --allow-read --allow-write scripts/stashSourcemap.ts",
+    "symbolicate": "deno run --allow-read --allow-write --allow-env --allow-run=git,deno scripts/symbolicate.ts",
+    "bundle:pathing": "deno bundle --unstable-bundle --platform browser --minify common/pathing.ts -o public/js/pathing.js",
+    "build": "deno task i18n && deno task version && deno task bundle && deno task sourcemap:stash && deno task bundle:pathing",
     // --no-check (not =remote): skip type-checking at start entirely. CI's
     // `deno check` and `deno task test` are the type gate, so re-checking the
     // local graph on every boot is redundant work on the cold-start critical

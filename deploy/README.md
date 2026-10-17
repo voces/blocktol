@@ -5,7 +5,8 @@ Blocktol runs as a long-lived Deno process on the same EC2 box as the MariaDB +
 auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
 
 - **Serving:** `blocktol.service` (systemd) runs `deno task start` on a local
-  port; nginx (`blocktol.nginx.conf`) terminates TLS and reverse-proxies to it.
+  port; nginx (`blocktol.nginx.conf`) terminates TLS, gzips text responses,
+  rate-limits `/api/` per IP, and reverse-proxies to it.
 - **Deploy:** merge to `prod` → CI passes → `.github/workflows/deploy.yml` POSTs
   `{app:"blocktol", version:<sha>}` to w3xio's `/deploy`, which does
   `git fetch origin prod` → `git checkout <sha>` → `deno task build` →
@@ -14,10 +15,12 @@ auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
   `SQL_PROXY_URL` (no proxy semantics change). A later step can switch to a
   direct `mysql2` connection.
 
-`deploy/blocktol.service` and `deploy/blocktol.nginx.conf` are **reference
-templates** — nothing reads them live. The authoritative files are
-`/etc/systemd/system/blocktol.service` and
-`/etc/nginx/sites-enabled/blocktol.conf`, copied from these; keep them in sync.
+`deploy/blocktol.service`, `deploy/blocktol.nginx.conf` and
+`deploy/blocktol-ratelimit.conf` are **reference templates** — nothing reads
+them live. The authoritative files are `/etc/systemd/system/blocktol.service`,
+`/etc/nginx/sites-enabled/blocktol.conf` and
+`/etc/nginx/conf.d/blocktol-ratelimit.conf`, copied from these; keep them in
+sync.
 
 ## Box facts (this cohost)
 
@@ -74,10 +77,15 @@ templates** — nothing reads them live. The authoritative files are
    Also ensure `deno` is on that process's `PATH` (the deploy build step runs
    `deno task build`).
 
-5. **nginx.** Install `deploy/blocktol.nginx.conf` as
+5. **nginx.** Install `deploy/blocktol-ratelimit.conf` as
+   `/etc/nginx/conf.d/blocktol-ratelimit.conf` (the API rate-limit zone, which
+   must live in the `http` context) and `deploy/blocktol.nginx.conf` as
    `/etc/nginx/sites-enabled/blocktol.conf`, then
-   `sudo nginx -t &&
-   sudo systemctl reload nginx`. TLS is the next step.
+   `sudo nginx -t && sudo systemctl reload nginx`. TLS is the next step.
+
+   Once certbot has edited the live vhost, don't copy the template over it (that
+   drops the 443 listener and certs) — merge changes into the existing `server`
+   block by hand, then run the same `nginx -t` + reload.
 
 6. **TLS (zero-downtime for a live domain).** `certbot --nginx` uses HTTP-01,
    which needs DNS already pointing at this box — a chicken-and-egg that forces
