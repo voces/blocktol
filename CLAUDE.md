@@ -316,7 +316,12 @@ double-write):**
   is the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
   board's `date`; the client needs no special parsing — a `DATE` deserialises to
   `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
-  midnight, and the board caption formats it in UTC.
+  midnight, and the board caption formats it in UTC. The iteration row and its
+  fixed blocks are inserted in one transaction (`createIteration`), so a dropped
+  connection can't leave a day with no pieces. Each run also ends with the
+  **rate-dailies watchdog** (`checkRatingLiveness`): a closed day still unrated
+  6h past its close means rating has stopped, and it `alertAdmin`s (once per
+  run) — run from this cron so a dead `rate-dailies` is still noticed.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
   percentile-based), then fires "daily final" notifications and posts the day's
@@ -328,7 +333,13 @@ double-write):**
   `rated` before announcing, so these posts are also what unblocks that day's
   live top-PB posts — and that second message IS the day's standing top-PB post
   (it writes the `pb_top` marker), so a later free-play record supersedes it
-  rather than standing beside it.
+  rather than standing beside it. Rating **claims** the day atomically
+  (`applyRatings`: `rated = FALSE → TRUE` and the ELO deltas in one transaction,
+  deltas gated on the claim), and only the claiming writer notifies/announces —
+  so a second cron writer on the same DB (a forgotten `DISABLE_CRONS`) costs
+  duplicate work, never a doubled rating or post. Deltas are applied relative to
+  the stored rating by an UPDATE of existing rows only, so a user merged or
+  erased mid-sweep is never re-created under their old id.
 
 ## Domain model & invariants
 

@@ -161,6 +161,20 @@ export const getUnratedClosedIterations = (hours = 37) =>
     LIMIT 25;
   `.then((r) => r.map((i) => i.id));
 
+// How many closed dailies are still unrated `hours` after the fact, and the
+// oldest one's date — the rate-dailies liveness probe (util/gen.ts). Same
+// close predicate as getUnratedClosedIterations, with a larger offset.
+export const getStaleUnratedIterations = (hours: number) =>
+  sql<{ count: number; oldest: string | null }[]>`
+    SELECT COUNT(*) count, MIN(created) oldest
+    FROM iteration
+    WHERE rated = FALSE
+      AND DATE(created) <= DATE(NOW() - INTERVAL ${hours} HOUR);
+  `.then((r) => ({
+    count: Number(r[0]?.count ?? 0),
+    oldest: r[0]?.oldest ?? null,
+  }));
+
 // The completed daily times for an iteration (one per player), used as the
 // field a player's percentile is computed against.
 export const getIterationDailyTimeCounts = (iteration: number) =>
