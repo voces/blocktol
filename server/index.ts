@@ -18,7 +18,8 @@ import { errText, log } from "./util/logging.ts";
 // latency blip) instead of dropping them.
 //
 // A lease lock elects a single migrator across isolates (see migrate.ts); the
-// rest return at once. Caught rather than fatal: a failure here shouldn't
+// rest wait (capped) until the winner has recorded the target version, so their
+// gates don't open onto a half-migrated schema either. Caught rather than fatal: a failure here shouldn't
 // crash-loop the isolate — it's logged, and the next boot retries once the lease
 // expires. The gate resolves either way, so a migration hiccup degrades to
 // serving (exactly as the old catch did) rather than wedging the process.

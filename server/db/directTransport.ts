@@ -1,16 +1,20 @@
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
 import { errText, log } from "../util/logging.ts";
+import type { QueryOptions } from "./query.ts";
 
 // The only slice of mysql2's pool we touch. Declared locally rather than pulled
 // from the package's types: mysql2 defines `query` via a mixin base class that
 // Deno's type-checker doesn't surface on the `Pool` interface. `[rows]` is the
 // proxy-equivalent payload (see the module comment); we don't read `fields`.
-type Pool = {
+type Connection = {
   query: (
     options: { sql: string; timeout?: number },
   ) => Promise<[unknown, unknown]>;
+  release: () => void;
+  destroy: () => void;
 };
+type Pool = { getConnection: () => Promise<Connection> };
 
 // The direct MariaDB connector: an alternative to the SQL proxy for the
 // deployment co-located with the database (the w3x.io/EC2 box). It speaks the
@@ -58,10 +62,17 @@ const requiredEnv = (name: string) => {
   return value;
 };
 
-// Match the proxy's 3s ceiling on a single query (its fetch abort timeout). On
-// hit mysql2 raises a non-server error, so `sql` retries and `sqlOnce` doesn't —
-// same semantics as the proxy's aborted-fetch retry.
-const QUERY_TIMEOUT_MS = 3000;
+// How long a query may wait for a free pooled connection before giving up. Kept
+// separate from the per-query timeout (which mysql2 only starts once the query
+// is on a connection): without it a saturated pool queues callers forever.
+// mysql2 has no acquire timeout of its own (it ignores `acquireTimeout`), hence
+// the race in `acquire`. Expiry is a transport failure, so `sql` retries once.
+const ACQUIRE_TIMEOUT_MS = 5000;
+
+// Backstop on the wait queue itself: past this many waiters, fail fast ("Queue
+// limit reached", also a transport failure) rather than pile up requests that
+// would mostly time out anyway.
+const QUEUE_LIMIT = 500;
 
 let poolPromise: Promise<Pool> | null = null;
 
@@ -82,23 +93,76 @@ const getPool =
       dateStrings: true,
       decimalNumbers: true,
       connectionLimit: 10,
+      queueLimit: QUEUE_LIMIT,
       enableKeepAlive: true,
     }) as unknown as Pool
   ));
 
+const acquire = (pool: Pool) =>
+  new Promise<Connection>((resolve, reject) => {
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      reject(new Error("Timeout acquiring a pooled connection"));
+    }, ACQUIRE_TIMEOUT_MS);
+    pool.getConnection().then((conn) => {
+      // Arrived after we gave up: hand it straight back rather than leak it.
+      if (timedOut) return conn.release();
+      clearTimeout(timer);
+      resolve(conn);
+    }, (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+
+// One attempt on one explicitly checked-out connection, so the connection's
+// fate on failure is ours to decide rather than the pool's (`pool.query`
+// releases it back no matter what):
+//   - A server error mid-batch stops the batch where it failed — and if that was
+//     inside a `START TRANSACTION … COMMIT` batch (startRun-style writes,
+//     createIteration, applyRatings, mergeUsers) the connection is left holding
+//     an OPEN transaction and its locks. Released as-is, the next borrower's
+//     statements would silently run inside it. So ROLLBACK first (a harmless
+//     no-op when no transaction is open), and destroy the connection if even
+//     that fails.
+//   - A transport error — notably mysql2's query timeout, which only stops
+//     waiting and leaves the statement's late results queued on the socket — means
+//     the connection's protocol state can't be trusted: destroy it (the server
+//     rolls back whatever it had open) and let the pool open a fresh one.
+const attempt = async (sql: string, timeoutMs: number | null) => {
+  const conn = await acquire(await getPool());
+  try {
+    const [rows] = await conn.query({
+      sql,
+      ...(timeoutMs === null ? {} : { timeout: timeoutMs }),
+    });
+    conn.release();
+    return rows;
+  } catch (err) {
+    if (isServerError(err)) {
+      try {
+        await conn.query({ sql: "ROLLBACK", timeout: 3000 });
+        conn.release();
+      } catch {
+        conn.destroy();
+      }
+    } else {
+      conn.destroy();
+    }
+    throw err;
+  }
+};
+
 export const directQuery = async <T = unknown>(
   queryStr: string,
-  retries = 1,
+  { retries, timeoutMs }: QueryOptions,
 ): Promise<T> => {
   let lastError: unknown;
 
   while (retries-- >= 0) {
     try {
-      const pool = await getPool();
-      const [rows] = await pool.query({
-        sql: queryStr,
-        timeout: QUERY_TIMEOUT_MS,
-      });
+      const rows = await attempt(queryStr, timeoutMs);
       if (lastError) log.info("recovered");
       return rows as T;
     } catch (err) {

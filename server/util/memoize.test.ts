@@ -3,7 +3,7 @@ import {
   assertRejects,
   assertStrictEquals,
 } from "@std/assert";
-import { memoize, trailer } from "./memoize.ts";
+import { boundedTrailer, memoize, trailer } from "./memoize.ts";
 
 Deno.test("memoize", async (t) => {
   await t.step("single primitive arg", () => {
@@ -115,4 +115,25 @@ Deno.test("trailer", async (t) => {
     // the op sanitizer reports it as a leak.
     await tick();
   });
+});
+
+Deno.test("boundedTrailer keeps at most maxSize keys, LRU first out", async () => {
+  const calls: string[] = [];
+  const fn = (a: number, b: string) => {
+    calls.push(`${a}:${b}`);
+    return Promise.resolve(`${a}:${b}`);
+  };
+  const get = boundedTrailer(fn, 2);
+
+  assertStrictEquals(await get(1, "x")(), "1:x");
+  assertStrictEquals(get(1, "x"), get(1, "x")); // same key, same getter
+  assertStrictEquals(await get(2, "y")(), "2:y");
+  get(1, "x"); // touch 1:x so 2:y is now the least recently used
+  assertStrictEquals(await get(3, "z")(), "3:z"); // evicts 2:y
+  assertStrictEquals(calls.length, 3);
+
+  get(1, "x"); // still cached: no new fetch
+  assertStrictEquals(calls.length, 3);
+  assertStrictEquals(await get(2, "y")(), "2:y"); // evicted: fetched afresh
+  assertStrictEquals(calls.length, 4);
 });

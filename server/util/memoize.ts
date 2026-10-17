@@ -1,4 +1,5 @@
 import { is } from "../../common/typeguards.ts";
+import { LRUMap } from "./LRUMap.ts";
 
 // deno-lint-ignore no-explicit-any
 type GetLength<original extends any[]> = original extends { length: infer L }
@@ -90,50 +91,86 @@ const isSettled = async (promise: Promise<unknown>) => {
   return p !== pending;
 };
 
+// One stale-while-revalidate getter over `fetch`: the first call awaits the
+// first fetch; later calls serve the last good value and kick a refresh once
+// the previous one has settled. The per-key body of `trailer` and
+// `boundedTrailer`.
+const staleWhileRevalidate = <T>(fetch: () => Promise<T>) => {
+  // Every fetch gets a no-op rejection handler attached at creation: a
+  // background refresh that rejects before anyone awaits it would otherwise
+  // trip Deno's unhandledrejection. Awaiters still see the rejection.
+  const kick = () => {
+    const p = fetch();
+    p.catch(() => {});
+    return p;
+  };
+  let promise = kick();
+  let v: T;
+  let hasResolvedAtLeastOnce = false;
+
+  return async () => {
+    if (!hasResolvedAtLeastOnce) {
+      // No stale value to fall back on: surface the failure, but swap in a
+      // fresh fetch first so the next call retries instead of awaiting the
+      // same rejected promise forever. The identity check keeps concurrent
+      // rejected awaiters from each kicking off their own retry.
+      const p = promise;
+      try {
+        v = await p;
+        hasResolvedAtLeastOnce = true;
+      } catch (err) {
+        if (promise === p) promise = kick();
+        throw err;
+      }
+    } else if (await isSettled(promise)) {
+      // Stale-while-revalidate: take the settled refresh if it succeeded —
+      // keep serving the stale value if it failed — and kick off the next
+      // refresh either way.
+      const p = promise;
+      try {
+        v = await p;
+      } catch { /* keep the stale value */ }
+      if (promise === p) promise = kick();
+    }
+
+    return v;
+  };
+};
+
 export const trailer = <
   // deno-lint-ignore no-explicit-any
   Fn extends (...args: any[]) => Promise<any>,
 >(
   fn: Fn,
 ) =>
-  memoize((...args: Parameters<Fn>): () => Promise<ReturnType<Fn>> => {
-    // Every fetch gets a no-op rejection handler attached at creation: a
-    // background refresh that rejects before anyone awaits it would otherwise
-    // trip Deno's unhandledrejection. Awaiters still see the rejection.
-    const kick = () => {
-      const p = fn(...args);
-      p.catch(() => {});
-      return p;
-    };
-    let promise = kick();
-    let v: Awaited<ReturnType<Fn>>;
-    let hasResolvedAtLeastOnce = false;
+  memoize((...args: Parameters<Fn>): () => Promise<Awaited<ReturnType<Fn>>> =>
+    staleWhileRevalidate(() => fn(...args))
+  );
 
-    return async () => {
-      if (!hasResolvedAtLeastOnce) {
-        // No stale value to fall back on: surface the failure, but swap in a
-        // fresh fetch first so the next call retries instead of awaiting the
-        // same rejected promise forever. The identity check keeps concurrent
-        // rejected awaiters from each kicking off their own retry.
-        const p = promise;
-        try {
-          v = await p;
-          hasResolvedAtLeastOnce = true;
-        } catch (err) {
-          if (promise === p) promise = kick();
-          throw err;
-        }
-      } else if (await isSettled(promise)) {
-        // Stale-while-revalidate: take the settled refresh if it succeeded —
-        // keep serving the stale value if it failed — and kick off the next
-        // refresh either way.
-        const p = promise;
-        try {
-          v = await p;
-        } catch { /* keep the stale value */ }
-        if (promise === p) promise = kick();
-      }
-
-      return v;
-    };
-  });
+// `trailer`, but holding at most `maxSize` keys, least-recently-used evicted
+// first. `trailer` keeps a getter (and its value) for every argument tuple it
+// has ever seen, forever — fine for a handful of keys, an unbounded leak for
+// per-(iteration, user) keys on the long-lived co-located process. An evicted
+// key simply starts over: its next call awaits a fresh fetch. Arguments are
+// keyed by their JSON, so use it with primitive args only.
+export const boundedTrailer = <
+  // deno-lint-ignore no-explicit-any
+  Fn extends (...args: any[]) => Promise<any>,
+>(
+  fn: Fn,
+  maxSize: number,
+) => {
+  const getters = new LRUMap<
+    string,
+    () => Promise<Awaited<ReturnType<Fn>>>
+  >({ maxSize });
+  return (...args: Parameters<Fn>) => {
+    const key = JSON.stringify(args);
+    let get = getters.get(key);
+    if (!get) {
+      get = staleWhileRevalidate(() => fn(...args));
+      getters.set(key, get);
+    }
+    return get;
+  };
+};
