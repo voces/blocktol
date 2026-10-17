@@ -285,17 +285,31 @@ Two tagged-template helpers, and the choice is a correctness concern:
   a retried INSERT after a lost response silently duplicates a row (a spent
   daily attempt, a duplicate iteration).
 
+Both run under a 3s per-attempt timeout that covers the whole response (the
+proxy's body read included). A third, `sqlMigrate`, has **no retry and no
+timeout** and is for `db/migrate.ts` only — a long ALTER must neither be failed
+client-side while it keeps running nor re-sent on top of itself.
+
 Multi-statement batches run on one connection, so `@session` variables and
 `START TRANSACTION` work across statements — several writes (e.g.
-`updateCurrentRun`, `mergeUsers`) rely on this.
+`updateCurrentRun`, `mergeUsers`, `applyRatings`, `createIteration`) rely on
+this. The direct transport checks out its connection explicitly so it can clean
+up after a failure: a server error mid-batch is `ROLLBACK`ed before the
+connection goes back to the pool (otherwise the next borrower inherits the open
+transaction), and a transport error or timeout destroys it. It also bounds the
+wait for a pooled connection (5s acquire timeout, 500-deep queue).
 
 **Migrations (`server/db/migrations.ts` + `db/migrate.ts`):** ordered,
 contiguous from v1, each run once and recorded in `schema_migration`. A lease
-lock elects a single migrator across isolates on boot. **The runner keys off
-`version` only — editing an already-shipped migration's SQL never re-runs it.**
-So the rule is **append-only once a migration has reached prod**: fix forward
-with a new migration. (Editing in place is allowed only while a migration has
-_only_ reached dev — see the long note at the bottom of that file.)
+lock elects a single migrator across isolates on boot; the holder renews its 60s
+lease every 20s while it works, and the losers **wait** (polling, retrying the
+lease in case the winner died; capped at 15 min, then a logged/alerted throw)
+until the target version is recorded — so no process opens its `ready` gate onto
+a half-migrated schema. **The runner keys off `version` only — editing an
+already-shipped migration's SQL never re-runs it.** So the rule is **append-only
+once a migration has reached prod**: fix forward with a new migration. (Editing
+in place is allowed only while a migration has _only_ reached dev — see the long
+note at the bottom of that file.)
 
 **Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
 `DISABLE_CRONS` is set, so a second instance sharing the DB doesn't
