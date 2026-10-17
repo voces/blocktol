@@ -40,8 +40,11 @@
     "i18n:check": "deno run --no-check --allow-read=i18n scripts/i18nCheck.ts",
     "i18n:unused": "deno run --no-check --allow-read=i18n,common,server,client scripts/i18nUnused.ts",
     "i18n:translate": "deno run --no-check --allow-read --allow-write=i18n --allow-env --allow-net --allow-sys scripts/i18nTranslate.ts",
-    "bundle": "deno bundle --unstable-bundle --platform browser client/index.ts -o public/js/index.js",
-    "bundle:pathing": "deno bundle --unstable-bundle --platform browser common/pathing.ts -o public/js/pathing.js",
+    // Minified (~47% smaller; output is deterministic, so assets.ts's `?v` hash
+    // is stable). No source maps are shipped, so a relayed client stack
+    // (reportClientError) points into one long minified line.
+    "bundle": "deno bundle --unstable-bundle --platform browser --minify client/index.ts -o public/js/index.js",
+    "bundle:pathing": "deno bundle --unstable-bundle --platform browser --minify common/pathing.ts -o public/js/pathing.js",
     "build": "deno task i18n && deno task version && deno task bundle && deno task bundle:pathing",
     // --no-check (not =remote): skip type-checking at start entirely. CI's
     // `deno check` and `deno task test` are the type gate, so re-checking the

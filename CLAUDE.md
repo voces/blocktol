@@ -26,7 +26,7 @@ bundler config.
 ```bash
 deno task dev        # bundle (watch) + run server (watch) — local dev
 deno task start      # run the server once (prod-style)
-deno task build      # bundle client -> public/js/{index.js,pathing.js}
+deno task build      # bundle + minify client -> public/js/{index.js,pathing.js}
 deno task test       # run the test suite
 deno task migrate    # apply pending DB migrations (usually automatic on boot)
 deno task preview    # static-serve ./ (inspect public/ pages)
