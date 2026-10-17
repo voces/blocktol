@@ -515,6 +515,7 @@ export const useInit = () => {
           iteration,
           blocks: maze,
           clientId: freePlayClientId(),
+          timeZone: getTimeZone(),
         });
         // A commit that exhausts its retries is a real loss (a sustained outage):
         // surface it rather than letting the run disappear silently, mirroring the

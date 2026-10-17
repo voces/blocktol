@@ -3,7 +3,7 @@ import {
   getIteration,
   getIterationOtherBest as getIterationOtherBestRaw,
 } from "../../../db/iteration.ts";
-import { updateCurrentRun } from "../../../db/run.ts";
+import { getLatestRun, updateCurrentRun } from "../../../db/run.ts";
 import { onPbBuild } from "../../../util/pbBoard.ts";
 import { errText, log } from "../../../util/logging.ts";
 import { trailer } from "../../../util/memoize.ts";
@@ -44,7 +44,18 @@ export const updateRun = method(updateRunBody, true)(
     }
 
     const validation = validateRun(iteration, blocks);
-    if (!validation.ok) return { error: validation.reason, status: 400 };
+    if (!validation.ok) {
+      // A caller with no run on this iteration has no build to save — every
+      // run row comes through the board gate (startRun; util/boardAccess.ts) —
+      // so answer what a legal save would have: expired, nothing persisted.
+      // Echoing validateRun's reason instead would make this an oracle on a
+      // board the caller can't see: probe one cell per request and "invalid
+      // path" maps the fixed pieces, "too many blocks" the budget.
+      if (!(await getLatestRun(userId, iterationId))) {
+        return { expired: true as const };
+      }
+      return { error: validation.reason, status: 400 };
+    }
     const { path, duration, slows } = validation;
 
     // Must finish within the request: the new Deploy tears down the isolate
