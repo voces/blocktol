@@ -228,7 +228,11 @@ consume off boot (boot derives the two months from the caller's timezone to
 match `dailyItems.monthListInput`). `primeBoot` also seeds `todayIteration` from
 boot's standings slice so the dock recognizes the staged board as today and
 consumes the primed `standings` rather than refetching by id. On a boot failure
-each slice rejects and the consumer falls through to its own fetch.
+each slice rejects and the consumer falls through to its own fetch. Every prime
+(boot's and `primeFrom`'s) expires 10s after its response arrives
+(`util/primePool.ts`), so one its consumer never took — the dock answering a
+re-opened day from its own cache — can't be served minutes later as a stale
+snapshot; a late consumer just fetches.
 
 A `/YYYYMMDD` **permalink cold-load** boots through the same one request:
 `primeBoot` passes the URL's date as `boot`'s optional `day`, and boot resolves
