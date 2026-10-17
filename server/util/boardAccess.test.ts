@@ -1,76 +1,34 @@
 import { assertEquals } from "@std/assert";
 import { decideBoardAccess, iterationDate, ymd } from "./boardAccess.ts";
 
-// The board gate's decision table (see boardAccess.ts). `westToday` is the date
-// in UTC−12; a day on or after it is still rankable by someone.
+// The board gate's decision table (see boardAccess.ts).
 const base = {
   date: "2026-10-17",
-  westToday: "2026-10-17",
   localToday: "2026-10-17",
   rankedAttempts: 0,
-  previewed: false,
 };
 
 Deno.test("decideBoardAccess", async (t) => {
-  await t.step("a day no one can still rank is open", () => {
-    assertEquals(
-      decideBoardAccess({ ...base, date: "2026-10-16" }),
-      "open",
-    );
-    // …whatever the caller claims or has spent.
-    assertEquals(
-      decideBoardAccess({ ...base, date: "2026-10-16", localToday: null }),
-      "open",
-    );
+  await t.step("a day before the caller's today is open", () => {
+    assertEquals(decideBoardAccess({ ...base, date: "2026-10-16" }), "open");
   });
 
-  await t.step("spent ranked attempts open the board", () => {
-    assertEquals(decideBoardAccess({ ...base, rankedAttempts: 3 }), "open");
+  await t.step("the day that just rolled over is open at once", () => {
+    // Free play of yesterday right after local midnight, ranked or not.
     assertEquals(
-      decideBoardAccess({ ...base, rankedAttempts: 3, localToday: null }),
+      decideBoardAccess({ ...base, localToday: "2026-10-18" }),
       "open",
     );
   });
 
   await t.step("the caller's own today is locked until spent", () => {
     assertEquals(decideBoardAccess({ ...base, rankedAttempts: 2 }), "locked");
+    assertEquals(decideBoardAccess({ ...base, rankedAttempts: 3 }), "open");
   });
 
   await t.step("a future day for the caller is locked", () => {
     // Tomorrow's iteration exists (the gen cron runs a day ahead).
-    assertEquals(
-      decideBoardAccess({ ...base, date: "2026-10-18" }),
-      "locked",
-    );
-    // Even when the caller previewed it from a timezone where it was past.
-    assertEquals(
-      decideBoardAccess({ ...base, date: "2026-10-18", previewed: true }),
-      "locked",
-    );
-  });
-
-  await t.step("a past day still rankable to the west is a preview", () => {
-    // Kiritimati (UTC+14) is on the 18th while UTC−12 is still on the 17th.
-    assertEquals(
-      decideBoardAccess({ ...base, localToday: "2026-10-18" }),
-      "preview",
-    );
-    assertEquals(
-      decideBoardAccess({
-        ...base,
-        localToday: "2026-10-18",
-        previewed: true,
-      }),
-      "preview",
-    );
-  });
-
-  await t.step("no timezone: only an existing preview opens it", () => {
-    assertEquals(decideBoardAccess({ ...base, localToday: null }), "locked");
-    assertEquals(
-      decideBoardAccess({ ...base, localToday: null, previewed: true }),
-      "open",
-    );
+    assertEquals(decideBoardAccess({ ...base, date: "2026-10-18" }), "locked");
   });
 });
 

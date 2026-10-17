@@ -364,29 +364,6 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_flag_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
-  {
-    version: 16,
-    name: "preview",
-    // Preview markers: a player was shown a board while that day was still
-    // rankable somewhere to their west (see util/boardAccess.ts), so startRun
-    // refuses them a ranked attempt on it — the board gate's answer to "claim a
-    // timezone where today isn't today, practise it, then rank it". Presence is
-    // the whole fact; `created` is kept for the data export and for debugging.
-    //
-    // FKs cascade on UPDATE and DELETE like `flag` (v15): `user.id` is rotated by
-    // GDPR erasure, which deletes the markers outright (db/deleteAccount.ts), and
-    // a merge carries them to the surviving id (db/merge.ts). MariaDB dialect.
-    up: `
-      CREATE TABLE IF NOT EXISTS \`preview\` (
-        \`user\` char(36) NOT NULL,
-        \`iteration\` int(10) unsigned NOT NULL,
-        \`created\` timestamp NOT NULL DEFAULT current_timestamp(),
-        PRIMARY KEY (\`user\`,\`iteration\`),
-        KEY \`FK_preview_iteration\` (\`iteration\`),
-        CONSTRAINT \`FK_preview_user\` FOREIGN KEY (\`user\`) REFERENCES \`user\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE,
-        CONSTRAINT \`FK_preview_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

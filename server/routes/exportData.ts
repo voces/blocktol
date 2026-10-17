@@ -29,7 +29,6 @@ export const exportData = method(z.object({}).optional(), true)(
       notifications,
       subscriptions,
       flags,
-      previews,
       pbTops,
     ] = await exportUserData(userId);
     const u = users[0];
@@ -74,12 +73,6 @@ export const exportData = method(z.object({}).optional(), true)(
       flags: flags.map((f) => ({
         iteration: f.iteration,
         cells: deserializeFlags(f.data),
-      })),
-      // Boards shown to the player while still rankable to their west — each
-      // one forfeits ranking that day (see util/boardAccess.ts).
-      previews: previews.map((p) => ({
-        iteration: p.iteration,
-        created: Number(p.created),
       })),
       // Days whose Discord top-PB post currently names the player as holder.
       pbRecords: pbTops.map((t) => ({

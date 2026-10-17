@@ -104,7 +104,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "merge carries previews and the top-PB holder to the primary",
+  name: "merge carries the top-PB holder to the primary",
   ignore: !live,
   fn: async () => {
     const primary = await testUser();
@@ -113,16 +113,11 @@ Deno.test({
     try {
       await withPbTop(iteration, async () => {
         await sql`
-          INSERT INTO preview (user, iteration) VALUES (${secondary}, ${iteration});
           INSERT INTO pb_top (iteration, top_user) VALUES (${iteration}, ${secondary})
             ON DUPLICATE KEY UPDATE top_user = VALUES(top_user);`;
 
         await mergeUsers(primary, secondary);
 
-        const previews = await sql<{ user: string }[]>`
-          SELECT user FROM preview WHERE iteration = ${iteration}
-            AND user IN (${[primary, secondary]});`;
-        assertEquals(previews.map((p) => p.user), [primary]);
         const [top] = await sql<{ top_user: string }[]>`
           SELECT top_user FROM pb_top WHERE iteration = ${iteration};`;
         assertEquals(top.top_user, primary);
@@ -134,7 +129,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "erasure drops previews and re-points the top-PB holder",
+  name: "erasure re-points the top-PB holder",
   ignore: !live,
   fn: async () => {
     const user = await testUser();
@@ -143,15 +138,11 @@ Deno.test({
     try {
       await withPbTop(iteration, async () => {
         await sql`
-          INSERT INTO preview (user, iteration) VALUES (${user}, ${iteration});
           INSERT INTO pb_top (iteration, top_user) VALUES (${iteration}, ${user})
             ON DUPLICATE KEY UPDATE top_user = VALUES(top_user);`;
 
         await anonymizeUser(user, newId);
 
-        const previews = await sql<{ n: number }[]>`
-          SELECT COUNT(1) n FROM preview WHERE user IN (${[user, newId]});`;
-        assertEquals(Number(previews[0].n), 0);
         const [top] = await sql<{ top_user: string }[]>`
           SELECT top_user FROM pb_top WHERE iteration = ${iteration};`;
         assertEquals(top.top_user, newId, "the old id must not survive");

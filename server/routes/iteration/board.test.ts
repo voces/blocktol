@@ -15,9 +15,9 @@ import { updateRun } from "./run/update.ts";
 // The board gate (util/boardAccess.ts) behind getBoard, a free-play start and a
 // commit: a locked board is a plain { incomplete } from getBoard rather than an
 // error (the client relays every error response to reportClientError, so a
-// routine "not yet" must not be one); a closed day is always free-playable; a
-// future day is locked everywhere; a westward-rankable day is a recorded
-// preview. Against the real (dev) database — the gate reads run/preview rows.
+// routine "not yet" must not be one); a past day is always free-playable; a
+// future day is locked everywhere. Against the real (dev) database — the gate
+// reads run rows.
 // Skipped wholesale when SQL_PASSWORD isn't available.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
@@ -151,49 +151,42 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "board gate: a westward-rankable day opens as a preview that forfeits ranking it",
+  name: "board gate: the day that just rolled over is free-playable at once",
   ignore: !live,
   fn: async () => {
     const user = await testUser();
     const req = authed(user);
     try {
-      // The day still current in UTC−12 — rankable there — is always in the
-      // past for Kiritimati (UTC+14), 26 hours ahead.
-      const { year, month, day } = dailyParts("Etc/GMT+12");
-      const westDay = await ensureDailyIterationId(year, month, day);
+      // UTC yesterday: past for a UTC caller, though often still current (and
+      // rankable) further west. Free play must open it without any ranked
+      // attempts — a past day is always replayable.
+      const t = new Date(Date.now() - 86_400_000);
+      const yesterday = await ensureDailyIterationId(
+        t.getUTCFullYear(),
+        t.getUTCMonth() + 1,
+        t.getUTCDate(),
+      );
 
       const board = await getBoard.handler(
-        { iteration: westDay, timeZone: "Pacific/Kiritimati" },
+        { iteration: yesterday, timeZone: "UTC" },
         req,
       );
-      assert("blocks" in board, "a preview hands back the board");
-      const markers = await sql<{ n: number }[]>`
-        SELECT COUNT(1) n FROM preview
-        WHERE user = ${user} AND iteration = ${westDay};`;
-      assertEquals(Number(markers[0].n), 1, "and records the preview");
+      assert("blocks" in board, "yesterday's board is served");
 
-      // Now claim the western zone, where that day IS today: no ranked attempt.
-      const ranked = await startRun.handler(
-        { iteration: "daily", timeZone: "Etc/GMT+12" },
-        req,
-      );
-      assert("error" in ranked, "a previewed daily can't be ranked");
-      const runs = await sql<{ n: number }[]>`
-        SELECT COUNT(1) n FROM run WHERE user = ${user};`;
-      assertEquals(Number(runs[0].n), 0, "no attempt was opened");
-
-      // Free play on it stays open: a commit carries no timezone, but the
-      // preview it was granted stands.
-      const data = await getIteration(westDay);
+      const data = await getIteration(yesterday);
       const cell = [{ x: 2, y: 2 }, { x: 4, y: 4 }, { x: 6, y: 6 }]
         .find((c) => validateRun(data, [c]).ok);
       if (cell) {
         const committed = await commitRun.handler(
-          { iteration: westDay, blocks: [cell], clientId: crypto.randomUUID() },
+          {
+            iteration: yesterday,
+            blocks: [cell],
+            clientId: crypto.randomUUID(),
+            timeZone: "UTC",
+          },
           req,
         );
-        assert(!("error" in committed), "a granted preview commits");
+        assert(!("error" in committed), "and a free-play run on it commits");
       }
     } finally {
       await sql`DELETE FROM user WHERE id = ${user};`;

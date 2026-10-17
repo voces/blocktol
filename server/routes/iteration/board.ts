@@ -1,9 +1,8 @@
 // GET a buildable board WITHOUT starting a run (free play). Free play stages
 // the board and only opens a run on the first placement. Which boards are
-// stageable is util/boardAccess.ts's call: any day no one can still rank is
-// open, as is one the player has spent their three ranked attempts on; their
-// own today (and anything later) is locked; and a day still rankable to their
-// west opens as a recorded preview, which forfeits ranking it.
+// stageable is util/boardAccess.ts's call: every day before the player's local
+// today is open, as is one they have spent their three ranked attempts on; their
+// own today (before that) and anything later is locked.
 
 import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
@@ -30,9 +29,8 @@ export const getBoard = method(getBoardBody, true)(
       return ensureDailyIterationId(year, month, day);
     })();
 
-    // The gate (util/boardAccess.ts): a closed day, or one whose ranked
-    // attempts are spent, is open; the caller's own today or a later day is
-    // locked; a day still rankable to their west opens as a recorded preview.
+    // The gate (util/boardAccess.ts): a past day, or one whose ranked attempts
+    // are spent, is open; the caller's own today or a later day is locked.
     //
     // The locked answer is a plain { incomplete } (200), never an error. It used
     // to 403 unless the caller opted into `soft`, and only boot ever did — so

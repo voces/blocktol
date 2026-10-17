@@ -35,10 +35,6 @@ export const nonVoidRunCount = (user: string) =>
 // is demoted iff an earlier-created daily sibling exists on the same iteration
 // (higher time breaks an exact-timestamp tie), so exactly one daily survives.
 //
-// Preview markers (util/boardAccess.ts) move over with INSERT IGNORE: a board
-// either device previewed stays previewed for the merged player, so a merge
-// can't launder a preview into a ranked attempt.
-//
 // The Discord top-PB marker (`pb_top.top_user`, no FK) names the secondary when
 // it holds a day's announced record; it's rewritten to the primary, which now
 // owns the record runs. Left alone it would point at a deleted id, and the next
@@ -78,10 +74,6 @@ export const mergeUsers = (primary: string, secondary: string) =>
 
     INSERT IGNORE INTO flag (user, iteration, data)
       SELECT ${primary}, iteration, data FROM flag WHERE user = ${secondary};
-
-    INSERT IGNORE INTO preview (user, iteration, created)
-      SELECT ${primary}, iteration, created FROM preview WHERE user = ${secondary};
-    DELETE FROM preview WHERE user = ${secondary};
 
     UPDATE pb_top SET top_user = ${primary} WHERE top_user = ${secondary};
 

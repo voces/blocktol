@@ -20,10 +20,9 @@ import { sql } from "./query.ts";
 // endpoint *is* a device identifier (and we must not keep a live push target for a
 // deleted account), and notifications are per-user history nothing else depends
 // on. Splits flags go the same way — they are a private annotation of a board, and
-// unlike the runs no one else's numbers are computed from them — and so do preview
-// markers (util/boardAccess.ts), which only gate this player's own ranked starts.
-// All four have `ON DELETE CASCADE` to user, but we delete them explicitly by the
-// OLD id before the rotation so the intent is on the statement, not a side effect.
+// unlike the runs no one else's numbers are computed from them. All three have
+// `ON DELETE CASCADE` to user, but we delete them explicitly by the OLD id before
+// the rotation so the intent is on the statement, not a side effect.
 //
 // `pb_top.top_user` (the Discord top-PB marker) has no FK, so the rotation doesn't
 // reach it: it would keep the leaving player's raw old id — their credential —
@@ -43,7 +42,6 @@ export const anonymizeUser = (userId: string, newId: string) =>
     DELETE FROM push_subscription WHERE user = ${userId};
     DELETE FROM notification WHERE user = ${userId};
     DELETE FROM flag WHERE user = ${userId};
-    DELETE FROM preview WHERE user = ${userId};
 
     UPDATE pb_top SET top_user = ${newId} WHERE top_user = ${userId};
 

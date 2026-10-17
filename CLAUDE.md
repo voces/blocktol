@@ -333,9 +333,8 @@ double-write):**
 ## Domain model & invariants
 
 Tables: `user`, `iteration`, `block` (an iteration's fixed pieces, kind
-`block|thunder`), `run`, `notification`, `push_subscription`, `flag`, `preview`,
-`pb_top`. Key run flags — get these right, they encode the whole competitive
-model:
+`block|thunder`), `run`, `notification`, `push_subscription`, `flag`, `pb_top`.
+Key run flags — get these right, they encode the whole competitive model:
 
 - **`ranked`** — this run is one of the daily's three counting attempts.
   Recorded **only at `startRun`**, because it depends on the player's _claimed
@@ -363,10 +362,7 @@ against the same marks. They ride the `getBoard` response (and so `boot` /
 `dayView` / every board loader through it) and are written back whole by
 `setFlags`, an absolute-value upsert that is therefore idempotent and retryable.
 Nothing but the owner reads them: they never touch timing, standings, or
-validation. **Previews** (`preview`, migration v16) are the other: a
-`(user, iteration)` marker recording that the board gate (below) showed the
-player a board while it was still rankable to their west, which forfeits ranking
-it.
+validation.
 
 Other invariants:
 
@@ -392,42 +388,40 @@ Other invariants:
   the old flip-void path (no `blocks`). Trusting the client on free play is
   deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
   the time from the submitted maze — only the 60s budget is client-enforced.
-- **Board access is one gate: no one sees a puzzle before ranking it.**
-  `util/boardAccess.ts` (`checkBoardAccess`) decides for `getBoard` (so `boot`
-  and `dayView` too), a free-play `startRun` (numeric iteration) and `commitRun`
-  (both shapes). A day D stays rankable somewhere until it ends in UTC−12
-  (`Etc/GMT+12`). In order: D no longer rankable anywhere → **open**; the caller
-  has opened three `ranked` attempts on it → **open**; D is the caller's local
-  today or later → **locked** (tomorrow's iteration exists — the gen cron runs a
-  day ahead — so a future day is gated like today); D is before the caller's
-  today but still rankable to the west → **open as a preview**, recorded in
-  `preview` before the board is returned, and `startRun` (`db/run.ts`, beside
-  `@isDaily`) then refuses a ranked attempt on it. An honest client only ranks
-  its own local today, which it can never preview, so the marker only bites the
-  claim-another-timezone trick. `commitRun` carries no timezone, so it honours
-  an existing preview but can't grant one (every opening is monotonic in time).
-  A day that just rolled over is therefore immediately replayable, but as a
-  preview until it closes in UTC−12. `updateRun` with no run on the iteration
-  answers `expired` rather than `validateRun`'s reason, which would map a locked
-  board cell by cell. A locked `getBoard` answers a plain
-  **`{ incomplete: true }` (200), never an error** (a locked free-play
-  `startRun`/`commitRun` is a 403 — no honest client asks) — "not yet" is a
-  state, not a fault, and it leaks nothing either way. It used to 403 unless the
-  caller passed `soft`, which only `boot` did; every other path that
-  legitimately lands on an unfinished today (the regrade refetch, a notification
-  tap, `boot`'s own linked-day slice for a today permalink, a calendar pick
-  while parked on a past day) therefore turned a routine "not yet" into a 403 —
-  and since `client/api.ts` relays **every** error response to
-  `reportClientError` from inside the proxy, before the caller can swallow it,
-  each one logged a server-side error even where the call site was written to
-  ignore it. Consumers already branch on `"incomplete" in r` (`store/board.ts`,
-  `useInit`'s regrade); `showBoard` re-requests once on `{ incomplete }` so a
-  stale prime (notably the linked-day slice a `/YYYYMMDD`-for-today boot
-  stashes) can't wedge the first real stage. **Ranked play is a strictly
-  local-day affair** — the client hard-cuts a ranked attempt's build window at
-  the player's local midnight (an in-progress attempt executes early; no further
-  attempts open on the old day), and surfaces the new day via an explicit switch
-  (see the daily-rollover flow).
+- **Free play is gated only on the player's own today and later.**
+  `util/boardAccess.ts` (`checkBoardAccess`) is the one gate, for `getBoard` (so
+  `boot` and `dayView` too), a free-play `startRun` (numeric iteration) and
+  `commitRun` (both shapes; it carries the client's `timeZone`, and a cached
+  client that sends none is read as the westernmost zone, `Etc/GMT+12`). Every
+  day before the caller's local today is **open** — any past date, including the
+  one that just rolled over, is replayable at once, even with today's daily
+  still outstanding. Their own today is **locked** until they have opened three
+  `ranked` attempts on it (no previewing/practising the puzzle you're about to
+  rank), and a later day is locked outright: tomorrow's iteration exists (the
+  gen cron runs a day ahead), and before this gate it was one request away.
+  `updateRun` with no run on the iteration answers `expired` rather than
+  `validateRun`'s reason, which would map a locked board cell by cell. This is
+  deliberately **minimal** anti-cheat: "today" is the timezone the client
+  claims, and a throwaway id that spends three attempts unlocks the board too;
+  neither is worth more machinery when multi-accounting and solvers are open
+  anyway. A locked `getBoard` answers a plain **`{ incomplete: true }` (200),
+  never an error** (a locked free-play `startRun`/`commitRun` is a 403 — no
+  honest client asks) — "not yet" is a state, not a fault, and it leaks nothing
+  either way. It used to 403 unless the caller passed `soft`, which only `boot`
+  did; every other path that legitimately lands on an unfinished today (the
+  regrade refetch, a notification tap, `boot`'s own linked-day slice for a today
+  permalink, a calendar pick while parked on a past day) therefore turned a
+  routine "not yet" into a 403 — and since `client/api.ts` relays **every**
+  error response to `reportClientError` from inside the proxy, before the caller
+  can swallow it, each one logged a server-side error even where the call site
+  was written to ignore it. Consumers already branch on `"incomplete" in r`
+  (`store/board.ts`, `useInit`'s regrade); `showBoard` re-requests once on
+  `{ incomplete }` so a stale prime (notably the linked-day slice a
+  `/YYYYMMDD`-for-today boot stashes) can't wedge the first real stage. **Ranked
+  play is a strictly local-day affair** — the client hard-cuts a ranked
+  attempt's build window at the player's local midnight (an in-progress attempt
+  executes early; no further attempts open on the old day), and surfaces the new
+  day via an explicit switch (see the daily-rollover flow).
 - `standing(time, min, best)` (`common/standing.ts`) is the one shared
   position-in-field formula used by every surface; `min` is the time of the base
   board's unobstructed shortest path, stored on the iteration. It's a
@@ -460,20 +454,20 @@ Other invariants:
   loser row in one transaction; a nonexistent primary is a 400). The merge must
   not mint attempts: on any iteration where the primary already has a ranked
   attempt, the secondary's runs there move as history (`ranked`/`daily` cleared)
-  — otherwise `daily`'s best-ranked re-point would make it best-of-six. Previews
-  move to the primary (a merge can't launder one), and `pb_top.top_user` (no FK)
-  is rewritten to it. The client-side gate is `MoveGate`/`MoveDevice`.
+  — otherwise `daily`'s best-ranked re-point would make it best-of-six — and
+  `pb_top.top_user` (no FK) is rewritten to the primary. The client-side gate is
+  `MoveGate`/`MoveDevice`.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
-  notifications, push endpoints, board flags, previews, the top-PB records it
-  holds) as one JSON document the client offers as a download. `deleteAccount`
+  notifications, push endpoints, board flags, the top-PB records it holds) as
+  one JSON document the client offers as a download. `deleteAccount`
   (`routes/deleteAccount.ts` → `db/deleteAccount.ts`, `anonymizeUser`) is
   **anonymize-in-place, not a row delete**: it hard-deletes the caller's push
-  subscriptions + notifications + flags + previews (private annotations nothing
-  else is computed from), then rotates `user.id` to a fresh random UUID and
-  clears `name`/`settings`/`locale` (and points `pb_top.top_user`, which has no
-  FK to cascade, at the new id). The runs ride along via
+  subscriptions + notifications + flags (private annotations nothing else is
+  computed from), then rotates `user.id` to a fresh random UUID and clears
+  `name`/`settings`/`locale` (and points `pb_top.top_user`, which has no FK to
+  cascade, at the new id). The runs ride along via
   `FK_run_user ON UPDATE CASCADE`, so the player's build history survives as one
   distinct **anonymous** competitor — the day's field, others' percentiles, and
   the applied ELO deltas aren't rewritten, and every `JOIN user` still resolves.

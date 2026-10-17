@@ -39,11 +39,11 @@ export const startRun = method(startRunBody, true)(
     } else {
       iteration = inputIteration;
       // A numbered start is free play, and it hands back the board — so it
-      // answers to the same gate as getBoard (util/boardAccess.ts), including
-      // recording a preview. The normal client only starts a board it was just
-      // shown, which passed this gate, so a locked answer here is someone
-      // asking for a board they can't see: an error, not getBoard's quiet
-      // { incomplete }, and nothing of the layout.
+      // answers to the same gate as getBoard (util/boardAccess.ts). The normal
+      // client only starts a board it was just shown, which passed this gate,
+      // so a locked answer here is someone asking for a board they can't see:
+      // an error, not getBoard's quiet { incomplete }, and nothing of the
+      // layout.
       if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
         return { error: "board locked", status: 403 };
       }
@@ -65,26 +65,11 @@ export const startRun = method(startRunBody, true)(
 
     // Must finish within the request: the new Deploy tears down the isolate
     // after the response, so a still-pending write can be killed mid-flight.
-    let refused: boolean;
     try {
-      ({ refused } = await dbStartRun(
-        iteration,
-        userId,
-        data.min,
-        year,
-        month,
-        day,
-      ));
+      await dbStartRun(iteration, userId, data.min, year, month, day);
     } catch (err) {
       log.error(req, "failed to start run", { error: errText(err) });
       return { error: "failed to start run", status: 500 };
-    }
-    // The player previewed this daily (saw it while it was still rankable to
-    // their west — util/boardAccess.ts) and this start would have been a ranked
-    // attempt: no run was opened. An honest client can't reach this — it only
-    // ranks its own local today, which it can never preview.
-    if (refused) {
-      return { error: "already previewed this daily", status: 403 };
     }
 
     const best = Math.max(otherBest ?? 0, ownBest ?? 0, data.min);

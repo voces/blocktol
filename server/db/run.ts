@@ -17,13 +17,6 @@ import { raw, sql, sqlOnce } from "./query.ts";
 // flag — the single *counted* result — seeded on the first attempt and
 // re-pointed at the best ranked run as builds save (see updateCurrentRun).
 //
-// A ranked attempt is REFUSED — no row at all, `refused` true — when the player
-// holds a preview marker on the iteration (see util/boardAccess.ts): they were
-// shown this board while it was still rankable to their west, so they've seen
-// the puzzle they'd be ranking. Decided here, beside @isDaily and @priorRuns,
-// because this batch is the one place that knows whether the start would be
-// ranked; a start that wouldn't (a later free-play start) is unaffected.
-//
 // The NOT EXISTS guard dedupes near-simultaneous starts (a double-fired event,
 // two tabs racing boot): the @priorRuns check and the INSERT are separate
 // statements, so two concurrent batches could otherwise both insert — spending
@@ -39,10 +32,9 @@ export const startRun = (
 ) =>
   // sqlOnce: the INSERT isn't idempotent — a retry after a lost response would
   // create a second run, silently spending an extra daily attempt.
-  sqlOnce<unknown[]>`
+  sqlOnce`
     SET @priorRuns := NULL;
     SET @isDaily := FALSE;
-    SET @previewed := FALSE;
 
     SELECT @priorRuns := COUNT(1)
     FROM run
@@ -56,29 +48,17 @@ export const startRun = (
       AND DAY(created) = ${day}
     ORDER BY id LIMIT 1;
 
-    SELECT @previewed := EXISTS(
-      SELECT 1 FROM preview WHERE user = ${user} AND iteration = ${iteration}
-    );
-
     INSERT INTO run (user, iteration, time, data, void, daily, ranked)
     SELECT ${user}, ${iteration}, ${minTime}, '', TRUE,
       (@priorRuns = 0) AND @isDaily,
       (@priorRuns < 3) AND @isDaily
     FROM DUAL
-    WHERE NOT ((@priorRuns < 3) AND @isDaily AND @previewed)
-      AND NOT EXISTS (
-        SELECT 1 FROM run
-        WHERE user = ${user}
-          AND iteration = ${iteration}
-          AND TIMESTAMPDIFF(SECOND, created, NOW()) < 2
-      );
-
-    SELECT ((@priorRuns < 3) AND @isDaily AND @previewed) refused;`.then(
-    (r) => {
-      const last = r[r.length - 1] as { refused: number | null }[] | undefined;
-      return { refused: !!Number(last?.[0]?.refused ?? 0) };
-    },
-  );
+    WHERE NOT EXISTS (
+      SELECT 1 FROM run
+      WHERE user = ${user}
+        AND iteration = ${iteration}
+        AND TIMESTAMPDIFF(SECOND, created, NOW()) < 2
+    );`;
 
 // Mark the caller's current free-play run non-void once it actually executes
 // (timer expiry or an explicit start). Free-play runs are inserted void and only
@@ -299,3 +279,12 @@ export const getLatestRun = (
       })
       : null
   );
+
+// How many ranked attempts the player has opened on an iteration — void ones
+// included, since abandoning an attempt still spends it. The board gate
+// (util/boardAccess.ts) opens a day's free play once this reaches three.
+export const rankedAttemptCount = (user: string, iteration: number) =>
+  sql<{ n: number }[]>`
+    SELECT COUNT(1) n FROM run
+    WHERE user = ${user} AND iteration = ${iteration} AND ranked = TRUE;
+  `.then((r) => Number(r[0]?.n ?? 0));

@@ -34,10 +34,14 @@ const commitRunBody = z.object({
     z.object({ x: z.number(), y: z.number(), thunder: z.boolean().optional() }),
   ).max(400).optional(),
   clientId: z.string().min(1).max(64).optional(),
+  // The player's zone, for the board gate's "today or later". Optional only for
+  // cached clients from before it was sent; the gate reads its absence as the
+  // westernmost zone (see util/boardAccess.ts).
+  timeZone: z.string().optional(),
 });
 
 export const commitRun = method(commitRunBody, true)(
-  async ({ userId, iteration, blocks, clientId }, req) => {
+  async ({ userId, iteration, blocks, clientId, timeZone }, req) => {
     // The run's server-assigned created (ms epoch), handed back so the client can
     // pin the just-executed run off its optimistic panel row (see
     // insertFreePlayRun). Null on the legacy flip-void path — that client already
@@ -48,12 +52,10 @@ export const commitRun = method(commitRunBody, true)(
     // run into the iteration's live PB field (and, on a still-rankable day, a run
     // row that startRun's @priorRuns would count), so it must not land on a
     // board the caller can't see — nor answer with validateRun's reasons, which
-    // would let a locked board be mapped cell by cell. No timeZone rides a
-    // commit, so this can't grant a fresh preview; it honours one already
-    // granted, which is the only way an honest client reaches a commit on a
-    // still-rankable day it hasn't ranked.
+    // would let a locked board be mapped cell by cell. The honest client only
+    // commits a board getBoard just staged for it, so it never lands here.
     try {
-      if (await checkBoardAccess(userId, iteration) === "locked") {
+      if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
         return { error: "board locked", status: 403 };
       }
     } catch (err) {
