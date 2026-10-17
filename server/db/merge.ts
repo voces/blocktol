@@ -15,16 +15,35 @@ export const nonVoidRunCount = (user: string) =>
 // its row; the mock's "the primary sets what you keep" falls out of leaving the
 // primary row untouched and only moving runs onto it. Nothing is recomputed.
 //
-// The one correction is the daily flag. A day both devices played would leave two
-// runs flagged as that day's counted result, and stats/calendar expect one. We
-// keep the EARLIEST attempt and demote the other — merging can't swap a day's
-// result for a faster run from the other account (an upgrade you didn't earn on
-// the day). And it ONLY ever clears a flag, never sets one: a daily is legitimate
-// only on the user's own local day, decided at creation, so the pool of dailies
-// is fixed to runs already marked and a merge must never mint one from free play.
-// A run is demoted iff an earlier-created daily sibling exists on the same
-// iteration (higher time breaks an exact-timestamp tie), so exactly the single
-// earliest daily survives.
+// The one correction is ranked-ness. A day both devices RANKED would leave the
+// merged player with up to six ranked attempts on it, and the counted result
+// (`daily`) is re-pointed at the best ranked run on every save (updateCurrentRun)
+// — so a merge would turn three-and-three into best-of-six, or let a player rank
+// on a spare id and fold it in only when it went well. So on every iteration
+// where the PRIMARY already has a ranked attempt (void included — an abandoned
+// attempt is still spent), the secondary's runs there are demoted to plain
+// history (ranked = FALSE, daily = FALSE) before they move: the primary's three
+// stand, as "the primary sets what you keep" says, and the secondary's builds
+// survive as free-play-like rows. A day only the secondary ranked moves over
+// whole — it's still one player's three attempts. Demotion only ever clears
+// flags, never sets one: a ranked attempt is legitimate only on the user's own
+// local day, decided at creation, and a merge must never mint one.
+//
+// The earliest-daily pass after the move is the older guard for the same
+// invariant (one counted result per day). With the demotion above it can no
+// longer find two dailies on an iteration, but it's kept as the backstop: a run
+// is demoted iff an earlier-created daily sibling exists on the same iteration
+// (higher time breaks an exact-timestamp tie), so exactly one daily survives.
+//
+// Preview markers (util/boardAccess.ts) move over with INSERT IGNORE: a board
+// either device previewed stays previewed for the merged player, so a merge
+// can't launder a preview into a ranked attempt.
+//
+// The Discord top-PB marker (`pb_top.top_user`, no FK) names the secondary when
+// it holds a day's announced record; it's rewritten to the primary, which now
+// owns the record runs. Left alone it would point at a deleted id, and the next
+// build by the (merged) holder would read as a lead CHANGE (a fresh post) rather
+// than the same holder improving (an edit).
 //
 // Splits flags come across too, but only for boards the primary has none of
 // (INSERT IGNORE on the (user, iteration) key): the primary keeps its own marks
@@ -37,6 +56,14 @@ export const nonVoidRunCount = (user: string) =>
 export const mergeUsers = (primary: string, secondary: string) =>
   sql`
     START TRANSACTION;
+
+    UPDATE run s
+    JOIN run p
+      ON p.iteration = s.iteration
+      AND p.user = ${primary}
+      AND p.ranked = TRUE
+    SET s.ranked = FALSE, s.daily = FALSE
+    WHERE s.user = ${secondary} AND (s.ranked = TRUE OR s.daily = TRUE);
 
     UPDATE run SET user = ${primary} WHERE user = ${secondary};
 
@@ -51,6 +78,12 @@ export const mergeUsers = (primary: string, secondary: string) =>
 
     INSERT IGNORE INTO flag (user, iteration, data)
       SELECT ${primary}, iteration, data FROM flag WHERE user = ${secondary};
+
+    INSERT IGNORE INTO preview (user, iteration, created)
+      SELECT ${primary}, iteration, created FROM preview WHERE user = ${secondary};
+    DELETE FROM preview WHERE user = ${secondary};
+
+    UPDATE pb_top SET top_user = ${primary} WHERE top_user = ${secondary};
 
     DELETE FROM user WHERE id = ${secondary};
 
