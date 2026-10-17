@@ -24,6 +24,12 @@ import { sql } from "./query.ts";
 // `ON DELETE CASCADE` to user, but we delete them explicitly by the OLD id before
 // the rotation so the intent is on the statement, not a side effect.
 //
+// `pb_top.top_user` (the Discord top-PB marker) has no FK, so the rotation doesn't
+// reach it: it would keep the leaving player's raw old id — their credential —
+// forever. It's rewritten to the new anonymous id alongside, which keeps the
+// marker coherent for pbBoard's same-holder checks (the record runs now belong to
+// that id) where NULL isn't an option (the column is NOT NULL).
+//
 // Retry-safe under `sql`'s one retry: a lost response re-runs the whole batch, but
 // by then the old id no longer exists, so the DELETEs and the UPDATE all match
 // zero rows — a harmless no-op. `newId` is fixed by the caller and reused verbatim
@@ -36,6 +42,8 @@ export const anonymizeUser = (userId: string, newId: string) =>
     DELETE FROM push_subscription WHERE user = ${userId};
     DELETE FROM notification WHERE user = ${userId};
     DELETE FROM flag WHERE user = ${userId};
+
+    UPDATE pb_top SET top_user = ${newId} WHERE top_user = ${userId};
 
     UPDATE \`user\`
     SET id = ${newId}, name = NULL, settings = NULL, locale = NULL
