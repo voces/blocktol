@@ -61,11 +61,17 @@ export const MoveDevice = (
   const [copied, setCopied] = useState(false);
   const copiedTimeout = useRef(-1);
 
+  // "Copied" only once the clipboard took it — a refused or missing clipboard
+  // must not claim the player's sign-in link is saved.
   const copy = () => {
-    navigator.clipboard?.writeText(url);
-    setCopied(true);
-    clearTimeout(copiedTimeout.current);
-    copiedTimeout.current = setTimeout(() => setCopied(false), 1500);
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(url))
+      .then(() => {
+        setCopied(true);
+        clearTimeout(copiedTimeout.current);
+        copiedTimeout.current = setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => {});
   };
 
   return (
