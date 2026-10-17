@@ -3,6 +3,7 @@ import { noteFailure, noteSuccess } from "./store/connection.ts";
 import { CLIENT_SHA, noteServerVersion } from "./store/version.ts";
 import { Emitter, emitter } from "./util/emitter.ts";
 import { getId } from "./util/id.ts";
+import { allowReport } from "./util/reportGate.ts";
 
 export type MessageMap =
   & {
@@ -35,6 +36,9 @@ const primed = new Map<string, Promise<Response>>();
 const primeKey = (method: string, input: unknown) =>
   `${method}:${JSON.stringify(input ?? null)}`;
 
+// Set only for the synchronous extent of withKeepalive (below).
+let keepalive = false;
+
 const doFetch = (method: string, input: unknown) =>
   fetch(`/api/${method}`, {
     method: "POST",
@@ -43,10 +47,27 @@ const doFetch = (method: string, input: unknown) =>
     // skew of who's calling it (beginLogger). The server answers with its own
     // build in x-blocktol-server-sha, which we read below to detect a stale tab.
     headers: { authorization: getId(), "x-blocktol-client-sha": CLIENT_SHA },
+    keepalive,
   });
 
-// Methods safe to auto-retry on a transport failure (fetch rejected — the
-// server never sent a response, so the request most likely never landed).
+// Issue the api calls `fn` makes with `keepalive: true`, so they outlive the
+// page being hidden or unloaded (the ranked saver's flush on pagehide). A call
+// sends its first fetch synchronously, so a flag scoped to the synchronous
+// call is enough — and deliberately doesn't reach a later retry, which only
+// runs while the page is still alive anyway. (keepalive caps the body at 64KB;
+// a maze is a few KB.)
+export const withKeepalive = <T>(fn: () => T): T => {
+  keepalive = true;
+  try {
+    return fn();
+  } finally {
+    keepalive = false;
+  }
+};
+
+// Methods safe to auto-retry on a transport failure (fetch rejected, or a
+// gateway/non-JSON response — see TransportError — so the request most likely
+// never landed).
 // Retrying is only sound when a repeat can't double-apply: reads (idempotent)
 // and idempotent/last-write-wins writes. Deliberately EXCLUDED:
 //   - updateRun   — runSaver.ts owns its own coalescing retry+backoff; a second
@@ -92,21 +113,47 @@ const RETRY_BACKOFF_MS = [400, 1_200, 3_000];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Resolve the Response for a call, retrying transport failures for methods that
-// are safe to repeat. A retry fires ONLY when fetch itself rejects (no response
-// at all); an HTTP error status is a real, deterministic server answer and is
-// returned as-is for the caller to handle. Non-retryable methods throw on the
-// first transport failure, exactly as before.
-const fetchResponse = async (
+// A response that is not the API answering. nginx in front of the co-located
+// instance answers 502/503/504 with an HTML page while the upstream restarts
+// (every deploy), and anything else that isn't JSON came from something other
+// than our handler too. Either way the request most likely never reached the
+// app, so it is a transport failure, not a server verdict: retryable methods
+// retry it, and it feeds the connection tracker rather than the error channel.
+export class TransportError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+
+const readJson = async (resp: Response) => {
+  if (GATEWAY_STATUSES.has(resp.status)) {
+    throw new TransportError(`gateway ${resp.status}`, resp.status);
+  }
+  try {
+    return await resp.json();
+  } catch {
+    throw new TransportError(`non-JSON response (${resp.status})`, resp.status);
+  }
+};
+
+// Fetch and decode a call, retrying transport failures for methods that are
+// safe to repeat: fetch rejecting (no response at all) or a TransportError
+// above. A JSON answer — error statuses included — is a real, deterministic
+// server verdict and is returned as-is for the caller to handle. Non-retryable
+// methods throw on the first transport failure.
+const fetchJson = async (
   method: string,
   input: unknown,
-): Promise<Response> => {
+): Promise<{ resp: Response; data: unknown }> => {
   const retries = RETRYABLE.has(method as keyof BlocktolApi)
     ? RETRY_BACKOFF_MS.length
     : 0;
   for (let attempt = 0;; attempt++) {
     try {
-      return await doFetch(method, input);
+      const resp = await doFetch(method, input);
+      return { resp, data: await readJson(resp) };
     } catch (err) {
       if (attempt >= retries) throw err;
       await sleep(RETRY_BACKOFF_MS[attempt] + Math.random() * 250);
@@ -250,6 +297,28 @@ export const primeBoot = (
   return bootData as Promise<MessageMap["boot"]>;
 };
 
+// Relay a failed request to the server's log. Through the shared report
+// throttle (util/reportGate.ts), keyed per method + status: every error
+// response used to fire its own report, so a polling or retrying caller hitting
+// the same fault sent one per attempt — the amplification the global handlers'
+// dedupe already prevented for crashes. And never a failed REPORT:
+// reportClientError rides this same proxy, so during an outage every failed
+// report would otherwise fire another — an unbounded loop hammering the server
+// exactly when it's least healthy. Fire-and-forget; its own failure is
+// swallowed so it can't surface as an unhandled rejection.
+const reportFailedRequest = (
+  method: string,
+  status: number,
+  error: unknown,
+) => {
+  if (method === "reportClientError") return;
+  if (!allowReport(`Failed request: ${method} ${status}`)) return;
+  api.reportClientError({
+    message: "Failed request",
+    data: { status, method, error },
+  }).catch(() => {});
+};
+
 export const api = new Proxy({}, {
   get<
     Method extends
@@ -269,6 +338,7 @@ export const api = new Proxy({}, {
       const preloaded = primed.get(key);
       if (preloaded) primed.delete(key);
       let resp: Response;
+      let data: unknown;
       try {
         // Consume the primed response if there is one; if that primed fetch
         // failed at the transport level, fall through to a fresh, retried fetch
@@ -276,17 +346,25 @@ export const api = new Proxy({}, {
         if (preloaded) {
           try {
             resp = await preloaded;
+            data = await readJson(resp);
           } catch {
-            resp = await fetchResponse(method, input);
+            ({ resp, data } = await fetchJson(method, input));
           }
         } else {
-          resp = await fetchResponse(method, input);
+          ({ resp, data } = await fetchJson(method, input));
         }
       } catch (err) {
         // Transport-level failure that survived any retries (the server never
-        // responded): feed the connection tracker, which surfaces the
-        // Disconnected overlay once failures persist.
+        // answered): feed the connection tracker, which surfaces the
+        // Disconnected overlay once failures persist. A non-JSON body that is
+        // NOT a gateway page is unexpected enough to report (a gateway page is
+        // every deploy, and the server isn't there to hear about it).
         noteFailure();
+        if (
+          err instanceof TransportError && !GATEWAY_STATUSES.has(err.status)
+        ) {
+          reportFailedRequest(method, err.status, err.message);
+        }
         throw err;
       }
       noteSuccess();
@@ -295,38 +373,14 @@ export const api = new Proxy({}, {
       // store/version.ts, useVersionRefresh). Synthetic primed responses carry no
       // header — a no-op.
       noteServerVersion(resp.headers.get("x-blocktol-server-sha"));
-      try {
-        const data = await resp.json();
-        if (!("error" in data)) em.dispatchEvent(method, data);
-        else {
-          // Never report a failed report: reportClientError rides this same
-          // proxy, so during an outage every failed report would otherwise fire
-          // another — an unbounded loop hammering the server exactly when it's
-          // least healthy.
-          if (method !== "reportClientError") {
-            // Fire-and-forget; swallow its own failure (e.g. network down) so
-            // it doesn't surface as an unhandled rejection.
-            api.reportClientError({
-              message: "Failed request",
-              data: { status: resp.status, method, error: data.error },
-            }).catch(() => {});
-          }
-          em.dispatchEvent("error", { method, input, error: data });
-        }
-        return data;
-      } catch (err) {
-        if (method !== "reportClientError") {
-          api.reportClientError({
-            message: "Failed request",
-            data: {
-              status: resp.status,
-              method,
-              error: err instanceof Error ? err.message : String(err),
-            },
-          }).catch(() => {});
-        }
-        throw err;
+      if (data && typeof data === "object" && "error" in data) {
+        reportFailedRequest(method, resp.status, data.error);
+        em.dispatchEvent("error", { method, input, error: data });
+      } else {
+        // deno-lint-ignore no-explicit-any
+        em.dispatchEvent(method, data as any);
       }
+      return data;
     };
   },
 }) as unknown as Emitter<MessageMap> & BlocktolApi;

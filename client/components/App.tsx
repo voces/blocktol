@@ -30,6 +30,13 @@ import { syncPushSubscription } from "../util/push.ts";
 import { getCleanLink, getId, getPendingLink } from "../util/id.ts";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
 import { useVersionRefresh } from "../hooks/useVersionRefresh.ts";
+import { CrashScreen } from "./ErrorBoundary.tsx";
+
+// The boot summary's retry schedule: quadratic backoff capped at this, and how
+// many error ANSWERS (as opposed to dropped connections) to retry before
+// showing the error screen.
+const BOOT_RETRY_MAX_MS = 30_000;
+const BOOT_ERROR_RETRIES = 3;
 
 const Shell = (
   { children, gameState }: {
@@ -149,6 +156,10 @@ export const App = () => {
   }, [toast]);
   const [retry, setRetry] = useState(0);
   const [disconnected, setDisconnected] = useState(false);
+  // Boot summaries answered with an error so far, and whether that has gone on
+  // long enough to stop retrying and show the error screen.
+  const bootErrors = useRef(0);
+  const [bootFailed, setBootFailed] = useState(false);
   // Bumped when the app returns to the foreground still stuck on an unstaged
   // board (see the resume-recovery effect below); re-runs the boot staging.
   const [resumeNonce, setResumeNonce] = useState(0);
@@ -158,21 +169,35 @@ export const App = () => {
 
     // The calendar loads its own months on mount (and the today-result panel
     // shares that data), so no list() call is needed here.
+    // Retry with a backoff that tops out, rather than growing without bound.
+    const again = () =>
+      setTimeout(
+        () => setRetry((r) => r + 1),
+        Math.min((retry + 1) ** 2 * 100, BOOT_RETRY_MAX_MS),
+      );
     api.getDailySummary({ timeZone: getTimeZone() }).then((ret) => {
       setDisconnected(false);
       if ("error" in ret) {
+        // The server ANSWERED, with an error. A few retries ride out a
+        // transient fault (a DB hiccup's 500); past that it's a real failure
+        // that retrying forever would only hammer — each attempt reported —
+        // behind a "Connecting…" overlay that was never true. Say so instead.
+        bootErrors.current++;
+        if (bootErrors.current > BOOT_ERROR_RETRIES) return setBootFailed(true);
         setDisconnected(true);
-        setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
+        again();
         return;
       }
+      bootErrors.current = 0;
       // Staging is the summary listener's job now (useInit): it resumes an
       // in-progress run (currentRun) or raises the explicit "Start attempt"
       // overlay when attempts remain. Nothing auto-starts here — an attempt
       // opens only when the player taps Start, so a background boot can't
       // silently spend one.
     }).catch(() => {
+      // No answer at all: genuinely disconnected — keep trying.
       setDisconnected(true);
-      setTimeout(() => setRetry((r) => r + 1), (retry + 1) ** 2 * 100);
+      again();
     });
     // Warm the profile cache in parallel — the route seeds the user row
     // itself, so this no longer waits on the summary's first-load seeding.
@@ -247,6 +272,8 @@ export const App = () => {
   if (linkPending) {
     return <MoveGate onResolved={() => setLinkPending(false)} />;
   }
+
+  if (bootFailed) return <CrashScreen />;
 
   if (showOnboarding) {
     return (

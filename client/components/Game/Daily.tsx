@@ -138,17 +138,17 @@ export const Daily = () => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!("clipboard" in navigator)) return;
-
-    navigator.clipboard.write([
-      new ClipboardItem({
-        "text/plain": new Blob([shareText], { type: "text/plain" }),
-      }),
-    ]);
-
-    setCopied(true);
-    clearTimeout(timeout);
-    setTimeoutId(setTimeout(() => setCopied(false), 1500));
+    // Plain writeText: `ClipboardItem` doesn't exist everywhere (a
+    // ReferenceError there), and the write can be refused. "Copied" is shown
+    // only once it actually landed; a failure just leaves the button as it was.
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(shareText))
+      .then(() => {
+        setCopied(true);
+        clearTimeout(timeout);
+        setTimeoutId(setTimeout(() => setCopied(false), 1500));
+      })
+      .catch(() => {});
   };
 
   return (

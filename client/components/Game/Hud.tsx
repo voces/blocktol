@@ -1,6 +1,6 @@
 import { Fragment, h, JSX } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
-import { showBoard, startBoardRun } from "../../store/board.ts";
+import { showBoard } from "../../store/board.ts";
 import { rankedEndsAtMidnight } from "../../store/dailyRollover.ts";
 import { Timer } from "../Timer.tsx";
 import { clearFreePlay } from "./freePlay.ts";
@@ -120,19 +120,6 @@ export const Hud = () => {
   // views sit at -1). Daily runs (freePlay false) never get it.
   const showReset = freePlay && phase !== "staged" &&
     (phase !== "viewing" || time > 0);
-
-  // Keyboard shortcut: R runs the current build now, or starts a fresh run once
-  // the previous one has finished (power === -1 marks the idle/finished state).
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== "KeyR" || e.metaKey || !run) return;
-      if (power === -1) {
-        if (iteration) startBoardRun(iteration);
-      } else setTime(0);
-    };
-    globalThis.addEventListener("keydown", onKeyDown);
-    return () => globalThis.removeEventListener("keydown", onKeyDown);
-  }, [run, power, iteration]);
 
   // Idle nudge: flash "Ready?" once the player stops building for a spell. Any
   // build action (a placement, upgrade, delete, or move) touches blocks/bricks/

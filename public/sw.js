@@ -34,10 +34,14 @@ const FONT_ORIGINS = [
 
 self.addEventListener("install", (event) => {
   // Precache each entry independently so one missing asset can't fail the whole
-  // install (unlike cache.addAll's all-or-nothing).
+  // install (unlike cache.addAll's all-or-nothing). Versioned entries are
+  // checked against their `?v` like any cache fill (see cacheFirst).
   event.waitUntil(
     caches.open(ASSET_CACHE).then((cache) =>
-      Promise.allSettled(PRECACHE.map((url) => cache.add(url)))
+      Promise.allSettled(PRECACHE.map(async (url) => {
+        const res = await fetch(url);
+        if (res.ok) await putIfVersion(cache, url, res);
+      }))
     ),
   );
   self.skipWaiting();
@@ -59,16 +63,39 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// The `?v` a response's bytes actually deserve: the same truncated SHA-256 the
+// server stamps (server/util/assets.ts `shortHash` — keep the two in step).
+const contentVersion = async (res) => {
+  const digest = await crypto.subtle.digest("SHA-256", await res.arrayBuffer());
+  return Array.from(new Uint8Array(digest).slice(0, 6))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 // Serve from cache, fetching and filling on a miss. Used for fingerprinted
 // assets, whose url changes on any content change — so a cached hit is never
-// stale.
+// stale. Only bytes that really ARE the requested version get cached: during
+// an in-place deploy the outgoing process still stamps its old `?v` while the
+// files on disk are already the new build, and caching those new bytes under
+// the old url pinned them there for good — the new bundle then met the old
+// server's SHA, reloaded, got the same cached bundle, and looped. A mismatch
+// is still served (the page has to load), just never stored.
 const cacheFirst = async (request, cacheName) => {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(request);
   if (hit) return hit;
   const res = await fetch(request);
-  if (res.ok) cache.put(request, res.clone());
+  if (res.ok) putIfVersion(cache, request, res.clone()).catch(() => {});
   return res;
+};
+
+// Store `res` for `request` — when the url is versioned, only if the bytes
+// match that version (see cacheFirst).
+const putIfVersion = async (cache, request, res) => {
+  const v = new URL(request.url ?? request, self.location.origin).searchParams
+    .get("v");
+  if (v && (await contentVersion(res.clone())) !== v) return;
+  await cache.put(request, res);
 };
 
 // Serve the cached copy at once and refresh it in the background. Used for

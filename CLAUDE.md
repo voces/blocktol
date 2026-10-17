@@ -427,16 +427,24 @@ Other invariants:
   at execution, via `commitRun`. That commit is a single idempotent `INSERT`
   keyed by a client-generated `client_id` (migration v8), so it is
   **retryable**: a connection dropped by a deploy retries onto a fresh isolate
-  and lands rather than losing the run. `commitRun` stays backwards compatible —
-  a legacy cached client that still `startRun`+`updateRun`+bare-committed hits
-  the old flip-void path (no `blocks`). Trusting the client on free play is
-  deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
-  the time from the submitted maze — only the 60s budget is client-enforced. The
-  ranked server window (`updateCurrentRun`) is an elapsed-seconds `< 61`,
-  deliberately: over whole-second timestamps `< 60` closed 0–1s _before_ the
-  true 60s, more than `SAVE_GRACE_MS` covers; `< 61` never closes before
-  insert + 60s and at most 1s after. Freshness is computed once (`@fresh`) and
-  gates the UPDATE, so `saved` always matches whether the write happened.
+  and lands rather than losing the run. Beyond those retries the executed maze
+  sits in a **commit outbox** (`freePlay.ts`, `localStorage`) from before the
+  send until the server answers for it (a 5xx stays queued, a verdict on the
+  maze is dropped), and is re-sent after the next boot, on `online`, and after
+  any landed commit — the client_id makes the replay a no-op if the first send
+  did land. The outbox keeps only the **best** queued run per board (per player;
+  a tie keeps the earlier), since only the best can move a record — every run is
+  still sent at execution, only the retry queue is thinned. `commitRun` stays
+  backwards compatible — a legacy cached client that still
+  `startRun`+`updateRun`+bare-committed hits the old flip-void path (no
+  `blocks`). Trusting the client on free play is deliberate: it's post-ranked,
+  never feeds ELO, and the server still recomputes the time from the submitted
+  maze — only the 60s budget is client-enforced. The ranked server window
+  (`updateCurrentRun`) is an elapsed-seconds `< 61`, deliberately: over
+  whole-second timestamps `< 60` closed 0–1s _before_ the true 60s, more than
+  `SAVE_GRACE_MS` covers; `< 61` never closes before insert + 60s and at most 1s
+  after. Freshness is computed once (`@fresh`) and gates the UPDATE, so `saved`
+  always matches whether the write happened.
 - **Free play is gated only on the player's own today and later.**
   `util/boardAccess.ts` (`checkBoardAccess`) is the one gate, for `getBoard` (so
   `boot` and `dayView` too), a free-play `startRun` (numeric iteration) and
@@ -511,7 +519,9 @@ Other invariants:
   attempt, the secondary's runs there move as history (`ranked`/`daily` cleared)
   — otherwise `daily`'s best-ranked re-point would make it best-of-six — and
   `pb_top.top_user` (no FK) is rewritten to the primary. The client-side gate is
-  `MoveGate`/`MoveDevice`. `extractUserId` admits only the id shape ever minted
+  `MoveGate`/`MoveDevice` — which adopts the link's id only after `merge`
+  succeeds: adopting over a failed merge overwrote the device's only copy of its
+  old credential. `extractUserId` admits only the id shape ever minted
   (`[A-Za-z0-9_-]{1,36}` — `user.id` is char(36)); any other header is treated
   exactly like a missing one (anonymous, so authed methods 401), logged by
   length only.
@@ -572,19 +582,28 @@ priming today's board/standings so it can stage the linked day instead.
 successful response dispatches an event keyed by method; `error` is its own
 channel), which `hooks/useApiListener.ts` and the stores subscribe to. `prime()`
 stashes an in-flight boot response for the next call of that method to consume.
-Retries (transport failures only, never HTTP errors) are gated by a `RETRYABLE`
-allowlist — non-idempotent lifecycle writes (`startRun`/`merge`, and
-`updateRun`, which has its own saver) are deliberately excluded. `commitRun`
-**is** retryable: its free-play `INSERT` is `client_id`-guarded (idempotent) and
-the legacy path is an idempotent flip-to-non-void, so a deploy-dropped commit
-can safely retry.
+Retries (transport failures only, never an API error answer) are gated by a
+`RETRYABLE` allowlist — non-idempotent lifecycle writes (`startRun`/`merge`, and
+`updateRun`, which has its own saver) are deliberately excluded. "Transport"
+includes a **502/503/504 or any non-JSON body** (`TransportError`): nginx's HTML
+page while the upstream restarts is not our handler answering, so it retries and
+feeds the connection tracker like a rejected fetch. `commitRun` **is**
+retryable: its free-play `INSERT` is `client_id`-guarded (idempotent) and the
+legacy path is an idempotent flip-to-non-void, so a deploy-dropped commit can
+safely retry. Error answers are relayed to `reportClientError` through the same
+dedupe/cap as crash reports (`util/reportGate.ts`, keyed method + status).
+`withKeepalive(fn)` marks the requests `fn` issues `keepalive` (the ranked
+saver's flush on `pagehide`/hidden).
 
 **State — `@preact/signals`, not context** (writes bypass the render path):
 
 - `client/store/*` are module-level signal stores fed by the api emitter:
-  `board` (normalized per-iteration board cache + `showBoard`/`startBoardRun`
+  `board` (normalized per-iteration board cache + `showBoard`/`startDailyRun`
   loaders with a monotonic seq token so out-of-order responses can't stage a
-  stale board), `standings`, `profile`, `notifications`, `notifNav` (deep-link
+  stale board; a Start whose `startRun` answer is lost re-checks
+  `getDailySummary` and resumes the attempt if the server opened it — one more
+  ranked run than were spent — instead of re-enabling a button that would burn a
+  second one), `standings`, `profile`, `notifications`, `notifNav` (deep-link
   routing — effectively the app's router), `connection` (drives the Disconnected
   overlay), `dailyItems`, `discord`. `store/query.ts` is not a data store but
   the shared coalesce/dedupe/stale-window cache primitive the others build on.
@@ -617,34 +636,44 @@ that ramps from 2s down to 0 over the final 10s (`saveDebounce`). At run start
 `flushRunSaver` **sends** the pending maze immediately (rather than reverting to
 the last confirmed one — that would drop a debounced edit the player hasn't
 waited out, e.g. tapping "Ready?" mid-build); if the window has already closed
-the flush comes back expired and `onExpired` snaps the board back. **Free play**
-bypasses the saver entirely: `freePlay.ts` mints the per-attempt `client_id`,
-mirrors the maze to `localStorage` for reload-resume, and `commitRun` fires once
-at execution; `useInit` awaits that commit before re-staging so a slow
-(retrying) commit can't let the re-stage drop the run from recents. Picking a
-maze to review RELEASES the runner over it (`viewMaze`'s `replay`, defaulting on
-— asking to see a maze means asking to see it run; re-picking the row runs it
-again), which is also why `runFinish` bails while `viewing`: a replay is not an
-attempt finishing and must not commit, re-stage, or spend anything. The one
-caller that opts out is the review a just-finished free-play run lands in, which
-would replay the run you were already watching. A reviewed board stays inert to
-placement, but a hover (or, on touch, a tap) still reveals a thunder's radius —
-the day's pieces and the reviewed maze's alike, which is the point of studying a
-maze. Navigating away mid-build (reviewing a maze, another day) deliberately
-does NOT abandon the build — the record stays, and staging its board within the
-window resumes it. A free-play run that FINISHES doesn't clear the board either:
-the re-stage still runs (it refreshes the board's bests and recents), and the
-executed maze is then overlaid back onto it as a review — the run you just
-watched stays up, its row reads "viewing", and its splits are there to read.
-Play stages a fresh board when you want one. Its window doesn't pause either:
-reviewing a past maze keeps the live countdown in the HUD's Play slot alongside
-the reset button, and reset there clears the attempt while staying on the
-reviewed maze (the input hooks gate on `viewing`, so the ticking clock never
-makes a reviewed board editable). Should the window expire mid-review, the board
-hands back to the build (restored from the local record via `pendingFreePlay`,
-the one read that ignores the deadline) and it executes normally — committed,
-runner released. `useClock`/`RunClock` run the 60s/animation timing;
-`verdict.ts` computes the result.
+the flush comes back expired and `onExpired` snaps the board back — blocks AND
+the run (`revertToSaved` recomputes it with `localRun`, so the runner walks the
+maze the server holds). The saver also flushes immediately (with `keepalive`)
+when the page is hidden or unloaded, since a hidden page's debounce timer may
+not fire until the window has closed. **Free play** bypasses the saver entirely:
+`freePlay.ts` mints the per-attempt `client_id`, mirrors the maze to
+`localStorage` for reload-resume, and `commitFreePlay` fires once at execution
+(through the commit outbox — see the run lifecycle); `useInit` awaits that
+commit before re-staging so a slow (retrying) commit can't let the re-stage drop
+the run from recents. Execution itself is the `time === 0` effect in `useInit`,
+which refuses unless the build is live (not `viewing`, `staged` or in prestart).
+There is deliberately **no keyboard shortcut** for running a build: an
+undiscoverable global "R" key once re-committed a running free-play run under a
+fresh id, committed reviewed mazes, and fired from text inputs, so it was
+removed rather than patched. Picking a maze to review RELEASES the runner over
+it (`viewMaze`'s `replay`, defaulting on — asking to see a maze means asking to
+see it run; re-picking the row runs it again), which is also why `runFinish`
+bails while `viewing`: a replay is not an attempt finishing and must not commit,
+re-stage, or spend anything. The one caller that opts out is the review a
+just-finished free-play run lands in, which would replay the run you were
+already watching. A reviewed board stays inert to placement, but a hover (or, on
+touch, a tap) still reveals a thunder's radius — the day's pieces and the
+reviewed maze's alike, which is the point of studying a maze. Navigating away
+mid-build (reviewing a maze, another day) deliberately does NOT abandon the
+build — the record stays, and staging its board within the window resumes it. A
+free-play run that FINISHES doesn't clear the board either: the re-stage still
+runs (it refreshes the board's bests and recents), and the executed maze is then
+overlaid back onto it as a review — the run you just watched stays up, its row
+reads "viewing", and its splits are there to read. Play stages a fresh board
+when you want one. Its window doesn't pause either: reviewing a past maze keeps
+the live countdown in the HUD's Play slot alongside the reset button, and reset
+there clears the attempt while staying on the reviewed maze (the input hooks
+gate on `viewing`, so the ticking clock never makes a reviewed board editable).
+Should the window expire mid-review, the board hands back to the build (restored
+from the local record via `pendingFreePlay`, the one read that ignores the
+deadline) and it executes normally — committed, runner released.
+`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
+result.
 
 **Splits & flags (`Game/Splits.tsx`, `components/FlagLayer.tsx`,
 `store/flags.ts`):** the tape above the runs list, rendered inside `.attempts`
@@ -1023,10 +1052,18 @@ request logs `serverSha` (this process's build) and `clientSha` (the caller's
 bundle, sent as the `x-blocktol-client-sha` header) on the start line, so
 version skew is queryable. `endLogger` stamps `x-blocktol-server-sha` on
 responses; the client reads it (`api.ts` → `store/version.ts`) and, when the
-server's build is newer than its own bundle, flips a sticky `staleClient`
+server's build differs from its own bundle, sets a sticky `staleServerSha`
 signal. `useVersionRefresh` (wired in `App`) then `location.reload()`s to pick
 up the fresh assets — but **never mid-attempt** (deferred while the board phase
-is `building`/`running`; the sticky flag reloads once the attempt ends).
+is `building`/`running`; the sticky flag reloads once the attempt ends), and
+**at most once per server build** (`claimReloadFor`, a marker in storage; no
+auto-reload where storage is blocked). Mid in-place deploy the outgoing process
+can answer a client already holding the new bundle, which no reload fixes —
+unguarded, that looped. The same deploy window once poisoned caches: the old
+process stamps its old `?v` while disk holds the new files. So `sw.js` caches a
+versioned asset only if its bytes hash to its `?v` (the server's `shortHash`,
+mirrored), and `staticServe` marks an asset immutable only while its file's
+mtime is the one this process hashed.
 
 The user id rides telemetry only as a **hashed** tag (`userHash` in the request
 log, `user.hash` on the request span), via `util/hashUserId.ts` (a truncated

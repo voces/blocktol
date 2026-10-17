@@ -24,12 +24,13 @@ import {
   ingestBoard,
   setBoardHandlers,
   showBoard,
+  takeLostStart,
 } from "../../store/board.ts";
 import { localRun, rebuildGrid } from "./helpers.ts";
 import {
   awaitPendingCommit,
   clearFreePlay,
-  freePlayClientId,
+  commitFreePlay,
   pendingFreePlay,
   resumableFreePlay,
   setPendingCommit,
@@ -88,6 +89,8 @@ export const useInit = () => {
     iteration,
     setIteration,
     setStaged,
+    staged,
+    prestart,
     freePlay,
     setFreePlay,
     setPrestart,
@@ -321,6 +324,21 @@ export const useInit = () => {
       // day switch re-pins itself via playNewDaily.
       if (time === -2) pinSessionDay();
 
+      // The re-check after a ranked Start lost its answer (startDailyRun): one
+      // more ranked run than were spent, with a window open, means the server
+      // DID open the attempt — resume it exactly as a boot would, rather than
+      // let the prestart offer a second Start that would burn another. Handled
+      // first: the branches below read this summary as "nothing in progress"
+      // (a third attempt would even raise the result card).
+      const lost = takeLostStart();
+      if (lost !== null && currentRun && ranked.length > lost) {
+        setAttemptsRemaining(3 - ranked.length + 1);
+        ingestBoard({ ...currentRun, attempts });
+        handleRun(currentRun);
+        setViewedAttempts(attempts);
+        return;
+      }
+
       // `attempts` is the full list (panel); `ranked` (first three) drives the
       // result modal and the attempts-remaining count.
       //
@@ -477,9 +495,14 @@ export const useInit = () => {
   }, [time, viewing, freePlay, iteration, blocks, checkpoint]);
 
   useEffect(() => {
-    if (time !== 0 || !run) return;
+    // Only a LIVE build executes. A review (its replay is not an attempt — the
+    // expiry hand-off above drops `viewing` first when a build really is due),
+    // a staged board, or the prestart overlay must never commit or spend
+    // anything, whatever drove `time` to 0 (a removed "R" shortcut once did,
+    // during a review) — this is the line that writes, so it checks for itself.
+    if (time !== 0 || !run || viewing || staged || prestart) return;
 
-    // The run is now executing (the clock hit 0, or the player tapped Ready / R).
+    // The run is now executing (the clock hit 0, or the player tapped Ready).
     // The maze on the board is what animates and what the server must record.
     const localBlocks = blocks.filter((b) => b.local);
 
@@ -509,20 +532,18 @@ export const useInit = () => {
         // attempt's client id. The server recomputes the authoritative time from
         // it (only the 60s budget was client-enforced). It's retryable — a
         // connection dropped by a deploy retries onto a fresh isolate and lands —
-        // so the run can't silently vanish the way a one-shot commit could. Hold
-        // the promise so the re-stage below waits for it (see runFinish).
-        const commit = api.commitRun({
-          iteration,
-          blocks: maze,
-          clientId: freePlayClientId(),
-          timeZone: getTimeZone(),
-        });
-        // A commit that exhausts its retries is a real loss (a sustained outage):
-        // surface it rather than letting the run disappear silently, mirroring the
-        // run saver's abandonment report.
+        // and it goes through the commit outbox (freePlay.ts), which holds the
+        // maze + id until the server answers, so even a commit that outlasts its
+        // retries (or a reload mid-animation) is re-sent at the next boot or
+        // when the browser is back online rather than lost. Hold the promise so
+        // the re-stage below waits for it (see runFinish).
+        const commit = commitFreePlay(iteration, maze, run.duration);
+        // A commit that exhausts its retries is no longer a loss, but it IS a
+        // sustained outage worth seeing — mirroring the run saver's
+        // abandonment report.
         commit.catch(() =>
           api.reportClientError({
-            message: "free-play commit failed after retries",
+            message: "free-play commit failed after retries (queued)",
             data: { iteration, blocks: maze.length },
           }).catch(() => {})
         );
@@ -583,8 +604,10 @@ export const useInit = () => {
         const verdict = computeVerdict(run.duration, min, best, ownBest);
         if (verdict) setVerdict(verdict);
       }
-      // The attempt has executed — drop its local resume record either way (an
-      // empty maze committed nothing, but its in-progress state must not resume).
+      // The attempt has executed — drop its local RESUME record either way (an
+      // empty maze committed nothing, but its in-progress state must not
+      // resume). A non-empty maze already sits in the commit outbox above,
+      // which is what keeps it until the server has it.
       clearFreePlay();
     }
 
@@ -598,7 +621,19 @@ export const useInit = () => {
     // The next board (startRun / getBoard) brings a fresh budget with it.
     clearTouchZoom();
     thunderHover.value = undefined;
-  }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
+  }, [
+    time,
+    run,
+    freePlay,
+    iteration,
+    blocks,
+    min,
+    best,
+    ownBest,
+    viewing,
+    staged,
+    prestart,
+  ]);
 
   // Snap the board back to the last maze the server accepted: the optimistic
   // edit it's undoing was never persisted, so this is the maze the run will
@@ -629,6 +664,14 @@ export const useInit = () => {
     }
     rebuildGrid(grid, checkpoint, next);
     setBlocks(next);
+    // The run goes back with the maze, recomputed on the same engine as every
+    // other maze change. Without it the runner kept the path (and the HUD the
+    // time) of the edit being undone — a run the server never recorded. An
+    // expired save usually reverts after the execute flush already released
+    // the runner; swapping its path restarts the walk on the maze the server
+    // actually holds (Runner keys its animation on the path).
+    const r = localRun(next, checkpoint);
+    if (r) setRun(r);
   };
 
   // Wired every render so the callbacks close over fresh state. The saver

@@ -12,7 +12,10 @@
 // anyway.
 
 import { Point } from "../../../common/types.ts";
+import { api } from "../../api.ts";
+import { getId } from "../../util/id.ts";
 import { storage } from "../../util/storage.ts";
+import { getTimeZone } from "../../util/timeZone.ts";
 
 const KEY = "blocktol.freeplay";
 
@@ -77,6 +80,162 @@ export const setPendingCommit = (p: Promise<unknown>) => {
 };
 
 export const awaitPendingCommit = () => pendingCommit;
+
+// The commit outbox. The in-progress record above is dropped the moment a run
+// executes (it must not resume), but the run isn't the server's until commitRun
+// LANDS — and a commit can fail outright: the api client's retries span a few
+// seconds, a deploy's restart or a dead connection can outlast them, and a
+// reload mid-animation abandons the request. Each executed maze is therefore
+// parked here, with its client id, BEFORE the commit is sent, and removed only
+// once the server has answered for it. What's left is re-sent at the next boot
+// and whenever the browser comes back online. Replaying is safe by
+// construction: the server's INSERT is idempotent on client id, so a commit that
+// did land but whose answer was lost is a no-op the second time.
+const OUTBOX_KEY = "blocktol.freeplay.outbox";
+//
+// It holds at most ONE run per board (per player): the best one. What a queued
+// run is for is the player's record on that board — the PB field, the lost-top
+// notice, the Discord top build — and only the best run can move any of those,
+// so a worse run that fails to land is not worth re-sending once a better one
+// is waiting (or has landed). Every run is still SENT at execution; only the
+// retry queue is thinned. A tie keeps the earlier run, which reached the time
+// first.
+//
+// Beyond that, a week-old run is not worth resurrecting, and OUTBOX_MAX is
+// only a storage backstop (one per board makes it unreachable in practice).
+const OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const OUTBOX_MAX = 50;
+
+type OutboxEntry = {
+  iteration: number;
+  clientId: string;
+  blocks: (Point & { thunder?: boolean })[];
+  // The run's time as computed locally (the same engine the server recomputes
+  // it with), so the queue can keep only the best run per board.
+  time: number;
+  // The device id the run was built under. A queued run is only ever sent as
+  // its own player — after a move-device link swapped this device's id, the
+  // entry waits (and ages out) rather than landing on someone else's board.
+  user: string;
+  at: number;
+  // The zone the run was built in, for the server's board gate (a board is
+  // only committable before "today" in it, or once its ranked attempts are
+  // spent). Captured at execution rather than re-read at send, so a replay
+  // after travel is judged where the run was played. Absent on entries queued
+  // by an older bundle; the server reads that as the westernmost zone.
+  timeZone?: string;
+};
+
+const readOutbox = (): OutboxEntry[] => {
+  try {
+    const parsed = JSON.parse(storage.getItem(OUTBOX_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeOutbox = (entries: OutboxEntry[]) => {
+  if (entries.length) {
+    storage.setItem(OUTBOX_KEY, JSON.stringify(entries.slice(-OUTBOX_MAX)));
+  } else storage.removeItem(OUTBOX_KEY);
+};
+
+const dropFromOutbox = (clientId: string) =>
+  writeOutbox(readOutbox().filter((e) => e.clientId !== clientId));
+
+// Client ids with a commit on the wire, so a flush never doubles one up.
+const sending = new Set<string>();
+
+type CommitResult = Awaited<ReturnType<typeof api.commitRun>>;
+
+// A server 5xx (`{ error, status: 500 }` — the commit's DB write failed) is
+// worth trying again later; any other error is a verdict on the maze (illegal,
+// unauthenticated) that a replay would only hear again.
+const settled = (r: CommitResult) =>
+  !("error" in r) || !("status" in r) || !(Number(r.status) >= 500);
+
+const send = (entry: OutboxEntry): Promise<CommitResult> => {
+  sending.add(entry.clientId);
+  return api.commitRun({
+    iteration: entry.iteration,
+    blocks: entry.blocks,
+    clientId: entry.clientId,
+    timeZone: entry.timeZone,
+  }).then((r) => {
+    if (settled(r)) dropFromOutbox(entry.clientId);
+    return r;
+  }).finally(() => sending.delete(entry.clientId));
+};
+
+// Queue `entry` unless the same player already has an equal-or-better run
+// queued for that board; a worse queued run is replaced (see OUTBOX_KEY).
+const enqueue = (entry: OutboxEntry) => {
+  const queued = readOutbox().filter((e) => e.clientId !== entry.clientId);
+  const sameBoard = (e: OutboxEntry) =>
+    e.iteration === entry.iteration && e.user === entry.user;
+  if (queued.some((e) => sameBoard(e) && e.time >= entry.time)) return;
+  writeOutbox([...queued.filter((e) => !sameBoard(e)), entry]);
+};
+
+// Commit the attempt that just executed: queue it in the outbox (if it's the
+// best run waiting for its board), then send it. Resolves/rejects like a plain
+// commitRun; an unanswered run that was queued stays for flushFreePlayOutbox. A
+// landed commit also drains any backlog, since the connection is evidently back.
+export const commitFreePlay = (
+  iteration: number,
+  blocks: (Point & { thunder?: boolean })[],
+  time: number,
+): Promise<CommitResult> => {
+  const entry: OutboxEntry = {
+    iteration,
+    clientId: freePlayClientId(),
+    blocks,
+    time,
+    user: getId(),
+    at: Date.now(),
+    timeZone: getTimeZone(),
+  };
+  enqueue(entry);
+  const p = send(entry);
+  p.then((r) => {
+    if (settled(r)) flushFreePlayOutbox();
+  }).catch(() => {});
+  return p;
+};
+
+// Re-send every queued commit, oldest first, stopping at the first one that
+// still can't land (the rest would fail the same way).
+let flushing = false;
+export const flushFreePlayOutbox = async () => {
+  if (flushing) return;
+  flushing = true;
+  try {
+    const now = Date.now();
+    const fresh = readOutbox().filter((e) => now - e.at < OUTBOX_MAX_AGE_MS);
+    writeOutbox(fresh);
+    for (const entry of fresh) {
+      if (sending.has(entry.clientId) || entry.user !== getId()) continue;
+      try {
+        if (!settled(await send(entry))) break;
+      } catch {
+        break;
+      }
+    }
+  } finally {
+    flushing = false;
+  }
+};
+
+// Forget every queued commit (account erasure — they're the erased player's).
+export const clearFreePlayOutbox = () => writeOutbox([]);
+
+// Boot wiring: drain what an earlier session left once the boot requests have
+// had the wire to themselves, and again whenever connectivity returns.
+export const installFreePlayOutbox = () => {
+  setTimeout(() => flushFreePlayOutbox(), 3_000);
+  globalThis.addEventListener("online", () => flushFreePlayOutbox());
+};
 
 // Drop the local record and the id. Called at commit (the run is the server's
 // now) and on re-stage/abandon (a fresh board must not resume the old build).

@@ -60,14 +60,18 @@ const LanguageSelect = (
         setOpen(false);
       }
     };
+    // Captured and claimed (preventDefault), so the Escape that closes this
+    // menu doesn't also close the Profile dialog around it (see Modal).
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
     };
     document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
     return () => {
       document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 

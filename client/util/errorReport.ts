@@ -1,4 +1,5 @@
 import { api } from "../api.ts";
+import { allowReport } from "./reportGate.ts";
 
 // Global client-error capture. Uncaught exceptions and unhandled promise
 // rejections are forwarded to the server's reportClientError endpoint, which
@@ -11,24 +12,13 @@ import { api } from "../api.ts";
 // api proxy already use. (If we ever want full session replay, that's the point
 // to add a dedicated browser SDK.)
 //
-// Dedupe + rate-limit so a tight error loop can't hammer the endpoint: the same
-// message isn't resent within a short window, and there's a hard cap per page
-// load. The api proxy already swallows a failed report (never reporting a failed
+// Dedupe + rate-limit (reportGate.ts, shared with the api proxy's
+// failed-request reports) so a tight error loop can't hammer the endpoint. The
+// api proxy already swallows a failed report (never reporting a failed
 // report), so this can't feed itself during an outage.
 
-const REPORT_WINDOW_MS = 10_000;
-const MAX_REPORTS = 25;
-
-const lastSent = new Map<string, number>();
-let sent = 0;
-
 const report = (message: string, data: Record<string, unknown>) => {
-  if (sent >= MAX_REPORTS) return;
-  const now = Date.now();
-  const last = lastSent.get(message);
-  if (last !== undefined && now - last < REPORT_WINDOW_MS) return;
-  lastSent.set(message, now);
-  sent++;
+  if (!allowReport(message)) return;
   api.reportClientError({ message, data }).catch(() => {});
 };
 

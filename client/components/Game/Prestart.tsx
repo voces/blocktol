@@ -5,7 +5,7 @@ import { Button } from "../Button.tsx";
 import { Logo } from "../Logo.tsx";
 import { decoBlocks, decoCheckpoint } from "../IntroBoard.tsx";
 import { formatSeconds } from "../../../common/format.ts";
-import { startBoardRun } from "../../store/board.ts";
+import { startDailyRun } from "../../store/board.ts";
 import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
 import { requestProfile } from "../../store/notifNav.ts";
 import { t } from "../../util/t.ts";
@@ -18,7 +18,7 @@ const ATTEMPTS = 3;
 // silently spend one. Covers the board with a blur mask (themed for light and
 // dark) over a decorative, blurred copy of the tutorial maze — a real-looking
 // backdrop that is deliberately NOT today's puzzle, so nothing leaks. The
-// button fires `startBoardRun("daily")` (the one fetch-and-start call), which
+// button fires `startDailyRun` (the one fetch-and-start call), which
 // stages the live board and drops us out of this phase.
 export const Prestart = () => {
   const { phase, attemptsRemaining, viewedAttempts } = useContext(
@@ -69,8 +69,10 @@ export const Prestart = () => {
     setStarting(true);
     // On failure/supersession, re-enable so the player can retry; on success
     // the live board stages (phase leaves prestart) and the reset effect above
-    // clears `starting` for the next attempt.
-    startBoardRun("daily").then((ok) => {
+    // clears `starting` for the next attempt. A lost answer is re-checked
+    // before the button comes back (see startDailyRun), so a retry can't burn
+    // a second attempt.
+    startDailyRun(completed).then((ok) => {
       if (!ok) setStarting(false);
     });
   };
