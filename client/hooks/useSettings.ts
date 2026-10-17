@@ -7,6 +7,7 @@ import {
   SettingsPatch,
   Theme,
 } from "../../common/settings.ts";
+import { setDefaultLocale } from "../../common/format.ts";
 import { resolveCatalog } from "../../common/i18n.ts";
 import { uiLocale } from "../util/t.ts";
 import { api } from "../api.ts";
@@ -71,6 +72,9 @@ export const applyLanguage = (language: Language) => {
   const tag = language && language !== "system"
     ? language
     : (globalThis.navigator?.language || "en");
+  // Before the signal flips, so the re-render it triggers formats numbers in
+  // the new language too.
+  setDefaultLocale(tag);
   uiLocale.value = tag;
   document.documentElement.lang = resolveCatalog(tag);
 };

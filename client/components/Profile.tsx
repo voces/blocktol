@@ -41,7 +41,7 @@ import {
   type MessageKey,
   resolveCatalog,
 } from "../../common/i18n.ts";
-import { t, uiLocale } from "../util/t.ts";
+import { intlLocale, t, uiLocale } from "../util/t.ts";
 import { profileRequest, takeProfileRequest } from "../store/notifNav.ts";
 
 // A compact custom language dropdown. A native <select> sizes to its widest
@@ -141,7 +141,7 @@ const THEME_KEY = {
 } as const satisfies Record<Theme, MessageKey>;
 
 const joinedLabel = (joined: number | null) =>
-  joined == null ? null : new Date(joined).toLocaleDateString(undefined, {
+  joined == null ? null : new Date(joined).toLocaleDateString(intlLocale(), {
     month: "short",
     year: "numeric",
   });

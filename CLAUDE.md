@@ -949,12 +949,16 @@ change, mirroring `applyTheme`) points the `uiLocale` signal at the tag —
 `"system"` resolves to `navigator.language`, so **an un-overridden user gets
 their browser language**, falling back to English — and stamps
 `document.documentElement.lang` with the resolved catalog locale. Because every
-`t(...)` reads `uiLocale`, a switch re-renders live. The Profile → Preferences
-picker is a native `<select>` of `locales` (endonyms via `Intl.DisplayNames`)
-plus a System option. An **explicit** choice also rides to the server
-(`setSettings` → `updateUserLocale`) so push copy — rendered in `user.locale` —
-matches; `"system"` leaves `user.locale` as the browser tag captured passively
-at push-subscribe, so the two stay in step.
+`t(...)` reads `uiLocale`, a switch re-renders live. Dates and numbers follow
+the same choice, not the browser's locale: format a date with `intlLocale()`
+(`client/util/t.ts` — `uiLocale`, read so the component re-renders, guarded
+against a malformed tag), and `common/format.ts` takes the language as its
+client-side default (`setDefaultLocale`, set by `applyLanguage`). The Profile →
+Preferences picker is a native `<select>` of `locales` (endonyms via
+`Intl.DisplayNames`) plus a System option. An **explicit** choice also rides to
+the server (`setSettings` → `updateUserLocale`) so push copy — rendered in
+`user.locale` — matches; `"system"` leaves `user.locale` as the browser tag
+captured passively at push-subscribe, so the two stay in step.
 
 ## Environment variables
 

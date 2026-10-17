@@ -1,7 +1,7 @@
 // Locale-aware number formatting, shared by the server (push copy) and the
 // client so a value reads identically everywhere. Locale mirrors how
 // formatNotifDate already handles dates: the client passes `undefined` and gets
-// the viewer's own locale, while server-rendered push text passes the
+// its chosen UI language (setDefaultLocale, below), while server-rendered push text passes the
 // recipient's stored locale (the user.locale column) — falling back to the
 // runtime's locale when there's none.
 
@@ -10,10 +10,21 @@
 // would make the constructor throw, so fall back to the runtime default rather
 // than let one bad value break push rendering.
 const cache = new Map<string, Intl.NumberFormat>();
+
+// The client's chosen UI language (set by applyLanguage), used when a call
+// names no locale — so a time reads "35,10" under a German UI on an English
+// browser, as the `t` copy around it does. The server never sets it: push copy
+// passes the recipient's locale explicitly.
+let defaultLocale: string | undefined;
+export const setDefaultLocale = (locale: string | undefined) => {
+  defaultLocale = locale;
+};
+
 const formatter = (
-  locale: string | undefined,
+  requested: string | undefined,
   options: Intl.NumberFormatOptions,
 ): Intl.NumberFormat => {
+  const locale = requested ?? defaultLocale;
   const key = `${locale ?? ""}|${JSON.stringify(options)}`;
   let f = cache.get(key);
   if (!f) {

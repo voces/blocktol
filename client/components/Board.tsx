@@ -7,6 +7,7 @@ import { FlagLayer } from "./FlagLayer.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { useSettings } from "../hooks/useSettings.ts";
+import { intlLocale } from "../util/t.ts";
 
 export const Board = (
   {
@@ -194,7 +195,7 @@ export const Board = (
         <rect x={19} y={0} width={1} height={20} fill="var(--maze-wall)" />
         {!Number.isNaN(date) && (
           <text x={1.2} y={19.75} font-size={0.8} fill="var(--maze-text)">
-            {new Intl.DateTimeFormat(undefined, {
+            {new Intl.DateTimeFormat(intlLocale(), {
               dateStyle: "medium",
               timeZone: "UTC",
             }).format(
