@@ -1,11 +1,14 @@
 import { offsets } from "../../common/constants.ts";
 import { newGrid, pathDuration, PathSolver } from "../../common/pathing.ts";
 import { Point } from "../../common/types.ts";
-import { createIteration, getDailyIterationId } from "../db/iteration.ts";
+import {
+  createIteration,
+  getDailyIterationId,
+  getEarliestIterationDay,
+} from "../db/iteration.ts";
+import { backfillWindow, utcDay } from "./backfillWindow.ts";
 import { log } from "./logging.ts";
 import { UserError } from "./UserError.ts";
-
-const ONE_DAY = 1_000 * 60 * 60 * 24;
 
 export const newIteration = async (date: Date) => {
   log.info("new iteration", { date: date.toDateString() });
@@ -96,9 +99,12 @@ export const newIteration = async (date: Date) => {
 // lands; the loser's is rejected by the unique key, and it re-reads the winner's
 // row. That's why this needs no lock — the database IS the mutex.
 //
-// Bounded to no later than tomorrow UTC — the cron's own look-ahead — so a deep
-// link to a far-future date can't force generation and leak a puzzle that isn't
-// playable yet. A missing PAST date is a real gap and is backfilled.
+// Bounded on both sides (see backfillWindow): no later than tomorrow UTC, so a
+// far-future deep link can't leak a puzzle, and no earlier than the first day
+// the game has an iteration for, so a script walking dates back to year 1000
+// can't make us generate (and then rate) thousands of boards. A missing day
+// inside that window is a real gap and is backfilled. The cron (util/gen.ts)
+// calls newIteration directly, so neither bound ever applies to it.
 export const ensureDailyIterationId = async (
   year: number,
   month: number,
@@ -107,16 +113,20 @@ export const ensureDailyIterationId = async (
   const existing = await getDailyIterationId(year, month, day);
   if (existing !== undefined) return existing;
 
-  // No timezone is ever on a local day later than tomorrow UTC, so a request
-  // beyond that is a future deep link, not a missing daily — refuse it (the same
-  // client-visible 400 the old requireDailyIterationId threw).
+  // Every refusal is the same client-visible 400 the old
+  // requireDailyIterationId threw. Checked only after the lookup misses, so a
+  // stale floor can never refuse a day that exists.
   const now = new Date();
   const todayUtc = Date.UTC(
     now.getUTCFullYear(),
     now.getUTCMonth(),
     now.getUTCDate(),
   );
-  if (Date.UTC(year, month - 1, day) > todayUtc + ONE_DAY) {
+  const target = utcDay(year, month, day);
+  if (
+    target === null ||
+    backfillWindow(target, await earliestDay(), todayUtc) !== "ok"
+  ) {
     throw new UserError("no daily available for that date yet");
   }
 
@@ -141,4 +151,21 @@ export const ensureDailyIterationId = async (
     throw new UserError("no daily available for that date yet");
   }
   return id;
+};
+
+// The floor, cached in-process: it's MIN(created), and the only thing that can
+// move it earlier is a backfill below it — which is exactly what it forbids —
+// so a cached value is stale only on a fresh DB the cron is still seeding
+// (it generates 31 days back). An hourly refresh bounds that, and keeps a
+// refused-date loop to one cheap indexed MIN per isolate per hour. An empty
+// table isn't cached: the very next generation gives it a floor.
+const FLOOR_TTL = 1_000 * 60 * 60;
+let floorCache: { day: number; read: number } | undefined;
+const earliestDay = async () => {
+  if (floorCache && Date.now() - floorCache.read < FLOOR_TTL) {
+    return floorCache.day;
+  }
+  const day = await getEarliestIterationDay();
+  floorCache = day == null ? undefined : { day, read: Date.now() };
+  return day;
 };

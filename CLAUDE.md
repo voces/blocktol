@@ -144,7 +144,11 @@ diverge — the server's accepted time must equal what the client previewed.
   section).
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `cachedSolver`, per iteration shape), so what the
-  audit script accepts is exactly what the write path accepts. Any change that
+  audit script accepts is exactly what the write path accepts. It first rejects
+  any piece whose anchor isn't a whole cell in `1..17` (a piece is 2×2, so that
+  keeps it off the border ring) — the solver reads an off-grid cell as free, so
+  this can't be left to it; the run endpoints' shared zod `piece` schema
+  (`routes/iteration/run/piece.ts`) enforces the same bounds. Any change that
   shifts timing or equal-length tie-breaking requires a
   `scripts/comparePathing.ts` audit/retime before it ships.
 
@@ -308,12 +312,16 @@ double-write):**
   preview deployments don't run `Deno.cron`, so a dev/gappy env would otherwise
   hit "no daily available". `ensureDailyIterationId` (same file) backfills a
   missing day **on demand** in the daily read path (board/start/daily/standings,
-  capped at tomorrow UTC so a future deep link can't leak a puzzle). That
-  per-request path once raced the cron — two isolates both check-then-create a
-  duplicate — but `iteration.created` is now a **UNIQUE `DATE`** (migration v14,
-  the column narrowed from a timestamp since a puzzle is for a calendar day, not
-  an instant), so the loser's INSERT is rejected instead of standing: **the DB
-  is the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
+  capped at tomorrow UTC so a future deep link can't leak a puzzle, and floored
+  at the earliest existing iteration — or yesterday UTC on an empty table — so a
+  script walking dates backwards can't mass-generate boards and starve
+  `rate-dailies`; see `util/backfillWindow.ts`; the cron calls `newIteration`
+  directly, so neither bound applies to it). That per-request path once raced
+  the cron — two isolates both check-then-create a duplicate — but
+  `iteration.created` is now a **UNIQUE `DATE`** (migration v14, the column
+  narrowed from a timestamp since a puzzle is for a calendar day, not an
+  instant), so the loser's INSERT is rejected instead of standing: **the DB is
+  the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
   board's `date`; the client needs no special parsing — a `DATE` deserialises to
   `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
   midnight, and the board caption formats it in UTC.
@@ -340,7 +348,9 @@ get these right, they encode the whole competitive model:
   Recorded **only at `startRun`**, because it depends on the player's _claimed
   local day_ (from their timezone), and a daily's legal window spans ~50h of
   server time so it can't be inferred later from `created`. Read everywhere
-  else.
+  else. The claimed zone must be a named IANA zone (`util/dailyParts.ts`):
+  ECMA-402 also accepts raw offsets like `"+23:59"`, which would stretch that
+  window past the real −12..+14 range, so offset zones are a `UserError`.
 - **`daily`** — the single _counted_ result among a user's ranked runs (the best
   one). Re-pointed as builds save (`updateCurrentRun`).
 - **`void`** — abandoned/not-yet-counted. A **ranked** attempt is inserted at
