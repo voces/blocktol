@@ -3,6 +3,7 @@ import { noteFailure, noteSuccess } from "./store/connection.ts";
 import { CLIENT_SHA, noteServerVersion } from "./store/version.ts";
 import { Emitter, emitter } from "./util/emitter.ts";
 import { getId } from "./util/id.ts";
+import { allowReport } from "./util/reportGate.ts";
 
 export type MessageMap =
   & {
@@ -296,6 +297,28 @@ export const primeBoot = (
   return bootData as Promise<MessageMap["boot"]>;
 };
 
+// Relay a failed request to the server's log. Through the shared report
+// throttle (util/reportGate.ts), keyed per method + status: every error
+// response used to fire its own report, so a polling or retrying caller hitting
+// the same fault sent one per attempt — the amplification the global handlers'
+// dedupe already prevented for crashes. And never a failed REPORT:
+// reportClientError rides this same proxy, so during an outage every failed
+// report would otherwise fire another — an unbounded loop hammering the server
+// exactly when it's least healthy. Fire-and-forget; its own failure is
+// swallowed so it can't surface as an unhandled rejection.
+const reportFailedRequest = (
+  method: string,
+  status: number,
+  error: unknown,
+) => {
+  if (method === "reportClientError") return;
+  if (!allowReport(`Failed request: ${method} ${status}`)) return;
+  api.reportClientError({
+    message: "Failed request",
+    data: { status, method, error },
+  }).catch(() => {});
+};
+
 export const api = new Proxy({}, {
   get<
     Method extends
@@ -338,13 +361,9 @@ export const api = new Proxy({}, {
         // every deploy, and the server isn't there to hear about it).
         noteFailure();
         if (
-          err instanceof TransportError &&
-          !GATEWAY_STATUSES.has(err.status) && method !== "reportClientError"
+          err instanceof TransportError && !GATEWAY_STATUSES.has(err.status)
         ) {
-          api.reportClientError({
-            message: "Failed request",
-            data: { status: err.status, method, error: err.message },
-          }).catch(() => {});
+          reportFailedRequest(method, err.status, err.message);
         }
         throw err;
       }
@@ -355,18 +374,7 @@ export const api = new Proxy({}, {
       // header — a no-op.
       noteServerVersion(resp.headers.get("x-blocktol-server-sha"));
       if (data && typeof data === "object" && "error" in data) {
-        // Never report a failed report: reportClientError rides this same
-        // proxy, so during an outage every failed report would otherwise fire
-        // another — an unbounded loop hammering the server exactly when it's
-        // least healthy.
-        if (method !== "reportClientError") {
-          // Fire-and-forget; swallow its own failure (e.g. network down) so
-          // it doesn't surface as an unhandled rejection.
-          api.reportClientError({
-            message: "Failed request",
-            data: { status: resp.status, method, error: data.error },
-          }).catch(() => {});
-        }
+        reportFailedRequest(method, resp.status, data.error);
         em.dispatchEvent("error", { method, input, error: data });
       } else {
         // deno-lint-ignore no-explicit-any
