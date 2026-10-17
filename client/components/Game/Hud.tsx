@@ -1,6 +1,6 @@
 import { Fragment, h, JSX } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
-import { showBoard, startBoardRun } from "../../store/board.ts";
+import { showBoard } from "../../store/board.ts";
 import { rankedEndsAtMidnight } from "../../store/dailyRollover.ts";
 import { Timer } from "../Timer.tsx";
 import { clearFreePlay } from "./freePlay.ts";
@@ -52,6 +52,13 @@ const ResetIcon = () => (
     <path d="M3 3v5h5" />
   </svg>
 );
+
+// A keystroke aimed at something the player is typing into (an input, a
+// textarea, a select, a contenteditable) is text, not a game shortcut.
+const isEditable = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 const formatBuild = (t: number) =>
   `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
@@ -121,18 +128,26 @@ export const Hud = () => {
   const showReset = freePlay && phase !== "staged" &&
     (phase !== "viewing" || time > 0);
 
-  // Keyboard shortcut: R runs the current build now, or starts a fresh run once
-  // the previous one has finished (power === -1 marks the idle/finished state).
+  // Keyboard shortcut: R does what the clock slot's button does right now —
+  // runs the build ("Ready?") while building, Play while reviewing — and
+  // nothing in any other phase. It used to fire setTime(0) whenever a run
+  // existed, which re-executed a free-play run mid-animation (a second commit
+  // under a fresh client id: a duplicate row, and holding R auto-repeated it),
+  // committed a reviewed maze as a new run, and ran the build when "r" was
+  // typed into the rename / rivals inputs. So: no auto-repeat, no modifier
+  // chords, and never from a field the player is typing into.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== "KeyR" || e.metaKey || !run) return;
-      if (power === -1) {
-        if (iteration) startBoardRun(iteration);
-      } else setTime(0);
+      if (
+        e.code !== "KeyR" || e.repeat || e.metaKey || e.ctrlKey || e.altKey ||
+        isEditable(e.target)
+      ) return;
+      if (phase === "building") setTime(0);
+      else if (phase === "viewing") onPlay();
     };
     globalThis.addEventListener("keydown", onKeyDown);
     return () => globalThis.removeEventListener("keydown", onKeyDown);
-  }, [run, power, iteration]);
+  }, [phase, iteration, attemptsRemaining]);
 
   // Idle nudge: flash "Ready?" once the player stops building for a spell. Any
   // build action (a placement, upgrade, delete, or move) touches blocks/bricks/

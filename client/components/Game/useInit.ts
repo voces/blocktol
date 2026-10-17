@@ -88,6 +88,8 @@ export const useInit = () => {
     iteration,
     setIteration,
     setStaged,
+    staged,
+    prestart,
     freePlay,
     setFreePlay,
     setPrestart,
@@ -477,7 +479,13 @@ export const useInit = () => {
   }, [time, viewing, freePlay, iteration, blocks, checkpoint]);
 
   useEffect(() => {
-    if (time !== 0 || !run) return;
+    // Only a LIVE build executes. A review (its replay is not an attempt — the
+    // expiry hand-off above drops `viewing` first when a build really is due),
+    // a staged board, or the prestart overlay must never commit or spend
+    // anything, whatever drove `time` to 0 — the shortcut that once did (R
+    // during a review) is gated in the HUD too, but this is the line that
+    // writes, so it checks for itself.
+    if (time !== 0 || !run || viewing || staged || prestart) return;
 
     // The run is now executing (the clock hit 0, or the player tapped Ready / R).
     // The maze on the board is what animates and what the server must record.
@@ -597,7 +605,19 @@ export const useInit = () => {
     // The next board (startRun / getBoard) brings a fresh budget with it.
     clearTouchZoom();
     thunderHover.value = undefined;
-  }, [time, run, freePlay, iteration, blocks, min, best, ownBest]);
+  }, [
+    time,
+    run,
+    freePlay,
+    iteration,
+    blocks,
+    min,
+    best,
+    ownBest,
+    viewing,
+    staged,
+    prestart,
+  ]);
 
   // Snap the board back to the last maze the server accepted: the optimistic
   // edit it's undoing was never persisted, so this is the maze the run will
