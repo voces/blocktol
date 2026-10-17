@@ -45,9 +45,10 @@ export const staticServe =
         return await serveFile(req, join(path, "index.html"));
       }
       const res = await serveFile(req, path);
-      // A correctly-versioned asset (`?v=<current hash>`) is immutable for a
-      // year; anything else keeps serveFile's revalidating ETag default.
-      const cc = a.cacheControlFor(pathname, url.searchParams);
+      // A correctly-versioned asset (`?v=<current hash>`, its file unchanged
+      // since this process hashed it) is immutable for a year; anything else
+      // keeps serveFile's revalidating ETag default.
+      const cc = a.cacheControlFor(pathname, url.searchParams, stat.mtime);
       if (cc) res.headers.set("cache-control", cc);
       return res;
     } catch { /* not found — fall through to the next handler */ }

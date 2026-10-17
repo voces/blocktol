@@ -110,8 +110,16 @@ export type Assets = {
   // The manifest with its icon url versioned.
   manifest: string;
   // Cache-Control for a static request (immutable for a correctly-versioned
-  // asset, else null).
-  cacheControlFor: (pathname: string, search: URLSearchParams) => string | null;
+  // asset, else null). `mtime` is the served file's current modification time:
+  // the hashes are computed once per process, so a file rewritten under a
+  // running process (an in-place deploy, before the restart) no longer has
+  // the bytes its `?v` names — those must not be pinned for a year under the
+  // old url.
+  cacheControlFor: (
+    pathname: string,
+    search: URLSearchParams,
+    mtime: Date | null,
+  ) => string | null;
 };
 
 const buildAssets = async (publicDir: string): Promise<Assets> => {
@@ -121,9 +129,13 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
   // Hash each fingerprinted asset; a missing one (e.g. before a client build)
   // just stays unversioned rather than crashing boot.
   const version: VersionMap = {};
+  // Each hashed file's mtime as of hashing (see cacheControlFor).
+  const hashedAt: Record<string, number | undefined> = {};
   await Promise.all(FINGERPRINTED.map(async (p) => {
     try {
-      version[p] = await shortHash(await Deno.readFile(join(root, p)));
+      const path = join(root, p);
+      hashedAt[p] = (await Deno.stat(path)).mtime?.getTime();
+      version[p] = await shortHash(await Deno.readFile(path));
     } catch { /* leave unversioned */ }
   }));
 
@@ -140,8 +152,10 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
 
   return {
     ...stamped,
-    cacheControlFor: (pathname, search) =>
-      immutableFor(version, pathname, search),
+    cacheControlFor: (pathname, search, mtime) =>
+      mtime?.getTime() === hashedAt[pathname]
+        ? immutableFor(version, pathname, search)
+        : null,
   };
 };
 
