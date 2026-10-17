@@ -24,6 +24,7 @@ import {
   ingestBoard,
   setBoardHandlers,
   showBoard,
+  takeLostStart,
 } from "../../store/board.ts";
 import { localRun, rebuildGrid } from "./helpers.ts";
 import {
@@ -322,6 +323,21 @@ export const useInit = () => {
       // boot re-pins; a mid-session refresh (time !== -2) leaves the pin, and a
       // day switch re-pins itself via playNewDaily.
       if (time === -2) pinSessionDay();
+
+      // The re-check after a ranked Start lost its answer (startDailyRun): one
+      // more ranked run than were spent, with a window open, means the server
+      // DID open the attempt — resume it exactly as a boot would, rather than
+      // let the prestart offer a second Start that would burn another. Handled
+      // first: the branches below read this summary as "nothing in progress"
+      // (a third attempt would even raise the result card).
+      const lost = takeLostStart();
+      if (lost !== null && currentRun && ranked.length > lost) {
+        setAttemptsRemaining(3 - ranked.length + 1);
+        ingestBoard({ ...currentRun, attempts });
+        handleRun(currentRun);
+        setViewedAttempts(attempts);
+        return;
+      }
 
       // `attempts` is the full list (panel); `ranked` (first three) drives the
       // result modal and the attempts-remaining count.

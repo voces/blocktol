@@ -506,9 +506,12 @@ can safely retry.
 **State — `@preact/signals`, not context** (writes bypass the render path):
 
 - `client/store/*` are module-level signal stores fed by the api emitter:
-  `board` (normalized per-iteration board cache + `showBoard`/`startBoardRun`
+  `board` (normalized per-iteration board cache + `showBoard`/`startDailyRun`
   loaders with a monotonic seq token so out-of-order responses can't stage a
-  stale board), `standings`, `profile`, `notifications`, `notifNav` (deep-link
+  stale board; a Start whose `startRun` answer is lost re-checks
+  `getDailySummary` and resumes the attempt if the server opened it — one more
+  ranked run than were spent — instead of re-enabling a button that would burn a
+  second one), `standings`, `profile`, `notifications`, `notifNav` (deep-link
   routing — effectively the app's router), `connection` (drives the Disconnected
   overlay), `dailyItems`, `discord`. `store/query.ts` is not a data store but
   the shared coalesce/dedupe/stale-window cache primitive the others build on.

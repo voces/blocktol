@@ -172,23 +172,55 @@ export const showDay = (iteration: number) => {
   return showBoard(iteration);
 };
 
+// A ranked Start whose answer never arrived (see startDailyRun): the number of
+// ranked attempts the player had spent when they pressed it, held while the
+// re-check is in flight. The getDailySummary listener (useInit) takes it —
+// the api emitter hands it the response before startDailyRun sees it — and
+// resumes the open attempt itself when the server has one more ranked run
+// than that.
+let lostStart: number | null = null;
+export const takeLostStart = () => {
+  const spent = lostStart;
+  lostStart = null;
+  return spent;
+};
+
 /**
- * Start (or open, for free play's first placement) a run. Resolves true if
- * this request's run took the board.
+ * The prestart's Start: open today's ranked attempt (the one fetch-and-start
+ * call). `spent` is how many ranked attempts were already used. Resolves true
+ * if this request's attempt took the board — including one recovered after a
+ * lost answer — so the button stays down; false re-enables it.
+ *
+ * startRun isn't retryable (it spends an attempt), and a transport failure
+ * doesn't mean the server didn't act: it may have inserted the run and lost
+ * only the reply. Re-enabling the button then let a second press open ANOTHER
+ * ranked attempt, burning the first. So on a transport failure, ask the
+ * summary first: if it reports an open attempt AND one more ranked run than
+ * were spent, that attempt is ours — resume it (the summary listener does).
+ * Counting matters: the PREVIOUS attempt's 60s window can still be open just
+ * after it executed, and must never be mistaken for the new one and reopened.
  */
-export const startBoardRun = (
-  iteration: number | "daily",
-  block?: { x: number; y: number },
-) => {
+export const startDailyRun = async (spent: number) => {
   const s = ++seq;
-  return api.startRun({
-    iteration,
-    timeZone: getTimeZone(),
-    ...(block ? { block } : {}),
-  }).then((r) => {
+  try {
+    const r = await api.startRun({
+      iteration: "daily",
+      timeZone: getTimeZone(),
+    });
     if ("error" in r || s !== seq) return false;
     ingestBoard(r);
     handlers.onRun(r);
     return true;
-  }).catch(() => false);
+  } catch {
+    if (s !== seq) return false;
+  }
+  lostStart = spent;
+  try {
+    const r = await api.getDailySummary({ timeZone: getTimeZone() });
+    return !("error" in r) && !!r.currentRun && r.ranked.length > spent;
+  } catch {
+    return false;
+  } finally {
+    lostStart = null;
+  }
 };
