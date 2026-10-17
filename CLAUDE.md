@@ -312,12 +312,16 @@ double-write):**
   preview deployments don't run `Deno.cron`, so a dev/gappy env would otherwise
   hit "no daily available". `ensureDailyIterationId` (same file) backfills a
   missing day **on demand** in the daily read path (board/start/daily/standings,
-  capped at tomorrow UTC so a future deep link can't leak a puzzle). That
-  per-request path once raced the cron — two isolates both check-then-create a
-  duplicate — but `iteration.created` is now a **UNIQUE `DATE`** (migration v14,
-  the column narrowed from a timestamp since a puzzle is for a calendar day, not
-  an instant), so the loser's INSERT is rejected instead of standing: **the DB
-  is the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
+  capped at tomorrow UTC so a future deep link can't leak a puzzle, and floored
+  at the earliest existing iteration — or yesterday UTC on an empty table — so a
+  script walking dates backwards can't mass-generate boards and starve
+  `rate-dailies`; see `util/backfillWindow.ts`; the cron calls `newIteration`
+  directly, so neither bound applies to it). That per-request path once raced
+  the cron — two isolates both check-then-create a duplicate — but
+  `iteration.created` is now a **UNIQUE `DATE`** (migration v14, the column
+  narrowed from a timestamp since a puzzle is for a calendar day, not an
+  instant), so the loser's INSERT is rejected instead of standing: **the DB is
+  the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
   board's `date`; the client needs no special parsing — a `DATE` deserialises to
   `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
   midnight, and the board caption formats it in UTC.
