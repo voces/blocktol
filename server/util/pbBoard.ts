@@ -37,6 +37,7 @@ import {
   postResult,
   type ResultEmbed,
 } from "./discordResults.ts";
+import { escapeDiscord } from "./discordText.ts";
 import { errText, log } from "./logging.ts";
 import { type BestRow, decideLostTop } from "./lostTop.ts";
 import { notifyLostTop } from "./notify.ts";
@@ -129,6 +130,9 @@ export const pbEmbed = (
 ): ResultEmbed => {
   const url = dayUrl(day, "pb");
   const date = formatNotifDate(day);
+  // Display names are player-written markdown; escape before they're set in it.
+  name = escapeDiscord(name);
+  matchers = matchers?.map(escapeDiscord);
   const opener = `**${name}** set the top build of ${date} at **${
     formatSeconds(time)
   }s**.`;

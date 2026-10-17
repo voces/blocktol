@@ -88,7 +88,7 @@ Deno.test("free play resume: an expired, empty, or reset record does not resume"
 
 // getId reads the URL for sign-in links; Deno has no `location` by default.
 Object.defineProperty(globalThis, "location", {
-  value: { pathname: "/" },
+  value: { pathname: "/", hash: "" },
   configurable: true,
 });
 

@@ -1,5 +1,37 @@
-import { assertEquals } from "@std/assert";
-import { _sealRecordForTest } from "./webpush.ts";
+import { assert, assertEquals } from "@std/assert";
+import { _sealRecordForTest, isPushEndpoint } from "./webpush.ts";
+
+Deno.test("isPushEndpoint accepts the browser push services", () => {
+  for (
+    const e of [
+      "https://fcm.googleapis.com/fcm/send/abc:APA91b",
+      "https://fcm.googleapis.com/wp/abc",
+      "https://android.googleapis.com/gcm/send/abc",
+      "https://jmt17.google.com/fcm/send/abc",
+      "https://updates.push.services.mozilla.com/wpush/v2/gAAAA",
+      "https://wns2-par02p.notify.windows.com/w/?token=BQYAAA",
+      "https://web.push.apple.com/QGuQyavXutnMH",
+    ]
+  ) assert(isPushEndpoint(e), e);
+});
+
+Deno.test("isPushEndpoint refuses anything else", () => {
+  for (
+    const e of [
+      "http://fcm.googleapis.com/fcm/send/abc", // not https
+      "https://fcm.googleapis.com:8443/fcm/send/abc", // non-default port
+      "https://user:pw@fcm.googleapis.com/fcm/send/abc", // credentials
+      "https://127.0.0.1/sql",
+      "https://localhost:9428/insert",
+      "https://w3x.io/sql",
+      "https://evil.com/fcm.googleapis.com",
+      "https://fcm.googleapis.com.evil.com/x",
+      "https://notify.windows.com.evil.com/x",
+      "https://evilpush.apple.com/x", // the suffix must be whole labels
+      "not a url",
+    ]
+  ) assert(!isPushEndpoint(e), e);
+});
 
 // The complete worked example from RFC 8291 §5. Feeding the RFC's published ECDH
 // shared secret through the post-ECDH pipeline and reproducing its exact output

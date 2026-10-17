@@ -76,6 +76,11 @@ const body = (embed: ResultEmbed) =>
 
 const HEADERS = { "content-type": "application/json" };
 
+// Bound every call: a post runs inside a player's save (onPbBuild) or the
+// non-overlapping rate-dailies cron, so a hung Discord socket would hang the save
+// or stall every later day's rating. The timeout covers the body read as well.
+const TIMEOUT_MS = 10_000;
+
 // Post a result embed. Uses `?wait=true` so Discord returns the created message
 // object; its id lets a same-holder improvement PATCH this same post within the
 // edit window (see util/pbBoard.ts). Never throws — a webhook hiccup must not fail
@@ -92,6 +97,7 @@ export const postResult = async (
       method: "POST",
       headers: HEADERS,
       body: body(embed),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
       log.error("result post failed", { status: res.status });
@@ -119,6 +125,7 @@ export const editResult = async (
       method: "PATCH",
       headers: HEADERS,
       body: body(embed),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
       log.error("result edit failed", { status: res.status });

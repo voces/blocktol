@@ -1,5 +1,6 @@
 import { Point } from "../../common/types.ts";
 import { memoize } from "../util/memoize.ts";
+import { NotFoundError } from "../util/UserError.ts";
 import { ExecResult, format, raw, sql, sqlOnce } from "./query.ts";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -27,7 +28,9 @@ export const getIteration = memoize((id: number) =>
     SELECT id, bricks, created, power, checkpoint_x, checkpoint_y, min FROM iteration WHERE id = ${id};
     SELECT x, y, kind FROM block WHERE iteration = ${id};
   `.then(([[i], blocks]) => {
-    if (!i) throw new Error(`Iteration ${id} does not exist`);
+    // A client-supplied id (getBoard, standings, …): a 404, not a 500 + error
+    // log. The rejection isn't memoized (memoize evicts it).
+    if (!i) throw new NotFoundError(`Iteration ${id} does not exist`);
 
     return ({
       iteration: i.id,

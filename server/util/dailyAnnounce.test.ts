@@ -1,8 +1,19 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { dailyEmbed, dayTopBuild } from "./dailyAnnounce.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
+import { pbEmbed } from "./pbBoard.ts";
 
 const day: [number, number, number] = [2026, 7, 6];
+
+Deno.test("dailyEmbed / pbEmbed: a player's name can't inject markdown", () => {
+  const evil = "[Free Nitro](https://x.co)";
+  const safe = "\\[Free Nitro\\]\\(https:\u200b//x.co\\)";
+  const d = dailyEmbed([evil], 42.1, day);
+  assertStringIncludes(d.description, `**${safe}** won the daily`);
+  const p = pbEmbed(evil, 30.5, 2, day, ["**x**"]);
+  assertStringIncludes(p.description, `**${safe}** set the top build`);
+  assertStringIncludes(p.description, "Matched by **\\*\\*x\\*\\***.");
+});
 
 Deno.test("dailyEmbed: a sole winner is gold", () => {
   const e = dailyEmbed(["alice"], 42.1, day);

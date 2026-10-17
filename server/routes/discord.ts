@@ -20,7 +20,9 @@ let cache: { online: number | null; at: number } | null = null;
 
 const fetchOnline = async (): Promise<number | null> => {
   try {
-    const resp = await fetch(ENDPOINT);
+    // The profile awaits this; a hung Discord must not hang the dialog's
+    // request, and a timeout reads as any other failure (the last known value).
+    const resp = await fetch(ENDPOINT, { signal: AbortSignal.timeout(5_000) });
     if (!resp.ok) return null;
     const data = await resp.json();
     const n = data?.approximate_presence_count;

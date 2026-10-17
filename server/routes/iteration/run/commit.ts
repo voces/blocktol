@@ -21,6 +21,7 @@ import { onPbBuild } from "../../../util/pbBoard.ts";
 import { checkBoardAccess } from "../../../util/boardAccess.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { errText, log } from "../../../util/logging.ts";
+import { UserError } from "../../../util/UserError.ts";
 import { method } from "../../apiHelpers.ts";
 import { piece } from "./piece.ts";
 
@@ -58,6 +59,9 @@ export const commitRun = method(commitRunBody, true)(
         return { error: "board locked", status: 403 };
       }
     } catch (err) {
+      // A bad timeZone or an unknown iteration is the caller's fault (400/404
+      // via the router), not a server error to log.
+      if (err instanceof UserError) throw err;
       log.error(req, "failed to check board access", { error: errText(err) });
       return { error: "failed to commit run", status: 500 };
     }

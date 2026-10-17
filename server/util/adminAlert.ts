@@ -34,7 +34,11 @@ export const alertAdmin = (message: string): void => {
   fetch(WEBHOOK, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ content }),
+    // Alerts quote player-controlled text; never let it ping anyone.
+    body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+    // Fire-and-forget still holds a socket (and, on Deploy, the isolate) open
+    // for as long as Discord leaves it hanging; bound it.
+    signal: AbortSignal.timeout(10_000),
   })
     .then((r) => {
       if (!r.ok) log.error("admin alert failed", { status: r.status });

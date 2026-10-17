@@ -2,6 +2,7 @@ import "../common/types.d.ts";
 import "./util/gen.ts";
 import "./util/rateDailies.ts";
 import { migrate } from "./db/migrate.ts";
+import { withSecurityHeaders } from "./middleware/securityHeaders.ts";
 import { router } from "./router.ts";
 import { alertAdmin } from "./util/adminAlert.ts";
 import { errText, log } from "./util/logging.ts";
@@ -41,5 +42,5 @@ Deno.serve({
   onListen: ({ port }) => log.info("listening", { port }),
 }, async (req) => {
   await ready;
-  return router.route(req);
+  return withSecurityHeaders(await router.route(req));
 });

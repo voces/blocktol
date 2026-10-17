@@ -2,6 +2,7 @@ import { avatarHue } from "../../common/avatar.ts";
 import { randomName } from "../../common/random/name.ts";
 import { parseSettings } from "../../common/settings.ts";
 import { alertAdmin } from "../util/adminAlert.ts";
+import { discordCode } from "../util/discordText.ts";
 import { hashUserId } from "../util/hashUserId.ts";
 import { log } from "../util/logging.ts";
 import { deserializeRun } from "../util/run.ts";
@@ -371,7 +372,11 @@ export const allRunsByIteration = (user: string, iteration: number) =>
           iteration,
         });
         alertAdmin(
-          `Player \`${user}\` hit the ${RUN_CAP}-run cap on iteration ` +
+          // discordCode: the id is the caller's own authorization header —
+          // attacker-chosen text, which must not close the code span.
+          `Player ${
+            discordCode(user)
+          } hit the ${RUN_CAP}-run cap on iteration ` +
             `${iteration}; the attempts panel is now dropping their newest runs.`,
         );
       }
