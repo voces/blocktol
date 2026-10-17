@@ -15,7 +15,9 @@ import { raw, sql, sqlOnce } from "./query.ts";
 // daily's legal window spans ~50 hours of server time (UTC+14 mornings through
 // UTC-12 midnights), so only the start request knows. `daily` is a different
 // flag — the single *counted* result — seeded on the first attempt and
-// re-pointed at the best ranked run as builds save (see updateCurrentRun).
+// re-pointed at the best built ranked run as builds save (see
+// updateCurrentRun). The seed sits on a void row, which every read ignores, so
+// it counts for nothing until a build re-points it.
 //
 // The NOT EXISTS guard dedupes near-simultaneous starts (a double-fired event,
 // two tabs racing boot): the @priorRuns check and the INSERT are separate
@@ -153,6 +155,11 @@ export const insertFreePlayRun = (
 // The whole batch rides one transaction: a failure between the save and the
 // daily re-pointing must not leave void cleared with the counted-result flags
 // half-reassigned.
+//
+// The counted result is chosen among BUILT attempts only (void = FALSE). An
+// abandoned attempt still holds the iteration's min as its time, so when a
+// built one also sat at min, the earliest-wins tie could point `daily` at the
+// void row — and every read excludes void, dropping the player from the field.
 export const updateCurrentRun = (
   user: string,
   time: number,
@@ -200,6 +207,7 @@ export const updateCurrentRun = (
       AND user = ${user}
       AND iteration = ${iteration}
       AND ranked = TRUE
+      AND void = FALSE
       AND time = (
         SELECT MAX(time)
         FROM (
@@ -208,6 +216,7 @@ export const updateCurrentRun = (
           WHERE user = ${user}
             AND iteration = ${iteration}
             AND ranked = TRUE
+            AND void = FALSE
         ) t1
       )
     ORDER BY created ASC LIMIT 1;
