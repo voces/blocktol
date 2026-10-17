@@ -12,7 +12,8 @@ import { format, raw, sql } from "./query.ts";
 // enough that no real player is ever truncated (a heavy free-play replayer sits
 // in the low hundreds), but a hard ceiling so a runaway client can't ask us to
 // serialize an unbounded maze list. Hitting it means the panel is now dropping
-// that player's oldest runs — a human-actionable oddity, so alert once (see
+// that player's NEWEST runs (the read keeps the oldest RUN_CAP, see
+// allRunsByIteration) — a human-actionable oddity, so alert once (see
 // below).
 const RUN_CAP = 10_000;
 // Dedup the cap alert to once per (user, iteration) per process — the read
@@ -371,7 +372,7 @@ export const allRunsByIteration = (user: string, iteration: number) =>
         });
         alertAdmin(
           `Player \`${user}\` hit the ${RUN_CAP}-run cap on iteration ` +
-            `${iteration}; the attempts panel is now dropping their oldest runs.`,
+            `${iteration}; the attempts panel is now dropping their newest runs.`,
         );
       }
     }
