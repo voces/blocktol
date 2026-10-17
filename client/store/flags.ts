@@ -1,6 +1,7 @@
 import { computed, signal } from "@preact/signals";
 import type { Point } from "../../common/types.ts";
 import { api } from "../api.ts";
+import { flagWrites } from "./flagWrites.ts";
 
 // Flags: the splits tape's manual checkpoints (see common/splits.ts). A flag
 // belongs to the BOARD, not to a run — place one and every build of that maze is
@@ -23,14 +24,20 @@ const put = (iteration: number, flags: readonly Point[]) => {
   byIteration.value = next;
 };
 
-// Iterations with a write in flight. A board response that was produced before
-// that write (a re-stage racing the save) would otherwise fold the OLD set back
-// over the edit the player just made, so ingestion steps aside until the write
-// settles — at which point the local set and the server's agree anyway.
-const saving = new Set<number>();
+const writes = flagWrites(
+  (iteration) => byIteration.peek().get(iteration) ?? NONE,
+  put,
+  (iteration, flags) =>
+    api.setFlags({ iteration, flags: flags.map(({ x, y }) => ({ x, y })) })
+      .then((r) => !(r && "error" in r)),
+);
 
+// While a write is in flight, a board response produced before it (a re-stage
+// racing the save) would fold the OLD set back over the edit the player just
+// made, so ingestion steps aside until every write settles — at which point
+// the local set and the server's agree anyway.
 api.addEventListener("getBoard", (board) => {
-  if ("incomplete" in board || saving.has(board.iteration)) return;
+  if ("incomplete" in board || writes.saving(board.iteration)) return;
   put(board.iteration, board.flags);
 });
 
@@ -38,23 +45,12 @@ api.addEventListener("getBoard", (board) => {
  * Replace this board's flags, optimistically. The write is an absolute-value
  * upsert of the whole set (and `setFlags` is in the client's RETRYABLE
  * allowlist), so a burst of edits is last-write-wins and a dropped connection
- * retries harmlessly. A rejected write rolls the board back to what the server
- * still holds, the way the runs panel's pin toggle does.
+ * retries harmlessly. If the newest write is rejected the board rolls back to
+ * the last set the server confirmed (see flagWrites), the way the runs panel's
+ * pin toggle does.
  */
 export const saveFlags = (iteration: number, flags: readonly Point[]) => {
-  const previous = flagsFor(iteration);
-  put(iteration, flags);
-  saving.add(iteration);
-  const done = () => saving.delete(iteration);
-  api.setFlags({ iteration, flags: flags.map(({ x, y }) => ({ x, y })) })
-    .then((r) => {
-      done();
-      if (r && "error" in r) put(iteration, previous);
-    })
-    .catch(() => {
-      done();
-      put(iteration, previous);
-    });
+  writes.save(iteration, flags);
 };
 
 // Placement is explicitly ARMED rather than implied by the panel being open:
