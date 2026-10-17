@@ -34,7 +34,7 @@ import {
 // i18n/privacy/en.json that changes what the page SAYS — not for a typo or a
 // rewording, and never for a translation. The history link beside it is the
 // exact record of every change.
-export const UPDATED = "2026-09-17";
+export const UPDATED = "2026-10-17";
 
 // The public commit history of the English source — the file IS the page's text,
 // which is why it's a catalog of its own rather than keys in i18n/en.json.
@@ -246,11 +246,11 @@ export const renderPrivacyPage = (locale: Locale): string => {
     ["privacy.store.locale.term", "privacy.store.locale.detail"],
     ["privacy.store.push.term", "privacy.store.push.detail"],
     ["privacy.store.diagnostics.term", "privacy.store.diagnostics.detail"],
+    ["privacy.store.logs.term", "privacy.store.logs.detail"],
   ]);
 
   const others = list([
     ["privacy.others.push.term", "privacy.others.push.detail"],
-    ["privacy.others.fonts.term", "privacy.others.fonts.detail"],
     ["privacy.others.discord.term", "privacy.others.discord.detail"],
   ]);
 
@@ -320,10 +320,16 @@ export const renderPrivacyPage = (locale: Locale): string => {
     <h2>${m("privacy.cookies.heading")}</h2>
     <p>${m("privacy.cookies.body")}</p>
 
+    <h2>${m("privacy.basis.heading")}</h2>
+    <p>${m("privacy.basis.body")}</p>
+
     <h2>${m("privacy.others.heading")}</h2>
     <p>${m("privacy.others.intro")}</p>
     ${others}
     <p>${m("privacy.others.never")}</p>
+
+    <h2>${m("privacy.transfers.heading")}</h2>
+    <p>${m("privacy.transfers.body")}</p>
 
     <h2>${m("privacy.rights.heading")}</h2>
     <p>${rightsIntro}</p>${
@@ -333,11 +339,16 @@ export const renderPrivacyPage = (locale: Locale): string => {
       "/?profile=account",
     )
   }${card(ui("del.title"), "privacy.rights.delete.body", "/?profile=delete")}
+    <p>${m("privacy.rights.more")}</p>
 
     <h2>${m("privacy.retention.heading")}</h2>
     <p>${m("privacy.retention.body")}</p>
 
+    <h2>${m("privacy.children.heading")}</h2>
+    <p>${m("privacy.children.body")}</p>
+
     <h2>${m("privacy.contact.heading")}</h2>
+    <p>${m("privacy.contact.operator")}</p>
     <p>${contact}</p>
 
     <footer>
