@@ -326,7 +326,9 @@ a half-migrated schema. **The runner keys off `version` only — editing an
 already-shipped migration's SQL never re-runs it.** So the rule is **append-only
 once a migration has reached prod**: fix forward with a new migration. (Editing
 in place is allowed only while a migration has _only_ reached dev — see the long
-note at the bottom of that file.)
+note at the bottom of that file.) Every user-text column is utf8mb4 (v16 moved
+`user.name`, the last utf8mb3 holdout, so an emoji display name stores; `rename`
+answers any remaining DB refusal as a 400).
 
 **Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
 `DISABLE_CRONS` is set, so a second instance sharing the DB doesn't
