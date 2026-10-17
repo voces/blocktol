@@ -437,10 +437,15 @@ Other invariants:
   authorization. That's a sensitive credential: anyone who obtains it can act as
   (or merge away) that user, so it must be protected like one. But possession is
   deliberately made _sufficient_ — that's exactly what powers "move to device":
-  it issues a `/login/:id` (or `/l/:id`) link/QR, and holding two ids authorizes
-  folding them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the
-  loser row in one transaction). The client-side gate is
-  `MoveGate`/`MoveDevice`.
+  it issues a `/#l=<id>` link/QR (`signInLink`, `client/util/id.ts` — the id
+  rides the URL **fragment**, which never reaches the server, because a path
+  segment lands verbatim in nginx's access log and Deno's OTel span
+  `url.full`/`url.path`, neither of which app code can scrub). The legacy
+  `/login/:id` and `/l/:id` path forms still work for links already in the wild;
+  our own log lines redact them (`redactPath` in `middleware/beginLogger.ts`),
+  but the span and nginx still see those. Holding two ids authorizes folding
+  them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the loser
+  row in one transaction). The client-side gate is `MoveGate`/`MoveDevice`.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,

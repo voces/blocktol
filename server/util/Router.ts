@@ -1,4 +1,5 @@
 import { trace } from "@opentelemetry/api";
+import { routeOf } from "../middleware/beginLogger.ts";
 import { errText, log } from "./logging.ts";
 import { UserError } from "./UserError.ts";
 
@@ -118,7 +119,9 @@ export class Router implements AbstractRouter {
 
       if (resp) return resp;
 
-      log.warn(request, "unhandled route", { url: request.url });
+      // routeOf, not the raw url: a malformed sign-in link (`/l/<bad id>`)
+      // falls through to here, and its path is still a would-be credential.
+      log.warn(request, "unhandled route", { route: routeOf(request) });
       return new Response("Not found", { status: 404 });
     } catch (err: unknown) {
       // A UserError is an expected 400 (bad input) — not something to page on,

@@ -11,7 +11,12 @@ export const router = new Router();
 
 router.use(beginLogger);
 router.get("/login/:id", loginLink);
-// `/l/:id` is the short alias used by the move-to-device QR / link.
+// `/l/:id` is the short alias the move-to-device QR / link used. Both are LEGACY:
+// new links carry the id in the fragment (`/#l=<id>`, client/util/id.ts
+// signInLink) so the credential never reaches this server. These stay for links
+// and QRs already in the wild; their path is redacted from our own logs
+// (beginLogger routeOf), but Deno's OTel span and nginx's access log still see
+// it — which is why new links stopped using the path.
 router.get("/l/:id", loginLink);
 router.use(extractUserId);
 router.post("/api/:method", api);
