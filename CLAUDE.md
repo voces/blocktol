@@ -643,14 +643,14 @@ not fire until the window has closed. **Free play** bypasses the saver entirely:
 (through the commit outbox — see the run lifecycle); `useInit` awaits that
 commit before re-staging so a slow (retrying) commit can't let the re-stage drop
 the run from recents. Execution itself is the `time === 0` effect in `useInit`,
-which refuses unless the build is live (not `viewing`, `staged` or in prestart);
-the HUD's **R shortcut** mirrors the clock-slot button exactly (run while
-building, Play while reviewing, nothing otherwise) and ignores key repeat,
-modifier chords and typing in inputs — it once re-committed a running free-play
-run under a fresh id. Picking a maze to review RELEASES the runner over it
-(`viewMaze`'s `replay`, defaulting on — asking to see a maze means asking to see
-it run; re-picking the row runs it again), which is also why `runFinish` bails
-while `viewing`: a replay is not an attempt finishing and must not commit,
+which refuses unless the build is live (not `viewing`, `staged` or in prestart).
+There is deliberately **no keyboard shortcut** for running a build: an
+undiscoverable global "R" key once re-committed a running free-play run under a
+fresh id, committed reviewed mazes, and fired from text inputs, so it was
+removed rather than patched. Picking a maze to review RELEASES the runner over
+it (`viewMaze`'s `replay`, defaulting on — asking to see a maze means asking to
+see it run; re-picking the row runs it again), which is also why `runFinish`
+bails while `viewing`: a replay is not an attempt finishing and must not commit,
 re-stage, or spend anything. The one caller that opts out is the review a
 just-finished free-play run lands in, which would replay the run you were
 already watching. A reviewed board stays inert to placement, but a hover (or, on
