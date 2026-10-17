@@ -432,8 +432,11 @@ Other invariants:
   send until the server answers for it (a 5xx stays queued, a verdict on the
   maze is dropped), and is re-sent after the next boot, on `online`, and after
   any landed commit — the client_id makes the replay a no-op if the first send
-  did land. `commitRun` stays backwards compatible — a legacy cached client that
-  still `startRun`+`updateRun`+bare-committed hits the old flip-void path (no
+  did land. The outbox keeps only the **best** queued run per board (per player;
+  a tie keeps the earlier), since only the best can move a record — every run is
+  still sent at execution, only the retry queue is thinned. `commitRun` stays
+  backwards compatible — a legacy cached client that still
+  `startRun`+`updateRun`+bare-committed hits the old flip-void path (no
   `blocks`). Trusting the client on free play is deliberate: it's post-ranked,
   never feeds ELO, and the server still recomputes the time from the submitted
   maze — only the 60s budget is client-enforced. The ranked server window

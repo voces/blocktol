@@ -115,7 +115,7 @@ const landed = () =>
 
 Deno.test("commit outbox: a landed commit leaves nothing queued", async () => {
   clearFreePlayOutbox();
-  await withFetch(landed, () => commitFreePlay(7, [{ x: 5, y: 5 }]));
+  await withFetch(landed, () => commitFreePlay(7, [{ x: 5, y: 5 }], 10));
   assertEquals(queued(), []);
   clearFreePlay();
 });
@@ -125,7 +125,7 @@ Deno.test("commit outbox: a verdict on the maze is dropped, a server fault is ke
   await withFetch(
     () =>
       Response.json({ error: "too many blocks", status: 400 }, { status: 400 }),
-    () => commitFreePlay(7, [{ x: 5, y: 5 }]),
+    () => commitFreePlay(7, [{ x: 5, y: 5 }], 10),
   );
   assertEquals(queued(), []);
   clearFreePlay();
@@ -135,7 +135,7 @@ Deno.test("commit outbox: a verdict on the maze is dropped, a server fault is ke
       Response.json({ error: "failed to commit run", status: 500 }, {
         status: 500,
       }),
-    () => commitFreePlay(7, [{ x: 5, y: 5 }]),
+    () => commitFreePlay(7, [{ x: 5, y: 5 }], 10),
   );
   assertEquals(queued().length, 1);
   clearFreePlay();
@@ -150,7 +150,7 @@ Deno.test("commit outbox: a gateway page is a transport failure — retried, the
   await withFetch(() => {
     calls++;
     return new Response("<html>502 Bad Gateway</html>", { status: 502 });
-  }, () => assertRejects(() => commitFreePlay(7, [{ x: 5, y: 5 }])));
+  }, () => assertRejects(() => commitFreePlay(7, [{ x: 5, y: 5 }], 10)));
   // The first try plus every retry, and the run is still held.
   assertEquals(calls > 1, true);
   const [entry] = queued();
@@ -165,4 +165,36 @@ Deno.test("commit outbox: a gateway page is a transport failure — retried, the
   }, flushFreePlayOutbox);
   assertEquals(sentId, entry.clientId);
   assertEquals(queued(), []);
+});
+
+Deno.test("commit outbox: one queued run per board — the best, ties keep the earlier", async () => {
+  clearFreePlayOutbox();
+  const fault = () =>
+    Response.json({ error: "failed to commit run", status: 500 }, {
+      status: 500,
+    });
+  const times = () =>
+    (queued() as unknown as { iteration: number; time: number }[])
+      .map((e) => [e.iteration, e.time]);
+
+  // Each commit fails, so whatever the queue keeps is all that's left.
+  const commitFailing = async (iteration: number, time: number) => {
+    await withFetch(
+      fault,
+      () => commitFreePlay(iteration, [{ x: 5, y: 5 }], time),
+    );
+    clearFreePlay(); // next attempt gets a fresh client id
+  };
+
+  await commitFailing(7, 10);
+  await commitFailing(7, 8); // worse: not queued
+  assertEquals(times(), [[7, 10]]);
+  await commitFailing(7, 10); // tie: the earlier stays
+  assertEquals(times(), [[7, 10]]);
+  await commitFailing(7, 12); // better: replaces
+  assertEquals(times(), [[7, 12]]);
+  await commitFailing(8, 3); // another board queues alongside
+  assertEquals(times(), [[7, 12], [8, 3]]);
+
+  clearFreePlayOutbox();
 });

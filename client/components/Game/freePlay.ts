@@ -92,16 +92,27 @@ export const awaitPendingCommit = () => pendingCommit;
 // construction: the server's INSERT is idempotent on client id, so a commit that
 // did land but whose answer was lost is a no-op the second time.
 const OUTBOX_KEY = "blocktol.freeplay.outbox";
-// Bounds, so a device that is never online again can't grow this forever:
-// a week-old run is not worth resurrecting, and twenty unsent runs is far past
-// any honest backlog.
+//
+// It holds at most ONE run per board (per player): the best one. What a queued
+// run is for is the player's record on that board — the PB field, the lost-top
+// notice, the Discord top build — and only the best run can move any of those,
+// so a worse run that fails to land is not worth re-sending once a better one
+// is waiting (or has landed). Every run is still SENT at execution; only the
+// retry queue is thinned. A tie keeps the earlier run, which reached the time
+// first.
+//
+// Beyond that, a week-old run is not worth resurrecting, and OUTBOX_MAX is
+// only a storage backstop (one per board makes it unreachable in practice).
 const OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
-const OUTBOX_MAX = 20;
+const OUTBOX_MAX = 50;
 
 type OutboxEntry = {
   iteration: number;
   clientId: string;
   blocks: (Point & { thunder?: boolean })[];
+  // The run's time as computed locally (the same engine the server recomputes
+  // it with), so the queue can keep only the best run per board.
+  time: number;
   // The device id the run was built under. A queued run is only ever sent as
   // its own player — after a move-device link swapped this device's id, the
   // entry waits (and ages out) rather than landing on someone else's board.
@@ -157,26 +168,35 @@ const send = (entry: OutboxEntry): Promise<CommitResult> => {
   }).finally(() => sending.delete(entry.clientId));
 };
 
-// Commit the attempt that just executed: park it in the outbox, then send it.
-// Resolves/rejects like a plain commitRun; whatever the outcome, an unanswered
-// run stays queued for flushFreePlayOutbox. A landed commit also drains any
-// backlog, since the connection is evidently back.
+// Queue `entry` unless the same player already has an equal-or-better run
+// queued for that board; a worse queued run is replaced (see OUTBOX_KEY).
+const enqueue = (entry: OutboxEntry) => {
+  const queued = readOutbox().filter((e) => e.clientId !== entry.clientId);
+  const sameBoard = (e: OutboxEntry) =>
+    e.iteration === entry.iteration && e.user === entry.user;
+  if (queued.some((e) => sameBoard(e) && e.time >= entry.time)) return;
+  writeOutbox([...queued.filter((e) => !sameBoard(e)), entry]);
+};
+
+// Commit the attempt that just executed: queue it in the outbox (if it's the
+// best run waiting for its board), then send it. Resolves/rejects like a plain
+// commitRun; an unanswered run that was queued stays for flushFreePlayOutbox. A
+// landed commit also drains any backlog, since the connection is evidently back.
 export const commitFreePlay = (
   iteration: number,
   blocks: (Point & { thunder?: boolean })[],
+  time: number,
 ): Promise<CommitResult> => {
   const entry: OutboxEntry = {
     iteration,
     clientId: freePlayClientId(),
     blocks,
+    time,
     user: getId(),
     at: Date.now(),
     timeZone: getTimeZone(),
   };
-  writeOutbox([
-    ...readOutbox().filter((e) => e.clientId !== entry.clientId),
-    entry,
-  ]);
+  enqueue(entry);
   const p = send(entry);
   p.then((r) => {
     if (settled(r)) flushFreePlayOutbox();

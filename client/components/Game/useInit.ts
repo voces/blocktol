@@ -498,12 +498,11 @@ export const useInit = () => {
     // Only a LIVE build executes. A review (its replay is not an attempt — the
     // expiry hand-off above drops `viewing` first when a build really is due),
     // a staged board, or the prestart overlay must never commit or spend
-    // anything, whatever drove `time` to 0 — the shortcut that once did (R
-    // during a review) is gated in the HUD too, but this is the line that
-    // writes, so it checks for itself.
+    // anything, whatever drove `time` to 0 (a removed "R" shortcut once did,
+    // during a review) — this is the line that writes, so it checks for itself.
     if (time !== 0 || !run || viewing || staged || prestart) return;
 
-    // The run is now executing (the clock hit 0, or the player tapped Ready / R).
+    // The run is now executing (the clock hit 0, or the player tapped Ready).
     // The maze on the board is what animates and what the server must record.
     const localBlocks = blocks.filter((b) => b.local);
 
@@ -538,7 +537,7 @@ export const useInit = () => {
         // retries (or a reload mid-animation) is re-sent at the next boot or
         // when the browser is back online rather than lost. Hold the promise so
         // the re-stage below waits for it (see runFinish).
-        const commit = commitFreePlay(iteration, maze);
+        const commit = commitFreePlay(iteration, maze, run.duration);
         // A commit that exhausts its retries is no longer a loss, but it IS a
         // sustained outage worth seeing — mirroring the run saver's
         // abandonment report.
