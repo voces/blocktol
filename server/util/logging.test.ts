@@ -26,6 +26,13 @@ Deno.test("formatLogfmt: escapes newlines so a stack stays one line", () => {
   assert(!line.includes("\n"));
 });
 
+Deno.test("formatLogfmt: a key can't forge fields or break the line", () => {
+  assertEquals(
+    formatLogfmt("error", "m", { 'a b="x" c': 1, "": 2, "client.ok-1": 3 }),
+    "level=error msg=m a_b__x__c=1 _=2 client.ok-1=3",
+  );
+});
+
 Deno.test("formatLogfmt: drops null/undefined fields", () => {
   assertEquals(
     formatLogfmt("info", "m", { a: 1, b: undefined, c: null, d: "x" }),

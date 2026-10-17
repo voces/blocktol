@@ -179,15 +179,17 @@ full policy needs a browser pass over the app, SW, debug and privacy pages
 first).
 
 **The API is one endpoint.** `server/routes/api.ts` owns a `handlers` registry;
-`POST /api/:method` looks the method up, zod-validates the body against
-`handler.validation`, calls `handler.handler`, and JSON-encodes the result. The
-exported `BlocktolApi` type is _derived from the registry_ and is the only thing
-the client imports — add a route by adding a `{ validation, handler }` (see
-`routes/apiHelpers.ts`'s `method(...)` helper) to that object and the client's
-typed `api.<method>()` appears automatically. A handler returning
-`{ status: >=500 }` (or throwing) is reported; 4xx are treated as expected
-client faults. (`setFlags` — `routes/iteration/flags.ts` — is the splits tape's
-one write; see the flags invariant below.)
+`POST /api/:method` looks the method up (own keys only — `/api/constructor` is a
+404), reads the body under a 64 KiB cap (`MAX_BODY_BYTES`, ~5× a full 400-piece
+commit; over it is a 413), zod-validates it against `handler.validation`, calls
+`handler.handler`, and JSON-encodes the result. The exported `BlocktolApi` type
+is _derived from the registry_ and is the only thing the client imports — add a
+route by adding a `{ validation, handler }` (see `routes/apiHelpers.ts`'s
+`method(...)` helper) to that object and the client's typed `api.<method>()`
+appears automatically. A handler returning `{ status: >=500 }` (or throwing) is
+reported; 4xx are treated as expected client faults. (`setFlags` —
+`routes/iteration/flags.ts` — is the splits tape's one write; see the flags
+invariant below.)
 
 **`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
 that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
@@ -452,6 +454,9 @@ Other invariants:
   but the span and nginx still see those. Holding two ids authorizes folding
   them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the loser
   row in one transaction). The client-side gate is `MoveGate`/`MoveDevice`.
+  `extractUserId` admits only the id shape ever minted (`[A-Za-z0-9_-]{1,36}` —
+  `user.id` is char(36)); any other header is treated exactly like a missing one
+  (anonymous, so authed methods 401), logged by length only.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
@@ -938,9 +943,12 @@ represent nesting and VL can't query what it can't see as a field). Two escape
 hatches in the same module: `errText(err)` renders a caught value to one field
 (an Error's stack, else stringified — use it as `{ error: errText(err) }`), and
 `coerceFlat(record)` flattens an `unknown`-typed record (client error payloads)
-by stringifying any non-primitive value. No timestamp in the payload — Deno's
-OTel stamps `_time`; a second would duplicate it. `level=` also gives Grafana a
-field to colour rows by.
+by stringifying any non-primitive value. Keys are reduced to `[A-Za-z0-9_.-]` on
+output, and `reportClientError` namespaces its payload as `client.<key>` (≤20
+keys, values cut to 4000 chars), so a client can neither forge fields nor
+override request context like `userHash` — its stack is `client.error`. No
+timestamp in the payload — Deno's OTel stamps `_time`; a second would duplicate
+it. `level=` also gives Grafana a field to colour rows by.
 
 **Build SHA / stale-client reload.** `common/version.ts` (`export const SHA`) is
 generated at build time by `scripts/genVersion.ts` — the `version` task, which

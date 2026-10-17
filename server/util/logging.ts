@@ -70,10 +70,18 @@ const needsQuote = (s: string) => s === "" || /[\s="\\]/.test(s);
 const encode = (v: string | number | boolean): string =>
   typeof v === "string" ? (needsQuote(v) ? JSON.stringify(v) : v) : String(v);
 
+// logfmt keys are bare, so a key is reduced to a safe charset: one carrying a
+// space, `=` or quote (a client-supplied `data` key — see reportClientError)
+// would otherwise forge extra fields or desync the whole line.
+const encodeKey = (k: string): string =>
+  k.replace(/[^A-Za-z0-9_.\-]/g, "_") || "_";
+
 const fieldsToLogfmt = (fields: LogFields): string =>
   Object.entries(fields)
     .filter(([, v]) => v !== null && v !== undefined)
-    .map(([k, v]) => `${k}=${encode(v as string | number | boolean)}`)
+    .map(([k, v]) =>
+      `${encodeKey(k)}=${encode(v as string | number | boolean)}`
+    )
     .join(" ");
 
 type Level = "error" | "warn" | "info" | "debug";
