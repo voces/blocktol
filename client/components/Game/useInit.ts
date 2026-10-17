@@ -649,6 +649,14 @@ export const useInit = () => {
     }
     rebuildGrid(grid, checkpoint, next);
     setBlocks(next);
+    // The run goes back with the maze, recomputed on the same engine as every
+    // other maze change. Without it the runner kept the path (and the HUD the
+    // time) of the edit being undone — a run the server never recorded. An
+    // expired save usually reverts after the execute flush already released
+    // the runner; swapping its path restarts the walk on the maze the server
+    // actually holds (Runner keys its animation on the path).
+    const r = localRun(next, checkpoint);
+    if (r) setRun(r);
   };
 
   // Wired every render so the callbacks close over fresh state. The saver

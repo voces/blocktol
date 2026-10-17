@@ -1,5 +1,5 @@
 import { Point } from "../../../common/types.ts";
-import { api, MessageMap } from "../../api.ts";
+import { api, MessageMap, withKeepalive } from "../../api.ts";
 
 // Serialized persistence for the in-progress build. Every save carries the
 // FULL local maze, so only the newest state matters: at most one updateRun is
@@ -150,3 +150,27 @@ export const flushRunSaver = () => {
   attempt = 0;
   flush();
 };
+
+// The page is being hidden (app switched, tab backgrounded, closed): send the
+// pending maze NOW rather than leaving it in the debounce. A hidden page's
+// timers are throttled or frozen outright (and a closed one's never fire), so
+// an edit still waiting out its 2s would otherwise reach the server only when
+// the player comes back — if the 60s window hasn't closed by then, which for a
+// phone pocketed mid-attempt it usually has. keepalive lets the request finish
+// even as the page goes. An in-flight save is left to chain the newer maze on
+// its answer as usual: firing a second concurrently could land out of order.
+// (pagehide too: Safari can fire it before — or without — the visibility
+// change.)
+const flushOnHide = () => {
+  if (!latest || inFlight) return;
+  clearTimeout(debounceTimer);
+  clearTimeout(retryTimer);
+  attempt = 0;
+  withKeepalive(flush);
+};
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushOnHide();
+  });
+  globalThis.addEventListener("pagehide", flushOnHide);
+}

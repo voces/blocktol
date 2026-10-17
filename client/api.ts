@@ -35,6 +35,9 @@ const primed = new Map<string, Promise<Response>>();
 const primeKey = (method: string, input: unknown) =>
   `${method}:${JSON.stringify(input ?? null)}`;
 
+// Set only for the synchronous extent of withKeepalive (below).
+let keepalive = false;
+
 const doFetch = (method: string, input: unknown) =>
   fetch(`/api/${method}`, {
     method: "POST",
@@ -43,7 +46,23 @@ const doFetch = (method: string, input: unknown) =>
     // skew of who's calling it (beginLogger). The server answers with its own
     // build in x-blocktol-server-sha, which we read below to detect a stale tab.
     headers: { authorization: getId(), "x-blocktol-client-sha": CLIENT_SHA },
+    keepalive,
   });
+
+// Issue the api calls `fn` makes with `keepalive: true`, so they outlive the
+// page being hidden or unloaded (the ranked saver's flush on pagehide). A call
+// sends its first fetch synchronously, so a flag scoped to the synchronous
+// call is enough — and deliberately doesn't reach a later retry, which only
+// runs while the page is still alive anyway. (keepalive caps the body at 64KB;
+// a maze is a few KB.)
+export const withKeepalive = <T>(fn: () => T): T => {
+  keepalive = true;
+  try {
+    return fn();
+  } finally {
+    keepalive = false;
+  }
+};
 
 // Methods safe to auto-retry on a transport failure (fetch rejected, or a
 // gateway/non-JSON response — see TransportError — so the request most likely
