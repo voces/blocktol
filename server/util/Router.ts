@@ -1,7 +1,7 @@
 import { trace } from "@opentelemetry/api";
 import { routeOf } from "../middleware/beginLogger.ts";
 import { errText, log } from "./logging.ts";
-import { UserError } from "./UserError.ts";
+import { NotFoundError, UserError } from "./UserError.ts";
 
 type Method =
   | "delete"
@@ -127,7 +127,9 @@ export class Router implements AbstractRouter {
       // A UserError is an expected 400 (bad input) — not something to page on,
       // so it's not logged at error level (endLogger still records the 400).
       if (typeof err === "object" && err instanceof UserError) {
-        return Response.json({ error: err }, { status: 400 });
+        return Response.json({ error: err }, {
+          status: err instanceof NotFoundError ? 404 : 400,
+        });
       }
       // log.error → VictoriaLogs (trace-correlated); recordException surfaces it
       // on the request span in VictoriaTraces, and the 500 response marks that

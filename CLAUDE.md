@@ -168,7 +168,8 @@ middleware chain over `URLPattern`. Path params are type-derived from the route
 string. Every request flows: `beginLogger` → login-link routes → `extractUserId`
 → **`POST /api/:method`** → the `/YYYYMMDD` day-permalink (serves the SPA shell)
 → `/privacy.html` (rendered per language — see _Data rights_) → `staticServe` →
-`endLogger`. A thrown `UserError` becomes a 400; anything else is a 500 — logged
+`endLogger`. A thrown `UserError` becomes a 400 (its `NotFoundError` subclass —
+e.g. an unknown iteration id — a 404); anything else is a 500 — logged
 (`console.error` → VictoriaLogs) and recorded on the request span
 (`recordException` → VictoriaTraces). Every response — the router's own
 fallbacks included — leaves through `withSecurityHeaders`

@@ -24,7 +24,15 @@ export const staticServe =
     if (prev) return prev;
 
     const url = new URL(req.url);
-    const pathname = normalize(decodeURI(url.pathname));
+    // A malformed escape (`/%E0%A4%A`) makes decodeURI throw — the client's
+    // fault, so a 400 rather than the router's 500 + error log.
+    let decoded: string;
+    try {
+      decoded = decodeURI(url.pathname);
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
+    const pathname = normalize(decoded);
     const a = await assets(publicDir);
 
     // The versioned shell / SW / manifest, served from memory no-cache.
