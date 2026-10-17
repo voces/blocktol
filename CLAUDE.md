@@ -344,7 +344,9 @@ get these right, they encode the whole competitive model:
   Recorded **only at `startRun`**, because it depends on the player's _claimed
   local day_ (from their timezone), and a daily's legal window spans ~50h of
   server time so it can't be inferred later from `created`. Read everywhere
-  else.
+  else. The claimed zone must be a named IANA zone (`util/dailyParts.ts`):
+  ECMA-402 also accepts raw offsets like `"+23:59"`, which would stretch that
+  window past the real −12..+14 range, so offset zones are a `UserError`.
 - **`daily`** — the single _counted_ result among a user's ranked runs (the best
   one). Re-pointed as builds save (`updateCurrentRun`).
 - **`void`** — abandoned/not-yet-counted. A **ranked** attempt is inserted at
