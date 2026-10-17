@@ -12,6 +12,8 @@
 // anyway.
 
 import { Point } from "../../../common/types.ts";
+import { api } from "../../api.ts";
+import { getId } from "../../util/id.ts";
 import { storage } from "../../util/storage.ts";
 
 const KEY = "blocktol.freeplay";
@@ -77,6 +79,134 @@ export const setPendingCommit = (p: Promise<unknown>) => {
 };
 
 export const awaitPendingCommit = () => pendingCommit;
+
+// The commit outbox. The in-progress record above is dropped the moment a run
+// executes (it must not resume), but the run isn't the server's until commitRun
+// LANDS — and a commit can fail outright: the api client's retries span a few
+// seconds, a deploy's restart or a dead connection can outlast them, and a
+// reload mid-animation abandons the request. Each executed maze is therefore
+// parked here, with its client id, BEFORE the commit is sent, and removed only
+// once the server has answered for it. What's left is re-sent at the next boot
+// and whenever the browser comes back online. Replaying is safe by
+// construction: the server's INSERT is idempotent on client id, so a commit that
+// did land but whose answer was lost is a no-op the second time.
+const OUTBOX_KEY = "blocktol.freeplay.outbox";
+// Bounds, so a device that is never online again can't grow this forever:
+// a week-old run is not worth resurrecting, and twenty unsent runs is far past
+// any honest backlog.
+const OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const OUTBOX_MAX = 20;
+
+type OutboxEntry = {
+  iteration: number;
+  clientId: string;
+  blocks: (Point & { thunder?: boolean })[];
+  // The device id the run was built under. A queued run is only ever sent as
+  // its own player — after a move-device link swapped this device's id, the
+  // entry waits (and ages out) rather than landing on someone else's board.
+  user: string;
+  at: number;
+};
+
+const readOutbox = (): OutboxEntry[] => {
+  try {
+    const parsed = JSON.parse(storage.getItem(OUTBOX_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeOutbox = (entries: OutboxEntry[]) => {
+  if (entries.length) {
+    storage.setItem(OUTBOX_KEY, JSON.stringify(entries.slice(-OUTBOX_MAX)));
+  } else storage.removeItem(OUTBOX_KEY);
+};
+
+const dropFromOutbox = (clientId: string) =>
+  writeOutbox(readOutbox().filter((e) => e.clientId !== clientId));
+
+// Client ids with a commit on the wire, so a flush never doubles one up.
+const sending = new Set<string>();
+
+type CommitResult = Awaited<ReturnType<typeof api.commitRun>>;
+
+// A server 5xx (`{ error, status: 500 }` — the commit's DB write failed) is
+// worth trying again later; any other error is a verdict on the maze (illegal,
+// unauthenticated) that a replay would only hear again.
+const settled = (r: CommitResult) =>
+  !("error" in r) || !("status" in r) || !(Number(r.status) >= 500);
+
+const send = (entry: OutboxEntry): Promise<CommitResult> => {
+  sending.add(entry.clientId);
+  return api.commitRun({
+    iteration: entry.iteration,
+    blocks: entry.blocks,
+    clientId: entry.clientId,
+  }).then((r) => {
+    if (settled(r)) dropFromOutbox(entry.clientId);
+    return r;
+  }).finally(() => sending.delete(entry.clientId));
+};
+
+// Commit the attempt that just executed: park it in the outbox, then send it.
+// Resolves/rejects like a plain commitRun; whatever the outcome, an unanswered
+// run stays queued for flushFreePlayOutbox. A landed commit also drains any
+// backlog, since the connection is evidently back.
+export const commitFreePlay = (
+  iteration: number,
+  blocks: (Point & { thunder?: boolean })[],
+): Promise<CommitResult> => {
+  const entry: OutboxEntry = {
+    iteration,
+    clientId: freePlayClientId(),
+    blocks,
+    user: getId(),
+    at: Date.now(),
+  };
+  writeOutbox([
+    ...readOutbox().filter((e) => e.clientId !== entry.clientId),
+    entry,
+  ]);
+  const p = send(entry);
+  p.then((r) => {
+    if (settled(r)) flushFreePlayOutbox();
+  }).catch(() => {});
+  return p;
+};
+
+// Re-send every queued commit, oldest first, stopping at the first one that
+// still can't land (the rest would fail the same way).
+let flushing = false;
+export const flushFreePlayOutbox = async () => {
+  if (flushing) return;
+  flushing = true;
+  try {
+    const now = Date.now();
+    const fresh = readOutbox().filter((e) => now - e.at < OUTBOX_MAX_AGE_MS);
+    writeOutbox(fresh);
+    for (const entry of fresh) {
+      if (sending.has(entry.clientId) || entry.user !== getId()) continue;
+      try {
+        if (!settled(await send(entry))) break;
+      } catch {
+        break;
+      }
+    }
+  } finally {
+    flushing = false;
+  }
+};
+
+// Forget every queued commit (account erasure — they're the erased player's).
+export const clearFreePlayOutbox = () => writeOutbox([]);
+
+// Boot wiring: drain what an earlier session left once the boot requests have
+// had the wire to themselves, and again whenever connectivity returns.
+export const installFreePlayOutbox = () => {
+  setTimeout(() => flushFreePlayOutbox(), 3_000);
+  globalThis.addEventListener("online", () => flushFreePlayOutbox());
+};
 
 // Drop the local record and the id. Called at commit (the run is the server's
 // now) and on re-stage/abandon (a fresh board must not resume the old build).

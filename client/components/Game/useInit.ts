@@ -29,7 +29,7 @@ import { localRun, rebuildGrid } from "./helpers.ts";
 import {
   awaitPendingCommit,
   clearFreePlay,
-  freePlayClientId,
+  commitFreePlay,
   pendingFreePlay,
   resumableFreePlay,
   setPendingCommit,
@@ -517,19 +517,18 @@ export const useInit = () => {
         // attempt's client id. The server recomputes the authoritative time from
         // it (only the 60s budget was client-enforced). It's retryable — a
         // connection dropped by a deploy retries onto a fresh isolate and lands —
-        // so the run can't silently vanish the way a one-shot commit could. Hold
-        // the promise so the re-stage below waits for it (see runFinish).
-        const commit = api.commitRun({
-          iteration,
-          blocks: maze,
-          clientId: freePlayClientId(),
-        });
-        // A commit that exhausts its retries is a real loss (a sustained outage):
-        // surface it rather than letting the run disappear silently, mirroring the
-        // run saver's abandonment report.
+        // and it goes through the commit outbox (freePlay.ts), which holds the
+        // maze + id until the server answers, so even a commit that outlasts its
+        // retries (or a reload mid-animation) is re-sent at the next boot or
+        // when the browser is back online rather than lost. Hold the promise so
+        // the re-stage below waits for it (see runFinish).
+        const commit = commitFreePlay(iteration, maze);
+        // A commit that exhausts its retries is no longer a loss, but it IS a
+        // sustained outage worth seeing — mirroring the run saver's
+        // abandonment report.
         commit.catch(() =>
           api.reportClientError({
-            message: "free-play commit failed after retries",
+            message: "free-play commit failed after retries (queued)",
             data: { iteration, blocks: maze.length },
           }).catch(() => {})
         );
@@ -590,8 +589,10 @@ export const useInit = () => {
         const verdict = computeVerdict(run.duration, min, best, ownBest);
         if (verdict) setVerdict(verdict);
       }
-      // The attempt has executed — drop its local resume record either way (an
-      // empty maze committed nothing, but its in-progress state must not resume).
+      // The attempt has executed — drop its local RESUME record either way (an
+      // empty maze committed nothing, but its in-progress state must not
+      // resume). A non-empty maze already sits in the commit outbox above,
+      // which is what keeps it until the server has it.
       clearFreePlay();
     }
 

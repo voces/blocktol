@@ -1,7 +1,7 @@
 import { h } from "preact";
 import { useState } from "preact/compat";
 import { api } from "../api.ts";
-import { clearFreePlay } from "./Game/freePlay.ts";
+import { clearFreePlay, clearFreePlayOutbox } from "./Game/freePlay.ts";
 import { startFreshId } from "../util/id.ts";
 import { Modal } from "./Modal.tsx";
 import { t, tJsx } from "../util/t.ts";
@@ -59,7 +59,9 @@ export const DeleteAccount = (
       }
       // The old id now points at an anonymized orphan; start over as a new player
       // and hard-reload so the app boots fresh against the new identity.
+      // Unsent free-play runs belong to the erased player too.
       clearFreePlay();
+      clearFreePlayOutbox();
       startFreshId();
       location.href = "/";
     }).catch(() => {

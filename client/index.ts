@@ -2,6 +2,7 @@ import { h, render } from "preact";
 import { primeSession } from "./boot.ts";
 import { App, getHasCompletedOnboarding } from "./components/App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
+import { installFreePlayOutbox } from "./components/Game/freePlay.ts";
 import { initSettings } from "./hooks/useSettings.ts";
 import { installErrorReporting } from "./util/errorReport.ts";
 import { getCleanLink, getPendingLink } from "./util/id.ts";
@@ -37,6 +38,11 @@ if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);
+
+// Re-send any free-play commit an earlier session couldn't land (see the
+// commit outbox in Game/freePlay.ts) — after boot, and whenever we're back
+// online.
+installFreePlayOutbox();
 
 globalThis.addEventListener("contextmenu", (e) => e.preventDefault());
 

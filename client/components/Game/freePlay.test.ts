@@ -1,6 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
+import { storage } from "../../util/storage.ts";
 import {
   clearFreePlay,
+  clearFreePlayOutbox,
+  commitFreePlay,
+  flushFreePlayOutbox,
   freePlayClientId,
   pendingFreePlay,
   persistFreePlay,
@@ -76,4 +80,89 @@ Deno.test("free play resume: an expired, empty, or reset record does not resume"
   persistFreePlay(7, NOW + 30_000, [{ x: 5, y: 5 }]);
   clearFreePlay();
   assertEquals(resumableFreePlay(7, NOW), null);
+});
+
+// --- The commit outbox -------------------------------------------------------
+// A stubbed fetch stands in for the server, so these exercise the real api
+// client (its retries and transport classification) end to end.
+
+// getId reads the URL for sign-in links; Deno has no `location` by default.
+Object.defineProperty(globalThis, "location", {
+  value: { pathname: "/" },
+  configurable: true,
+});
+
+const queued = () =>
+  JSON.parse(storage.getItem("blocktol.freeplay.outbox") ?? "[]") as {
+    clientId: string;
+  }[];
+
+const withFetch = async (
+  answer: (init?: RequestInit) => Response,
+  body: () => Promise<unknown>,
+) => {
+  const real = globalThis.fetch;
+  globalThis.fetch = (_url, init) => Promise.resolve(answer(init));
+  try {
+    await body();
+  } finally {
+    globalThis.fetch = real;
+  }
+};
+
+const landed = () =>
+  Response.json({ kind: "commitRun", iteration: 7, created: NOW });
+
+Deno.test("commit outbox: a landed commit leaves nothing queued", async () => {
+  clearFreePlayOutbox();
+  await withFetch(landed, () => commitFreePlay(7, [{ x: 5, y: 5 }]));
+  assertEquals(queued(), []);
+  clearFreePlay();
+});
+
+Deno.test("commit outbox: a verdict on the maze is dropped, a server fault is kept", async () => {
+  clearFreePlayOutbox();
+  await withFetch(
+    () =>
+      Response.json({ error: "too many blocks", status: 400 }, { status: 400 }),
+    () => commitFreePlay(7, [{ x: 5, y: 5 }]),
+  );
+  assertEquals(queued(), []);
+  clearFreePlay();
+
+  await withFetch(
+    () =>
+      Response.json({ error: "failed to commit run", status: 500 }, {
+        status: 500,
+      }),
+    () => commitFreePlay(7, [{ x: 5, y: 5 }]),
+  );
+  assertEquals(queued().length, 1);
+  clearFreePlay();
+
+  await withFetch(landed, flushFreePlayOutbox);
+  assertEquals(queued(), []);
+});
+
+Deno.test("commit outbox: a gateway page is a transport failure — retried, then queued and replayed", async () => {
+  clearFreePlayOutbox();
+  let calls = 0;
+  await withFetch(() => {
+    calls++;
+    return new Response("<html>502 Bad Gateway</html>", { status: 502 });
+  }, () => assertRejects(() => commitFreePlay(7, [{ x: 5, y: 5 }])));
+  // The first try plus every retry, and the run is still held.
+  assertEquals(calls > 1, true);
+  const [entry] = queued();
+  assertEquals(typeof entry?.clientId, "string");
+  clearFreePlay();
+
+  // Back online: the flush re-sends it under the SAME client id.
+  let sentId: string | undefined;
+  await withFetch((init) => {
+    sentId = JSON.parse(String(init?.body)).clientId;
+    return landed();
+  }, flushFreePlayOutbox);
+  assertEquals(sentId, entry.clientId);
+  assertEquals(queued(), []);
 });
