@@ -286,6 +286,12 @@ export const isPushEndpoint = (endpoint: string): boolean => {
 // subscribe route checked) logs once per process rather than on every send.
 const refusedHosts = new Set<string>();
 
+// A hung push service must not hang the caller: a lost-top push runs inside a
+// player's save (commit/update → onPbBuild), and the daily-final fan-out inside
+// the rate-dailies cron, which never overlaps itself — so one stuck socket would
+// stall every later rating. Push services answer in well under a second.
+const PUSH_TIMEOUT_MS = 10_000;
+
 export type WebPushSubscription = {
   endpoint: string;
   p256dh: string; // client public key, base64url (65-byte point)
@@ -344,6 +350,8 @@ export const sendPush = async (
         "Authorization": `vapid t=${jwt}, k=${vapidPublic}`,
       },
       body,
+      // Covers the body drain below too: the signal aborts the stream.
+      signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
       // Never follow a redirect off the allowlisted host.
       redirect: "manual",
     });
