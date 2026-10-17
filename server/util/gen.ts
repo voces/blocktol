@@ -1,4 +1,7 @@
-import { getDailyIteration } from "../db/iteration.ts";
+import {
+  getDailyIteration,
+  getStaleUnratedIterations,
+} from "../db/iteration.ts";
 import { alertAdmin } from "./adminAlert.ts";
 import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
@@ -53,6 +56,36 @@ const ensureIterations = async (offsetDays: number) => {
   }
 };
 
+// A day becomes ratable 37h after its UTC start (getUnratedClosedIterations)
+// and rate-dailies tries it every hour from then on; one still unrated this
+// many hours past that close means rating has stopped — the cron isn't running
+// or every attempt is failing.
+const STALE_AFTER_CLOSE_HOURS = 6;
+const CLOSE_HOURS = 37;
+
+// The watchdog for rate-dailies, run from THIS cron so that a rating cron that
+// died (or was never registered) is still noticed — nothing else would: an
+// unrated day just silently never sends its daily-final notifications or ELO.
+// One alert per run at most (hourly, so a repeat means it's still stuck), and a
+// failed probe is only logged — it must never get in the way of generation.
+const checkRatingLiveness = async () => {
+  try {
+    const { count, oldest } = await getStaleUnratedIterations(
+      CLOSE_HOURS + STALE_AFTER_CLOSE_HOURS,
+    );
+    if (count === 0) return;
+    log.warn("closed dailies left unrated", { count, oldest });
+    alertAdmin(
+      `rate-dailies looks stalled: ${count} closed day(s) still unrated more ` +
+        `than ${STALE_AFTER_CLOSE_HOURS}h after close (oldest ${
+          String(oldest).slice(0, 10)
+        }) — no ELO or daily-final notifications until it runs`,
+    );
+  } catch (err) {
+    log.error("rating liveness check failed", { error: errText(err) });
+  }
+};
+
 // Bulk daily generation. `Deno.cron` runs once per schedule, never overlapping,
 // so it's a single writer for the whole 33-day window in one pass — cheaper than
 // backfilling day-by-day on request. Hourly is enough: the window reaches
@@ -73,5 +106,8 @@ const ensureIterations = async (offsetDays: number) => {
 // double-generate. The write path is already race-safe, but skipping the
 // duplicate work is cleaner.
 if (!Deno.env.get("DISABLE_CRONS")) {
-  Deno.cron("ensure-iterations", "0 * * * *", () => ensureIterations(31));
+  Deno.cron("ensure-iterations", "0 * * * *", async () => {
+    await ensureIterations(31);
+    await checkRatingLiveness();
+  });
 }

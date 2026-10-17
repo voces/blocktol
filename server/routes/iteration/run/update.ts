@@ -6,7 +6,7 @@ import {
 import { getLatestRun, updateCurrentRun } from "../../../db/run.ts";
 import { onPbBuild } from "../../../util/pbBoard.ts";
 import { errText, log } from "../../../util/logging.ts";
-import { trailer } from "../../../util/memoize.ts";
+import { boundedTrailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
 import { piece } from "./piece.ts";
@@ -24,7 +24,12 @@ const updateRunBody = z.object({
   blocks: z.array(piece).max(400),
 });
 
-const getIterationOtherBest = trailer(getIterationOtherBestRaw);
+// Stale-while-revalidate per (iteration, user), so a burst of saves doesn't
+// re-run the field query each time. Bounded: the old unbounded `trailer` kept
+// one entry per player per day forever on the long-lived process. 10k keys
+// comfortably covers every builder active at once; an evicted one just pays a
+// fresh fetch on its next save.
+const getIterationOtherBest = boundedTrailer(getIterationOtherBestRaw, 10_000);
 
 export const updateRun = method(updateRunBody, true)(
   async ({ iteration: iterationId, blocks, userId }, req) => {

@@ -69,7 +69,18 @@ export const createIteration = (
   // duplicate row, but the caller (ensureDailyIterationId) treats a losing
   // INSERT as "someone else generated it" and re-reads, so a retry here must not
   // fire a second write it would then have to reconcile.
-  return sqlOnce<[ExecResult, ExecResult, ExecResult[] | undefined]>`
+  //
+  // One transaction: the iteration row and its fixed blocks land together or
+  // not at all. Without it, a connection lost between the two INSERTs left a
+  // committed day with NO fixed pieces — and since every generator checks only
+  // that the day's row exists, nothing would ever repair it. The UNIQUE(created)
+  // race is unchanged: the loser's iteration INSERT still fails with the
+  // duplicate-key error (blocking on the winner's uncommitted row first), which
+  // is what ensureDailyIterationId catches before re-reading the winner's id.
+  // The direct transport rolls back a batch that failed mid-transaction
+  // (directTransport.ts), so that aborted attempt leaves nothing open behind it.
+  return sqlOnce<[ExecResult, ExecResult, ...unknown[]]>`
+    START TRANSACTION;
     INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min)
     VALUES (${created}, ${bricks}, ${power}, ${checkpoint.x}, ${checkpoint.y}, ${duration});
     SET @last_id = LAST_INSERT_ID();
@@ -80,7 +91,8 @@ export const createIteration = (
       ...blocks.map((b) => [raw`@last_id`, b.x, b.y, "block"]),
       ...thunders.map((t) => [raw`@last_id`, t.x, t.y, "thunder"]),
     ]};`)
-  }`.then(([q]) => q.insertId);
+  }
+    COMMIT;`.then(([, q]) => q.insertId);
 };
 
 export const getMaxIterationTime = (iteration: number) =>
@@ -162,6 +174,20 @@ export const getUnratedClosedIterations = (hours = 37) =>
     ORDER BY created, id
     LIMIT 25;
   `.then((r) => r.map((i) => i.id));
+
+// How many closed dailies are still unrated `hours` after the fact, and the
+// oldest one's date — the rate-dailies liveness probe (util/gen.ts). Same
+// close predicate as getUnratedClosedIterations, with a larger offset.
+export const getStaleUnratedIterations = (hours: number) =>
+  sql<{ count: number; oldest: string | null }[]>`
+    SELECT COUNT(*) count, MIN(created) oldest
+    FROM iteration
+    WHERE rated = FALSE
+      AND DATE(created) <= DATE(NOW() - INTERVAL ${hours} HOUR);
+  `.then((r) => ({
+    count: Number(r[0]?.count ?? 0),
+    oldest: r[0]?.oldest ?? null,
+  }));
 
 // The completed daily times for an iteration (one per player), used as the
 // field a player's percentile is computed against.

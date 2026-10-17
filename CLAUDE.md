@@ -298,17 +298,31 @@ Two tagged-template helpers, and the choice is a correctness concern:
   a retried INSERT after a lost response silently duplicates a row (a spent
   daily attempt, a duplicate iteration).
 
+Both run under a 3s per-attempt timeout that covers the whole response (the
+proxy's body read included). A third, `sqlMigrate`, has **no retry and no
+timeout** and is for `db/migrate.ts` only — a long ALTER must neither be failed
+client-side while it keeps running nor re-sent on top of itself.
+
 Multi-statement batches run on one connection, so `@session` variables and
 `START TRANSACTION` work across statements — several writes (e.g.
-`updateCurrentRun`, `mergeUsers`) rely on this.
+`updateCurrentRun`, `mergeUsers`, `applyRatings`, `createIteration`) rely on
+this. The direct transport checks out its connection explicitly so it can clean
+up after a failure: a server error mid-batch is `ROLLBACK`ed before the
+connection goes back to the pool (otherwise the next borrower inherits the open
+transaction), and a transport error or timeout destroys it. It also bounds the
+wait for a pooled connection (5s acquire timeout, 500-deep queue).
 
 **Migrations (`server/db/migrations.ts` + `db/migrate.ts`):** ordered,
 contiguous from v1, each run once and recorded in `schema_migration`. A lease
-lock elects a single migrator across isolates on boot. **The runner keys off
-`version` only — editing an already-shipped migration's SQL never re-runs it.**
-So the rule is **append-only once a migration has reached prod**: fix forward
-with a new migration. (Editing in place is allowed only while a migration has
-_only_ reached dev — see the long note at the bottom of that file.)
+lock elects a single migrator across isolates on boot; the holder renews its 60s
+lease every 20s while it works, and the losers **wait** (polling, retrying the
+lease in case the winner died; capped at 15 min, then a logged/alerted throw)
+until the target version is recorded — so no process opens its `ready` gate onto
+a half-migrated schema. **The runner keys off `version` only — editing an
+already-shipped migration's SQL never re-runs it.** So the rule is **append-only
+once a migration has reached prod**: fix forward with a new migration. (Editing
+in place is allowed only while a migration has _only_ reached dev — see the long
+note at the bottom of that file.)
 
 **Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
 `DISABLE_CRONS` is set, so a second instance sharing the DB doesn't
@@ -333,7 +347,12 @@ double-write):**
   the mutex**, no app lock needed. `getIteration` returns that `DATE` as the
   board's `date`; the client needs no special parsing — a `DATE` deserialises to
   `YYYY-MM-DD` (or an ISO midnight-Z), both of which `new Date()` reads as UTC
-  midnight, and the board caption formats it in UTC.
+  midnight, and the board caption formats it in UTC. The iteration row and its
+  fixed blocks are inserted in one transaction (`createIteration`), so a dropped
+  connection can't leave a day with no pieces. Each run also ends with the
+  **rate-dailies watchdog** (`checkRatingLiveness`): a closed day still unrated
+  6h past its close means rating has stopped, and it `alertAdmin`s (once per
+  run) — run from this cron so a dead `rate-dailies` is still noticed.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
   percentile-based), then fires "daily final" notifications and posts the day's
@@ -345,7 +364,13 @@ double-write):**
   `rated` before announcing, so these posts are also what unblocks that day's
   live top-PB posts — and that second message IS the day's standing top-PB post
   (it writes the `pb_top` marker), so a later free-play record supersedes it
-  rather than standing beside it.
+  rather than standing beside it. Rating **claims** the day atomically
+  (`applyRatings`: `rated = FALSE → TRUE` and the ELO deltas in one transaction,
+  deltas gated on the claim), and only the claiming writer notifies/announces —
+  so a second cron writer on the same DB (a forgotten `DISABLE_CRONS`) costs
+  duplicate work, never a doubled rating or post. Deltas are applied relative to
+  the stored rating by an UPDATE of existing rows only, so a user merged or
+  erased mid-sweep is never re-created under their old id.
 
 ## Domain model & invariants
 
@@ -406,7 +431,12 @@ Other invariants:
   a legacy cached client that still `startRun`+`updateRun`+bare-committed hits
   the old flip-void path (no `blocks`). Trusting the client on free play is
   deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
-  the time from the submitted maze — only the 60s budget is client-enforced.
+  the time from the submitted maze — only the 60s budget is client-enforced. The
+  ranked server window (`updateCurrentRun`) is an elapsed-seconds `< 61`,
+  deliberately: over whole-second timestamps `< 60` closed 0–1s _before_ the
+  true 60s, more than `SAVE_GRACE_MS` covers; `< 61` never closes before
+  insert + 60s and at most 1s after. Freshness is computed once (`@fresh`) and
+  gates the UPDATE, so `saved` always matches whether the write happened.
 - **Free play is gated only on the player's own today and later.**
   `util/boardAccess.ts` (`checkBoardAccess`) is the one gate, for `getBoard` (so
   `boot` and `dayView` too), a free-play `startRun` (numeric iteration) and
