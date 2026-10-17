@@ -170,7 +170,13 @@ string. Every request flows: `beginLogger` → login-link routes → `extractUse
 → `/privacy.html` (rendered per language — see _Data rights_) → `staticServe` →
 `endLogger`. A thrown `UserError` becomes a 400; anything else is a 500 — logged
 (`console.error` → VictoriaLogs) and recorded on the request span
-(`recordException` → VictoriaTraces).
+(`recordException` → VictoriaTraces). Every response — the router's own
+fallbacks included — leaves through `withSecurityHeaders`
+(`middleware/securityHeaders.ts`, applied in `index.ts`): nosniff,
+`Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, HSTS, and a
+deliberately minimal CSP (`frame-ancestors`/`base-uri`/`object-src` only — a
+full policy needs a browser pass over the app, SW, debug and privacy pages
+first).
 
 **The API is one endpoint.** `server/routes/api.ts` owns a `handlers` registry;
 `POST /api/:method` looks the method up, zod-validates the body against
