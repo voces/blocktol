@@ -139,6 +139,17 @@ export const insertFreePlayRun = (
 // own age rather than the UPDATE's changedRows, which is also 0 for a save
 // carrying identical data.
 //
+// The window is `TIMESTAMPDIFF(SECOND, created, NOW()) < 61`, not `< 60`, and
+// that is the 60s window, not a widened one: `created` and NOW() are both
+// whole seconds, so `< 60` closed at floor(insert) + 60 — anywhere from 0 to 1s
+// BEFORE the true 60s, more than the client's 250ms SAVE_GRACE_MS could absorb,
+// which is how a last-second edit was still being rejected as expired. `< 61`
+// closes at floor(insert) + 61: never before insert + 60s, at most 1s after. (A
+// sub-second `created` would make it exact, but that's a migration.) Freshness
+// is evaluated ONCE, into @fresh, and the UPDATE is gated on that same value:
+// the SELECT and UPDATE used to call NOW() separately, so a save straddling the
+// boundary could answer saved:true without writing, or write and answer false.
+//
 // The whole batch rides one transaction: a failure between the save and the
 // daily re-pointing must not leave void cleared with the counted-result flags
 // half-reassigned.
@@ -158,10 +169,10 @@ export const updateCurrentRun = (
   >`
     START TRANSACTION;
 
-    SET @ranked := FALSE;
+    SET @ranked := FALSE, @fresh := FALSE;
 
     SELECT @ranked := ranked ranked,
-           TIMESTAMPDIFF(SECOND, created, NOW()) < 60 fresh
+           @fresh := (TIMESTAMPDIFF(SECOND, created, NOW()) < 61) fresh
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
@@ -171,9 +182,9 @@ export const updateCurrentRun = (
     SET time = ${time}, data = ${
     serializeRun(blocks)
   }, void = void AND NOT @ranked
-    WHERE user = ${user}
+    WHERE @fresh
+      AND user = ${user}
       AND iteration = ${iteration}
-      AND TIMESTAMPDIFF(SECOND, created, NOW()) < 60
     ORDER BY created DESC LIMIT 1;
 
     UPDATE run

@@ -48,22 +48,28 @@ const rateIteration = async (iteration: number) => {
   // One pass over the field gives every player's percentile (own run excluded).
   const percentiles = selfExcludedPercentiles(field);
 
-  const updates: { user: string; rating: number; plays: number }[] = [];
+  const deltas: { user: string; delta: number }[] = [];
   for (const p of participants) {
     const actual = percentiles.get(p.time);
     if (actual === undefined) continue; // only player that day — nothing to rank
 
-    const change = computeRatingChange(p.rating, p.plays, actual);
-    updates.push({
+    deltas.push({
       user: p.user,
-      rating: p.rating + change,
-      plays: p.plays + 1,
+      delta: computeRatingChange(p.rating, p.plays, actual),
     });
   }
 
-  // Marks the iteration rated even when `updates` is empty, so it isn't rechecked.
-  await applyRatings(iteration, updates);
-  log.info("rated daily iteration", { iteration, players: updates.length });
+  // Claims the iteration (marking it rated even when `deltas` is empty, so it
+  // isn't rechecked) and applies the deltas only if the claim was ours. Another
+  // writer on the same DB may have rated this day since we listed it — then
+  // nothing was applied, and its notifications/posts are that writer's to send.
+  if (!await applyRatings(iteration, deltas)) {
+    log.info("daily iteration already rated elsewhere; skipping", {
+      iteration,
+    });
+    return;
+  }
+  log.info("rated daily iteration", { iteration, players: deltas.length });
 
   // The day is now final — notify its ranked players and post the day's results
   // to Discord. After applyRatings so the rating write is never held up by (or
@@ -99,12 +105,14 @@ const rateDailies = async () => {
   }
 };
 
-// Runs at :30 each hour (offset from the generation cron). `Deno.cron` is a
-// single, non-overlapping writer, so no two isolates can double-rate. Each
-// daily is rated once its date is fully closed across all timezones.
+// Runs at :30 each hour (offset from the generation cron). Each daily is rated
+// once its date is fully closed across all timezones.
 //
-// DISABLE_CRONS gates registration (see gen.ts) so a second instance sharing
-// this DB doesn't double-rate.
+// `Deno.cron` is non-overlapping only within ONE deployment; a second instance
+// on the same DB is a second writer. DISABLE_CRONS gates registration (see
+// gen.ts) so it normally doesn't run at all, but correctness doesn't rest on
+// that flag: applyRatings claims each day atomically, so a forgotten flag costs
+// duplicate work, never a double-applied rating or a doubled announcement.
 if (!Deno.env.get("DISABLE_CRONS")) {
   Deno.cron("rate-dailies", "30 * * * *", rateDailies);
 }

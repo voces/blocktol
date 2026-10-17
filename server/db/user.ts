@@ -12,7 +12,8 @@ import { format, raw, sql } from "./query.ts";
 // enough that no real player is ever truncated (a heavy free-play replayer sits
 // in the low hundreds), but a hard ceiling so a runaway client can't ask us to
 // serialize an unbounded maze list. Hitting it means the panel is now dropping
-// that player's oldest runs — a human-actionable oddity, so alert once (see
+// that player's NEWEST runs (the read keeps the oldest RUN_CAP, see
+// allRunsByIteration) — a human-actionable oddity, so alert once (see
 // below).
 const RUN_CAP = 10_000;
 // Dedup the cap alert to once per (user, iteration) per process — the read
@@ -371,7 +372,7 @@ export const allRunsByIteration = (user: string, iteration: number) =>
         });
         alertAdmin(
           `Player \`${user}\` hit the ${RUN_CAP}-run cap on iteration ` +
-            `${iteration}; the attempts panel is now dropping their oldest runs.`,
+            `${iteration}; the attempts panel is now dropping their newest runs.`,
         );
       }
     }
@@ -611,23 +612,61 @@ export const getRatingParticipants = (iteration: number) =>
     GROUP BY r.user, u.rating, u.plays;
   `;
 
-// Apply a batch of rating updates and mark the iteration rated, in one
-// transaction so a partial failure can't double- or under-count. The updates
-// are a single bulk upsert (one statement, one parse) rather than one UPDATE
-// per player, so it scales to thousands of participants.
-export const applyRatings = (
+// The UPDATE applyRatings runs: each listed player's delta, picked by a CASE on
+// their id, gated on the claim. Matching the literals straight against
+// `user.id` (rather than JOINing a derived table of them) keeps the comparison
+// the same column-vs-literal one every other query makes, with no collation
+// mix to trip over; the IN list makes it a primary-key lookup. `+ 0e0` makes
+// each delta a DOUBLE, so a mix of DECIMAL literals of different scales (or one
+// in exponent form) can't be truncated to a common type. GREATEST(0, …) because
+// the column is unsigned and the drift described below could in principle dip a
+// near-zero rating under it. Non-empty input only.
+export const ratingDeltaUpdate = (deltas: { user: string; delta: number }[]) =>
+  `UPDATE user
+    SET rating = GREATEST(0, rating + CASE id ${
+    deltas.map((d) => format`WHEN ${d.user} THEN ${d.delta} + 0e0`).join(" ")
+  } END),
+      plays = plays + 1
+    WHERE @claimed > 0 AND id IN (${format`${deltas.map((d) => d.user)}`});`;
+
+// Claim the iteration for rating and apply its rating deltas, in one
+// transaction. Resolves whether THIS call made the claim — the caller sends the
+// day's notifications and Discord posts only then.
+//
+// The claim is `rated = FALSE -> TRUE`, and every delta is gated on it having
+// landed. Two writers on one DB (a second instance missing DISABLE_CRONS, a dev
+// deploy pointed at prod) used to both rate the same day: each read the ratings,
+// and the plain `SET rated = TRUE` let both commit — doubling every player's
+// ELO change and every push / Discord post. Now the loser's claim blocks on the
+// winner's row lock, re-reads the committed `rated = TRUE`, matches nothing, and
+// its deltas don't apply. Its `@claimed` is read back after COMMIT, in the same
+// batch (one connection, so the session variable carries).
+//
+// Deltas, applied relative to the stored row, rather than absolute ratings:
+// the participants were read before this transaction, so an absolute write
+// would silently undo another day's rating committed in between. (The delta
+// itself was computed off that slightly earlier rating — a negligible drift,
+// unlike a lost update.) And an UPDATE that can only touch EXISTING rows,
+// rather than the old `INSERT … ON DUPLICATE KEY UPDATE`: a player merged away
+// or erased (deleteAccount rotates the id) between the read and this write
+// must not come back as a fresh row keyed by their old id — that id is the
+// person's credential. Still one statement however large the field.
+//
+// Retry-safe (`sql`): a retry after a lost response finds the day already
+// claimed and changes nothing — the cost is that it reports "not claimed", so
+// that rare day's notifications are skipped rather than ever sent twice.
+export const applyRatings = async (
   iteration: number,
-  updates: { user: string; rating: number; plays: number }[],
+  deltas: { user: string; delta: number }[],
 ) => {
-  const upsert = updates.length === 0 ? "" : format`
-    INSERT INTO user (id, rating, plays)
-    VALUES ${updates.map((u) => [u.user, u.rating, u.plays])}
-    ON DUPLICATE KEY UPDATE rating = VALUES(rating), plays = VALUES(plays);
-  `;
-  return sql`
+  const r = await sql<unknown[]>`
     START TRANSACTION;
-    ${raw(upsert)}
-    UPDATE iteration SET rated = TRUE WHERE id = ${iteration};
+    UPDATE iteration SET rated = TRUE WHERE id = ${iteration} AND rated = FALSE;
+    SET @claimed := ROW_COUNT();
+    ${raw(deltas.length === 0 ? "" : ratingDeltaUpdate(deltas))}
     COMMIT;
+    SELECT @claimed claimed;
   `;
+  const last = r[r.length - 1] as { claimed: number | string }[];
+  return Number(last?.[0]?.claimed) > 0;
 };
