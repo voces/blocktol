@@ -777,7 +777,12 @@ a title link to the day's `/YYYYMMDD?board=` permalink:
   best build of the day".
 
 Both are best-effort (never throw, awaited so this Deploy doesn't kill them mid
-flight) and no-op without a webhook configured. See the `DISCORD_*` env vars.
+flight, each fetch bounded by a timeout) and no-op without a webhook configured.
+Player-written text never reaches Discord raw: names go through `escapeDiscord`
+(`util/discordText.ts` — markdown metacharacters escaped, `://` broken so a name
+can't be a masked or bare link, newlines flattened) inside `pbEmbed` /
+`dailyEmbed`, an id quoted in an admin alert through `discordCode`, and both
+webhooks send `allowed_mentions: { parse: [] }`. See the `DISCORD_*` env vars.
 
 ## Localization (i18n)
 
