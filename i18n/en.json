@@ -1043,6 +1043,10 @@
     "message": "The first attempt stands, so a merge can't cherry-pick a faster time.",
     "description": "Reassurance under the merge explanation: merging can't game the leaderboard."
   },
+  "mg.mergeFailed": {
+    "message": "The merge didn't go through, so this device is still signed in as before. Check your connection and try again.",
+    "description": "Error shown on the merge/fork screen when merging two profiles failed (server error or no connection). Nothing switched; the player can retry."
+  },
   "mg.mergeInto": {
     "message": "Merge into {name}",
     "description": "Button that performs the merge, keeping {name} as the primary profile (or the \"profile\" fallback)."

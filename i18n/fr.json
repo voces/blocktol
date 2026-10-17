@@ -363,6 +363,10 @@
     "message": "Fusionner les comptes",
     "hash": "3f284252b3814ab3851453421aa97477d336068d7a357199e36cef19fca0cd79"
   },
+  "mg.mergeFailed": {
+    "message": "La fusion n'a pas abouti : cet appareil reste connecté comme avant. Vérifiez votre connexion et réessayez.",
+    "hash": "ccee5734d3c197eb3a00f4c873890105c2bdb20b08df11bccce7802beb859267"
+  },
   "mg.mergeInto": {
     "message": "Fusionner dans {name}",
     "hash": "72790ccba9b648242b2c1cf5fa60403e0ce8e9505639ade5c3270b6888894f0e"

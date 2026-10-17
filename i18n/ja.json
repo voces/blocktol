@@ -363,6 +363,10 @@
     "message": "アカウントを統合",
     "hash": "3f284252b3814ab3851453421aa97477d336068d7a357199e36cef19fca0cd79"
   },
+  "mg.mergeFailed": {
+    "message": "統合できませんでした。この端末は以前のままサインインしています。接続を確認して、もう一度お試しください。",
+    "hash": "ccee5734d3c197eb3a00f4c873890105c2bdb20b08df11bccce7802beb859267"
+  },
   "mg.mergeInto": {
     "message": "{name}に統合",
     "hash": "72790ccba9b648242b2c1cf5fa60403e0ce8e9505639ade5c3270b6888894f0e"

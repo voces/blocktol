@@ -215,19 +215,53 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       storage.setItem("hasCompletedOnboarding", "true");
     }
     if (opts?.toast) {
-      sessionStorage.setItem("gateToast", JSON.stringify(opts.toast));
+      // Best-effort: blocked site data throws on access, and a lost toast
+      // must not stop the adopt.
+      try {
+        sessionStorage.setItem("gateToast", JSON.stringify(opts.toast));
+      } catch { /* no toast */ }
     }
     adoptId(id);
     clearLinkFromUrl();
     location.assign("/");
   };
 
+  // Whether the merge actually happened. Only then may the device let go of
+  // its current id: adopting the link's id over a merge that failed overwrote
+  // the ONLY local copy of the old credential, orphaning that profile. A
+  // lost answer for a merge that did land is safe to retry — the server
+  // then finds the secondary already folded in and succeeds as a no-op.
+  const [mergeFailed, setMergeFailed] = useState(false);
+  const tryMerge = async (which: "self" | "other") => {
+    try {
+      const r = await api.merge({ other: linkId, primary: which });
+      return !("error" in r);
+    } catch {
+      return false;
+    }
+  };
+
   const doMerge = async (which: "self" | "other") => {
     setMode("working");
-    await api.merge({ other: linkId, primary: which });
+    setMergeFailed(false);
+    if (!(await tryMerge(which))) {
+      // Back to the screen the merge was asked from, saying why.
+      setMergeFailed(true);
+      setMode("pick");
+      return;
+    }
     if (which === "self") proceed();
     else reloadAs(linkId, { adoptedRuns: other?.runs ?? 0 });
   };
+
+  const mergeError = mergeFailed && (
+    <div class="mg-warn" role="alert">
+      <span class="mg-warn-icon">
+        <WarnIcon />
+      </span>
+      <div>{t("mg.mergeFailed")}</div>
+    </div>
+  );
 
   useEffect(() => {
     let live = true;
@@ -257,7 +291,14 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       // it to a discarded secondary would surprise — show the fork instead.
       if (selfRuns < SILENT_RATIO * otherRuns) { // 2e
         setMode("working");
-        await api.merge({ other: linkId, primary: "other" });
+        if (!(await tryMerge("other"))) {
+          // Not silently, then: fall back to the explicit fork, with the
+          // link as primary as intended, and say what went wrong.
+          if (!live) return;
+          setMergeFailed(true);
+          setPrimaryIsSelf(false);
+          return setMode("fork");
+        }
         return reloadAs(linkId, {
           adoptedRuns: o.runs,
           toast: {
@@ -280,13 +321,20 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // "Copied" is said only once the clipboard actually took the link. A refused
+  // or missing clipboard (insecure context, an old WebView) still unlocks the
+  // switch — the link is printed right beside the button for a manual save,
+  // and locking it would strand the player — but claims nothing.
   const copyLink = () => {
-    navigator.clipboard?.writeText(
-      new URL("/l/" + localId, location.origin).href,
-    );
-    setCopied(true);
-    setLinkSaved(true);
-    setTimeout(() => setCopied(false), 1500);
+    const url = new URL("/l/" + localId, location.origin).href;
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(url))
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => {})
+      .finally(() => setLinkSaved(true));
   };
 
   // Centered-logo screens (clean adopt, fork).
@@ -393,6 +441,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             </div>
           </div>
         </div>
+        {mergeError}
         <div class="mg-actions">
           <button
             type="button"
@@ -534,6 +583,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
             {t("mg.mergeNote")}
           </span>
         </div>
+        {mergeError}
         <button
           type="button"
           class="mg-btn mg-btn--primary tapc mg-body-btn"
