@@ -333,8 +333,9 @@ double-write):**
 ## Domain model & invariants
 
 Tables: `user`, `iteration`, `block` (an iteration's fixed pieces, kind
-`block|thunder`), `run`, `notification`, `push_subscription`. Key run flags —
-get these right, they encode the whole competitive model:
+`block|thunder`), `run`, `notification`, `push_subscription`, `flag`, `preview`,
+`pb_top`. Key run flags — get these right, they encode the whole competitive
+model:
 
 - **`ranked`** — this run is one of the daily's three counting attempts.
   Recorded **only at `startRun`**, because it depends on the player's _claimed
@@ -362,7 +363,10 @@ against the same marks. They ride the `getBoard` response (and so `boot` /
 `dayView` / every board loader through it) and are written back whole by
 `setFlags`, an absolute-value upsert that is therefore idempotent and retryable.
 Nothing but the owner reads them: they never touch timing, standings, or
-validation.
+validation. **Previews** (`preview`, migration v16) are the other: a
+`(user, iteration)` marker recording that the board gate (below) showed the
+player a board while it was still rankable to their west, which forfeits ranking
+it.
 
 Other invariants:
 
@@ -388,28 +392,42 @@ Other invariants:
   the old flip-void path (no `blocks`). Trusting the client on free play is
   deliberate: it's post-ranked, never feeds ELO, and the server still recomputes
   the time from the submitted maze — only the 60s budget is client-enforced.
-- **Free play is ungated except for today's own daily.** Any past date is
-  replayable at any time; the only board `getBoard` gates is _today's_ daily —
-  it can't be free-played until its three ranked attempts are spent (no
-  previewing/practising the puzzle you're about to rank). So a day that just
-  rolled over is immediately replayable even while the new day's daily is still
-  outstanding. A locked board answers a plain **`{ incomplete: true }` (200),
-  never an error** — "not yet" is a state, not a fault, and it leaks nothing
-  either way. It used to 403 unless the caller passed `soft`, which only `boot`
-  did; every other path that legitimately lands on an unfinished today (the
-  regrade refetch, a notification tap, `boot`'s own linked-day slice for a today
-  permalink, a calendar pick while parked on a past day) therefore turned a
-  routine "not yet" into a 403 — and since `client/api.ts` relays **every**
-  error response to `reportClientError` from inside the proxy, before the caller
-  can swallow it, each one logged a server-side error even where the call site
-  was written to ignore it. Consumers already branch on `"incomplete" in r`
-  (`store/board.ts`, `useInit`'s regrade); `showBoard` re-requests once on
-  `{ incomplete }` so a stale prime (notably the linked-day slice a
-  `/YYYYMMDD`-for-today boot stashes) can't wedge the first real stage. **Ranked
-  play is a strictly local-day affair** — the client hard-cuts a ranked
-  attempt's build window at the player's local midnight (an in-progress attempt
-  executes early; no further attempts open on the old day), and surfaces the new
-  day via an explicit switch (see the daily-rollover flow).
+- **Board access is one gate: no one sees a puzzle before ranking it.**
+  `util/boardAccess.ts` (`checkBoardAccess`) decides for `getBoard` (so `boot`
+  and `dayView` too), a free-play `startRun` (numeric iteration) and `commitRun`
+  (both shapes). A day D stays rankable somewhere until it ends in UTC−12
+  (`Etc/GMT+12`). In order: D no longer rankable anywhere → **open**; the caller
+  has opened three `ranked` attempts on it → **open**; D is the caller's local
+  today or later → **locked** (tomorrow's iteration exists — the gen cron runs a
+  day ahead — so a future day is gated like today); D is before the caller's
+  today but still rankable to the west → **open as a preview**, recorded in
+  `preview` before the board is returned, and `startRun` (`db/run.ts`, beside
+  `@isDaily`) then refuses a ranked attempt on it. An honest client only ranks
+  its own local today, which it can never preview, so the marker only bites the
+  claim-another-timezone trick. `commitRun` carries no timezone, so it honours
+  an existing preview but can't grant one (every opening is monotonic in time).
+  A day that just rolled over is therefore immediately replayable, but as a
+  preview until it closes in UTC−12. `updateRun` with no run on the iteration
+  answers `expired` rather than `validateRun`'s reason, which would map a locked
+  board cell by cell. A locked `getBoard` answers a plain
+  **`{ incomplete: true }` (200), never an error** (a locked free-play
+  `startRun`/`commitRun` is a 403 — no honest client asks) — "not yet" is a
+  state, not a fault, and it leaks nothing either way. It used to 403 unless the
+  caller passed `soft`, which only `boot` did; every other path that
+  legitimately lands on an unfinished today (the regrade refetch, a notification
+  tap, `boot`'s own linked-day slice for a today permalink, a calendar pick
+  while parked on a past day) therefore turned a routine "not yet" into a 403 —
+  and since `client/api.ts` relays **every** error response to
+  `reportClientError` from inside the proxy, before the caller can swallow it,
+  each one logged a server-side error even where the call site was written to
+  ignore it. Consumers already branch on `"incomplete" in r` (`store/board.ts`,
+  `useInit`'s regrade); `showBoard` re-requests once on `{ incomplete }` so a
+  stale prime (notably the linked-day slice a `/YYYYMMDD`-for-today boot
+  stashes) can't wedge the first real stage. **Ranked play is a strictly
+  local-day affair** — the client hard-cuts a ranked attempt's build window at
+  the player's local midnight (an in-progress attempt executes early; no further
+  attempts open on the old day), and surfaces the new day via an explicit switch
+  (see the daily-rollover flow).
 - `standing(time, min, best)` (`common/standing.ts`) is the one shared
   position-in-field formula used by every surface; `min` is the time of the base
   board's unobstructed shortest path, stored on the iteration. It's a
@@ -439,49 +457,55 @@ Other invariants:
   deliberately made _sufficient_ — that's exactly what powers "move to device":
   it issues a `/login/:id` (or `/l/:id`) link/QR, and holding two ids authorizes
   folding them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the
-  loser row in one transaction). The client-side gate is
-  `MoveGate`/`MoveDevice`.
+  loser row in one transaction; a nonexistent primary is a 400). The merge must
+  not mint attempts: on any iteration where the primary already has a ranked
+  attempt, the secondary's runs there move as history (`ranked`/`daily` cleared)
+  — otherwise `daily`'s best-ranked re-point would make it best-of-six. Previews
+  move to the primary (a merge can't launder one), and `pb_top.top_user` (no FK)
+  is rewritten to it. The client-side gate is `MoveGate`/`MoveDevice`.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
-  notifications, push endpoints, board flags) as one JSON document the client
-  offers as a download. `deleteAccount` (`routes/deleteAccount.ts` →
-  `db/deleteAccount.ts`, `anonymizeUser`) is **anonymize-in-place, not a row
-  delete**: it hard-deletes the caller's push subscriptions + notifications +
-  flags (private annotations nothing else is computed from), then rotates
-  `user.id` to a fresh random UUID and clears `name`/`settings`/`locale`. The
-  runs ride along via `FK_run_user ON UPDATE CASCADE`, so the player's build
-  history survives as one distinct **anonymous** competitor — the day's field,
-  others' percentiles, and the applied ELO deltas aren't rewritten, and every
-  `JOIN user` still resolves. The new id is never returned, so the link to the
-  person is gone (anonymization, not pseudonymization). The op is an idempotent
-  no-op on retry (the old id is gone), but `deleteAccount` is still **excluded
-  from the client `RETRYABLE` allowlist** because on success the client mints a
-  fresh local id + reloads, so a blind retry would act on the stale id. The
-  confirm is gated behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html`
-  is the disclosure page linked from the same panel (the SQL proxy is
-  first-party infra, not listed as a third-party recipient). It is
-  **server-rendered in the reader's language** (`server/privacy/page.ts`: an
-  explicit `?lang` — the in-app link passes the player's chosen language — then
-  `Accept-Language`, then English), from its own catalog (see Localization),
-  with a translation notice + English link on non-English copies and a
-  per-language footer. Its "Last updated" is the hand-set `UPDATED` constant —
-  bump it for a change in what the page says, never for a translation — beside a
-  link to the public git history of `i18n/privacy/en.json`, the exact record. It
-  stays script-free: the rights cards link INTO the app rather than exporting or
-  erasing themselves — `/?profile=account` opens the Profile dialog on its
-  Account section, `/?profile=delete` the delete-confirm sheet
-  (`takeProfileRequest` in `store/notifNav.ts`, taken once by `Profile`). The
-  link works even with today's daily outstanding, when the profile BUTTON is
-  hidden (data rights can't wait on three ranked attempts) — it's held only
-  through boot and a live build/run, so it never lands over an attempt's clock.
-  In-app, the same request (`requestProfile`) is raised by the prestart
-  overlay's quiet "Account & privacy" footer — the route to those controls while
-  the button is hidden, deliberately a text link rather than the button itself,
-  which drew too much attention on the start screen. The in-app link opens it in
-  the **same window** on purpose: an iOS home-screen app opens a new tab in a
-  browser view with its own storage, where those links would act on a fresh
-  anonymous player instead of this one.
+  notifications, push endpoints, board flags, previews, the top-PB records it
+  holds) as one JSON document the client offers as a download. `deleteAccount`
+  (`routes/deleteAccount.ts` → `db/deleteAccount.ts`, `anonymizeUser`) is
+  **anonymize-in-place, not a row delete**: it hard-deletes the caller's push
+  subscriptions + notifications + flags + previews (private annotations nothing
+  else is computed from), then rotates `user.id` to a fresh random UUID and
+  clears `name`/`settings`/`locale` (and points `pb_top.top_user`, which has no
+  FK to cascade, at the new id). The runs ride along via
+  `FK_run_user ON UPDATE CASCADE`, so the player's build history survives as one
+  distinct **anonymous** competitor — the day's field, others' percentiles, and
+  the applied ELO deltas aren't rewritten, and every `JOIN user` still resolves.
+  The new id is never returned, so the link to the person is gone
+  (anonymization, not pseudonymization). The op is an idempotent no-op on retry
+  (the old id is gone), but `deleteAccount` is still **excluded from the client
+  `RETRYABLE` allowlist** because on success the client mints a fresh local id +
+  reloads, so a blind retry would act on the stale id. The confirm is gated
+  behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html` is the
+  disclosure page linked from the same panel (the SQL proxy is first-party
+  infra, not listed as a third-party recipient). It is **server-rendered in the
+  reader's language** (`server/privacy/page.ts`: an explicit `?lang` — the
+  in-app link passes the player's chosen language — then `Accept-Language`, then
+  English), from its own catalog (see Localization), with a translation notice +
+  English link on non-English copies and a per-language footer. Its "Last
+  updated" is the hand-set `UPDATED` constant — bump it for a change in what the
+  page says, never for a translation — beside a link to the public git history
+  of `i18n/privacy/en.json`, the exact record. It stays script-free: the rights
+  cards link INTO the app rather than exporting or erasing themselves —
+  `/?profile=account` opens the Profile dialog on its Account section,
+  `/?profile=delete` the delete-confirm sheet (`takeProfileRequest` in
+  `store/notifNav.ts`, taken once by `Profile`). The link works even with
+  today's daily outstanding, when the profile BUTTON is hidden (data rights
+  can't wait on three ranked attempts) — it's held only through boot and a live
+  build/run, so it never lands over an attempt's clock. In-app, the same request
+  (`requestProfile`) is raised by the prestart overlay's quiet "Account &
+  privacy" footer — the route to those controls while the button is hidden,
+  deliberately a text link rather than the button itself, which drew too much
+  attention on the start screen. The in-app link opens it in the **same window**
+  on purpose: an iOS home-screen app opens a new tab in a browser view with its
+  own storage, where those links would act on a fresh anonymous player instead
+  of this one.
 
 ## Client architecture
 
