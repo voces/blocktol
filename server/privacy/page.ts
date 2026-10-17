@@ -299,6 +299,7 @@ export const renderPrivacyPage = (locale: Locale): string => {
   <title>${m("privacy.docTitle")}</title>
   <meta name="color-scheme" content="light dark" />
   <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
   <style>${STYLES}</style>
 </head>
 <body>

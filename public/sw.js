@@ -27,10 +27,9 @@ const FONT_CACHE = "blocktol-fonts";
 // mirrors, so this moves the credential between stores, not across a boundary.
 const CRED_CACHE = "blocktol-cred";
 const CRED_URL = "/__push-credential";
-const FONT_ORIGINS = [
-  "https://fonts.googleapis.com",
-  "https://fonts.gstatic.com",
-];
+// The self-hosted font files (public/fonts/): their names carry a hash of their
+// bytes, so a cached copy is never stale. fonts.css itself is a `?v` asset.
+const FONT_FILE = /^\/fonts\/[a-z0-9-]+-[0-9a-f]{8}\.woff2$/;
 
 self.addEventListener("install", (event) => {
   // Precache each entry independently so one missing asset can't fail the whole
@@ -98,20 +97,6 @@ const putIfVersion = async (cache, request, res) => {
   await cache.put(request, res);
 };
 
-// Serve the cached copy at once and refresh it in the background. Used for
-// fonts, whose urls are stable across builds.
-const staleWhileRevalidate = async (request, cacheName) => {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  const network = fetch(request)
-    .then((res) => {
-      if (res.ok) cache.put(request, res.clone());
-      return res;
-    })
-    .catch(() => hit);
-  return hit || network;
-};
-
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -146,9 +131,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Fonts (cross-origin, stable urls): stale-while-revalidate for offline text.
-  if (FONT_ORIGINS.includes(url.origin)) {
-    event.respondWith(staleWhileRevalidate(request, FONT_CACHE));
+  // Font files (content-addressed): cache-first, kept across builds for
+  // offline text.
+  if (url.origin === self.location.origin && FONT_FILE.test(url.pathname)) {
+    event.respondWith(cacheFirst(request, FONT_CACHE));
     return;
   }
 
