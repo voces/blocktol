@@ -27,9 +27,15 @@ EnvironmentFile=/home/ubuntu/blocktol/.env
 # a fresh checkout must `deno task build` once during setup.
 ExecStart=/home/ubuntu/.deno/bin/deno task start
 
-# Deno exits 143 (128+SIGTERM) on a clean stop; without this every restart/stop
-# would be logged as a failure.
+# On SIGTERM the server drains in-flight requests and any running cron (up to
+# ~65s, see server/index.ts) and exits 0. Give it room before SIGKILL. 143 is
+# Deno's exit for an unhandled SIGTERM, kept so that path isn't a failure.
+TimeoutStopSec=90
 SuccessExitStatus=143 SIGTERM
+
+# The day logic (puzzle dates, the rating close) assumes UTC; pin it rather
+# than rely on the box's zone.
+Environment=TZ=UTC
 
 # Tag journal lines "blocktol" (journalctl -u blocktol works regardless).
 SyslogIdentifier=blocktol

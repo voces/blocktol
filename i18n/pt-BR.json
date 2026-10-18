@@ -263,10 +263,6 @@
     "message": "Toque em um bloco colocado para transformá-lo em um trovão, que reduz a velocidade do corredor.",
     "hash": "8773ef1817f4001b749a4253f06fa2b841e9d0c6be4d9bb48bee4724a5cde82f"
   },
-  "mg.cameAlong": {
-    "message": "{runs} deste dispositivo vieram junto.",
-    "hash": "6d74ee8d2ed44a85a36835399822c6671c434001a78a693b06f10a682f24481e"
-  },
   "mg.cameFirst": {
     "message": "veio primeiro",
     "hash": "ffccb6f9767adfe1b5069ad652a0b15da7c69d84b7788ac62d105db0f0e4d871"
@@ -310,10 +306,6 @@
   "mg.fbIt": {
     "message": "ele",
     "hash": "2ad8a7049d7c5511ac254f5f51fe70a046ebd884729056f0fe57f5160d467153"
-  },
-  "mg.fbOtherProfile": {
-    "message": "seu outro perfil",
-    "hash": "80567250f728903049bad941e90ded53a1fb87b0916ff38032358e26335a1409"
   },
   "mg.fbPlayer": {
     "message": "Jogador",
@@ -410,10 +402,6 @@
   "mg.sideSub": {
     "message": "entrou em {date} · {runs}",
     "hash": "3250187aba2d32ef3ef40862cd5c6e1b52ad6801400c3a14865ea2033e286377"
-  },
-  "mg.signedInAs": {
-    "message": "Conectado como {name}",
-    "hash": "599a82d9808993c5c461f162f0fdb10090df39fdbb4ef22fd3faf827968f3034"
   },
   "mg.startNewGame": {
     "message": "Não é você? Começar um novo jogo",

@@ -927,10 +927,6 @@
     "message": "this player",
     "description": "Fallback for a nameless other profile after \"Continue as …\" (e.g. \"Continue as this player\")."
   },
-  "mg.fbOtherProfile": {
-    "message": "your other profile",
-    "description": "Fallback for a nameless other profile in the silent sign-in toast (e.g. \"Signed in as your other profile\")."
-  },
   "mg.fbThisProfile": {
     "message": "this profile",
     "description": "Fallback for your own nameless profile inside a sentence (e.g. \"Leave this profile; …\")."
@@ -1071,14 +1067,6 @@
     "message": "Copy the link to enable this",
     "description": "Hint shown while the switch button is disabled until the link has been copied."
   },
-  "mg.signedInAs": {
-    "message": "Signed in as {name}",
-    "description": "Title of the silent sign-in toast (a nearly-empty device adopting a real link). {name} is the adopted profile's name (or the \"your other profile\" fallback)."
-  },
-  "mg.cameAlong": {
-    "message": "{runs} from this device came along.",
-    "description": "Subtext of the silent sign-in toast: the few runs from this device were merged in. {runs} is a run count like \"2 runs\"."
-  },
   "intro.skip": {
     "message": "Skip",
     "description": "Tutorial tooltip button that skips the rest of the walkthrough."
@@ -1114,5 +1102,13 @@
   "intro.tipThunder": {
     "message": "Tap a placed block to upgrade it into a thunder, which slows the runner.",
     "description": "Tutorial tip as a placed block becomes a thunder. Explains the gesture (tapping a block you have already placed) and its effect together. Quotes no count: most dailies grant no thunder at all. \"block\"/\"thunder\"/\"runner\" are game terms (see glossary)."
+  },
+  "mg.linkUnknown": {
+    "message": "Sign-in link not recognized",
+    "description": "Toast title when a sign-in link names no known profile; the device keeps its current profile."
+  },
+  "mg.linkUnknownSub": {
+    "message": "You're still playing as {name}.",
+    "description": "Toast body under mg.linkUnknown. {name} is the player's current display name."
   }
 }

@@ -34,10 +34,6 @@ type Side =
   }
   | null;
 
-// Below this share of the other side's runs, a profile is "almost nothing" and
-// is merged away silently instead of showing the fork.
-const SILENT_RATIO = 0.05;
-
 const Avatar = (
   { id, name, size = 46, glow }: {
     id: string;
@@ -205,23 +201,30 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   };
   // Adopt a new identity (switch, adopt-other, merge-into-other, clean adopt):
   // commit the id and reboot so avatar, caches and run state reset. An account
-  // with runs skips onboarding. `toast` (silent 2e only) rides sessionStorage
-  // to the fresh boot, where App shows it.
-  const reloadAs = (
-    id: string,
-    opts?: { adoptedRuns?: number; toast?: { title: string; sub: string } },
-  ) => {
+  // with runs skips onboarding.
+  const reloadAs = (id: string, opts?: { adoptedRuns?: number }) => {
     if ((opts?.adoptedRuns ?? 0) > 0) {
       storage.setItem("hasCompletedOnboarding", "true");
     }
-    if (opts?.toast) {
-      // Best-effort: blocked site data throws, and a lost toast mustn't stop
-      // the adopt.
-      try {
-        sessionStorage.setItem("gateToast", JSON.stringify(opts.toast));
-      } catch { /* no toast */ }
-    }
     adoptId(id);
+    clearLinkFromUrl();
+    location.assign("/");
+  };
+
+  // A link naming no known profile (garbled in transit, or from an account
+  // that used "Delete my data") must never replace a profile with history:
+  // keep this one, drop the link, and say so. The toast rides sessionStorage
+  // to the fresh boot, where App shows it.
+  const keepAfterUnknownLink = (name: string | null) => {
+    try {
+      sessionStorage.setItem(
+        "gateToast",
+        JSON.stringify({
+          title: t("mg.linkUnknown"),
+          sub: t("mg.linkUnknownSub", { name: name ?? t("mg.fbYou") }),
+        }),
+      );
+    } catch { /* blocked site data: no toast */ }
     clearLinkFromUrl();
     location.assign("/");
   };
@@ -265,7 +268,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   useEffect(() => {
     let live = true;
     const ids = localId ? [localId, linkId] : [linkId];
-    api.moveInfo({ ids }).then(async (res) => {
+    api.moveInfo({ ids }).then((res) => {
       if (!live) return;
       if ("error" in res) return proceed(); // can't decide → don't block the app
       const s = localId ? res[0] : null;
@@ -273,44 +276,23 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       setSelf(s);
       setOther(o);
 
-      // The link id has no profile; adopt it fresh.
-      if (!o) return reloadAs(linkId);
-
       const selfRuns = s?.runs ?? 0;
-      const otherRuns = o.runs;
+
+      // The link id has no profile. With nothing here to lose, adopt it fresh;
+      // otherwise keep this profile.
+      if (!o) {
+        return !localId || selfRuns === 0
+          ? reloadAs(linkId)
+          : keepAfterUnknownLink(s?.name ?? null);
+      }
 
       // Clean device / no local data: confirm the adopt (1d).
       if (!localId || selfRuns === 0) return setMode("confirm");
 
-      // Silent adopt (2e), one direction only: this device has almost nothing
-      // and the link is a real account, so the link wins. Never the reverse
-      // (folding a tiny link into a real local profile): opening a link implies
-      // it should be primary, so quietly discarding it would surprise. Show the
-      // fork instead.
-      if (selfRuns < SILENT_RATIO * otherRuns) { // 2e
-        setMode("working");
-        if (!(await tryMerge("other"))) {
-          // Fall back to the explicit fork with the link as primary, and say
-          // what went wrong.
-          if (!live) return;
-          setMergeFailed(true);
-          setPrimaryIsSelf(false);
-          return setMode("fork");
-        }
-        return reloadAs(linkId, {
-          adoptedRuns: o.runs,
-          toast: {
-            title: t("mg.signedInAs", {
-              name: o.name ?? t("mg.fbOtherProfile"),
-            }),
-            sub: t("mg.cameAlong", { runs: runs(selfRuns) }),
-          },
-        });
-      }
-
-      // Otherwise the fork (including a tiny link over a real profile); the
-      // larger side is the default primary.
-      setPrimaryIsSelf(selfRuns >= otherRuns);
+      // Otherwise always the fork, however lopsided the two sides: merging
+      // silently would let anyone post a run-heavy link that absorbs every
+      // small profile that opens it. The larger side is the default primary.
+      setPrimaryIsSelf(selfRuns >= o.runs);
       setMode("fork");
     }).catch(() => proceed());
     return () => {

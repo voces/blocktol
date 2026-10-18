@@ -39,10 +39,15 @@ const payloadFor = (
   // and date render in it.
   locale: string | null,
 ) => {
-  const { title, body } = notificationText(
-    { kind, day, data },
-    locale ?? undefined,
-  );
+  // A malformed stored locale makes Intl throw; render that device's copy in
+  // the server's default rather than failing the batch it belongs to.
+  let text;
+  try {
+    text = notificationText({ kind, day, data }, locale ?? undefined);
+  } catch {
+    text = notificationText({ kind, day, data });
+  }
+  const { title, body } = text;
   // Deep link to the day's permalink (client/store/notifNav.ts); `?board`
   // selects PB for a lost top, Daily for a finalized daily.
   const [y, m, d] = day;

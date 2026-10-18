@@ -119,6 +119,9 @@ Key run flags — get these right, they encode the whole competitive model:
   else. The claimed zone must be a named IANA zone (`util/dailyParts.ts`):
   ECMA-402 also accepts raw offsets like `"+23:59"`, which would stretch that
   window past the real −12..+14 range, so offset zones are a `UserError`.
+  `startRun` counts only `ranked` runs toward the three, as the board gate and
+  the client do: unranked rows on today's board (a merge's demoted attempts)
+  must not use them up.
 - **`daily`** — the single _counted_ result among a user's ranked runs (the best
   one). Re-pointed as builds save (`updateCurrentRun`).
 - **`void`** — abandoned/not-yet-counted. A **ranked** attempt is inserted at
@@ -256,10 +259,14 @@ Other invariants:
   `pb_top.top_user` (no FK) is rewritten to the primary. The client-side gate is
   `MoveGate`/`MoveDevice` — which adopts the link's id only after `merge`
   succeeds: adopting over a failed merge would overwrite the device's only copy
-  of its old credential. `extractUserId` admits only the id shape ever minted
-  (`[A-Za-z0-9_-]{1,36}` — `user.id` is char(36)); any other header is treated
-  exactly like a missing one (anonymous, so authed methods 401), logged by
-  length only.
+  of its old credential. A link never changes a profile with runs without an
+  explicit choice: no silent merge however lopsided the sides (a run-heavy link
+  posted publicly would otherwise absorb every small profile that opens it), and
+  a link naming no known profile is dropped with a toast rather than adopted.
+  Link ids of a shape the server never mints are ignored. `extractUserId` admits
+  only the id shape ever minted (`[A-Za-z0-9_-]{1,36}` — `user.id` is char(36));
+  any other header is treated exactly like a missing one (anonymous, so authed
+  methods 401), logged by length only.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,

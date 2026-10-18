@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { upsertSubscription } from "../../db/notification.ts";
 import { updateUserLocale } from "../../db/user.ts";
+import { canonicalLocale } from "../../util/locale.ts";
 import { isPushEndpoint, sha256hex } from "../../util/webpush.ts";
 import { method } from "../apiHelpers.ts";
 
@@ -27,17 +28,6 @@ const body = z.object({
   // storage.
   locale: z.string().max(35).optional(),
 });
-
-// Canonicalise the locale tag, or null if malformed: a bad value would make
-// Intl throw when copy is rendered.
-const canonicalLocale = (locale: string | undefined): string | null => {
-  if (!locale) return null;
-  try {
-    return Intl.getCanonicalLocales(locale)[0] ?? null;
-  } catch {
-    return null;
-  }
-};
 
 export const subscribePush = method(body, true)(
   async ({ userId, endpoint, keys, locale }) => {
