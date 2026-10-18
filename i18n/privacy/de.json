@@ -92,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Dein Profil und deine Builds werden aufbewahrt, solange du spielst, damit deine Statistiken und dein Verlauf erhalten bleiben. Lösche deine Daten (oben), um sie früher zu entfernen. In-App-Benachrichtigungen werden nach 90 Tagen gelöscht, und ein Profil, das nie gespielt hat, wird nach 30 Tagen entfernt. Diagnosedaten werden nach etwa 30 Tagen gelöscht und Server-Zugriffsprotokolle nach 14 Tagen. Backups, die nur zur Wiederherstellung nach einem Ausfall aufbewahrt werden, werden nach höchstens 30 Tagen gelöscht; sollten wir jemals eines wiederherstellen, löschen wir erneut alle Daten, deren Löschung du von uns verlangt hattest.",
-    "hash": "33ca7f7fda9baaad648b5f63708b1748d7a6c0d05269b4cb98c83e7c0481c440"
+    "message": "Dein Profil und deine Builds werden aufbewahrt, während du spielst, damit deine Statistiken und deine Historie erhalten bleiben. Lösche deine Daten (oben), um sie früher zu entfernen. In-App-Benachrichtigungen werden nach 90 Tagen gelöscht, und ein Profil, das nie gespielt hat, wird nach 30 Tagen entfernt. Diagnosedaten werden nach etwa 30 Tagen gelöscht und Server-Zugriffsprotokolle nach 14 Tagen. Backups, die nur zur Wiederherstellung nach einem Ausfall aufbewahrt werden, werden nach höchstens 30 Tagen gelöscht; falls wir jemals eines wiederherstellen, löschen wir alle Daten, um deren Löschung du uns gebeten hattest, erneut. Um das zu ermöglichen, bewahren wir einen Einweg-Hash der alten ID eines gelöschten Profils auf, der nicht wieder in die ID zurückverwandelt werden kann.",
+    "hash": "e0d8e1793c5300783a7fe5ddcf106df149e2132e3ac986c712d043e957df905b"
   },
   "privacy.retention.heading": {
     "message": "Wie lange wir es aufbewahren",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Entfernt dauerhaft dein Profil, deinen Namen, deine Einstellungen, Flaggen, Benachrichtigungen und Push-Abonnements und löst jedes von dir gebaute Labyrinth von dir. Deine Builds bleiben als anonyme Spielerin bzw. anonymer Spieler in vergangenen Bestenlisten erhalten – ohne Möglichkeit, sie wieder mit dir zu verknüpfen –, damit die historischen Ergebnisse von Tagen, an denen andere angetreten sind, nicht umgeschrieben werden. Namen, die bereits auf Discord veröffentlicht wurden, bleiben dort. Dies kann nicht rückgängig gemacht werden, und dein Gerät beginnt als brandneue Spielerin bzw. brandneuer Spieler von vorn.",
-    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
+    "message": "Entfernt dauerhaft dein Profil, deinen Namen, deine Einstellungen, Flaggen, Benachrichtigungen und Push-Abonnements und löst jedes von dir gebaute Labyrinth von dir. Deine Builds bleiben in vergangenen Bestenlisten als anonymer Spieler erhalten, mit nichts, was wir aufbewahren, mit dir verknüpft, damit die historischen Ergebnisse von Tagen, an denen andere Personen angetreten sind, nicht umgeschrieben werden. Namen, die bereits in Discord gepostet wurden, und dein Name in Benachrichtigungen, die bereits an andere Spieler gesendet wurden (nach 90 Tagen gelöscht), bleiben dort. Dies kann nicht rückgängig gemacht werden, und dein Gerät beginnt als brandneuer Spieler von vorn.",
+    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
   },
   "privacy.rights.export.body": {
     "message": "Lädt eine JSON-Datei mit allem herunter, was wir über dich gespeichert haben — dein Profil, jeden Lauf, deine Flaggen, deine Benachrichtigungen und deine Push-Abonnements.",

@@ -92,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Seu perfil e suas builds são mantidos enquanto você joga, para que suas estatísticas e seu histórico permaneçam intactos. Exclua seus dados (acima) para removê-los mais cedo. As notificações no aplicativo são excluídas após 90 dias, e um perfil que nunca jogou é removido após 30 dias. Os diagnósticos são excluídos após cerca de 30 dias, e os registros de acesso ao servidor após 14 dias. Os backups, mantidos apenas para recuperação em caso de falha, são excluídos após no máximo 30 dias; se algum dia restaurarmos um deles, excluímos novamente quaisquer dados que você tenha nos pedido para excluir.",
-    "hash": "33ca7f7fda9baaad648b5f63708b1748d7a6c0d05269b4cb98c83e7c0481c440"
+    "message": "Seu perfil e suas construções são mantidos enquanto você joga, para que suas estatísticas e seu histórico permaneçam intactos. Exclua seus dados (acima) para removê-los mais cedo. As notificações no aplicativo são excluídas após 90 dias, e um perfil que nunca jogou é removido após 30 dias. Os diagnósticos são excluídos após cerca de 30 dias, e os registros de acesso ao servidor após 14 dias. Os backups, mantidos apenas para recuperação em caso de falha, são excluídos após no máximo 30 dias; se algum dia restaurarmos um deles, excluímos novamente quaisquer dados que você tenha nos pedido para excluir. Para tornar isso possível, mantemos um hash unidirecional do ID antigo de um perfil excluído, que não pode ser convertido de volta no ID.",
+    "hash": "e0d8e1793c5300783a7fe5ddcf106df149e2132e3ac986c712d043e957df905b"
   },
   "privacy.retention.heading": {
     "message": "Por quanto tempo mantemos",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Remove permanentemente seu perfil, nome, preferências, bandeiras, notificações e assinaturas de push, e desvincula de você todos os labirintos que você construiu. Suas construções permanecem nos placares anteriores como um jogador anônimo — sem nenhuma forma de ligá-las de volta a você — para que os resultados históricos dos dias em que outras pessoas competiram não sejam reescritos. Os nomes já publicados no Discord permanecem lá. Isso não pode ser desfeito, e o seu dispositivo recomeça do zero como um jogador totalmente novo.",
-    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
+    "message": "Remove permanentemente seu perfil, nome, preferências, bandeiras, notificações e assinaturas de push, e desvincula de você cada labirinto que você construiu. Suas construções permanecem nos placares antigos como um jogador anônimo, sem nenhum vínculo que mantenhamos com você, para que os resultados históricos dos dias em que outras pessoas competiram não sejam reescritos. Nomes já publicados no Discord, e seu nome em notificações já enviadas a outros jogadores (excluídas após 90 dias), permanecem lá. Isso não pode ser desfeito, e seu dispositivo recomeça como um jogador totalmente novo.",
+    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
   },
   "privacy.rights.export.body": {
     "message": "Baixa um arquivo JSON com tudo o que temos sobre você — seu perfil, todas as corridas, suas flags, suas notificações e suas inscrições de push.",
