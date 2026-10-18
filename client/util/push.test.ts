@@ -1,9 +1,8 @@
 import { assert, assertEquals } from "@std/assert";
 import { keyMatches } from "./push.ts";
 
-// The VAPID public key as it comes back from /api/pushConfig (base64url), and
-// the raw applicationServerKey bytes a browser hands back on an existing
-// subscription.
+// The VAPID public key as /api/pushConfig returns it (base64url); `bytes` gives
+// the raw applicationServerKey a browser hands back on a subscription.
 const KEY =
   "BKd0F0RQ7Zk8pXPTq5wQx3v1aXHOD1yYqjS1Nn0Yr6nKcVmQ0uLfR3kL8Yb2gH7wS9xM4tN6pD1eA5cZ8vQ3jUo";
 
@@ -21,9 +20,9 @@ Deno.test("a subscription minted under the current key matches", () => {
 });
 
 Deno.test("a subscription minted under a retired key does NOT match", () => {
-  // The exact failure this guards: rotating VAPID keys leaves every existing
-  // subscription undeliverable (403, which is not pruned server-side), and
-  // without this the client re-registers the same dead endpoint forever.
+  // Rotating VAPID keys leaves existing subscriptions undeliverable (403, not
+  // pruned server-side); without this check the client re-registers the same
+  // dead endpoint forever.
   const rotated =
     "BAaaF0RQ7Zk8pXPTq5wQx3v1aXHOD1yYqjS1Nn0Yr6nKcVmQ0uLfR3kL8Yb" +
     "2gH7wS9xM4tN6pD1eA5cZ8vQ3jUo";
@@ -35,9 +34,9 @@ Deno.test("a differing length is a mismatch, not a crash", () => {
 });
 
 Deno.test("an unreadable applicationServerKey is treated as matching", () => {
-  // Some browsers don't expose PushSubscriptionOptions.applicationServerKey.
-  // Churning a subscription that may be perfectly good is worse than leaving it,
-  // so an unknown key must never trigger a re-subscribe.
+  // Some browsers don't expose PushSubscriptionOptions.applicationServerKey; an
+  // unknown key must not trigger a re-subscribe of a possibly good
+  // subscription.
   assert(keyMatches(null, KEY));
   assert(keyMatches(undefined, KEY));
 });

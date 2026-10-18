@@ -15,7 +15,7 @@ Deno.test("standing", async (t) => {
 
   await t.step("a rangeless field stands everyone at 1", () => {
     assertStrictEquals(standing(5, 5, 5), 1);
-    // best below min shouldn't happen, but must not divide negatively.
+    // best below min shouldn't happen, but must not divide by a negative.
     assertStrictEquals(standing(5, 6, 5), 1);
   });
 });

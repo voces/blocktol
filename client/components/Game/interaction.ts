@@ -2,12 +2,10 @@ import { signal } from "@preact/signals";
 import { Point } from "../../../common/types.ts";
 
 // Pointer-frequency interaction state as signals. These change on every
-// mousemove/touchmove; as context state they re-rendered the entire game tree
-// at pointer speed (every write rebuilt the context value, and every consumer
-// re-rendered). As signals, writes bypass the render path entirely and only the
-// component reading `.value` — the board area — re-renders. Handlers read the
-// latest value via `.peek()`/`.value` like a ref, so the input effects don't
-// need these in their dependency arrays either.
+// mousemove/touchmove; as context state each write would re-render the whole
+// game tree. As signals only the component reading `.value` (the board area)
+// re-renders. Handlers read them via `.peek()`/`.value` like a ref, so the
+// input effects don't need them as dependencies.
 
 export type PlacingBlock = Point & { placing: boolean };
 export type BoardBlock = Point & {
@@ -32,12 +30,10 @@ export const thunderHover = signal<(Point & { local?: boolean }) | undefined>(
   undefined,
 );
 
-// How far into the runner's walk we are, in seconds, while one is animating —
-// undefined the rest of the time (Runner clears it when it unmounts). Written
-// on every animation frame, which is why it belongs here and not in game
-// state: at frame frequency a context value would re-render the whole tree.
-// The splits tape reads it through a computed that collapses it to "which mark
-// has the runner reached", so the tape re-renders only when that answer moves.
+// Seconds into the runner's walk while one is animating, else undefined (Runner
+// clears it on unmount). Written every animation frame, hence a signal. The
+// splits tape reads it through a computed that collapses it to the mark the
+// runner has reached, so the tape re-renders only when that moves.
 export const runnerTime = signal<number | undefined>(undefined);
 
 // Whether the previewed placement/move is illegal (red preview).
@@ -50,13 +46,11 @@ export const dragMoved = signal(false);
 // A touch gesture is in progress (drives the placing zoom).
 export const touching = signal(false);
 
-// The placing zoom is armed on a delay (settings.zoomDelay) so a quick
-// tap-to-place can finish before the board magnifies — a plain tap then never
-// triggers the disorienting zoom-in/zoom-out. `armTouchZoom` schedules the zoom
-// (immediately when the delay is 0, the default); `clearTouchZoom` both cancels
-// a still-pending arm and turns the zoom off, so every gesture-end / reset path
-// routes through it rather than poking `touching` directly (a lingering timer
-// would otherwise re-zoom after release).
+// The placing zoom is armed on a delay (settings.zoomDelay) so a quick tap can
+// finish before the board magnifies. `armTouchZoom` schedules it (at once when
+// the delay is 0). `clearTouchZoom` cancels a pending arm AND turns the zoom
+// off; route every gesture-end / reset through it rather than writing
+// `touching`, or a lingering timer re-zooms after release.
 let zoomTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const armTouchZoom = (delayMs: number) => {

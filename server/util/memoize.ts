@@ -6,6 +6,10 @@ type GetLength<original extends any[]> = original extends { length: infer L }
   ? L
   : never;
 
+// A trie keyed by argument identity: each non-last argument selects a child
+// level, object arguments through a WeakMap (so they can be collected) and
+// primitives through a Map. `dive(...args)` returns the last level's store for
+// the final argument.
 // deno-lint-ignore no-explicit-any
 export const wrapperStore = <Args extends any[], Value>() => {
   // TODO: should have different roots for each args.length
@@ -55,10 +59,9 @@ export const memoize = <Fn extends (...args: any[]) => any>(fn: Fn) => {
     if (container.has(arg)) return container.get(arg) as ReturnType<Fn>;
     const value = fn(...args) as ReturnType<Fn>;
     container.set(arg, value);
-    // A cached rejected promise would serve the failure to every later caller
-    // (one transient error permanently poisons the entry) — evict on rejection
-    // so the next call retries. Guarded delete: only evict if the entry is
-    // still this promise (a clear/bust + refill may have replaced it).
+    // Evict on rejection, or one transient error would poison the entry for
+    // every later caller. Only if the entry is still this promise (a
+    // clear/bust + refill may have replaced it).
     if ((value as unknown) instanceof Promise) {
       (value as Promise<unknown>).catch(() => {
         if (container.get(arg) === value) container.delete(arg);
@@ -80,8 +83,8 @@ export const memoize = <Fn extends (...args: any[]) => any>(fn: Fn) => {
   return Object.assign(memoizedFn, { clear, bust });
 };
 
-// Whether the promise has settled (resolved OR rejected) — the race must not
-// itself throw on a rejected promise, so the candidate is wrapped.
+// Whether the promise has settled (resolved OR rejected). The candidate is
+// wrapped so the race never throws on a rejection.
 const isSettled = async (promise: Promise<unknown>) => {
   const pending = Symbol("pending");
   const p = await Promise.race([
@@ -92,13 +95,12 @@ const isSettled = async (promise: Promise<unknown>) => {
 };
 
 // One stale-while-revalidate getter over `fetch`: the first call awaits the
-// first fetch; later calls serve the last good value and kick a refresh once
+// first fetch; later calls serve the last good value and start a refresh once
 // the previous one has settled. The per-key body of `trailer` and
 // `boundedTrailer`.
 const staleWhileRevalidate = <T>(fetch: () => Promise<T>) => {
-  // Every fetch gets a no-op rejection handler attached at creation: a
-  // background refresh that rejects before anyone awaits it would otherwise
-  // trip Deno's unhandledrejection. Awaiters still see the rejection.
+  // The no-op catch keeps a background refresh that rejects before anyone
+  // awaits it from tripping Deno's unhandledrejection. Awaiters still see it.
   const kick = () => {
     const p = fetch();
     p.catch(() => {});
@@ -111,9 +113,8 @@ const staleWhileRevalidate = <T>(fetch: () => Promise<T>) => {
   return async () => {
     if (!hasResolvedAtLeastOnce) {
       // No stale value to fall back on: surface the failure, but swap in a
-      // fresh fetch first so the next call retries instead of awaiting the
-      // same rejected promise forever. The identity check keeps concurrent
-      // rejected awaiters from each kicking off their own retry.
+      // fresh fetch so the next call retries. The identity check stops
+      // concurrent rejected awaiters each starting their own retry.
       const p = promise;
       try {
         v = await p;
@@ -123,9 +124,8 @@ const staleWhileRevalidate = <T>(fetch: () => Promise<T>) => {
         throw err;
       }
     } else if (await isSettled(promise)) {
-      // Stale-while-revalidate: take the settled refresh if it succeeded —
-      // keep serving the stale value if it failed — and kick off the next
-      // refresh either way.
+      // Take the settled refresh if it succeeded, keep the stale value if it
+      // failed, and start the next refresh either way.
       const p = promise;
       try {
         v = await p;
@@ -147,12 +147,11 @@ export const trailer = <
     staleWhileRevalidate(() => fn(...args))
   );
 
-// `trailer`, but holding at most `maxSize` keys, least-recently-used evicted
-// first. `trailer` keeps a getter (and its value) for every argument tuple it
-// has ever seen, forever — fine for a handful of keys, an unbounded leak for
-// per-(iteration, user) keys on the long-lived co-located process. An evicted
-// key simply starts over: its next call awaits a fresh fetch. Arguments are
-// keyed by their JSON, so use it with primitive args only.
+// `trailer` holding at most `maxSize` keys, least-recently-used evicted first.
+// `trailer` keeps every argument tuple it has seen forever: fine for a handful
+// of keys, a leak for per-(iteration, user) keys. An evicted key starts over
+// with a fresh awaited fetch. Keys are the args' JSON, so use primitive args
+// only.
 export const boundedTrailer = <
   // deno-lint-ignore no-explicit-any
   Fn extends (...args: any[]) => Promise<any>,

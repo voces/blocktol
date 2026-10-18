@@ -1,14 +1,13 @@
-// Compiles each message catalog in i18n/ (see CATALOGS in i18nLib.ts) into its
-// generated module — the app's into common/i18n.generated.ts, the ONE module both
-// the server and the bundled client import; the privacy page's into a
-// server-only one. Like common/version.ts they're gitignored and generated
-// (`deno task i18n` runs first in build/dev/test and in CI before the type
-// check). For each catalog it:
+// Compiles each message catalog in i18n/ (see CATALOGS in i18nLib.ts) into a
+// generated module: the app's into common/i18n.generated.ts (imported by both
+// server and client), the privacy page's into a server-only one. Both are
+// gitignored; `deno task i18n` runs first in build/dev/test, and in CI before
+// the type check. For each catalog it:
 //   - pre-parses every ICU message to an I18nNode[] AST (so no parser ships), and
-//   - derives `MessageKey` + a per-key params type map FROM its en.json,
+//   - derives `MessageKey` + a per-key params type map from its en.json,
 // so a missing key or wrong argument at a call site is a compile error.
-// en.json is the source of truth: it defines the key set and the param types;
-// every other <locale>.json beside it is a machine-written translation of it.
+// en.json defines the key set and param types; every other <locale>.json is a
+// machine-written translation of it.
 
 import { dirname, relative } from "@std/path/posix";
 import { collectParams, parseMessage } from "./i18nParse.ts";
@@ -20,9 +19,8 @@ type Catalog = Record<string, Entry>;
 
 const ROOT = new URL("../", import.meta.url);
 
-// Locale catalogs are `<code>.json`; the non-catalog files (glossary.json,
-// config.json) are excluded so they don't become bogus locales, and the
-// sub-catalog directories are skipped by the isFile check.
+// Locale catalogs are `<code>.json`. glossary.json and config.json are not
+// catalogs; sub-catalog directories are skipped by the isFile check.
 const NON_CATALOG = new Set(["glossary.json", "config.json"]);
 
 const compile = async ({ dir, out }: CatalogSpec) => {
@@ -46,8 +44,8 @@ const compile = async ({ dir, out }: CatalogSpec) => {
   const keys = Object.keys(en).sort();
 
   // Compile each locale's messages to ASTs, keyed by the en.json key set. A
-  // locale missing a key just omits it — the runtime falls back to the English
-  // AST (the i18n:check gate, later, makes missing keys a hard failure).
+  // locale missing a key omits it and the runtime falls back to English
+  // (`i18nCheck.ts` is the gate for missing keys).
   const catalog: Record<string, Record<string, I18nNode[]>> = {};
   for (const locale of localeFiles) {
     const src = locale === "en" ? en : await read(locale);
@@ -63,16 +61,14 @@ const compile = async ({ dir, out }: CatalogSpec) => {
   const paramsType = (key: string): string => {
     const params = collectParams(catalog.en[key]);
     const names = Object.keys(params).sort();
-    // `Record<never, never>` (keyof → never) lets `t(key)` omit the params arg
-    // for no-argument messages; keys with args keep their required params
-    // object.
+    // `Record<never, never>` lets `t(key)` omit the params arg.
     if (names.length === 0) return "Record<never, never>";
     return `{ ${
       names.map((n) => `${JSON.stringify(n)}: ${params[n]}`).join("; ")
     } }`;
   };
 
-  // The runtime's node type, imported relative to wherever this module lands.
+  // Import path of the runtime's node type, relative to the output module.
   let runtime = relative(dirname(out), "common/i18n.ts");
   if (!runtime.startsWith(".")) runtime = `./${runtime}`;
 

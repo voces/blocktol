@@ -1,7 +1,7 @@
 :root {
-  /* Redesign foundation tokens. Each value is light-dark(light, dark):
-     it resolves against the element's `color-scheme`, so the palette
-     follows the OS by default and can be pinned per theme below. */
+  /* Redesign foundation tokens. Each value is light-dark(light, dark), resolved
+     against the element's `color-scheme`: the palette follows the OS and can be
+     pinned per theme below. */
   color-scheme: light dark;
 
   --background: light-dark(#f4f4f7, #0c0c11);
@@ -22,15 +22,15 @@
   --warn: light-dark(hsl(42, 90%, 42%), hsl(42, 85%, 62%));
   --lose: light-dark(hsl(8, 72%, 50%), hsl(8, 72%, 60%));
   --gold: light-dark(hsl(42, 90%, 40%), hsl(45, 85%, 60%));
-  /* peak: a non-supreme best (tied for the field's top) — a green-yellow one
-     step above the ramp's green, below the reserved supreme gold. Mirrors the
-     PEAK_COLOR hex used where a fill needs readableInk (calendar cell). */
+  /* peak: a non-supreme best (tied for the field's top), between the ramp's
+     green and the reserved supreme gold. Mirrors the PEAK_COLOR hex used where
+     a fill needs readableInk (calendar cell). */
   --peak: light-dark(hsl(84, 62%, 36%), hsl(84, 66%, 56%));
-  /* percentile ramp: red -> magenta -> blue -> teal -> green, low to high.
-     Goes the long way round the wheel so it never hits yellow/olive and
-     stays vivid; green reads as best. One scale for the calendar heatmap AND
-     the banded percentile UI (runs, today-result, result modal); supreme
-     sits above it in gold. */
+  /* percentile ramp, low to high: red -> magenta -> blue -> teal -> green. It
+     goes the long way round the wheel to avoid yellow/olive and stay vivid;
+     green reads as best. One scale for the calendar heatmap AND the banded
+     percentile UI (runs, today-result, result modal); supreme sits above it in
+     gold. */
   --pct-0: #dc4a2f;
   --pct-1: #d13d94;
   --pct-2: #3f6be0;
@@ -56,10 +56,9 @@
   --maze-thunder-radius: hsla(220, 60%, 50%, 20%);
   --maze-debug-block: hsla(0, 100%, 60%, 10%);
   --maze-stroke: rgba(0, 0, 0, 0.4);
-  /* Flags — the splits tape's manual checkpoints (see common/splits.ts).
-     Orange is the one hue the maze palette leaves free, so a flag can never be
-     read as a piece. Theme-independent like the rest of the maze tokens: the
-     board is the same colour in light and dark. */
+  /* Flags: the splits tape's manual checkpoints (see common/splits.ts). Orange
+     is the one hue the maze palette leaves free, so a flag is never read as a
+     piece. Theme-independent like the other maze tokens. */
   --flag: hsl(32, 92%, 52%);
   --flag-bright: hsl(32, 92%, 62%);
   --flag-soft: hsla(32, 92%, 52%, 0.5);
@@ -69,14 +68,12 @@
   --brightness: light-dark(40%, 70%);
 
   --full-height: 100%;
-  /* Height reserved above the board: the body's top inset (which carries the
-     breathing room + notch) plus the header's own height (content + bottom
-     padding). The board and side panels size off this, so keep it in step
-     with `body` padding-top and `.app-header` below. */
+  /* Height reserved above the board: the body's top inset (breathing room +
+     notch) plus the header's height (content + bottom padding). Keep in step
+     with `body` padding-top and `.app-header`. */
   --header-size: calc(76px + env(safe-area-inset-top, 0px));
-  /* Footprint the HUD strip reserves above the board (min-height + bottom
-     margin), folded into the board size so board + HUD fit under the
-     header. Keep in step with .hud. */
+  /* Footprint of the HUD strip above the board (min-height + bottom margin),
+     subtracted in --maze-size. Keep in step with .hud. */
   --hud-size: 48px;
   --maze-size: min(
     680px,
@@ -92,19 +89,17 @@ html[data-theme="dark"] { color-scheme: dark; }
 
 * {
   box-sizing: border-box;
-  /* iOS Safari needs the -webkit- prefix to stop double-tap from
-     selecting text (e.g. the SVG HUD). Nothing on the page is meant to
-     be user-selectable. */
+  /* iOS Safari needs the -webkit- prefix to stop double-tap from selecting text
+     (e.g. the SVG HUD). Nothing here is meant to be selectable. */
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
 
-/* Clip the board's scale(2) zoom to the viewport: it should be free to
-   overflow its container and spill over the surrounding UI, but must not
-   grow the page (which shifts the header and adds scroll on iOS). Full
-   height so the clip region reaches the bottom of the screen — otherwise
-   the body box stops at the board and the zoom is cut off below it. */
+/* Clip the board's scale(2) zoom to the viewport: it may overflow its container
+   over the surrounding UI but must not grow the page (which shifts the header
+   and adds scroll on iOS). Full height so the clip reaches the bottom of the
+   screen. */
 html,
 body {
   height: 100%;
@@ -114,10 +109,9 @@ body {
 body {
   font-family: var(--font);
   margin: 0;
-  /* Top breathing room (and the notch inset) lives here, not on the header,
-     so the gap above the header is a page-level inset. Folded into
-     --header-size so the board still fits; border-box keeps padding + the
-     100% height inside the viewport. */
+  /* Top breathing room and the notch inset live here, not on the header, so the
+     gap above it is a page-level inset. Folded into --header-size; border-box
+     keeps padding + the 100% height inside the viewport. */
   box-sizing: border-box;
   padding-top: calc(32px + env(safe-area-inset-top, 0px));
   overscroll-behavior: none;
@@ -136,9 +130,9 @@ body {
 /* Press feedback shared across tappable controls. */
 .tapc {
   transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
-  /* Suppress the mobile tap flash: it's drawn as a rectangle ignoring
-     border-radius (so it squares off rounded controls), and .tapc already
-     provides its own press feedback (the scale below). */
+  /* Suppress the mobile tap flash: it ignores border-radius (squaring off
+     rounded controls), and .tapc has its own press feedback (the scale below).
+     */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -146,38 +140,34 @@ body {
   transform: scale(0.96);
 }
 
-/* App header: logo + wordmark, with generous breathing room above
-   (clearing the status bar / notch) and below. */
+/* App header: logo + wordmark, with breathing room below (the notch clearance
+   is on `body`). */
 .app-header {
   display: grid;
   justify-content: center;
   align-items: center;
   gap: 24px;
-  /* Mirror the .game grid (column template + padding are set per breakpoint
-     to match it exactly) so the wordmark centers over the board and the
-     avatar lines up with the right-hand panel's edge — not the raw viewport.
-     Top inset lives on `body`; the header just keeps its bottom gap. */
+  /* Mirror the .game grid (column template and padding are set per breakpoint
+     to match) so the wordmark centers over the board and the avatar lines up
+     with the right-hand panel's edge, not the viewport. The top inset lives on
+     `body`. */
   padding: 0 16px 20px;
-  /* Reserve the action buttons' height (36px) as the row's floor — the tallest
-     thing the header ever holds, above the 24px logo and the wordmark's line
-     box. Without it the row is only as tall as the logo until the
-     avatar/calendar buttons finish loading, then grows ~12px and pushes the
-     whole board down; a late web-font swap would nudge it too. Pinning the row
-     keeps --header-size (and the board's top) fixed from first paint. It's on
-     the row, not min-height — the header is border-box, so its padding already
-     clears any container min-height. */
+  /* Floor the row at the action buttons' height (36px), the tallest thing the
+     header holds (logo is 24px). Without it the row grows ~12px when the
+     avatar/calendar buttons load and pushes the board down; a late web-font
+     swap would too. This keeps --header-size fixed from first paint. It is a
+     row floor, not a container min-height: the header is border-box, so its
+     padding already clears one. */
   grid-auto-rows: minmax(36px, auto);
   /* The pull-to-refresh gesture grabs the header (the board owns touch below
-     it — see usePullToRefresh), so claim vertical drags here to keep the
-     gesture from being interrupted by a browser pan/bounce. Nothing scrolls
-     from the header, so this costs no scrolling either way. */
+     it; see usePullToRefresh). Claim vertical drags so a browser pan/bounce
+     can't interrupt it. Nothing scrolls from the header. */
   touch-action: none;
 }
 
-/* Pull-to-refresh indicator. A spinner chip that descends from behind the top
-   edge as the header is pulled, tracking the pull distance, then spins on its
-   own while the reload fires. Fixed so it floats over the header and board;
-   above the dock/result, below the calendar picker (50) and modals (60). */
+/* Pull-to-refresh indicator: a spinner chip that descends from behind the top
+   edge tracking the pull, then spins while the reload fires. Fixed, above the
+   dock/result, below the calendar picker (50) and modals (60). */
 .pull-refresh {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0px) - 40px);
@@ -190,15 +180,14 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  /* Themed via light-dark() tokens, so the chip matches whichever theme is
-     active; the spinner arc takes a touch of the player's avatar hue (set
-     inline). */
+  /* Themed via light-dark() tokens; the spinner arc takes a touch of the
+     player's avatar hue (set inline). */
   background: var(--surface);
   border: 1px solid var(--border-strong);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
   pointer-events: none;
-  /* Weighted ease back to rest on release — the finger phase turns this off
-     (--dragging) so the pull tracks 1:1; letting go plays this spring. */
+  /* Weighted ease back to rest on release. The finger phase turns it off
+     (--dragging) so the pull tracks 1:1. */
   transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
 }
 
@@ -206,8 +195,8 @@ body {
   transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* While the finger drives it, no easing — the chip and its spinner follow the
-   pull exactly. */
+/* While the finger drives it, no easing: the chip and spinner follow the pull
+   exactly. */
 .pull-refresh--dragging,
 .pull-refresh--dragging .pull-refresh__spinner {
   transition: none;
@@ -230,9 +219,8 @@ body {
   gap: 10px;
 }
 
-/* Header icon buttons (calendar, profile) — 36px rounded squares with a
-   subtle surface fill, mirroring the design's notif button so the icons read
-   as proper tap targets rather than bare glyphs. */
+/* Header icon buttons (calendar, profile): 36px rounded squares with a subtle
+   surface fill, so the icons read as tap targets. */
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -261,12 +249,13 @@ body {
 .profile__avatar {
   display: block;
   /* Decorative: the game's global touch handlers treat any touched <svg> as a
-     board interaction (zooming it), so keep taps on the button, not the glyph. */
+     board interaction (zooming it), so keep taps on the button, not the glyph.
+     */
   pointer-events: none;
 }
 
-/* Header profile button once loaded: the user's coloured letter avatar (fill
-   set inline from their id), matching the dialog avatar. */
+/* Header profile button once loaded: the user's letter avatar (fill set inline
+   from their id), matching the dialog avatar. */
 .profile-avatar-btn {
   width: 36px;
   height: 36px;
@@ -293,17 +282,17 @@ body {
   gap: 8px;
 }
 
-/* Hidden on desktop, where the calendar sits inline in the left column
-   (revealed in the max-width block below). Placed after .icon-button so this
-   display wins over its inline-flex. */
+/* Hidden on desktop, where the calendar sits inline in the left column (shown
+   in the max-width block below). After .icon-button so this display wins over
+   its inline-flex. */
 .cal-button {
   display: none;
   position: relative;
 }
 
 /* Persistent attention when a new daily is available (local midnight rolled
-   over): a soft accent pulse + a corner dot, held until the player opens the
-   calendar and switches. Non-dismissible by design. */
+   over): an accent pulse + corner dot, held until the player opens the calendar
+   and switches. Not dismissible. */
 .cal-button--alert {
   color: var(--accent);
   animation: pbPulse 1.6s ease-in-out infinite;
@@ -347,8 +336,8 @@ body {
   color: var(--color);
 }
 
-/* Framed maze board. Rounded corners live on the SVG itself (not via
-   overflow:hidden here) so the scale(2) zoom can still spill over the UI. */
+/* Framed maze board. Rounded corners are on the SVG itself (not overflow:hidden
+   here) so the scale(2) zoom can still spill over the UI. */
 .board-frame {
   max-width: var(--maze-size);
   margin: 0 auto;
@@ -361,13 +350,13 @@ body {
   display: block;
   border-radius: var(--radius);
   font-family: var(--font);
-  /* Disable iOS double-tap-to-zoom so taps on interactive text (e.g.
-     "Ready?") activate instead of zooming. */
+  /* Disable iOS double-tap-to-zoom so taps on interactive text (e.g. "Ready?")
+     activate. */
   touch-action: manipulation;
 }
 
 /* Full-screen fallback when a render crash unmounts the app (see
-   ErrorBoundary) — a plain card and a reload button, no game chrome. */
+   ErrorBoundary): a plain card and a reload button. */
 .crash {
   min-height: 100vh;
   display: flex;
@@ -397,10 +386,10 @@ body {
   font-size: 14px;
 }
 
-/* Ghost of a reverted (never-persisted) block: puffs up for a beat, then
-   collapses to nothing where it stood — the rollback reads as an implosion
-   rather than a glitch. transform-box scopes the scale to the block itself
-   (SVG transforms otherwise originate at the viewBox corner). */
+/* Ghost of a reverted (never-persisted) block: puffs up, then collapses where
+   it stood, so the rollback reads as an implosion rather than a glitch.
+   transform-box scopes the scale to the block (SVG transforms otherwise
+   originate at the viewBox corner). */
 .board-implode {
   transform-box: fill-box;
   transform-origin: center;
@@ -457,8 +446,8 @@ a:hover {
   cursor: pointer;
 }
 
-/* Onboarding gets the same side breathing room the game board has, so the
-   board doesn't run to the screen edges on mobile. */
+/* Onboarding gets the board's side breathing room so the board doesn't run to
+   the screen edges on mobile. */
 .onboarding {
   padding-inline: 8px;
 }
@@ -473,25 +462,24 @@ a:hover {
   position: absolute;
   text-align: left;
   /* The set position (top/left/right/bottom) marks where the ARROW points;
-     shift the box by the arrow's fixed offset so its tip lands exactly there
-     (12px inset + 7px half-base = 19px in; 7px past the edge). */
+     shift the box by the arrow's fixed offset so the tip lands there (12px
+     inset + 7px half-base = 19px in; 7px past the edge). */
   transform: translate(var(--arrow-x, -19px), var(--arrow-y, 0px));
 }
 
-/* The tip's buttons sit on one row, and the box is only as wide as the board
-   lets it be — so a two-word label ("Watch again") wrapped mid-phrase and
-   interleaved with the button beside it. They are labels, not prose. */
+/* The tip's buttons sit on one row in a box only as wide as the board allows; a
+   two-word label ("Watch again") must not wrap mid-phrase into the neighbouring
+   button. */
 .tooltip a {
   white-space: nowrap;
 }
 
-/* Arrow as a pseudo-element on the tip so it's always flush to its edge
-   (a separately-positioned arrow drifted out of alignment). */
+/* Arrow as a pseudo-element on the tip so it is always flush to its edge. */
 .tooltip::before {
   content: "";
   position: absolute;
-  /* Fixed size: the arrow points at fixed-size chips outside the board, so it
-     shouldn't scale with the board like the % positions do. */
+  /* Fixed size: it points at fixed-size chips outside the board, so it must not
+     scale with the board like the % positions. */
   left: 12px;
   border: 7px solid transparent;
 }
@@ -524,21 +512,18 @@ a:hover {
   --arrow-y: -7px;
 }
 
-/* Game layout: board in the middle, daily-selector and log as side panels
-   on landscape / stacked below on portrait. A grid so nothing depends on
-   hand-computed offsets. Crucially nothing here clips overflow, so the
-   board's scale(2) zoom still spills over the panels (only <body> clips). */
+/* Game layout: board in the middle, daily-selector and log as side panels on
+   landscape and stacked below on portrait. Nothing here clips overflow, so the
+   board's scale(2) zoom spills over the panels (only <body> clips). */
 .game {
   display: grid;
   gap: 24px;
-  /* One rhythm for the right rail: the gap under the standings dock and the gap
-     under the splits tape are the same value, so the tape sits evenly between
-     the dock above it and the runs below. */
+  /* One rhythm for the right rail: the gap under the dock and under the splits
+     tape are the same value. */
   --rail-gap: 12px;
-  /* The collapsed tape's exact height, so the panel is the same size whether it
-     is showing deltas, absolute times, or nothing at all (see .splits). Derived,
-     not measured: the head's fixed 16px line box plus its 9px padding and the
-     panel's 1px border, top and bottom. */
+  /* The collapsed tape's height, so the panel is the same size showing deltas,
+     absolute times, or nothing (see .splits): the head's 16px line box + 9px
+     padding + 1px border, top and bottom. */
   --splits-collapsed: 36px;
   justify-content: center;
   align-items: start;
@@ -547,16 +532,14 @@ a:hover {
   height: calc(var(--full-height) - var(--header-size));
 }
 
-/* Wide enough for three columns: today-result + calendar down the left,
-   board centred, attempts on the right. The switch is width-based (not
-   orientation) so a tall-but-wide window still gets the desktop layout; the
-   side columns are capped so centring leaves outer margins on wide screens.
-   Narrower: board on top, then result, attempts, calendar stacked — the
-   attempts and calendar rows scroll within their own height so the board
-   never moves. Board stays top-aligned (align-items: start); the scrolling
-   rail opts back into filling its track with align-self: stretch.
-   Nothing here clips the board's scale(2) zoom spill — the side panels only
-   clip their OWN content, not the centred board sibling. */
+/* Three columns when wide enough: today-result + calendar left, board centred,
+   attempts right. Width-based, not orientation, so a tall-but-wide window still
+   gets the desktop layout; side columns are capped so wide screens keep outer
+   margins. Narrower: board on top, then result, attempts, calendar stacked;
+   attempts and calendar scroll within their own height so the board never
+   moves. The board stays top-aligned (align-items: start); the scrolling rail
+   opts back into filling its track with align-self: stretch. Side panels clip
+   only their OWN content, so the board's scale(2) spill is not clipped. */
 @media (min-width: 1200px) {
   .game {
     grid-template-columns:
@@ -567,21 +550,18 @@ a:hover {
       "cal   board rail";
   }
 
-  /* The right rail owns its own vertical rhythm: the dock, then the runs (with
-     the splits tape at their head), spaced by --rail-gap. Spanning both grid
-     rows is what frees it from the left column's row heights — the today card
-     is taller than the dock, and with the dock parked in row 1 the runs were
-     pushed down to meet it. */
+  /* The right rail owns its vertical rhythm: the dock, then the runs (splits
+     tape at their head), spaced by --rail-gap. Spanning both grid rows frees it
+     from the left column's row heights (the today card is taller than the
+     dock). */
   .game__rail {
     grid-area: rail;
     gap: var(--rail-gap);
-    /* .game is align-items: start (the board must stay top-aligned), so the
-       rail would size to its CONTENT and the runs' flex: 1 below would have no
-       bounded track to fill — the list grew past the fixed .game height, which
-       clips without scrolling, so the rows below the fold were unreachable on
-       desktop. Stretch puts the rail back on its spanned track's height, which
-       is what makes .attempts an actual scroll container. (Mobile never hit
-       this: the whole .game scrolls there.) */
+    /* .game is align-items: start (the board stays top-aligned), so the rail
+       would size to its CONTENT and the runs' flex: 1 would have no bounded
+       track: the list grew past the fixed .game height, which clips without
+       scrolling. Stretch restores the spanned track's height, making .attempts
+       a scroll container. (Mobile scrolls the whole .game.) */
     align-self: stretch;
     min-height: 0;
   }
@@ -597,8 +577,8 @@ a:hover {
     display: contents;
   }
 
-  /* Same three columns as the board grid: brand over the board, avatar
-     pinned to the right (attempts) column's edge. */
+  /* Same three columns as the board grid: brand over the board, avatar pinned
+     to the attempts column's edge. */
   .app-header {
     grid-template-columns:
       minmax(0, 340px) min(var(--maze-size), 100%) minmax(0, 340px);
@@ -614,8 +594,8 @@ a:hover {
 }
 
 @media (max-width: 1199.98px) {
-  /* Tighter top inset on phones — less wasted space above the header. Kept in
-     step with --header-size (inset + 44px header) so the board still fits. */
+  /* Tighter top inset on phones. Keep in step with --header-size (inset + 44px
+     header) so the board fits. */
   :root {
     --header-size: calc(60px + env(safe-area-inset-top, 0px));
   }
@@ -625,24 +605,22 @@ a:hover {
   }
 
   /* Stacked layout that scrolls as one unit: the board sits full-size on top
-     and you scroll the whole .game down to the panels below. overflow-x is
-     clipped so the board's scale(2) zoom can't add a horizontal scrollbar —
-     here the zoom is clipped to the game viewport (unlike desktop, where the
-     board is free to spill). Rows are auto/auto so content can exceed the
-     fixed .game height and scroll. */
+     and the whole .game scrolls to the panels. overflow-x is clipped so the
+     board's scale(2) zoom can't add a horizontal scrollbar (unlike desktop, the
+     zoom is clipped to the game viewport). Rows are auto so content can exceed
+     the fixed .game height. */
   .game {
     grid-template-columns: min(var(--maze-size), 100%);
     grid-template-rows: auto auto;
     grid-template-areas:
       "board"
       "panel";
-    /* Pack the board + panel at the top; leftover height falls to the bottom.
-       Without this the auto rows stretch to fill the fixed height (default
-       align-content), pushing the runs down into the middle (the calendar no
-       longer fills the panel). */
+    /* Pack the board + panel at the top. Without this the auto rows stretch to
+       fill the fixed height (default align-content), pushing the runs into the
+       middle. */
     align-content: start;
-    /* Tighter than the desktop 24px so the runs sit closer under the board
-       (~20px total with the panel's top padding, matching header→hud). */
+    /* Tighter than the desktop 24px: ~20px total with the panel's top padding,
+       matching header to hud. */
     row-gap: 12px;
     padding-inline: 8px;
     overflow-x: hidden;
@@ -651,9 +629,8 @@ a:hover {
 
   /* One board-width column matching .game: the wordmark left-aligns to the
      board's left edge and the actions pin to its right edge (both share the
-     single cell, positioned by justify-self), so both line up with the
-     board/panel inset rather than the raw viewport corners. With only two
-     icons here, a left wordmark + right actions reads better than centering. */
+     single cell via justify-self). With only two icons, left wordmark + right
+     actions reads better than centering. */
   .app-header {
     grid-template-columns: min(var(--maze-size), 100%);
     padding-inline: 8px;
@@ -668,7 +645,7 @@ a:hover {
     justify-self: start;
   }
 
-  /* The calendar lives in a full-screen picker here, reached from the header. */
+  /* The calendar lives in a full-screen picker here, opened from the header. */
   .cal-button {
     display: inline-flex;
   }
@@ -678,10 +655,9 @@ a:hover {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    /* Only vertical spacing; horizontal gutter comes from .game's
-       padding-inline, so the panels line up with the board's inset. Bottom
-       clears the pinned standings dock (~64px tall) plus breathing room and
-       the home-indicator inset, so the last run row scrolls out from under it. */
+    /* Vertical spacing only; the horizontal gutter is .game's padding-inline.
+       Bottom clears the pinned standings dock (~64px), breathing room and the
+       home-indicator inset so the last run row scrolls out from under it. */
     padding-block: 4px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -690,25 +666,24 @@ a:hover {
     flex-shrink: 0;
   }
 
-  /* The calendar doesn't sit below the runs on mobile (it's a picker), so the
-     runs are free to expand to their full height and the whole page scrolls.
-     Descendant selector so it beats the later base rule by specificity (base
-     .attempts comes after in source). */
+  /* The calendar is a picker on mobile, so the runs expand to full height and
+     the whole page scrolls. The descendant selector beats the later base
+     .attempts rule by specificity. */
   .game__panel .attempts {
     padding: 0;
   }
 
-  /* Today's result would only ever sit at the top on mobile, where it mostly
-     duplicates the board state — drop it and lead with the runs. */
+  /* Today's result mostly duplicates the board state on mobile: drop it and
+     lead with the runs. */
   .game__panel .today-result {
     display: none;
   }
 }
 
-/* Dock + runs as one column. A plain flex column here; the desktop block gives
-   it the grid area spanning both rows and the gap. On mobile it just passes its
-   children through to the stacked panel (and the dock is pinned to the viewport
-   anyway), so it needs no spacing of its own. */
+/* Dock + runs as one column. The desktop block gives it the grid area spanning
+   both rows and the gap. On mobile it passes its children through to the
+   stacked panel (the dock is pinned to the viewport), so it needs no spacing.
+   */
 .game__rail {
   display: flex;
   flex-direction: column;
@@ -722,25 +697,21 @@ a:hover {
   position: relative;
 }
 
-/* Daily "Start attempt" gate (Prestart.tsx). A ranked attempt never opens
-   on load — the player starts it here, so a background boot can't spend one.
-   A themed blur mask (light and dark) over the board, backed by a decorative,
-   blurred copy of the tutorial maze — a real-looking board that is NOT today's
-   puzzle, so the mask can't leak the layout the player is about to build. */
+/* Daily "Start attempt" gate (Prestart.tsx). A ranked attempt never opens on
+   load, so a background boot can't spend one. A themed blur mask over the
+   board, backed by a blurred decorative copy of the tutorial maze (NOT today's
+   puzzle, so the mask can't leak the layout the player is about to build). */
 .prestart {
   position: absolute;
-  /* Match the board square exactly (not the taller game__board, which includes
-     the Hud strip) so the mask is symmetric on all sides. Same width + centering
-     + rounding as `.board-frame`, anchored to the board at the bottom. */
+  /* Match the board square (not the taller game__board, which includes the Hud
+     strip) so the mask is symmetric. Same width, centering and rounding as
+     `.board-frame`. */
   bottom: 0;
-  /* Center off a DEFINITE width (100% capped at --maze-size), not a
-     left:0/right:0 + margin-auto stretch. Safari mis-derives an
-     absolutely-positioned box's aspect-ratio height when the width comes from a
-     left+right stretch: the square renders too short, and since the blurred
-     deco and scrim are both inset:0, the shortfall exposes a sharp strip of the
-     real board above the overlay (the blur "not aligning" at the top). A
-     definite width makes the aspect-ratio height resolve correctly in Safari
-     and is identical in Chromium/Firefox. */
+  /* Center off a DEFINITE width (100% capped at --maze-size), not
+     left:0/right:0 + margin-auto. Safari mis-derives an absolutely-positioned
+     box's aspect-ratio height from a left+right stretch: the square renders too
+     short and, with the blurred deco and scrim both inset:0, exposes a sharp
+     strip of the real board above the overlay. */
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -749,9 +720,8 @@ a:hover {
   z-index: 10;
   display: flex;
   /* A column so the account footer (.prestart__account) sits in flow below the
-     content, which the auto margins keep centred in the space above it — in
-     flow rather than pinned, so on a small board it can never overlap the
-     start button. */
+     content (auto margins keep that centred above it), never overlapping the
+     start button on a small board. */
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -760,32 +730,30 @@ a:hover {
   border-radius: var(--radius);
   /* Safari's overflow:hidden + border-radius does NOT clip a child with a
      `filter` (the blurred .prestart__deco), so its square corners poke past the
-     rounded card. clip-path clips the whole subtree — filtered descendants
-     included — in both engines, so round the corners here. */
+     card. clip-path clips the whole subtree, filtered descendants included, in
+     both engines. */
   clip-path: inset(0 round var(--radius));
-  /* New stacking context so the deco/scrim/content z-indexes below order
-     against each other, not the rest of the board. */
+  /* New stacking context so the deco/scrim/content z-indexes order against each
+     other, not the rest of the board. */
   isolation: isolate;
 }
 
-/* Bottom layer: the tutorial maze, blurred + faded to a texture. Its own board
-   frame (border, shadow, rounding) is stripped so it fills edge to edge rather
-   than reading as a second board nested inside the overlay. */
+/* Bottom layer: the tutorial maze, blurred + faded to a texture. Its
+   board-frame border, shadow and rounding are stripped so it fills edge to edge
+   instead of reading as a nested board. */
 .prestart__deco {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* 18px: folds in the 7px blur the scrim once added as a backdrop-filter —
-     radii compose in quadrature, sqrt(16² + 7²) ≈ 17.5. See the scrim below for
-     why that backdrop-filter is gone. */
+  /* 18px folds in the 7px blur a scrim backdrop-filter would add: radii compose
+     in quadrature, sqrt(16² + 7²) ≈ 17.5. See the scrim below for why it has
+     none. */
   filter: blur(18px) saturate(0.9);
   opacity: light-dark(0.5, 0.6);
-  /* Pin this blurred subtree to its own composited backing, so a board-sized
-     `filter: blur` rasterizes as one texture rather than per raster-tile.
-     Prophylactic: promotion does NOT clear the tab-hover seam (that was the
-     scrim's backdrop-filter — see below), but it suits a filter this large and
-     costs one layer. */
+  /* Own composited backing, so a board-sized `filter: blur` rasterizes as one
+     texture instead of per raster-tile. Does NOT affect the scrim's tab-hover
+     seam (see below). */
   transform: translateZ(0);
 }
 
@@ -802,25 +770,22 @@ a:hover {
   border-radius: 0;
 }
 
-/* Middle layer: a themed scrim that dims the deco below it for text contrast.
-   Sits ABOVE the deco, BELOW the content.
+/* Middle layer: a themed scrim that dims the deco for text contrast. Above the
+   deco, below the content.
 
-   It deliberately carries NO `backdrop-filter`. That was the tab-hover seam: a
-   hairline ran across the overlay whenever Chrome captured the tab preview
-   thumbnail, and cleared only on a full repaint (clicking the omnibox, opening
-   dev tools). Chrome renders a backdrop-filter by reading back a snapshot of
-   the parent render surface; capturing the thumbnail re-rasterizes the page at
-   reduced scale, that snapshot is taken per raster-tile, and the blur kernel
-   clamps at a tile edge instead of sampling across it — leaving a seam baked
-   into the cached texture. Unlike the deco's `filter` there is no fix by
-   promotion: a backdrop-filter has no own raster to pin, and promoting this
-   element changes nothing about how the backdrop is snapshotted.
+   It must carry NO `backdrop-filter`: that caused a tab-hover seam, a hairline
+   across the overlay whenever Chrome captured the tab preview thumbnail,
+   cleared only by a full repaint. Chrome renders a backdrop-filter from a
+   per-raster-tile snapshot of the parent surface; the thumbnail capture
+   re-rasterizes at reduced scale, the blur kernel clamps at tile edges, and the
+   seam bakes into the cached texture. Unlike the deco's `filter`, layer
+   promotion can't fix it.
 
-   Nothing is lost without it. It would blur the deco below (folded into that
-   element's own blur — see the quadrature note above) and the real board behind
-   the overlay, which `enterPrestart` empties (`setBlocks([])`) — a bare grid.
+   Nothing is lost without it: its blur on the deco is folded into the deco's
+   own (see the quadrature note above). It would also blur the real board behind
+   the overlay, which `enterPrestart` empties (`setBlocks([])`) to a bare grid.
    It does reach that board: `isolation: isolate` and `clip-path` on .prestart
-   do not establish a backdrop root in Chrome despite the spec listing both. */
+   don't create a backdrop root in Chrome despite the spec. */
 .prestart::before {
   content: "";
   position: absolute;
@@ -860,8 +825,8 @@ a:hover {
   color: var(--text-mute);
 }
 
-/* Progress pips — rounded squares: spent attempts filled green, the current one
-   accent (with a soft ring), the rest an empty outline. */
+/* Progress pips, rounded squares: spent attempts filled green, the current one
+   accent (soft ring), the rest an empty outline. */
 .prestart__dots {
   display: flex;
   gap: 10px;
@@ -887,9 +852,8 @@ a:hover {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* The previous attempt's time, and (from the third attempt) a diff against the
-   one before it — green when it improved (higher time is better), red when it
-   dropped. */
+/* The previous attempt's time and, from the third attempt, a diff against the
+   one before it: green when improved (higher is better), red when dropped. */
 .prestart__prev {
   margin-top: 16px;
   font: 500 14px var(--font);
@@ -927,9 +891,9 @@ a:hover {
   box-shadow: 0 10px 30px -8px var(--accent-soft);
 }
 
-/* The account footer: a quiet text link in the overlay's bottom padding. Pulled
-   down into that padding (negative margin) so it doesn't shift the content, and
-   padded for a comfortable tap target without looking like a button. */
+/* The account footer: a quiet text link in the overlay's bottom padding.
+   Negative margin pulls it into that padding so it doesn't shift the content;
+   padded for a tap target without looking like a button. */
 .prestart__account {
   position: relative;
   z-index: 2;
@@ -961,7 +925,7 @@ a:hover {
   margin: 0 4px 10px;
 }
 
-/* Today's result — two summary chips (see TodayResult.tsx). */
+/* Today's result: two summary chips (see TodayResult.tsx). */
 .today-result {
   grid-area: today;
   text-align: left;
@@ -972,9 +936,9 @@ a:hover {
   gap: 8px;
 }
 
-/* Each chip is tinted to its percentile band (--chip, set inline); supreme
-   adds the gold glow — matching the result modal, not a fixed green/blue. Border
-   + faint fill come from .band-card. */
+/* Each chip is tinted to its percentile band (--chip, set inline); supreme adds
+   the gold glow, matching the result modal. Border and faint fill come from
+   .band-card. */
 .today-result__chip {
   flex: 1;
   min-width: 0;
@@ -1017,8 +981,8 @@ a:hover {
   --band-card-fill: 9%;
 }
 
-/* Calendar — a bounded one-month picker, same on desktop and mobile (see
-   Calendar.tsx). No scroll: prev/next month + a jump-a-year row page through
+/* Calendar: a bounded one-month picker, same on desktop and mobile (see
+   Calendar.tsx). No scroll: prev/next month and a jump-a-year row page through
    the loaded window. */
 .calendar {
   grid-area: cal;
@@ -1053,8 +1017,8 @@ a:hover {
   text-align: left;
 }
 
-/* One header row: title on the left, pager + close grouped on the right. It
-   sticks to the top so it stays put while scrolling multiple months. */
+/* One header row: title left, pager + close grouped right. Sticky so it stays
+   put while scrolling multiple months. */
 .calendar-modal__header {
   position: sticky;
   top: 0;
@@ -1078,8 +1042,7 @@ a:hover {
   gap: 8px;
 }
 
-/* Larger, comfortably tappable cells in the picker than the desktop inline
-   grid. */
+/* Larger cells than the desktop inline grid, for tapping. */
 .calendar-modal__sheet .calendar__grid {
   gap: 7px;
 }
@@ -1119,9 +1082,9 @@ a:hover {
 }
 
 /* "New daily available" banner at the top of the calendar (desktop inline +
-   mobile picker) — the switch to the day that just rolled over. The new day
-   isn't a normal cell (the calendar only lists days you've played), so this is
-   how you get there. */
+   mobile picker): the switch to the day that just rolled over. That day isn't a
+   normal cell (the calendar lists only days you've played), so this is the way
+   to it. */
 .calendar__new-daily {
   display: flex;
   align-items: center;
@@ -1162,8 +1125,8 @@ a:hover {
   }
 }
 
-/* Each month label sits below the grid above it, so a top margin gives the
-   gap between one month and the next. */
+/* Each month label sits below the grid above it; the top margin is the gap
+   between months. */
 .calendar__label {
   font: 700 14px var(--font);
   color: var(--color);
@@ -1184,8 +1147,8 @@ a:hover {
 }
 
 /* Rolling weeks view: a heading with a pager on the right, the weekday row,
-   then week rows (oldest on top, current week at the bottom) with a month
-   label wherever the month changes. */
+   then week rows (oldest on top, current week at the bottom) with a month label
+   wherever the month changes. */
 .calendar__head {
   display: flex;
   align-items: center;
@@ -1246,7 +1209,7 @@ a:hover {
   cursor: pointer;
 }
 
-/* Days with no daily to replay yet — dimmer than a played-or-missed day. */
+/* Days with no daily to replay yet: dimmer than a played-or-missed day. */
 .calendar__cell--future {
   background: none;
   opacity: 0.4;
@@ -1258,8 +1221,8 @@ a:hover {
 }
 
 .calendar__cell--selected {
-  /* White ring reads with more contrast against the dark grid than the
-     accent blue, and never clashes with the cell's percentile colour. */
+  /* White ring contrasts more than the accent blue against the dark grid and
+     never clashes with the cell's percentile colour. */
   box-shadow: 0 0 0 2px var(--color);
 }
 
@@ -1275,8 +1238,8 @@ a:hover {
 
 /* Playable cell layout: the standing % is the hero, centred; the day shrinks
    into the top-left corner. Both inherit the cell's readable ink (see
-   Calendar.tsx); the day is faded via opacity so it works on light or dark
-   fills. Long near-100 percentages step down a size to keep fitting the cell. */
+   Calendar.tsx); the day is faded via opacity to work on light or dark fills.
+   Long near-100 percentages step down a size to fit. */
 .calendar__day,
 .calendar__pct {
   font-family: var(--font-mono);
@@ -1323,26 +1286,23 @@ a:hover {
   font-size: 9px;
 }
 
-/* Runs panel — the viewed maze's runs (see Attempts.tsx). No root padding so
-   its heading/rows line up with the other panels; slim scrollbar on desktop
-   (the only place it scrolls). Mobile min-height/full-width lives in the
-   max-width media block above (as descendant selectors, to win by
-   specificity). */
+/* Runs panel: the viewed maze's runs (see Attempts.tsx). No root padding so its
+   heading/rows line up with the other panels; slim scrollbar on desktop (the
+   only place it scrolls). Mobile min-height/full-width is in the max-width
+   block above, as descendant selectors that win by specificity. */
 .attempts {
   min-height: 0;
   overflow-y: auto;
   text-align: left;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
-  /* Breathing room under the last row when scrolled to the end, so it doesn't
-     sit flush against the viewport edge. Desktop only — the mobile rule below
-     zeroes panel padding (the whole page scrolls there). A block scroll
-     container honours bottom padding at the scroll end. */
+  /* Breathing room under the last row at the scroll end. Desktop only: the
+     mobile rule below zeroes panel padding (the whole page scrolls there). */
   padding-bottom: 16px;
 }
 
-/* Heading row: the "Runs" title and the local sort toggle. Carries the title's
-   old margin so the two sit on one line above the list. */
+/* Heading row: the "Runs" title and the local sort toggle, on one line above
+   the list. */
 .attempts__head {
   display: flex;
   align-items: center;
@@ -1391,8 +1351,8 @@ a:hover {
   gap: 8px;
 }
 
-/* Each row is tinted to its own percentile band (--band, set inline);
-   supreme rows add the gold glow. */
+/* Each row is tinted to its own percentile band (--band, set inline); supreme
+   rows add the gold glow. */
 .attempts__row {
   display: flex;
   align-items: center;
@@ -1416,11 +1376,10 @@ a:hover {
   --band-card-fill: 9%;
 }
 
-/* The run currently on the board (a review): keep the row's own band colour but
-   lift it — a heavier border and the deeper "highlighted" fill (shared with the
-   daily-result best row) — plus a matching label, so it's easy to spot which row
-   you're looking at without a second (blue) accent. Just tunes the band-card
-   knobs, so no specificity fight. */
+/* The run currently on the board (a review): keeps the row's band colour but
+   lifts it with a heavier border, the deeper "highlighted" fill (shared with
+   the daily-result best row) and a matching label, with no second (blue)
+   accent. Only tunes the band-card knobs, so no specificity fight. */
 .attempts__row--viewing {
   --band-card-edge: 60%;
   --band-card-fill: 13%;
@@ -1449,11 +1408,9 @@ a:hover {
 .attempts__meta {
   flex: 1;
   min-width: 0;
-  /* One line: "2m ago" plus its tags reads as a single caption, and letting it
-     wrap in the 288px rail grew the row by a line whenever a run picked up a
-     badge. Left to overflow rather than clipped — a tag half-cut at an
-     invisible edge reads as a rendering fault, where a line running past its
-     box reads as a line that didn't fit. */
+  /* One line: "2m ago" plus its tags is one caption, and wrapping in the 288px
+     rail grew the row whenever a run picked up a badge. Overflow rather than
+     clip: a half-cut tag reads as a rendering fault. */
   white-space: nowrap;
 }
 
@@ -1500,10 +1457,9 @@ a:hover {
   margin-top: 2px;
 }
 
-/* Ranked (daily) field percentile — pXX, tinted by the percentile ITSELF
-   (inlined as --pct by the row). The card's band is the standing — a
-   different metric that could paint a p100 red; it remains only the
-   fallback. */
+/* Ranked (daily) field percentile, pXX, tinted by the percentile ITSELF
+   (inlined as --pct by the row). The card's band is the standing, a different
+   metric that could paint a p100 red; it is only the fallback. */
 .attempts__pct {
   font: 700 11px var(--font-mono);
   color: var(--pct, var(--band));
@@ -1515,8 +1471,8 @@ a:hover {
   padding: 8px 2px;
 }
 
-/* Per-row pin toggle (pushes a run to the top of the panel). Sits at the row's
-   trailing edge; negative margins let its 30px tap target hang into the row's
+/* Per-row pin toggle (floats a run to the top of the panel) at the row's
+   trailing edge. Negative margins let its 30px tap target hang into the row's
    padding without adding height. */
 .attempts__pin {
   flex: none;
@@ -1545,19 +1501,17 @@ a:hover {
   color: var(--color);
 }
 
-/* Pinned state is carried by the icon's FILL (solid vs outline) plus full-
-   strength neutral foreground — deliberately no accent hue. The row is already
-   saturated with meaning-bearing colour (the standing band, the Daily chip, the
-   supreme/record badges), so the pin stays monochrome and doesn't add a colour
-   that competes — or, at --accent-bright, reads as kin to the Daily chip. */
+/* Pinned state is the icon's FILL (solid vs outline) plus full-strength neutral
+   foreground, with no accent hue: the row already carries meaning in colour
+   (standing band, Daily chip, supreme/record badges), and --accent-bright would
+   read as kin to the Daily chip. */
 .attempts__pin--active {
   color: var(--color);
 }
 
-/* Where a pointer can hover, keep the affordance quiet until the row is engaged
-   (or the run is already pinned / the button focused) — so it's present but not
-   loud. Touch has no hover, so there it stays visible at all times (the default
-   rule above). */
+/* Where a pointer can hover, keep the button quiet until the row is engaged (or
+   the run is pinned / the button focused). Touch has no hover, so the default
+   rule above keeps it visible. */
 @media (hover: hover) {
   .attempts__pin:not(.attempts__pin--active) {
     opacity: 0.32;
@@ -1569,36 +1523,33 @@ a:hover {
   }
 }
 
-/* A pinned row lifts its own band edge a touch so the floated-to-top rows read
-   as a set, without a second accent colour fighting the band. */
+/* A pinned row lifts its band edge a touch so the floated rows read as a set,
+   without a second accent colour. */
 .attempts__row--pinned {
   --band-card-edge: 46%;
 }
 
-/* Splits panel — the tape above the runs list (see Splits.tsx). One card that
-   is either a single collapsed line of marks or the expanded table; the header
-   is the toggle in both states. Sits inside .attempts so it scrolls with the
-   list it belongs to. */
-/* Fixed collapsed height. The tape's content changes size with what it is
-   showing — a delta reads at 13px, an absolute time at 12px — and letting the
-   panel size to it shifted the whole runs list by a pixel every time you moved
-   between a run and your best. The head below pins its line box, and this pins
-   the panel, so every state (deltas, absolutes, the empty placeholder) is the
-   same box. */
+/* Splits panel: the tape above the runs list (see Splits.tsx). One card, either
+   a single collapsed line of marks or the expanded table; the header toggles
+   both. Inside .attempts so it scrolls with the list. */
+/* Fixed collapsed height. The tape's content size varies (a delta is 13px, an
+   absolute time 12px), and sizing to it shifted the runs list by a pixel when
+   moving between a run and your best. The head pins its line box and this pins
+   the panel, so every state (deltas, absolutes, empty placeholder) is the same
+   box. */
 .splits {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 13px;
   overflow: hidden;
   min-height: var(--splits-collapsed);
-  /* Matches the rail gap above it (see .game), so the tape is evenly spaced
-     between the dock and the runs. */
+  /* Matches the rail gap above it (see .game). */
   margin: 0 0 var(--rail-gap, 12px);
 }
 
-/* The tape isn't up, but the slot it would take is held so the runs below don't
-   hop when it appears (see Splits.tsx). Hidden rather than drawn empty — an
-   empty bordered card reads as a panel that failed to load. */
+/* The tape isn't up, but its slot is held so the runs below don't hop when it
+   appears (see Splits.tsx). Hidden rather than drawn empty: an empty bordered
+   card reads as a panel that failed to load. */
 .splits--placeholder {
   visibility: hidden;
 }
@@ -1609,9 +1560,9 @@ a:hover {
   gap: 9px;
   width: 100%;
   padding: 9px 11px;
-  /* Fixed line box (not the font's own metrics) so the collapsed height doesn't
-     depend on which size of number is in the line — or on whether the webfont
-     has loaded yet. A wrapped second line of marks still grows it, as it must. */
+  /* Fixed line box (not the font's metrics) so the collapsed height doesn't
+     depend on the number size or on whether the webfont has loaded. A wrapped
+     second line of marks still grows it. */
   line-height: 16px;
   border: 0;
   background: transparent;
@@ -1626,11 +1577,10 @@ a:hover {
   border-bottom: 1px solid var(--border);
 }
 
-/* The standings dock's caret, same weight and same muted colour so the rail
-   reads as one system — but this one is a disclosure, not a sheet, so it points
-   RIGHT when closed and rotates down on open (the dock's points up, or left on
-   desktop where its sheet is a side drawer). The glyph's base orientation is
-   up, hence the 90deg / 180deg. */
+/* The standings dock's caret, same weight and muted colour, but a disclosure
+   rather than a sheet: it points RIGHT when closed and rotates down on open
+   (the dock's points up, or left on desktop where its sheet is a side drawer).
+   The glyph's base orientation is up, hence 90deg / 180deg. */
 .splits__chevron {
   flex: none;
   display: flex;
@@ -1652,12 +1602,11 @@ a:hover {
   transform: rotate(180deg);
 }
 
-/* Open/close slides: the body is a grid row animated from 0fr to 1fr, with the
-   inner wrapper clipping the overflow — no measured pixel height, so the tape
-   can be any length. Browsers that can't interpolate fr units simply snap.
-   Collapsed, `visibility: hidden` (applied only once the
-   slide has finished) takes the rows and the flag controls out of the tab order
-   and off the accessibility tree. */
+/* Open/close slides: the body is a grid row animated 0fr to 1fr with the inner
+   wrapper clipping overflow, so the tape can be any length (browsers that can't
+   interpolate fr units snap). Collapsed, `visibility: hidden` (applied once the
+   slide finishes) removes the rows and flag controls from the tab order and
+   accessibility tree. */
 .splits__body {
   display: grid;
   grid-template-rows: 0fr;
@@ -1692,17 +1641,16 @@ a:hover {
   color: var(--color);
 }
 
-/* Collapsed: every mark on one line, wrapping rather than truncating — the
-   whole tape is meant to be readable without opening it. */
+/* Collapsed: every mark on one line, wrapping rather than truncating, so the
+   whole tape is readable without opening it. */
 .splits__marks {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  /* The 10px between marks is carried by their own side padding (so the
-     running highlight has room to sit in), not by a column gap. The negative
-     inline margin gives that padding back to the line: the first mark's glyph
-     and the last one's digits land exactly where they would with no padding at
-     all, against the caret and the note either side. */
+  /* The 10px between marks is the marks' own side padding (room for the running
+     highlight), not a column gap. The negative inline margin gives that padding
+     back, so the first glyph and last digits land where they would with no
+     padding. */
   gap: 4px 0;
   margin-inline: -5px;
   flex: 1;
@@ -1713,27 +1661,24 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 4px;
-  /* Every mark carries it, lit or not, so the highlight can never reflow the
-     line as it advances (see .splits__marks for where the space comes from).
-     Horizontal only: the head's line box is fixed, and vertical padding here
-     would push the collapsed panel past --splits-collapsed. */
+  /* Every mark carries it, lit or not, so the highlight can't reflow the line
+     (see .splits__marks). Horizontal only: vertical padding would push the
+     collapsed panel past --splits-collapsed. */
   padding-inline: 5px;
   border-radius: 999px;
   transition: background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* The mark the runner has just reached, in the RUNNER's own colour — the
-   highlight says "the runner is here", so it borrows the thing it tracks
-   rather than joining the gain/loss tones (which say something else) or the
-   accent (the dock's and the checkpoint's). Its width comes from padding every
-   mark carries whether lit or not, and its height from a box-shadow spread:
-   this line WRAPS, so padding that appeared and disappeared as the runner
-   advanced would reflow it mark by mark, and vertical padding would push the
-   collapsed panel past its fixed height. */
+/* The mark the runner has just reached, in the RUNNER's own colour: it says
+   "the runner is here", so it borrows what it tracks rather than the gain/loss
+   tones or the accent (the dock's and checkpoint's). Width comes from the
+   padding every mark carries, height from a box-shadow spread: this line WRAPS,
+   so padding that came and went would reflow it mark by mark, and vertical
+   padding would break the fixed collapsed height. */
 .splits__mark--current {
-  /* Mixed into the card's own surface rather than left translucent: marks that
-     share an instant light side by side, and two translucent pills would stack
-     their alpha into a darker seam where they meet. */
+  /* Mixed into the card's surface, not translucent: marks sharing an instant
+     sit side by side, and two translucent pills would stack alpha into a darker
+     seam. */
   background: color-mix(in srgb, var(--runner) 22%, var(--surface));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--runner) 22%, var(--surface));
 }
@@ -1751,26 +1696,26 @@ a:hover {
 }
 
 /* One mark per row: glyph, label, the delta (the point of the tape, so it
-   leads), then the absolute time trailing in a muted mono column. */
+   leads), then the absolute time in a muted mono column. */
 .splits__row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
-  /* The running highlight moves from row to row: each fades its own band in
-     and out rather than the lit row jumping. */
+  /* The running highlight moves row to row; each row fades its own band in and
+     out. */
   transition: background-color 0.18s ease, box-shadow 0.18s ease;
-  /* Same fixed line box as the head: a row is the same height whether or not it
-     carries a delta (your best run has no delta column). */
+  /* Same fixed line box as the head: a row is the same height with or without a
+     delta (your best run has none). */
   line-height: 16px;
   /* Nothing to compare against until a modifier below says otherwise. */
   --split-tone: var(--text-faint);
 }
 
-/* How this mark stands against the reference run — worn by the delta outright
-   and by the absolute time in a dimmed mix, so the whole row reads ahead or
-   behind while the delta stays the loudest thing in it. */
+/* How this mark stands against the reference run. Worn by the delta outright
+   and by the absolute time in a dimmed mix, so the row reads ahead or behind
+   while the delta stays loudest. */
 .splits__row--gain {
   --split-tone: var(--win);
 }
@@ -1787,7 +1732,7 @@ a:hover {
   color: var(--split-tone);
 }
 
-/* The checkpoint is the one mark every route shares — lifted a little so the
+/* The checkpoint is the one mark every route shares; lifted a little so the
    tape reads as before/after it. */
 .splits__row--checkpoint {
   padding: 10px 12px;
@@ -1799,10 +1744,10 @@ a:hover {
   color: var(--color);
 }
 
-/* Same "the runner is here" band in the table, with an edge marker down the
-   left so it still reads on a checkpoint row (which carries a tint of its own)
-   and for anyone who can't separate the two fills. Declared after the
-   checkpoint rules so it wins the background on that row. */
+/* The same "runner is here" band in the table, with an edge marker down the
+   left so it still reads on a checkpoint row (which has its own tint) and for
+   anyone who can't separate the fills. Declared after the checkpoint rules so
+   it wins the background there. */
 .splits__row--current {
   background: color-mix(in srgb, var(--runner) 16%, transparent);
   box-shadow: inset 2px 0 0 var(--runner);
@@ -1818,8 +1763,8 @@ a:hover {
   color: var(--text-dim);
 }
 
-/* Higher is better, so a gain is green and a loss red — the sign is spelled out
-   in the text too (see formatDelta). */
+/* Higher is better: a gain is green, a loss red. The sign is also spelled out
+   in the text (see formatDelta). */
 .splits__delta {
   font: 700 13px var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -1833,34 +1778,34 @@ a:hover {
   color: var(--lose);
 }
 
-/* No counterpart in the best run (a flag it never crossed): a dash, not a zero. */
+/* No counterpart in the best run (a flag it never crossed): a dash, not a zero.
+   */
 .splits__delta--none {
   color: var(--text-faint);
 }
 
-/* Dead level against the reference — amber, because it is neither a gain nor a
-   loss, and because the faint grey above already means "nothing to compare". */
+/* Dead level against the reference: amber, as neither gain nor loss and
+   distinct from the faint grey, which means "nothing to compare". */
 .splits__delta--even {
   color: var(--warn);
 }
 
-/* Viewing your own best: there is nothing to compare against, so the marks show
-   absolute times in the collapsed line. */
+/* Viewing your own best: nothing to compare against, so the collapsed line
+   shows absolute times. */
 .splits__delta--absolute {
   color: var(--color);
 }
 
-/* The collapsed line is one size whatever it holds — the expanded tape's 13px
-   delta would otherwise make the panel a pixel taller in delta mode than in
-   absolute mode. */
+/* The collapsed line is one size whatever it holds; the expanded tape's 13px
+   delta would make the panel a pixel taller in delta mode than absolute mode.
+   */
 .splits__marks .splits__delta {
   font-size: 12px;
 }
 
 /* The run's own time at this mark. Tinted to the row's tone but pulled most of
-   the way back to the faint neutral: the comparison is the point, so the time
-   should say which way it went without competing with the delta. Neutral
-   outright when there's nothing to compare against. */
+   the way back to the faint neutral, so it says which way it went without
+   competing with the delta. Neutral when there's nothing to compare against. */
 .splits__time {
   flex: none;
   width: 44px;
@@ -1884,12 +1829,11 @@ a:hover {
   white-space: nowrap;
 }
 
-/* Part of the card, not a shelf under it. The divider is the same weight as the
-   ones between rows (a heavier rule read as the panel ENDING there), and the
-   fill is the card's own surface lifted a hair — the same recipe the checkpoint
-   row uses. Avoid --surface-2: in dark it sits above --surface and reads
-   fine, but in light it lands within a hair of the page background, so on a
-   phone the footer looked like it had fallen out of the panel. */
+/* Part of the card, not a shelf under it. The divider matches the ones between
+   rows (a heavier rule read as the panel ENDING), and the fill is the card's
+   surface lifted a hair, like the checkpoint row. Avoid --surface-2: in light
+   it lands within a hair of the page background, so on a phone the footer
+   looked detached. */
 .splits__foot {
   display: flex;
   align-items: center;
@@ -1899,8 +1843,8 @@ a:hover {
   background: color-mix(in srgb, var(--color) 3%, var(--surface));
 }
 
-/* Armed: the footer is the only thing that changes state, because the tape is
-   the reason you're placing a flag and must stay readable. */
+/* Armed: only the footer changes state, because the tape is why you're placing
+   a flag and must stay readable. */
 .splits__foot--armed {
   background: color-mix(in srgb, var(--flag) 12%, var(--surface));
 }
@@ -1929,8 +1873,8 @@ a:hover {
   min-width: 0;
   font: 600 12px var(--font);
   color: var(--flag-bright);
-  /* The rail is 288px: the label, the saved count and Done only fit on one line
-     if none of them wraps. */
+  /* The rail is 288px: the label, saved count and Done fit on one line only if
+     none wraps. */
   white-space: nowrap;
 }
 
@@ -1969,7 +1913,7 @@ a:hover {
 }
 
 /* Flags on the board (see FlagLayer.tsx). The pennant and its cell ring are
-   decoration — only the grab target (armed only) takes a pointer. */
+   decoration; only the grab target (armed only) takes a pointer. */
 .flag__pennant {
   fill: var(--flag-soft);
   stroke: var(--flag);
@@ -1978,13 +1922,13 @@ a:hover {
   pointer-events: none;
 }
 
-/* Being placed: the same pennant, faded, because it isn't written until the
-   pointer lets go — the flag equivalent of the block placement's ghost. */
+/* Being placed: the same pennant, faded, since it isn't written until the
+   pointer lets go (the flag equivalent of the block placement's ghost). */
 .flag__pennant--placing {
   opacity: 0.55;
 }
 
-/* A flag the current run doesn't cross reports nothing: drawn hollow and dashed,
+/* A flag the current run doesn't cross reports nothing: drawn hollow and dashed
    with its cell ringed, so it reads as speculative rather than broken. */
 .flag__pennant--speculative {
   fill: none;
@@ -2024,8 +1968,8 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  /* Reserve height even when empty so the board doesn't shift when the
-     build phase (and the chips) load in. Matches the chip height below. */
+  /* Reserve height when empty so the board doesn't shift as the build phase
+     loads. Matches the chip height below. */
   min-height: 36px;
   max-width: var(--maze-size);
   margin: 0 auto 12px;
@@ -2046,7 +1990,8 @@ a:hover {
   gap: 8px;
 }
 
-/* Shared box metrics for the HUD pills (chips, build clock, run clock, reset). */
+/* Shared box metrics for the HUD pills (chips, build clock, run clock, reset).
+   */
 .hud__chip,
 .hud__build,
 .hud__run,
@@ -2055,8 +2000,8 @@ a:hover {
   border-radius: 11px;
 }
 
-/* Free-play reset — a neutral chip-styled square left of the build clock, so
-   the accent build button stays the primary action. */
+/* Free-play reset: a neutral chip-styled square left of the build clock, so the
+   accent build button stays the primary action. */
 .hud__reset {
   display: inline-flex;
   align-items: center;
@@ -2091,8 +2036,8 @@ a:hover {
 }
 
 /* The build clock: always tappable to start now. The countdown and "Ready?"
-   are stacked in one grid cell so the chip keeps the (wider) countdown's
-   width and can cross-fade between them without a reflow. */
+   share one grid cell, so the chip keeps the wider countdown's width and
+   cross-fades without reflow. */
 .hud__build {
   position: relative;
   display: inline-grid;
@@ -2148,7 +2093,7 @@ a:hover {
   opacity: 0;
 }
 
-/* Play button (review → back to a live board): reuses the build pill. */
+/* Play button (review to back-to-live board): reuses the build pill. */
 .hud__play {
   font: 700 15px var(--font);
   color: #fff;
@@ -2177,7 +2122,7 @@ a:hover {
   80%, 100% { opacity: 1; }
 }
 
-/* On hover or press, commit to showing "Ready?" outright. */
+/* On hover or press, commit to showing "Ready?". */
 .hud__build:hover .hud__build-time,
 .hud__build.pressing .hud__build-time {
   opacity: 0;
@@ -2201,18 +2146,18 @@ a:hover {
   opacity: 1;
 }
 
-/* Free-play run clock: the live stopwatch doubled as a verdict. Its fill (set
+/* Free-play run clock: the live stopwatch doubles as a verdict. Its fill (set
    inline) tracks the run's live score % on the standing ramp; the % rides
-   alongside the time. The daily clock stays the plain accent pill above. */
+   beside the time. The daily clock stays the plain accent pill above. */
 .hud__run--score {
   position: relative;
   /* Centre the row in the fixed-height pill; the % is nudged to the time's
-     baseline below so time + % still sit on one line. */
+     baseline below so both sit on one line. */
   align-items: center;
   gap: 8px;
   padding: 0 15px;
-  /* Inline background/color (the live % colour + its readable ink) override the
-     shared .hud__run accent fill. */
+  /* Inline background/color (the live % colour and its readable ink) override
+     the shared .hud__run accent fill. */
 }
 
 .hud__run-time {
@@ -2238,13 +2183,13 @@ a:hover {
 }
 
 /* Countdown water-ripple (see TimerRipple): at set remaining-time marks
-   (10/3/2/1s) a wave floods across the board's blue surface from the
-   timer button, flowing AROUND the pieces, so a player heads-down on the board
-   still senses the 60s window closing. An SVG overlay in the board's own 0–20
-   space, anchored over the board square exactly like the prestart mask and
-   clipped to it. The flood is one 1×1 cell per free square (pieces get none, so
-   the crest never draws over a block); each lights and fades on a delay set by
-   its distance THROUGH the maze, so the front bends around obstacles. */
+   (10/3/2/1s) a wave floods across the board from the timer button, flowing
+   AROUND the pieces, so a player heads-down on the board still senses the 60s
+   window closing. An SVG overlay in the board's 0-20 space, anchored and
+   clipped like the prestart mask. The flood is one 1x1 cell per free square
+   (pieces get none, so the crest never draws over a block); each cell lights on
+   a delay set by its distance THROUGH the maze, so the front bends around
+   obstacles. */
 .board-ripple {
   position: absolute;
   bottom: 0;
@@ -2260,8 +2205,8 @@ a:hover {
 }
 
 /* A single crest passing over each cell: rise, peak (to its distance-dimmed
-   --peak), then a slightly longer fade for a trailing wake. `animationDelay` and
-   `--peak` are set per cell inline (TimerRipple). */
+   --peak), then a slightly longer fade for a trailing wake. `animationDelay`
+   and `--peak` are set per cell inline (TimerRipple). */
 .board-ripple__cell {
   fill: hsl(205, 100%, 90%);
   opacity: 0;
@@ -2274,9 +2219,9 @@ a:hover {
   100% { opacity: 0; }
 }
 
-/* Respect reduced-motion: drop the travelling delay so the flood-shaped region
-   just softly glows and fades in place, no racing front. The animation still
-   ends, so the overlay retires itself (onAnimationEnd on the last cell). */
+/* Reduced motion: drop the travelling delay so the flood region just glows and
+   fades in place. The animation still ends, so the overlay retires itself
+   (onAnimationEnd on the last cell). */
 @media (prefers-reduced-motion: reduce) {
   .board-ripple__cell {
     animation-delay: 0s !important;
@@ -2284,9 +2229,9 @@ a:hover {
   }
 }
 
-/* The timer button is the source: at each mark it dips into the "water" — a
-   quick up-and-down bob whose fall coincides with the crest launching (see
-   TimerRipple / timerPulse). */
+/* The timer button is the source: at each mark it dips into the "water", a
+   quick bob whose fall coincides with the crest launching (see TimerRipple /
+   timerPulse). */
 .hud__build.dropping {
   animation: buildDrop 0.5s ease;
 }
@@ -2319,13 +2264,13 @@ a:hover {
 }
 
 /* The free-play win overlay: the milestone's glow / ripple over the pill, a
-   badge under it, and (for a personal best / supreme) confetti bursting out on
-   every side. It's fixed to the viewport and positioned over the pill's measured
-   box (see CelebrationOverlay), NOT nested in the HUD — the HUD sits at the
-   clipped top-right corner of `.game`, so drawing here lets the effects spill
-   above and right of the button without being cut. It fires when the run commits
-   and is unmounted when the board re-stages at finish; it fades opacity only, so
-   the glow stays aligned to the pill. */
+   badge under it, and (personal best / supreme) confetti on every side. Fixed
+   to the viewport and positioned over the pill's measured box (see
+   CelebrationOverlay), NOT nested in the HUD: the HUD sits at the clipped
+   top-right corner of `.game`, and drawing here lets effects spill above and
+   right of the button. Fires when the run commits, unmounts when the board
+   re-stages at finish; fades opacity only so the glow stays aligned to the
+   pill. */
 .celebrate {
   position: fixed;
   pointer-events: none;
@@ -2338,8 +2283,8 @@ a:hover {
   to { opacity: 1; }
 }
 
-/* Glow / ripple sit over the pill's footprint; transparent-centred, so the time
-   reads through, and they cast their shadow outward unclipped up here. */
+/* Glow / ripple sit over the pill's footprint, transparent-centred so the time
+   reads through, and cast their shadow outward unclipped. */
 .celebrate__glow,
 .celebrate__ring {
   position: absolute;
@@ -2441,9 +2386,8 @@ a:hover {
   box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.8);
   text-align: left;
   /* Center on the board (which sits header + HUD below the top), not the
-     whole viewport — but never let it drift past the viewport midpoint.
-     translateY(-50%) centers the card on that line; the -24px cancels the
-     layer's top padding. */
+     viewport, but never past the viewport midpoint. translateY(-50%) centers
+     the card on that line; the -24px cancels the layer's top padding. */
   margin-top: calc(
     min(
       var(--header-size) + var(--hud-size) + var(--maze-size) / 2,
@@ -2492,7 +2436,7 @@ a:hover {
   --band-card-fill: 13%;
 }
 
-/* The glow is reserved for supreme (record) results — on the row and the
+/* The glow is reserved for supreme (record) results, on the row and the
    matching "you beat 100%" banner. */
 .result__row--glow {
   box-shadow: 0 0 16px -2px color-mix(in srgb, var(--accent) 55%, transparent);
@@ -2500,11 +2444,10 @@ a:hover {
 
 /* Shared "card tinted to a percentile band" look: a band-derived border and a
    faint band fill over the surface. A caller sets --band-card-tint (its band /
-   chip / accent colour); --band-card-edge tunes the border strength for a
-   heavier variant. Used by the runs rows, today cards, and the daily-result best
-   row so the treatment stays identical. Defined here (after .result__row) so it
-   wins over that neutral base; component modifiers that need to override it
-   (e.g. the viewed runs row) raise their own specificity. */
+   chip / accent colour); --band-card-edge strengthens the border. Used by the
+   runs rows, today cards and the daily-result best row. Defined after
+   .result__row so it wins over that neutral base; modifiers that must override
+   it (e.g. the viewed runs row) raise their own specificity. */
 .band-card {
   border: 1px solid
     color-mix(
@@ -2622,10 +2565,10 @@ a:hover {
   background: var(--slow-runner);
 }
 
-/* Profile dialog (see Profile.tsx) — a card over a dimmed board. Mobile: a
-   bottom sheet that hugs its content (so a sparse profile doesn't strand a
+/* Profile dialog (see Profile.tsx): a card over a dimmed board. Mobile: a
+   bottom sheet that hugs its content (a sparse profile doesn't strand a
    full-screen void). Desktop: a centred dialog card, like the daily result.
-   Both are dismissed by the backdrop or the close button. */
+   Dismissed by the backdrop or the close button. */
 /* Shared dismissible overlay (see Modal.tsx): a bottom sheet on mobile, a
    centered card on desktop. Used by the profile dialog and the move sheet.
    Children own their padding; a per-use class (e.g. .profile-sheet) adds it. */
@@ -2645,25 +2588,24 @@ a:hover {
   position: relative;
   box-sizing: border-box;
   width: 100%;
-  /* Let the flex item shrink to the viewport rather than to its grid's
-     min-content (which would push the sheet wider than a phone screen). */
+  /* Let the flex item shrink to the viewport, not its grid's min-content (which
+     would push the sheet wider than a phone). */
   min-width: 0;
   max-width: 480px;
-  /* Cap so a tall sheet never eats the whole screen: always leave a backdrop
-     gap at the top (the board stays visible behind it) — at least 100px on
-     short screens, 15vh on tall ones — and scroll the body internally past
-     that. Desktop drops the cap (centred card, see below). */
+  /* Cap so a tall sheet always leaves a backdrop gap at the top (the board
+     stays visible): at least 100px on short screens, 15vh on tall ones. The
+     body scrolls internally past that. Desktop drops the cap. */
   max-height: min(85vh, calc(100vh - 100px));
   overflow-y: auto;
   text-align: left;
   background: var(--surface);
-  /* Bottom sheet: rounded top only, flush to the screen's bottom edge. */
+  /* Bottom sheet: rounded top only, flush to the bottom edge. */
   border-radius: 22px 22px 0 0;
   box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.7);
   animation: profileSheetIn 0.22s ease;
 }
 
-/* Desktop: card centred, free-floating and rounded on all sides. */
+/* Desktop: card centred, free-floating, rounded on all sides. */
 @media (min-width: 1200px) {
   .modal {
     align-items: center;
@@ -2672,9 +2614,8 @@ a:hover {
 
   .modal__sheet {
     max-width: 420px;
-    /* Centred card: leave the 24px backdrop gap top+bottom and scroll the body
-       internally past that, so a tall dialog (the full profile) never runs off
-       the top/bottom of the viewport. */
+    /* Leave a 24px backdrop gap top and bottom and scroll the body internally,
+       so a tall dialog (the full profile) never runs off the viewport. */
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     border: 1px solid var(--border-strong);
@@ -2695,11 +2636,10 @@ a:hover {
   }
 }
 
-/* Profile dialog content padding (the move sheet manages its own).
-   The whole dialog runs on one spacing scale: 24 at the sheet's edges, 20
-   between sections, 8 between the cards inside a section, and the shared
-   .section-title's own 10 under a heading. Before, stat sections sat 16 apart
-   and preference sections 14, which read as the rhythm changing halfway down. */
+/* Profile dialog content padding (the move sheet manages its own). One spacing
+   scale for the dialog: 24 at the sheet's edges, 20 between sections, 8 between
+   cards inside a section, and the shared .section-title's own 10 under a
+   heading. */
 .profile-sheet {
   padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
 }
@@ -2711,14 +2651,13 @@ a:hover {
 }
 
 /* Decorative dialog icons (edit pencil, copy/link) must not act as board-input
-   targets — the game's touch handlers zoom the board on any touched <svg>. Let
-   the taps fall through to the buttons beneath. */
+   targets: the game's touch handlers zoom the board on any touched <svg>. Taps
+   fall through to the buttons beneath. */
 .modal svg {
   pointer-events: none;
 }
 
-/* Shared header/close icon button used across both modals so the affordances
-   (profile ×, move ‹ / ×) look identical. */
+/* Shared header/close icon button for both modals (profile x, move < / x). */
 .modal__icon {
   display: flex;
   align-items: center;
@@ -2749,9 +2688,8 @@ a:hover {
   z-index: 1;
 }
 
-/* Header: avatar, name + join date, rating pinned to the right. Held to the
-   avatar's height so swapping in the (shorter) rename bar doesn't shrink the
-   dialog — the bar just centres in the same space. */
+/* Header: avatar, name + join date, rating pinned right. Held to the avatar's
+   height so swapping in the shorter rename bar doesn't shrink the dialog. */
 .profile-head {
   display: flex;
   align-items: center;
@@ -2838,8 +2776,8 @@ a:hover {
   margin-top: 1px;
 }
 
-/* Inline rename: a full-width bar that replaces the whole header row while
-   editing, so the input isn't crushed between the avatar and rating. */
+/* Inline rename: a full-width bar that replaces the header row while editing,
+   so the input isn't crushed between avatar and rating. */
 .profile-rename {
   display: flex;
   align-items: center;
@@ -2930,16 +2868,15 @@ a:hover {
   margin: 0 2px;
 }
 
-/* Desktop: the dialog widens instead of running on. The left column is the
-   half you read (ranked, free play, head-to-head) and the right the half you
-   operate (notifications, preferences, community, account), so the split is by
-   what a section is FOR, not by what fits. Below the breakpoint the columns
-   stack in source order and the sheet is the mobile layout. Shares
-   the 1200px breakpoint the centred card already uses — one desktop, not two. */
+/* Desktop: the dialog widens. The left column is the half you read (ranked,
+   free play, head-to-head), the right the half you operate (notifications,
+   preferences, community, account): split by what a section is FOR, not by what
+   fits. Below the breakpoint the columns stack in source order (the mobile
+   layout). Uses the 1200px breakpoint the centred card already uses. */
 .profile-cols {
   display: grid;
-  /* Stacked, the gap IS the gap between two sections, so it matches the 20 the
-     sections keep between themselves; side by side it becomes the gutter. */
+  /* Stacked, the gap is the gap between two sections, so it matches the 20 they
+     keep between themselves; side by side it is the gutter. */
   gap: 20px;
   align-items: start;
 }
@@ -2959,8 +2896,8 @@ a:hover {
     gap: 24px;
   }
 
-  /* A hairline instead of a wider gutter: the two halves are one dialog, and
-     the rule keeps the right column's cards from reading as a second sheet. */
+  /* A hairline instead of a wider gutter: the halves are one dialog, and the
+     rule keeps the right column's cards from reading as a second sheet. */
   .profile-col--side {
     border-left: 1px solid var(--border);
     padding-left: 24px;
@@ -2980,9 +2917,9 @@ a:hover {
   gap: 10px;
 }
 
-/* A pill sitting on the sheet reads as an outline unless its track is a step
-   above the surface behind it — the runs panel's pill fills with --surface
-   because it sits on the page, so here it fills with --surface-2. */
+/* A pill on the sheet reads as an outline unless its track is a step above the
+   surface behind it. The runs panel's pill fills with --surface (it sits on the
+   page); here it fills with --surface-2. */
 .profile-sheet .pref__seg {
   background: var(--surface-2);
   margin-bottom: 10px;
@@ -3051,8 +2988,8 @@ a:hover {
   color: var(--text-faint);
 }
 
-/* Free play in one tally, read as a progression through the library: boards
-   held alone, boards shared, boards played, boards that exist. */
+/* Free play in one tally, a progression through the library: boards held alone,
+   shared, played, and that exist. */
 .profile-tally {
   display: flex;
   border: 1px solid var(--border);
@@ -3148,8 +3085,8 @@ a:hover {
   gap: 2px;
 }
 
-/* Wins lead in the text colour, losses recede — the pair reads as "yours
-   against theirs" without a second hue fighting the record states. */
+/* Wins lead in the text colour, losses recede: the pair reads "yours against
+   theirs" without a second hue fighting the record states. */
 .profile-rival__record {
   font-size: 18px;
   font-weight: 700;
@@ -3157,8 +3094,8 @@ a:hover {
   color: var(--color);
 }
 
-/* The separator is punctuation, not a figure — it sat brighter than the number
-   beside it while it inherited the record's own colour. */
+/* The separator is punctuation, not a figure: it must not inherit the record's
+   colour and outshine the number beside it. */
 .profile-rival__dash {
   color: var(--text-faint);
   font-weight: 400;
@@ -3174,7 +3111,7 @@ a:hover {
   color: var(--text-faint);
 }
 
-/* The way into the rest of the list, sitting under the rows it extends. */
+/* The way into the rest of the list, under the rows it extends. */
 .profile-rivals__more {
   display: flex;
   align-items: center;
@@ -3197,8 +3134,8 @@ a:hover {
   line-height: 1;
 }
 
-/* Head-to-head sheet: the whole list, searchable and sortable. Its rows are
-   the profile's (.profile-rival*); only the chrome above them is new. */
+/* Head-to-head sheet: the whole list, searchable and sortable. Rows are the
+   profile's (.profile-rival*); only the chrome above them is new. */
 .rivals-sheet {
   padding: 0 0 calc(16px + env(safe-area-inset-bottom, 0px));
 }
@@ -3262,7 +3199,8 @@ a:hover {
   background: var(--surface-3);
 }
 
-/* Move-to-device row: a left-aligned action with a title + sub and a chevron. */
+/* Move-to-device row: a left-aligned action with a title + sub and a chevron.
+   */
 .profile-action--row {
   justify-content: flex-start;
   gap: 12px;
@@ -3291,7 +3229,7 @@ a:hover {
   color: var(--text-mute);
 }
 
-/* Community: Discord join card — an external link styled like a pref row. */
+/* Community: Discord join card, an external link styled like a pref row. */
 .community-card {
   display: flex;
   align-items: center;
@@ -3301,9 +3239,9 @@ a:hover {
   border-radius: 14px;
   background: var(--surface-2);
   text-decoration: none;
-  /* Opt out of the global link styling (accent colour, bold, hover
-     brightness) so this reads as a surface row like the Account button, not a
-     text link — children set their own colour/weight. */
+  /* Opt out of the global link styling (accent colour, bold, hover brightness)
+     so this reads as a surface row like the Account button; children set their
+     own colour/weight. */
   color: var(--color);
   font-weight: normal;
   transition: background 0.12s ease;
@@ -3311,9 +3249,8 @@ a:hover {
 
 .community-card:hover {
   background: var(--surface-3);
-  /* Override the global `a:hover` brightness filter, which otherwise dims the
-     whole card on top of the surface change (the Account button, a <button>,
-     never gets it). */
+  /* Override the global `a:hover` brightness filter, which would dim the whole
+     card on top of the surface change (the Account <button> never gets it). */
   filter: none;
 }
 
@@ -3351,8 +3288,8 @@ a:hover {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  /* Fixed line box so the row occupies the same height before and after the
-     count lands — the card never grows on open. */
+  /* Fixed line box so the row is the same height before and after the count
+     lands; the card never grows on open. */
   min-height: 14px;
   font-size: 12px;
   line-height: 14px;
@@ -3366,9 +3303,9 @@ a:hover {
   background: var(--win);
 }
 
-/* Grey the dot when there's no live presence to show — before the first count
-   lands, and when it's a genuine zero — so the green "live" dot only appears
-   when someone is actually on. */
+/* Grey the dot when there's no live presence to show (before the first count
+   lands, or a genuine zero), so the green "live" dot appears only when someone
+   is on. */
 .community-card__dot--idle {
   background: var(--text-faint);
 }
@@ -3427,12 +3364,12 @@ a:hover {
   font-size: 14px;
   font-weight: 700;
   color: var(--text-dim);
-  /* Keep a two-token value (e.g. "175 ms") on one line rather than wrapping the
+  /* Keep a two-token value (e.g. "175 ms") on one line instead of wrapping the
      unit under the number in the narrow value column. */
   white-space: nowrap;
 }
 
-/* Segmented System / Light / Dark — same shape as the runs sort toggle. */
+/* Segmented System / Light / Dark, same shape as the runs sort toggle. */
 .pref__seg {
   display: inline-flex;
   gap: 2px;
@@ -3468,7 +3405,7 @@ a:hover {
   cursor: pointer;
 }
 
-/* Language picker — a custom dropdown that sizes its trigger to the current
+/* Language picker: a custom dropdown that sizes its trigger to the current
    value (so the chevron hugs the text) and positions its own menu. */
 .lang-select {
   position: relative;
@@ -3562,7 +3499,7 @@ a:hover {
   color: var(--text-dim);
 }
 
-/* QR card — full width, always a light field (scannable), logo tile centered. */
+/* QR card: full width, always a light field (scannable), logo tile centered. */
 .move__qr {
   position: relative;
   width: 100%;
@@ -3599,8 +3536,8 @@ a:hover {
   min-width: 0;
   padding: 0 12px;
   height: 40px;
-  /* Block (not flex) so text-overflow works: the start of the URL stays
-     visible, the tail ellipsises. line-height centres it in the pill. */
+  /* Block (not flex) so text-overflow works: the start of the URL stays visible
+     and the tail ellipsises. line-height centres it in the pill. */
   line-height: 38px;
   border: 1px solid var(--border);
   border-radius: 11px;
@@ -3655,8 +3592,8 @@ a:hover {
 
 /* ===== Account: data export / delete rows + delete-confirm sheet ========== */
 
-/* The destructive "Delete my data" row — same shape as the other account rows
-   (profile-action--row) but tinted with the loss colour so it reads as the one
+/* The destructive "Delete my data" row: same shape as the other account rows
+   (profile-action--row), tinted with the loss colour so it reads as the one
    that erases. */
 .profile-action--danger {
   color: var(--lose);
@@ -3664,8 +3601,8 @@ a:hover {
   background: color-mix(in srgb, var(--lose) 8%, var(--surface-2));
 }
 
-/* Title, sub-line, chevron, and the trash icon (currentColor) all take the full
-   loss colour, so the whole row reads red. */
+/* Title, sub-line, chevron and trash icon (currentColor) all take the full loss
+   colour, so the whole row reads red. */
 .profile-action--danger .profile-action__title,
 .profile-action--danger .profile-action__sub,
 .profile-action--danger .profile-action__chev {
@@ -3677,8 +3614,8 @@ a:hover {
   border-color: color-mix(in srgb, var(--lose) 55%, var(--border-strong));
 }
 
-/* Stacked account rows (Move / Export / Delete) sit flush otherwise — .pref has
-   no gap; spacing between siblings is done per-component (cf. .pref__row). */
+/* Stacked account rows (Move / Export / Delete) sit flush otherwise: .pref has
+   no gap; spacing between siblings is per-component (cf. .pref__row). */
 .profile-action + .profile-action {
   margin-top: 8px;
 }
@@ -3692,7 +3629,8 @@ a:hover {
   color: var(--text-mute);
 }
 
-/* Delete-confirm sheet (shell is the shared .modal; head/body reuse .move__*). */
+/* Delete-confirm sheet (shell is the shared .modal; head/body reuse .move__*).
+   */
 .delete-confirm {
   margin: 4px 0 14px;
 }
@@ -3755,26 +3693,26 @@ a:hover {
   line-height: 1.5;
 }
 
-/* The reassurance note reuses .move__safety's shape but in a neutral tint. */
+/* The reassurance note reuses .move__safety's shape in a neutral tint. */
 .delete-safety {
   background: var(--surface-2);
   border-color: var(--border);
 }
 
 /* ── Move / merge gate ─────────────────────────────────────────────────────
-   The pre-app takeover that resolves a sign-in link opening on a device that
-   already has a profile (see MoveGate.tsx): clean-adopt confirm, the fork, the
-   primary picker, and the switch/save-link screen. A centered card on a plain
-   backdrop — it stands in for the whole app, ahead of onboarding. */
+   The pre-app takeover for a sign-in link opened on a device that already has
+   a profile (see MoveGate.tsx): clean-adopt confirm, the fork, the primary
+   picker, and the switch/save-link screen. A centered card on a plain backdrop;
+   it stands in for the whole app, ahead of onboarding. */
 .mg {
   min-height: var(--full-height, 100vh);
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Top-anchored (not vertically centered) so the logo sits near the top and
-     content flows down, matching the mock — a lone confirm card shouldn't float
-     mid-screen. Clamped so it's high on a phone without gluing to the very top
-     of a tall desktop viewport. */
+  /* Top-anchored, not vertically centered, so the logo sits near the top and
+     content flows down (a lone confirm card shouldn't float mid-screen).
+     Clamped to stay high on a phone without hugging the top of a tall desktop
+     viewport. */
   justify-content: flex-start;
   padding: clamp(40px, 11vh, 120px) 18px 24px;
   background: var(--background);
@@ -3834,7 +3772,7 @@ a:hover {
   text-align: center;
 }
 
-/* Clean-adopt (1d): one card holding the label, profile, and both buttons. */
+/* Clean-adopt (1d): one card holding the label, profile and both buttons. */
 .mg-confirm {
   width: 100%;
   background: var(--surface);
@@ -4036,8 +3974,8 @@ a:hover {
 }
 
 /* Sub-page frame (pick, switch): header bar + left-justified body. Shares the
-   brand frame's top padding (via .mg) so stepping fork → pick keeps the top edge
-   fixed and the dialog only grows downward instead of jumping up. */
+   brand frame's top padding (via .mg) so stepping fork to pick keeps the top
+   edge fixed and the dialog only grows downward. */
 .mg-header {
   display: flex;
   align-items: center;
@@ -4085,7 +4023,7 @@ a:hover {
   line-height: 1.45;
   margin: 0 2px 12px;
 }
-/* Helper caption tucked under a control (e.g. the link on switch). */
+/* Helper caption under a control (e.g. the link on switch). */
 .mg-caption {
   font: 500 11.5px var(--font);
   color: var(--text-mute);
@@ -4102,7 +4040,7 @@ a:hover {
   box-shadow: none;
 }
 
-/* "What we'll combine" info card */
+/* "What we'll combine" info card. */
 .mg-combine {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -4163,7 +4101,7 @@ a:hover {
   margin-top: 10px;
 }
 
-/* Switch (2c): the K → V hop + a warning */
+/* Switch (2c): the K to V hop + a warning. */
 .mg-switch-avatars {
   display: flex;
   align-items: center;
@@ -4195,7 +4133,7 @@ a:hover {
   padding: 13px 15px;
   text-align: left;
   font: 500 12.5px var(--font);
-  /* Amber-tinted body so the white profile names pop against it. */
+  /* Amber-tinted body so the white profile names pop. */
   color: color-mix(in srgb, var(--warn) 55%, var(--text-dim));
   line-height: 1.5;
 }
@@ -4271,7 +4209,7 @@ a:hover {
 }
 
 /* The non-blocking "Connecting…" (Disconnected.tsx's compact form): free play
-   keeps working offline, so it says so without covering the board. */
+   works offline, so it says so without covering the board. */
 .disconnected-pill {
   position: fixed;
   left: 50%;
@@ -4288,8 +4226,8 @@ a:hover {
   box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.6);
 }
 
-/* Transient status toast (bottom-centered over the board) — currently the
-   silent profile-adopt confirmation from the move/merge gate. See Toast.tsx. */
+/* Transient status toast (bottom-centered over the board), currently the silent
+   profile-adopt confirmation from the move/merge gate. See Toast.tsx. */
 .toast {
   position: fixed;
   left: 50%;
@@ -4343,11 +4281,10 @@ a:hover {
 }
 
 /* ==== Standings (dock + expanded sheet) ==================================
-   The collapsed sliver shows your rank and the current leader; tapping it
-   opens the full board. Colour discipline mirrors the runs panel: one accent
-   per row — gold for a #1 that beat everyone outright, lime (--peak) for rows
-   tying a shared record, green (--win) for your own row — everything else
-   stays neutral so the board reads calm. */
+   The collapsed sliver shows your rank and the current leader; tapping it opens
+   the full board. One accent per row, as in the runs panel: gold for a #1 that
+   beat everyone outright, lime (--peak) for rows tying a shared record, green
+   (--win) for your own row; everything else stays neutral. */
 
 .standings-dock {
   display: flex;
@@ -4365,7 +4302,7 @@ a:hover {
 }
 
 /* Board-zoom guard, mirroring `.modal svg`: the game's touch handlers zoom on
-   any touched <svg>, so the dock/sheet icons must not be touch targets. */
+   any touched <svg>, so dock/sheet icons must not be touch targets. */
 .standings-dock svg,
 .standings-modal svg {
   pointer-events: none;
@@ -4398,8 +4335,8 @@ a:hover {
   text-overflow: ellipsis;
 }
 
-/* Fallback only — the component inlines the standing colour (gold /
-   chartreuse / percentile ramp) over this. */
+/* Fallback only: the component inlines the standing colour (gold / chartreuse /
+   percentile ramp) over this. */
 .standings-dock__rank {
   color: var(--win);
 }
@@ -4418,8 +4355,8 @@ a:hover {
   color: var(--gold);
 }
 
-/* A leader tied at the record wears the shared-record lime, mirroring the
-   sheet's match rows (gold stays reserved for an outright #1). */
+/* A leader tied at the record wears the shared-record lime, like the sheet's
+   match rows (gold is for an outright #1). */
 .standings-dock__lead--lime {
   color: var(--peak);
 }
@@ -4427,15 +4364,15 @@ a:hover {
 /* Desktop: a peek card at the top of the right rail (see .game__rail, which
    stacks it above the runs). */
 @media (min-width: 1200px) {
-  /* The sheet is a side drawer here (slides in from the right — see
-     .standings-sheet below), not a bottom sheet, so the "expands upward" caret
-     is rotated to point left: an "opens a side panel" affordance instead. */
+  /* The sheet is a side drawer here (slides in from the right; see
+     .standings-sheet), so the "expands upward" caret is rotated to point left.
+     */
   .standings-dock__chevron {
     transform: rotate(-90deg);
   }
 }
 
-/* Mobile: pinned to the viewport bottom — the panel scrolls out from under it
+/* Mobile: pinned to the viewport bottom; the panel scrolls out from under it
    (see .game__panel's bottom padding). */
 @media (max-width: 1199.98px) {
   .standings-dock {
@@ -4454,8 +4391,8 @@ a:hover {
   }
 }
 
-/* Scrim + sheet: a bottom sheet on mobile, a right-hand side sheet on
-   desktop. */
+/* Scrim + sheet: a bottom sheet on mobile, a right-hand side sheet on desktop.
+   */
 .standings-modal {
   position: fixed;
   inset: 0;
@@ -4543,14 +4480,14 @@ a:hover {
   color: var(--text-mute);
 }
 
-/* Mobile closes via the handle / scrim; the × appears on the desktop side
+/* Mobile closes via the handle / scrim; the x appears on the desktop side
    sheet, which has neither. */
 .standings-sheet__close {
   display: none;
 }
 
-/* Sort control per the design: a "SORT BY" label, then DAILY / PB as bare
-   text buttons — the active one accent-coloured, underlined, with a caret. */
+/* Sort control: a "SORT BY" label, then DAILY / PB as bare text buttons; the
+   active one is accent-coloured, underlined, with a caret. */
 .standings-sortby {
   flex: none;
   display: flex;
@@ -4670,9 +4607,8 @@ a:hover {
 }
 
 /* --you is your row's accent, inlined by the row (Sheet.tsx): your identity
-   colour, or the record hue (gold/lime) when you hold one — so the "you"
-   treatments survive at #1 and your row stays findable. --win is only the
-   fallback. */
+   colour, or the record hue (gold/lime) when you hold one, so the "you"
+   treatments survive at #1. --win is only the fallback. */
 .standings-row--you {
   --band-card-tint: var(--you, var(--win));
   --band-card-edge: 42%;
@@ -4744,7 +4680,8 @@ a:hover {
   color: var(--you, var(--win));
 }
 
-/* The ranked value (big) over the other board's value (small), right-aligned. */
+/* The ranked value (big) over the other board's value (small), right-aligned.
+   */
 .standings-row__nums {
   flex: none;
   display: flex;
@@ -4802,18 +4739,18 @@ a:hover {
 }
 
 /* Hidden but space-reserving until the daily result is closed (see Dock.tsx):
-   the dock's slot exists from boot, so its reveal can't shift the runs below
-   it (desktop rail) — and visibility drops it from the tab order and pointer
-   targets while concealed. */
+   the dock's slot exists from boot, so revealing it can't shift the runs below
+   (desktop rail). visibility also drops it from the tab order and pointer
+   targets. */
 .standings-dock--hidden {
   visibility: hidden;
 }
 
 /* ==== Mobile sheet dismissal (shared) =====================================
-   On mobile every sheet closes like a sheet: a grab notch at the top — tap or
-   drag down (useDragToClose) — replacing the per-dialog ×, which stays for
-   desktop. Absolute so existing sheet padding/layout is untouched;
-   touch-action lets the drag own the gesture instead of the scroller. */
+   On mobile every sheet closes with a grab notch at the top (tap or drag down;
+   useDragToClose) instead of the per-dialog x, which stays for desktop.
+   Absolute so existing sheet padding is untouched; touch-action lets the drag
+   own the gesture instead of the scroller. */
 .modal__handle {
   display: none;
   position: absolute;
@@ -4847,8 +4784,8 @@ a:hover {
     display: block;
   }
 
-  /* visibility (not display) so headers that balance a back button against
-     the × (move sheet) keep their centring. */
+  /* visibility (not display) so headers that balance a back button against the
+     x (move sheet) keep their centring. */
   .modal__close-x {
     visibility: hidden;
     pointer-events: none;
@@ -4856,9 +4793,9 @@ a:hover {
 }
 
 /* ============================================================================
-   Notifications: the header bell + badge, the slide-out panel (a bottom sheet on
-   mobile, a right-hand side drawer on desktop — adapting .standings-modal), the
-   cards, and the profile preference rows with their on/off switches.
+   Notifications: the header bell + badge, the slide-out panel (a bottom sheet
+   on mobile, a right-hand drawer on desktop; adapts .standings-modal), the
+   cards, and the profile preference rows with their switches.
    ========================================================================== */
 
 .notif-bell {
@@ -4885,8 +4822,8 @@ a:hover {
   border: 2px solid var(--background);
 }
 
-/* A quick, silent swing when a notification arrives while the app is open — the
-   bell glyph pivots from its top, the badge gives a small pop. Purely visual. */
+/* A quick, silent swing when a notification arrives while the app is open: the
+   bell pivots from its top, the badge pops. Visual only. */
 .notif-bell--swing svg {
   transform-origin: 50% 20%;
   animation: bell-swing 0.75s ease;
@@ -5007,8 +4944,8 @@ a:hover {
   cursor: default;
 }
 
-/* Filter chips: scope the list by kind; a right-aligned toggle hides reclaimed
-   lost-tops. Echoes the unread card's accent treatment when active. */
+/* Filter chips scope the list by kind; a right-aligned toggle hides reclaimed
+   lost-tops. Echoes the unread card's accent when active. */
 .notif-sheet__filters {
   flex: none;
   display: flex;
@@ -5092,7 +5029,8 @@ a:hover {
   text-align: center;
 }
 
-/* One card. Read cards are plain; unread carry an accent border + wash and a dot. */
+/* One card. Read cards are plain; unread carry an accent border + wash and a
+   dot. */
 .notif-card {
   display: flex;
   align-items: flex-start;
@@ -5184,7 +5122,7 @@ a:hover {
 }
 
 /* A reclaimed lost-top: kept but struck through and dimmed, with a tag saying
-   why. The whole card is de-emphasised — it's history now, not a live nudge. */
+   why. History now, not a live nudge. */
 .notif-card--reclaimed {
   opacity: 0.62;
 }
@@ -5197,7 +5135,8 @@ a:hover {
 }
 
 /* The tag hue follows the standings record palette: gold for an outright top,
-   chartreuse (--peak) for a shared one. `currentColor` carries into the check. */
+   chartreuse (--peak) for a shared one. `currentColor` carries into the check.
+   */
 .notif-card__tag {
   display: inline-flex;
   align-items: center;
@@ -5213,7 +5152,7 @@ a:hover {
   text-transform: uppercase;
 }
 
-/* Normalise the icon size — the solo crown is authored larger than the check. */
+/* Normalise the icon size: the solo crown is authored larger than the check. */
 .notif-card__tag svg {
   width: 12px;
   height: 12px;
@@ -5253,7 +5192,7 @@ a:hover {
   }
 }
 
-/* Profile › Notifications: an icon-tile row with a switch, echoing the card. */
+/* Profile > Notifications: an icon-tile row with a switch, echoing the card. */
 .notif-pref {
   display: flex;
   align-items: center;
@@ -5293,8 +5232,8 @@ a:hover {
 }
 
 /* Why push isn't arriving, shown above the toggles when this device can't
-   actually deliver (blocked permission, no push support). Amber rather than red:
-   in-app notifications still work, so this is a degraded state, not a failure. */
+   deliver (blocked permission, no push support). Amber, not red: in-app
+   notifications still work, so it is a degraded state, not a failure. */
 .push-notice {
   display: flex;
   align-items: center;

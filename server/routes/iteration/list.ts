@@ -21,6 +21,7 @@ const listIterationsBody = z.union([
   z.undefined(),
 ]);
 
+// Authenticates by hand (same 401 shape as `method`'s `authed`).
 export const listIterations = method(listIterationsBody)(
   async (input, req) => {
     const userId = getUserId(req);

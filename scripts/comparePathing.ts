@@ -1,19 +1,17 @@
-// Compare every stored run's persisted time against what the *current* pathing
-// code (common/pathing.ts) computes for the same placement. Its purpose is to
-// quantify the impact of a pathing change before it ships: how many runs shift,
-// by how much, and whether any run gets *slower* under the new code. On a
-// thunder-free maze that should essentially never happen (a shorter distance is
-// a shorter time); WITH thunders it legitimately can, because the solver
-// minimises distance, not time — the new shorter path can pass nearer a thunder
-// and eat more slow penalty. So only a regression on a maze with NO fixed or
-// player thunder is a red flag worth inspecting.
+// Compare every stored run's persisted time with what the *current* pathing
+// code (common/pathing.ts) computes for the same placement, to quantify a
+// pathing change before it ships: how many runs shift, by how much, and whether
+// any gets *slower*. On a thunder-free maze a regression should never happen
+// (shorter distance, shorter time); with thunders it legitimately can, because
+// the solver minimises distance, not time, and a shorter path can pass nearer a
+// thunder. Only a regression on a maze with NO fixed or player thunder is a red
+// flag.
 //
-// Dry-run by default: it only reports. Pass --apply to write the recomputed
-// optimal times back — UPDATE-ing each run's `time` and each iteration's `min`
-// to what the current pathing code produces. Runs that no longer validate are
-// never touched (that's scripts/auditRuns.ts's job — it deletes them).
+// Dry-run by default. `--apply` UPDATEs each run's `time` and each iteration's
+// `min` to the current code's values. Runs that no longer validate are never
+// touched (scripts/auditRuns.ts deletes those).
 //
-// Run locally against an environment (same SQL proxy the app uses):
+// Run locally against an environment (via the app's SQL proxy):
 //   APP_ENV=prod SQL_PASSWORD=... \
 //     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL scripts/comparePathing.ts
 //   ...add --apply to write the new times.
@@ -24,8 +22,7 @@
 //   --all           print every changed row, not just the largest deltas
 //   --apply         write the recomputed times (default is a dry run)
 //
-// Because it reuses validateRun — the same source of truth the server writes
-// through — "the new time" here is exactly what the server would persist today.
+// It uses validateRun, so "the new time" is what the server would persist.
 
 import { type ExecResult, raw, sql } from "../server/db/query.ts";
 import { deserializeRun } from "../server/util/run.ts";
@@ -34,8 +31,8 @@ import {
   validateRun,
 } from "../server/util/validateRun.ts";
 
-// Stored `time` is a single-precision float rounded to 2 decimals; anything
-// within this is "unchanged", matching scripts/auditRuns.ts.
+// Stored `time` is a single-precision float rounded to 2 decimals; a delta
+// within this is "unchanged" (same as scripts/auditRuns.ts).
 const TIME_EPSILON = 0.005;
 
 const arg = (name: string) =>
@@ -50,8 +47,7 @@ if (onlyIteration !== undefined && !Number.isInteger(onlyIteration)) {
   Deno.exit(1);
 }
 
-// Safe because onlyIteration is a validated integer; keeps it out of the query
-// string entirely otherwise.
+// Safe to interpolate: onlyIteration is a validated integer.
 const iterationFilter = (column: string) =>
   raw(onlyIteration !== undefined ? `WHERE ${column} = ${onlyIteration}` : "");
 const runWhere = onlyIteration !== undefined
@@ -101,8 +97,8 @@ for (const b of blockRows) {
 }
 
 // ---- Compare iteration baselines (`min`) ----------------------------------
-// The baseline is the empty-placement time, so validateRun(shape, []) recomputes
-// it with the current code, as `newIteration` does when it stores `min`.
+// The baseline is the empty-placement time: validateRun(shape, []) recomputes
+// it as `newIteration` does when it stores `min`.
 
 type MinDelta = {
   id: number;
@@ -136,22 +132,19 @@ type Run = {
 };
 type RunDelta = { run: Run; recomputed: number; delta: number; label: string };
 
-// Includes voided (abandoned) runs: their `time` is never used for a leaderboard
-// or `min`, but leaving them un-retimed leaves the DB with two times for the same
-// placement (a live run and a stale void one), so we normalize them too. Runs that
-// no longer validate still fall through to `broken` and are left untouched.
+// Includes void runs: no board uses their `time`, but leaving them un-retimed
+// leaves two times for the same placement (a live run and a stale void one).
+// Runs that no longer validate fall through to `broken`, untouched.
 const runRows = await sql<Run[]>`
   SELECT user, iteration, created, time, data
   FROM run ${runWhere};
 `;
 
-// Regression = the new path is genuinely LONGER, which for an optimal solver
-// should never happen. We can only judge that by path length, and a maze's time
-// only tracks its length when there are no thunders (the solver minimises
-// distance; slows are added after, so a shorter path can score a longer time by
-// passing nearer a thunder). So we length-classify only thunder-free mazes —
-// where duration IS the length in time — and bucket thunder mazes on their own:
-// still retimed, but not a length-regression signal.
+// Regression = the new path is genuinely LONGER, which an optimal solver should
+// never produce. Time tracks length only without thunders (slows are added
+// after the distance-minimising search), so only thunder-free mazes are
+// classified by length; thunder mazes get their own bucket, retimed but not a
+// regression signal.
 const improved: RunDelta[] = []; // thunder-free, shorter path — expected
 const regressed: RunDelta[] = []; // thunder-free, LONGER path — a real red flag
 const thunderChanged: RunDelta[] = []; // has thunders — retimed, not length-comparable
@@ -311,21 +304,18 @@ for (const m of minChanged) {
 }
 
 let runsUpdated = 0;
-// Every changed run is retimed — thunder mazes included; only the length-based
-// *classification* excludes them, not the retime.
+// Every changed run is retimed, thunder mazes included; only the length-based
+// classification excludes them.
 for (
   const { run, recomputed } of [...improved, ...regressed, ...thunderChanged]
 ) {
-  // The run table has no id, so pin the row on its identifying columns. ABS(time
-  // - stored) guards the single-precision float rather than matching it exactly.
+  // The run table has no id, so pin the row on identifying columns. ABS(time -
+  // stored) because `time` is a single-precision float.
   //
-  // Deliberately NOT keyed on `created`: the column is a TIMESTAMP and `created`
-  // comes back from the proxy as an ISO-8601 string ("...T....000Z"). MariaDB coerces
-  // that string to a datetime for a SELECT (so a self-match test passes) but NOT
-  // for an UPDATE's WHERE — there it matches zero rows, so the whole apply
-  // silently no-ops (affectedRows 0). (user, iteration, data) already identifies
-  // the run; duplicate (user, iteration, data) rows must share a time anyway, so
-  // retiming them all to the same recomputed value is correct.
+  // NOT keyed on `created`: the proxy returns it as an ISO-8601 string, which
+  // MariaDB coerces for a SELECT but NOT in an UPDATE's WHERE, where it matches
+  // zero rows and the apply silently no-ops. (user, iteration, data) identifies
+  // the run, and duplicates of it must share a time anyway.
   const res = await sql<ExecResult>`
     UPDATE run SET time = ${recomputed}
     WHERE user = ${run.user}

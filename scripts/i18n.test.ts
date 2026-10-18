@@ -14,7 +14,7 @@ const en = {
   },
 };
 
-// A fake Translator — deterministic, no network. Returns whatever the map says.
+// A fake Translator: no network, returns whatever the map says.
 const fake = (map: Record<string, string>): Translator => ({
   translate: (req) => {
     const out: Record<string, string> = {};

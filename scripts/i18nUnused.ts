@@ -1,21 +1,16 @@
-// `deno task i18n:unused` — a CI gate (blocking) that fails when a key in any
+// `deno task i18n:unused` — a blocking CI gate that fails when a key in any
 // catalog's en.json (see CATALOGS in i18nLib.ts) is referenced by no code.
-// Greenfield + the never-interpolate-a-key convention (every live key appears as
-// a string literal exactly once, e.g. in notificationText's variant ternary)
-// makes the scan exact: walk the source roots, collect string literals, and flag
-// any en.json key that appears in none.
-// Dead copy therefore can't accumulate — a stray key fails the build like a
-// missing translation.
+// Keys are never interpolated (each live key appears as a string literal, e.g.
+// in notificationText's variant ternary), so a scan of the source roots for the
+// quoted key is exact.
 
 import { CATALOGS, readJson, type SourceCatalog } from "./i18nLib.ts";
 
 const ROOTS = ["common", "server", "client"];
-// The compiled catalogs spell out every key, so they'd satisfy the scan by
-// themselves — skip every generated module.
+// Generated catalogs spell out every key and would satisfy the scan: skip them.
 const GENERATED = ".generated.ts";
 
-// Concatenate every source file's text once; a key is "used" if its quoted
-// literal (single or double quote) appears anywhere.
+// A key is "used" if its quoted literal appears anywhere in the source text.
 let corpus = "";
 for (const root of ROOTS) {
   const dir = new URL(`../${root}/`, import.meta.url);

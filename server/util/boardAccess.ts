@@ -2,32 +2,24 @@ import { getIteration } from "../db/iteration.ts";
 import { rankedAttemptCount } from "../db/run.ts";
 import { dailyParts } from "./dailyParts.ts";
 
-// Who may see a day's board outside a ranked attempt — the ONE gate behind every
-// surface that hands back a board's layout or accepts a build on it: getBoard
-// (and so boot/dayView, which compose it), a free-play startRun, and commitRun.
+// Who may see a day's board outside a ranked attempt: the ONE gate behind every
+// surface that returns a board's layout or accepts a build on it (getBoard, and
+// so boot/dayView; a free-play startRun; commitRun). For a day D:
+//   - D before the caller's local today: open (including the day that just
+//     rolled over);
+//   - the caller has opened three ranked attempts on D: open;
+//   - otherwise (their unfinished today, or a future day): locked.
+// Future days must be gated: the gen cron runs a day ahead, so tomorrow's
+// iteration exists.
 //
-// The rule is the old "no free play of today's daily before its three ranked
-// attempts", widened from `iteration === today` to "today OR LATER" and applied
-// on every surface rather than getBoard alone. Before, tomorrow's iteration
-// (which exists — the gen cron runs a day ahead) came back from getBoard /
-// dayView / boot / a numbered startRun to anyone who asked for its id, and
-// commitRun had no gate at all. In order:
-//   - D before the caller's local today → open (every past day is replayable,
-//     including the one that just rolled over);
-//   - the caller has opened three ranked attempts on D → open;
-//   - otherwise (their today before it's spent, or a future day) → locked.
+// A caller that names no timezone (a cached client's commitRun) is judged in
+// the westernmost zone, `Etc/GMT+12`, the strictest reading.
 //
-// A caller that names no timezone (a cached client's commitRun from before
-// commits carried one) is judged as if in the westernmost zone, `Etc/GMT+12`:
-// the strictest reading, under which only a day closed everywhere (or one it
-// has spent its attempts on) is open.
-//
-// "Local today" is the timezone the client claims, so this is deliberately
-// minimal anti-cheat: claiming a zone where today is already yesterday still
-// opens it, as does spending three throwaway attempts on a fresh id. Neither is
-// worth more machinery — a determined player can also multi-account or run a
-// solver. The gate exists so the honest client can't stumble onto a puzzle
-// early and so tomorrow's board isn't one request away.
+// "Local today" is the timezone the client claims, so this is minimal
+// anti-cheat on purpose: claiming an earlier zone opens a day, as does spending
+// three throwaway attempts on a fresh id. A determined player can multi-account
+// or run a solver anyway. The gate only keeps the honest client from stumbling
+// onto a puzzle early.
 export type BoardAccess = "open" | "locked";
 
 export const ymd = (p: { year: number; month: number; day: number }) =>
@@ -35,11 +27,10 @@ export const ymd = (p: { year: number; month: number; day: number }) =>
     String(p.day).padStart(2, "0")
   }`;
 
-// The westernmost civil timezone — the fallback reading for a caller that
-// claims none (see above).
+// The westernmost civil timezone; the reading for a caller that claims none.
 export const WESTMOST_TZ = "Etc/GMT+12";
 
-// The pure decision. Dates are `YYYY-MM-DD` (so string order is date order).
+// The pure decision. Dates are `YYYY-MM-DD`, so string order is date order.
 export const decideBoardAccess = (s: {
   date: string;
   localToday: string;
@@ -49,16 +40,15 @@ export const decideBoardAccess = (s: {
   return s.rankedAttempts >= 3 ? "open" : "locked";
 };
 
-// The iteration's date as `YYYY-MM-DD`. Stored as a DATE (migration v14), which
-// reads back as `YYYY-MM-DD` (direct transport) or an ISO midnight-Z (proxy) —
-// the first ten characters are the date either way. (A Date object, should a
-// transport ever hand one back, is UTC midnight of that date.)
+// The iteration's date as `YYYY-MM-DD`. The DATE column reads back as
+// `YYYY-MM-DD` (direct transport) or an ISO midnight-Z (proxy); the first ten
+// characters are the date either way.
 export const iterationDate = (date: unknown) =>
   (date instanceof Date ? date.toISOString() : String(date)).slice(0, 10);
 
-// Decide the caller's access to an iteration's board. Throws UserError on a bad
-// timeZone (via dailyParts) and the plain "does not exist" Error on an unknown
-// iteration, like getIteration.
+// The caller's access to an iteration's board. Throws UserError on a bad
+// timeZone (via dailyParts) and getIteration's "does not exist" Error on an
+// unknown iteration.
 export const checkBoardAccess = async (
   userId: string,
   iteration: number,
@@ -67,7 +57,7 @@ export const checkBoardAccess = async (
   const localToday = ymd(dailyParts(timeZone ?? WESTMOST_TZ));
   const date = iterationDate((await getIteration(iteration)).date);
 
-  // A past day needs no per-user read at all — the common replay case.
+  // The common replay case needs no per-user read.
   if (date < localToday) return "open";
 
   return decideBoardAccess({

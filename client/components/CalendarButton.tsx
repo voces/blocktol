@@ -4,22 +4,17 @@ import { newDailyAvailable } from "../store/dailyRollover.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
 import { t } from "../util/t.ts";
 
-// Mobile-only entry point to the calendar: a header icon (next to the profile)
-// that opens the full-screen picker. Desktop keeps the calendar inline in the
-// left column, so this is hidden there via CSS. Hidden during the daily too —
-// like the calendar itself — so there's no wandering to other days mid-run.
-// When a new daily has become available (local midnight rolled over), it draws
-// attention with a persistent, non-dismissible pulse + dot until the player
-// opens the calendar and switches.
+// Mobile-only header icon that opens the full-screen calendar picker (desktop
+// shows the calendar inline, so CSS hides this). Hidden mid-daily like the
+// calendar. When a new daily is available it shows a persistent pulse + dot
+// until the player opens the calendar and switches.
 export const CalendarButton = () => {
   const { dailyInProgress, setCalendarOpen } = useContext(GameStateContext);
-  // The pulse + dot cue: a new daily is waiting to be switched to (rollover, or a
-  // past day deep-linked while today's daily is outstanding — see dailyRollover.ts
-  // and useInit).
+  // A new daily is waiting to be switched to (rollover, or a past day
+  // deep-linked while today's daily is outstanding; see dailyRollover.ts).
   const alert = newDailyAvailable.value;
-  // Hidden only while mid-run on today's own ranked daily. On a past day (a deep
-  // link / a day held across midnight) the board isn't the live daily, so the
-  // calendar — the in-app day switch — must stay reachable (see dailyInProgress).
+  // Hidden only mid-run on today's own ranked daily; on a past day the calendar
+  // must stay reachable (see dailyInProgress).
   if (dailyInProgress) return null;
 
   return (

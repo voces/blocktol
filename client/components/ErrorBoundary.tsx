@@ -2,9 +2,8 @@ import { Component, ComponentChildren, h } from "preact";
 import { api } from "../api.ts";
 import { t } from "../util/t.ts";
 
-// A render/effect crash anywhere below would otherwise unmount the whole app to
-// a blank page with only the console knowing why. Catch it, report it (the
-// reporter swallows its own failures), and leave the player a way back.
+// Catches a render/effect crash below, which would otherwise blank the app,
+// reports it (the reporter swallows its own failures), and offers a way back.
 export class ErrorBoundary extends Component<{ children: ComponentChildren }> {
   override state = { failed: false };
 
@@ -24,9 +23,8 @@ export class ErrorBoundary extends Component<{ children: ComponentChildren }> {
   }
 }
 
-// The "something broke — reload" screen. Also what App shows when boot keeps
-// getting an error answer (not a dropped connection, which waits on the
-// Disconnected overlay instead): the failure has been reported either way.
+// The "something broke — reload" screen. App also shows it when boot keeps
+// getting an error answer (a dropped connection shows Disconnected instead).
 export const CrashScreen = () => (
   <div class="crash" role="alert">
     <div class="crash__card">

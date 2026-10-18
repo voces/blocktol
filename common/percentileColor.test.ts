@@ -14,9 +14,8 @@ const rgb = (hex: string) => [
   parseInt(hex.slice(5, 7), 16),
 ];
 
-// The five ramp stops land exactly at 0, .25, .5, .75, 1 (segment boundaries,
-// where t = 0), so the OKLCh round-trip should reproduce each stop within a
-// rounding step or two of the original hex.
+// The stops sit at 0, .25, .5, .75, 1 (segment boundaries, t = 0), so the OKLCh
+// round-trip should reproduce each hex within a rounding step or two.
 const STOPS: [number, string][] = [
   [0, "#dc4a2f"],
   [0.25, "#d13d94"],

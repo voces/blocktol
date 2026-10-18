@@ -12,9 +12,7 @@ import { timerPulse } from "./timerPulse.ts";
 
 const IDLE_MS = 5_000;
 
-// The block budget: a single isometric cube — the piece
-// is a "block" in copy, so the icon is one block. Cool blue to balance the warm
-// gold thunder bolt; the board pieces keep their own gameplay tints.
+// The block budget: one isometric cube, in cool blue to balance the gold bolt.
 export const BrickIcon = () => (
   <svg width={16} height={16} viewBox="0 0 24 24">
     {/* top face (lightest) */}
@@ -26,9 +24,7 @@ export const BrickIcon = () => (
   </svg>
 );
 
-// A lightning bolt — the piece is a "thunder" in copy, so the icon reads as
-// one. Gold, its iconic lightning colour (the board pieces carry their own
-// gameplay tints separately).
+// The thunder budget: a gold lightning bolt.
 export const PowerIcon = () => (
   <svg width={16} height={16} viewBox="0 0 24 24">
     <path d="M13 2 L3.5 13.5 H11 L10 22 L20.5 10 H13 Z" fill="#f2b134" />
@@ -56,14 +52,13 @@ const formatBuild = (t: number) =>
   `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 
 /**
- * The build-phase HUD strip above the board: brick and power counts on the left,
- * and the build clock on the right. Once a run is going the clock is tappable to
- * start it right away (setTime(0) — the same hand-off the countdown uses when it
- * reaches zero, see useInit). It cross-fades between the remaining time and
- * "Ready?" once every resource is placed or the player has been idle for a few
- * seconds, and shows "Ready?" outright while hovered or pressed. Staged free-play
- * (pre-placement) freezes it at the full time and makes it inert — the first
- * placement, not a tap, opens the run.
+ * The HUD strip above the board: brick and power counts on the left, the clock
+ * on the right. While building, tapping the clock executes the run at once
+ * (`setTime(0)`, the hand-off the countdown makes at zero; see `useInit`). It
+ * cross-fades to "Ready?" once every resource is placed or the player has been
+ * idle for `IDLE_MS`, and shows it while hovered or pressed. Staged free play
+ * freezes the clock at the full time and makes it inert: the first placement,
+ * not a tap, opens the run.
  */
 export const Hud = () => {
   const {
@@ -84,10 +79,9 @@ export const Hud = () => {
     verdict,
   } = useContext(GameStateContext);
 
-  // Reviewing a past maze leaves the board inert; a Play button is the way back
-  // to a live board. If the daily's still open it returns to the "Start attempt"
-  // overlay (a ranked attempt opens only from that explicit action, never as a
-  // side effect of leaving a review); otherwise it free-plays the day in view.
+  // The way back from a review. With ranked attempts left it opens the "Start
+  // attempt" overlay (a ranked attempt starts only from that explicit action);
+  // otherwise it free-plays the day in view.
   const onPlay = () => {
     if (attemptsRemaining > 0) {
       enterPrestart();
@@ -96,13 +90,10 @@ export const Hud = () => {
     }
   };
 
-  // Free-play only: discard the in-progress build. Free play never persists to
-  // the server until it executes, so abandoning is just dropping the
-  // client-side record — which must go FIRST, or the re-stage would resume the
-  // very build we're discarding. On the live board that means re-staging fresh
-  // (cached, so instant); while reviewing another maze it instead just stops
-  // the abandoned build's countdown and stays on the reviewed maze — Play then
-  // stages fresh rather than resuming.
+  // Free play only: discard the in-progress build by dropping the client-side
+  // record, which must go FIRST or the re-stage resumes the discarded build.
+  // On the live board it re-stages fresh; while reviewing it only stops the
+  // countdown and stays on the reviewed maze (Play then stages fresh).
   const onReset = () => {
     if (iteration === undefined) return;
     clearFreePlay();
@@ -113,16 +104,13 @@ export const Hud = () => {
     }
     showBoard(iteration);
   };
-  // Shown mid-round for free play only: after the first placement opens the run
-  // and until it executes — including while reviewing a past maze with the
-  // build's countdown still live (time > 0 there means exactly that; parked
-  // views sit at -1). Daily runs (freePlay false) never get it.
+  // Free play only, from the first placement until execution, including a
+  // review with the build's countdown still live (`time > 0`; parked views sit
+  // at -1).
   const showReset = freePlay && phase !== "staged" &&
     (phase !== "viewing" || time > 0);
 
-  // Idle nudge: flash "Ready?" once the player stops building for a spell. Any
-  // build action (a placement, upgrade, delete, or move) touches blocks/bricks/
-  // power and resets the timer.
+  // Idle nudge: any build action changes blocks/bricks/power and resets it.
   const [idle, setIdle] = useState(false);
   useEffect(() => {
     setIdle(false);
@@ -130,12 +118,11 @@ export const Hud = () => {
     return () => clearTimeout(t);
   }, [blocks, bricks, power]);
 
-  // Pressing shows "Ready?" as a commit affordance; firing is left to onClick so
-  // a press that slides off the button (no click) never starts the run.
+  // Pressing shows "Ready?"; only onClick fires, so a press that slides off
+  // never starts the run.
   const [pressing, setPressing] = useState(false);
   const onPointerDown = (e: JSX.TargetedPointerEvent<HTMLButtonElement>) => {
-    // Drop the touch's implicit pointer capture so pointerleave fires when the
-    // finger slides off, letting the label revert.
+    // Drop touch's implicit capture so pointerleave fires on slide-off.
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch { /* no capture (mouse) */ }
@@ -146,11 +133,9 @@ export const Hud = () => {
   const outOfResources = bricks <= 0 && power <= 0;
   const flashing = (outOfResources || idle) && !pressing;
 
-  // The build clock is the source of the countdown water-ripple (see
-  // TimerRipple): each mark it crossed bumps timerPulse, and the button plays a
-  // quick "drop" (dip into the water) in sync so the wave reads as flung from
-  // it. State-driven (not a DOM class toggle) so the per-second re-render can't
-  // clobber the class mid-animation; onAnimationEnd clears it.
+  // Each countdown mark bumps `timerPulse` (see TimerRipple) and the button
+  // plays a "drop" in sync. State, not a DOM class toggle, so the per-second
+  // re-render can't clobber the class mid-animation; onAnimationEnd clears it.
   const pulse = timerPulse.value;
   const [dropping, setDropping] = useState(false);
   useEffect(() => {
@@ -187,14 +172,12 @@ export const Hud = () => {
           </button>
         )}
         {verdict
-          // A milestone free-play run is executing: show its decorated verdict
-          // pill (fired at commit, cleared when the board re-stages at finish —
-          // see useInit). The celebration badge floats separately below.
+          // A milestone free-play run is executing: its verdict pill (set at
+          // commit, cleared on the finish re-stage; see `useInit`).
           ? <VerdictPill verdict={verdict} />
           : phase === "staged"
           ? (
-            // Free play before the first placement: the clock is frozen and
-            // inert — placing a tile, not tapping, starts the run.
+            // Frozen and inert: the first placement starts the run.
             <div class="hud__build hud__build--staged">
               <span class="hud__build-face hud__build-time">
                 <span class="mono">{formatBuild(time)}</span>
@@ -232,9 +215,8 @@ export const Hud = () => {
           )
           : phase === "running" && run
           ? (
-            // Same clock slot, now counting up the live run. Free play turns it
-            // into the verdict — tinted to the run's live score % with the %
-            // shown — while a daily attempt stays a blind stopwatch.
+            // Counts up the live run. Free play shows the verdict (tinted to
+            // the live score %); a daily attempt stays a blind stopwatch.
             freePlay
               ? <RunClock to={run.duration} min={min} best={best} />
               : (
@@ -248,13 +230,9 @@ export const Hud = () => {
           )
           : phase === "viewing"
           ? (
-            // Reviewing a past maze: the clock slot becomes the way back to
-            // play. With a free-play build still on the clock its countdown
-            // shows in place of the "Play" label, styled like the live build
-            // clock ("0:42 to build") behind the play icon — the window keeps
-            // running while reviewing — and clicking resumes that build (Play
-            // goes through showBoard, whose staging resumes the stored
-            // attempt).
+            // Reviewing: the way back to play. A free-play build still on the
+            // clock shows its countdown in place of "Play"; clicking resumes it
+            // (`showBoard` staging resumes the stored attempt).
             <button type="button" class="hud__build tapc" onClick={onPlay}>
               <span class="hud__build-face hud__play">
                 <span class="hud__play-icon" aria-hidden="true">▶</span>

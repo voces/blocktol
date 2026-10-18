@@ -1,27 +1,24 @@
-// Generate a VAPID keypair for Web Push, in the exact base64url format the
-// server reads (see server/util/webpush.ts):
-//   - VAPID_PUBLIC_KEY  — the raw 65-byte P-256 public point (public; the client
-//                         fetches it via /api/pushConfig to subscribe)
-//   - VAPID_PRIVATE_KEY  — the 32-byte private scalar (SECRET — never commit it)
-//   - VAPID_SUBJECT      — a mailto: (or https:) contact the push services require
+// Generate a VAPID keypair for Web Push, in the base64url format the server
+// reads (see server/util/webpush.ts):
+//   - VAPID_PUBLIC_KEY   the raw 65-byte P-256 public point (public; the client
+//                        fetches it via /api/pushConfig to subscribe)
+//   - VAPID_PRIVATE_KEY  the 32-byte private scalar (SECRET, never commit it)
+//   - VAPID_SUBJECT      a mailto: (or https:) contact push services require
 //
-// Set the three as environment variables on the deployment (mark the private key
-// secret). Until they're set, notifications stay in-app only — silently: with no
-// key, /api/pushConfig answers `{publicKey:null}`, the client can't subscribe,
-// and notifyDailyFinals/notifyLostTop return before attempting a single send, so
-// NOTHING about the missing config appears in the logs. `curl -X POST
-// <host>/api/pushConfig -d '{}'` is the check; a null there means push is off.
+// Set the three as environment variables on the deployment (private key as a
+// secret). Until then notifications stay in-app only, SILENTLY: with no key,
+// /api/pushConfig answers `{publicKey:null}`, the client can't subscribe, and
+// notifyDailyFinals/notifyLostTop return before sending, so nothing is logged.
+// Check with `curl -X POST <host>/api/pushConfig -d '{}'`; null means push is
+// off.
 //
-// ROTATING the keys invalidates every existing subscription. The server does
-// NOT prune those on its own, which makes a rotation hard to diagnose. A
-// subscription minted under a retired key fails with **403**, which is neither
-// 404 nor 410, so the fan-out does NOT prune it: the row survives indefinitely
-// (and without the check below the client would re-register the same dead
-// endpoint on every boot). Recovery is client-side — `keyMatches` in
-// client/util/push.ts compares the subscription's applicationServerKey against
-// this one and re-subscribes on a mismatch. So prefer restoring the ORIGINAL
-// pair over minting a new one: same keys means every live subscription keeps
-// working with no re-subscribe at all.
+// ROTATING the keys invalidates every existing subscription, and is hard to
+// diagnose: a subscription minted under a retired key fails with 403, which is
+// neither 404 nor 410, so the fan-out never prunes it. Recovery is client-side:
+// `keyMatches` in client/util/push.ts compares the subscription's
+// applicationServerKey with this one and re-subscribes on a mismatch. Prefer
+// restoring the ORIGINAL pair over minting a new one; then live subscriptions
+// keep working untouched.
 //
 // Needs no permissions (WebCrypto only):
 //   deno run scripts/genVapidKeys.ts [mailto:you@example.com]
@@ -37,8 +34,7 @@ const keyPair = await crypto.subtle.generateKey(
 ) as CryptoKeyPair;
 
 // Public key: the uncompressed raw point (0x04 ‖ X ‖ Y). Private key: the JWK
-// `d` component, which is already the base64url of the 32-byte scalar the server
-// imports.
+// `d`, already the base64url of the 32-byte scalar the server imports.
 const publicKey = b64url(
   new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey)),
 );

@@ -152,8 +152,7 @@ Deno.test("pbEmbed: exactly ten matchers are still named", () => {
 });
 
 Deno.test("pbEmbed: a name list that disagrees with the count is not trusted", () => {
-  // Defensive: the tally is the authority, so a short list can never understate
-  // a tie by silently naming fewer players than actually hold the top.
+  // The count is the authority: a short name list must not understate a tie.
   assertStringIncludes(
     pbEmbed("alice", 30.5, 4, day, ["bob"]).description,
     "3 players have matched it.",

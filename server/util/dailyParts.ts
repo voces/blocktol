@@ -1,18 +1,16 @@
 import { UserError } from "./UserError.ts";
 
 // A player's local calendar day, from the IANA zone their browser reports
-// (`Intl.DateTimeFormat().resolvedOptions().timeZone` — see client/util).
+// (`Intl.DateTimeFormat().resolvedOptions().timeZone`).
 //
 // Only NAMED zones are accepted. ECMA-402 also takes raw offsets ("+14:00",
-// "+0530", even "-23:59"), and an offset zone isn't bounded by any real place:
-// "±23:59" would let a player claim a local day almost a full day beyond the
-// real −12..+14 range, opening ranked attempts on a day after `rate-dailies`
-// has closed and rated it. Every IANA name (and alias — `Asia/Calcutta`,
-// `US/Eastern`, `Etc/GMT+12`, `UTC`) starts with a letter, both as sent and as
-// resolved, while an offset resolves to "±HH:MM", so checking both ends rejects
-// every offset spelling (ASCII or U+2212 minus) without an allowlist —
-// `Intl.supportedValuesOf("timeZone")` omits legacy aliases real browsers still
-// report, so it would lock players out.
+// "-23:59"), and "±23:59" would let a player claim a local day far beyond the
+// real −12..+14 range, opening ranked attempts after `rate-dailies` has rated
+// that day. Every IANA name and alias (`Asia/Calcutta`, `Etc/GMT+12`, `UTC`)
+// starts with a letter, as sent and as resolved, while an offset resolves to
+// "±HH:MM"; checking both ends rejects every offset spelling (ASCII or U+2212
+// minus). No allowlist: `Intl.supportedValuesOf("timeZone")` omits legacy
+// aliases real browsers still report.
 const NAMED = /^[A-Za-z]/;
 
 export const dailyParts = (timeZone: string) => {

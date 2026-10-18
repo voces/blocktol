@@ -32,9 +32,8 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh.ts";
 import { useVersionRefresh } from "../hooks/useVersionRefresh.ts";
 import { CrashScreen } from "./ErrorBoundary.tsx";
 
-// The boot summary's retry schedule: quadratic backoff capped at this, and how
-// many error ANSWERS (as opposed to dropped connections) to retry before
-// showing the error screen.
+// Boot summary retries: quadratic backoff capped at this, and how many error
+// ANSWERS (not dropped connections) to retry before showing the error screen.
 const BOOT_RETRY_MAX_MS = 30_000;
 const BOOT_ERROR_RETRIES = 3;
 
@@ -44,29 +43,24 @@ const Shell = (
     gameState: ReturnType<typeof useGameState>;
   },
 ) => {
-  // Pull-to-refresh, anchored to the header (the board owns touch below it) —
-  // the app disables the browser's native pull-to-refresh, so this stands in
-  // for it in a tab as well as the installed PWA. Its state lives here, not App,
-  // so a pull only re-renders the Shell — `children` (the board) is an unchanged
-  // vnode and Preact skips it.
+  // Pull-to-refresh, anchored to the header (the board owns touch below it);
+  // stands in for the native one the app disables. The state lives here, not in
+  // App, so a pull re-renders only Shell: `children` is an unchanged vnode.
   const { pull, refreshing, dragging, threshold, handlers } =
     usePullToRefresh();
   // Opacity ramps to full by the threshold (armed cue); the spin tracks the
-  // UNCAPPED pull so it keeps turning through the rubber-band past the
-  // threshold instead of freezing partway down.
+  // UNCAPPED pull so it keeps turning past the threshold.
   const progress = Math.min(pull / threshold, 1);
   const spin = (pull / threshold) * 300;
-  // A touch of the player's own colour on the spinner (their avatar hue).
+  // The spinner wears the player's avatar hue.
   const youColor = useMemo(() => avatarColor(getId()), []);
   return (
-    // The provider wraps the header too, so its calendar button can share game
-    // state with the (mobile) calendar modal rendered down in the game tree.
-    // Server entities (daily list, profile) live in module stores, not here.
+    // The provider wraps the header so its calendar button shares game state
+    // with the mobile calendar modal in the game tree.
     <GameStateContext.Provider value={gameState}>
       <div style={{ textAlign: "center" }}>
         {
-          /* Always mounted (invisible at rest) so the release can EASE back —
-            unmounting would cut the transition. */
+          /* Always mounted (invisible at rest) so release can ease back. */
         }
         <div
           class={"pull-refresh" +
@@ -122,9 +116,8 @@ const setHasCompletedOnboarding = () =>
   storage.setItem("hasCompletedOnboarding", "true");
 
 export const App = () => {
-  // A sign-in link that opened on this device is resolved before anything else —
-  // ahead of onboarding and the game. On a clean device or with no pending link
-  // this is already settled, so the gate never shows.
+  // A sign-in link opened on this device is resolved before onboarding and the
+  // game. With no pending link the gate never shows.
   const [linkPending, setLinkPending] = useState(
     () => !!(getPendingLink() || getCleanLink()),
   );
@@ -134,8 +127,8 @@ export const App = () => {
     !hadCompletedOnboarding.current,
   );
   const [introRun, setIntroRun] = useState(0);
-  // A one-shot toast left by the move/merge gate (silent adopt) — read once on
-  // boot and auto-dismissed. See MoveGate.reloadAs.
+  // One-shot toast left by the move/merge gate's silent adopt; read once at
+  // boot, auto-dismissed. See MoveGate.reloadAs.
   const [toast, setToast] = useState<{ title: string; sub?: string } | null>(
     () => {
       try {
@@ -155,20 +148,19 @@ export const App = () => {
   }, [toast]);
   const [retry, setRetry] = useState(0);
   const [disconnected, setDisconnected] = useState(false);
-  // Boot summaries answered with an error so far, and whether that has gone on
-  // long enough to stop retrying and show the error screen.
+  // Boot summaries answered with an error so far; past BOOT_ERROR_RETRIES the
+  // error screen replaces retrying.
   const bootErrors = useRef(0);
   const [bootFailed, setBootFailed] = useState(false);
-  // Bumped when the app returns to the foreground still stuck on an unstaged
-  // board (see the resume-recovery effect below); re-runs the boot staging.
+  // Bumped to re-run boot staging when the app returns to the foreground still
+  // unstaged (see the recovery effect below).
   const [resumeNonce, setResumeNonce] = useState(0);
 
   useEffect(() => {
     if (showOnboarding || linkPending) return;
 
-    // The calendar loads its own months on mount (and the today-result panel
-    // shares that data), so no list() call is needed here.
-    // Retry with a backoff that tops out, rather than growing without bound.
+    // The calendar loads its own months, so no list() call is needed here.
+    // Retry with a capped backoff.
     const again = () =>
       setTimeout(
         () => setRetry((r) => r + 1),
@@ -177,10 +169,9 @@ export const App = () => {
     api.getDailySummary({ timeZone: getTimeZone() }).then((ret) => {
       setDisconnected(false);
       if ("error" in ret) {
-        // The server ANSWERED, with an error. A few retries ride out a
-        // transient fault (a DB hiccup's 500); past that it's a real failure
-        // that retrying forever would only hammer — each attempt reported —
-        // behind a "Connecting…" overlay that was never true. Say so instead.
+        // The server ANSWERED with an error. A few retries ride out a transient
+        // fault (a DB hiccup's 500); past that, retrying forever would only
+        // hammer the server behind a false "Connecting…" overlay.
         bootErrors.current++;
         if (bootErrors.current > BOOT_ERROR_RETRIES) return setBootFailed(true);
         setDisconnected(true);
@@ -188,28 +179,25 @@ export const App = () => {
         return;
       }
       bootErrors.current = 0;
-      // Staging is the summary listener's job (useInit): it resumes an
-      // in-progress run (currentRun) or raises the explicit "Start attempt"
-      // overlay when attempts remain. Nothing auto-starts here — an attempt
-      // opens only when the player taps Start, so a background boot can't
-      // silently spend one.
+      // Staging is the summary listener's job (useInit): it resumes a
+      // `currentRun` or raises the "Start attempt" overlay. Nothing auto-starts
+      // here, so a background boot can't spend an attempt.
     }).catch(() => {
-      // No answer at all: genuinely disconnected — keep trying.
+      // No answer at all: disconnected; keep trying.
       setDisconnected(true);
       again();
     });
-    // Warm the profile cache in parallel — the route seeds the user row
-    // itself, so it needn't wait on the summary.
-    // Its payload carries the server-persisted settings; adopt them (the
-    // cross-device source of truth) over the boot-time localStorage guess.
+    // Warm the profile cache in parallel; `getProfile` seeds the user row, so
+    // it needn't wait on the summary. Its server-persisted settings (the
+    // cross-device source of truth) override the boot-time localStorage guess.
     fetchProfile().then((p) => {
       if (p?.settings) adoptServerSettings(p.settings);
     });
   }, [showOnboarding, linkPending, retry, resumeNonce]);
 
-  // Notifications: warm the bell, start the quiet badge poll, and (for users who
-  // already granted permission) re-register their push subscription. One-shot,
-  // once the app is past onboarding / a pending sign-in link.
+  // One-shot, once past onboarding and any sign-in link: warm the bell, start
+  // the badge poll, and re-register the push subscription if permission is
+  // already granted.
   const notificationsBooted = useRef(false);
   useEffect(() => {
     if (showOnboarding || linkPending || notificationsBooted.current) return;
@@ -218,31 +206,23 @@ export const App = () => {
     startNotificationsPolling();
     initPushChannel();
     syncPushSubscription();
-    // Watch for local midnight ticking over so a new daily surfaces without a
-    // manual refresh (store/dailyRollover.ts).
+    // Surface a new daily at local midnight (store/dailyRollover.ts).
     startRolloverWatch();
-    // If this load came from a day permalink / push notification, route to the
-    // day it points at (runs after the game tree mounts, so board handlers exist).
+    // Route a day permalink / push notification load to its day; runs after the
+    // game tree mounts so board handlers exist.
     consumeDeepLink();
   }, [showOnboarding, linkPending]);
 
   const gameState = useGameState();
 
-  // Recover a board that never finished staging when the app is reopened. A
-  // backgrounded PWA gets suspended/frozen (iOS) or frozen then possibly
-  // discarded (Android's Page Lifecycle) — the boot summary request in flight
-  // when it froze can stall and never settle, leaving the board stuck on the
-  // loading phase (never reaching the "Start attempt" overlay or a resumed run).
-  // Reopening fires visibilitychange/pageshow but no fresh navigation, so
-  // nothing re-boots — the "had to manually refresh" report (seen on both iOS
-  // and Android). On return to the foreground still in `loading`, re-run the
-  // boot staging (the automatic form of that refresh). Going back through
-  // getDailySummary is the SAFE recovery: it resumes an already-open run and
-  // never starts one, so it can't spend a ranked attempt. Gated on the loading
-  // phase so a live build/run — or the Start overlay (prestart) — coming back to
-  // the foreground is left untouched. pageshow is gated on `persisted` (a
-  // bfcache restore) so a normal first load — which fires pageshow while already
-  // loading — doesn't double-boot; visibilitychange never fires on first load.
+  // Recover a board stuck in `loading`. A backgrounded PWA is frozen (iOS) or
+  // discarded (Android), so the in-flight boot summary can stall forever, and
+  // reopening fires visibilitychange/pageshow but no re-boot. On foreground
+  // return still in `loading`, re-run boot staging. getDailySummary is the SAFE
+  // route: it resumes an open run and never starts one, so it can't spend a
+  // ranked attempt. Gated on `loading` so a live build/run or the Start overlay
+  // is left alone. pageshow is gated on `persisted` (bfcache restore) so a
+  // normal first load doesn't double-boot; visibilitychange never fires then.
   useEffect(() => {
     if (showOnboarding || linkPending) return;
     const recover = () => {
@@ -264,8 +244,8 @@ export const App = () => {
     };
   }, [showOnboarding, linkPending, gameState.phase]);
 
-  // Reload to the newest build when the server reports one — deferred until the
-  // board is out of an attempt (never mid-build/run). See useVersionRefresh.
+  // Reload to the newest build once the server reports one, deferred until the
+  // board is out of an attempt. See useVersionRefresh.
   useVersionRefresh(gameState.phase);
 
   if (linkPending) {
@@ -278,19 +258,15 @@ export const App = () => {
     return (
       <Shell gameState={gameState}>
         <IntroBoard
-          // A fresh key IS the replay: remounting restarts every part of the
-          // walkthrough at once. The tour is shown once per device and the
-          // screen after it opens a ranked attempt, so its last tip is the only
-          // place a reader who lost the thread can get it back.
+          // A fresh key IS the replay: remounting restarts the whole
+          // walkthrough. It shows once per device, so replay is the only way
+          // back to its last tip.
           key={introRun}
           onReplay={() => setIntroRun((n) => n + 1)}
           onDone={() => {
-            // Fire the one boot request NOW, before the re-render mounts Game and
-            // its effects fetch — so a first-time user's first load consolidates
-            // to a single request instead of fanning out (the module-eval prime
-            // is skipped mid-onboarding, since the app defers its fetch then).
-            // Set synchronously here, the primes are in place before the
-            // effects run.
+            // Prime the boot request NOW, synchronously before Game mounts and
+            // its effects fetch, so the first load is one request instead of a
+            // fan-out (the module-eval prime is skipped mid-onboarding).
             primeSession();
             setShowOnboarding(false);
             setHasCompletedOnboarding();
@@ -305,10 +281,9 @@ export const App = () => {
       <Game />
       {
         /* Boot failure, or persistent mid-game transport failures (the run
-        saver keeps retrying underneath — this just tells the player why the
-        board stopped responding). A staged free-play board needs no network
-        until its commit, which the outbox holds until it lands, so there it
-        only gets the non-blocking pill: covering it stopped offline play. */
+        saver keeps retrying underneath). A staged free-play board needs no
+        network until its commit, which the outbox holds, so it gets only the
+        non-blocking pill; a blocking overlay would stop offline play. */
       }
       {(disconnected || failures.value >= 2) && (
         <Disconnected
@@ -316,10 +291,9 @@ export const App = () => {
         />
       )}
       {
-        /* Storage-blocked heads-up — game view only, never over the tour.
-          A blocked browser also blocks sessionStorage, so the gateToast can't
-          be set/read there; the two toasts are mutually exclusive and never
-          collide. */
+        /* Storage-blocked heads-up: game view only, never over the tour. A
+          blocked browser also blocks sessionStorage, so it never collides with
+          the gateToast. */
       }
       {!storagePersistent && <StorageNotice />}
       {toast && (

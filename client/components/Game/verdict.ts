@@ -4,16 +4,15 @@ import {
   SUPREME_COLOR,
 } from "../../../common/percentileColor.ts";
 
-// A finished free-play run's milestone, if it hit one. Drives the decorated
-// timer pill and the floating badge. `none` runs (most of them) aren't stored
-// here — they just re-stage without a celebration.
+// A finished free-play run's milestone. Drives the decorated timer pill and
+// the floating badge; a run with no milestone has no Verdict.
 export type Outcome = "pb" | "record" | "supreme";
 
 export type Verdict = {
   outcome: Outcome;
-  // The run's final time, and its score % against the field best *before* this
-  // run — so a solve nobody had matched reads over 100% (a supreme), unlike the
-  // runs panel which re-normalises your best to 100%.
+  // The final time, and its score % against the field best *before* this run,
+  // so a supreme reads over 100% (the runs panel re-normalises your best to
+  // 100%).
   time: number;
   percent: number;
   // The pill's fill for this outcome (gold / chartreuse / the live % colour).
@@ -35,19 +34,17 @@ export const scorePercent = (time: number, min: number, best: number) => {
 };
 
 /**
- * The colour the live pill takes as the runner climbs — the same standing ramp
- * the runs panel colours a row by, so one run reads the same colour on the timer
- * and in the list.
+ * The live pill's colour as the runner climbs: the runs panel's standing ramp,
+ * so a run reads the same on the timer and in the list.
  */
 export const climbColor = (percent: number) =>
   standingColor(Math.max(0, Math.min(1, percent)));
 
 /**
- * Which milestone (if any) a finished free-play run hit. Priority, high → low:
- * supreme (beat the field) > record (tied it) > personal best (beat your own).
- * Record and supreme own the reserved colours (chartreuse / gold); a plain PB
- * keeps its live % colour — colour belongs to the global %, so a PB is marked by
- * motion and words instead. `best` and `ownBest` are the field / personal bests
+ * Which milestone (if any) a finished free-play run hit, highest first: supreme
+ * (beat the field) > record (tied it) > personal best (beat your own). Record
+ * and supreme own the reserved colours (chartreuse / gold); colour belongs to
+ * the global %, so a plain PB keeps its live % colour. `best` and `ownBest` are
  * from before this run.
  */
 export const computeVerdict = (

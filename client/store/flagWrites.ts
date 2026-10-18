@@ -3,7 +3,7 @@ import type { Point } from "../../common/types.ts";
 type Flags = readonly Point[];
 
 // One iteration's writes in flight. `confirmed` is the last set the server is
-// known to hold — what a failed write rolls back to — and `confirmedSeq` the
+// known to hold (what a failed write rolls back to) and `confirmedSeq` the
 // write that set it, so an older write landing late can't overwrite a newer
 // confirmation.
 type Entry = {
@@ -16,12 +16,12 @@ type Entry = {
 
 /**
  * The optimistic-write bookkeeping behind `saveFlags` (store/flags.ts), kept
- * free of the api so it can be tested. Writes overlap — every edit sends the
- * whole set at once — so:
- *   - only the LATEST write's failure rolls back, and to the last confirmed
- *     set, never to whatever the board showed when that write began (an older
- *     write failing must not roll back over a newer edit);
- *   - `saving` holds while ANY write is in flight, not until the first settles.
+ * free of the api so it can be tested. Every edit sends the whole set, so
+ * writes overlap:
+ *   - only the LATEST write's failure rolls back, to the last confirmed set,
+ *     never to what the board showed when that write began (an older failure
+ *     must not roll back over a newer edit);
+ *   - `saving` holds while ANY write is in flight.
  * `send` resolves true when the server took the write.
  */
 export const flagWrites = (

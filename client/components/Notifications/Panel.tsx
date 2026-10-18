@@ -24,9 +24,9 @@ import { formatAgo } from "../Standings/helpers.ts";
 import { intlLocale, t } from "../../util/t.ts";
 import { Check, Crown, Flag } from "./icons.tsx";
 
-// A daily outcome's accent — the tile hue and the emphasis colour, mirroring the
-// standings record palette: gold for an outright top (supreme / a held record),
-// chartreuse (--peak) for a shared/edged top, neutral for an ordinary finish.
+// A daily outcome's accent (tile hue and emphasis), mirroring the standings
+// record palette: gold for an outright top, chartreuse (--peak) for a shared or
+// edged top, none for an ordinary finish.
 const dailyAccent = (v: DailyFinalData["variant"]): string | null =>
   v === "supreme" || v === "record"
     ? "var(--gold)"
@@ -34,9 +34,8 @@ const dailyAccent = (v: DailyFinalData["variant"]): string | null =>
     ? "var(--peak)"
     : null;
 
-// The filter chips, in display order. The label is a catalog key resolved at
-// render time (so a language switch updates it) — mapped by a literal object so
-// every live key stays greppable.
+// The filter chips, in display order. Labels are catalog keys resolved at
+// render time, held in a literal object so every key stays greppable.
 const FILTERS: NotifFilter[] = ["all", "daily_final", "lost_top"];
 const CHIP_LABEL_KEY = {
   all: "notif.panel.filter.all",
@@ -44,9 +43,8 @@ const CHIP_LABEL_KEY = {
   lost_top: "notif.panel.filter.lostTop",
 } as const satisfies Record<NotifFilter, MessageKey>;
 
-// One card. The tile icon + accent come from the kind/outcome; the title/body
-// are the shared copy; a detail line adds the time comparison where it helps. A
-// reclaimed lost-top drops its accent, strikes its title, and carries a tag.
+// One card. A reclaimed lost-top drops its accent, strikes its title, and
+// carries a tag.
 const Item = (
   { item, onOpen }: { item: NotificationItem; onOpen: () => void },
 ) => {
@@ -58,8 +56,7 @@ const Item = (
     ? "var(--gold)"
     : dailyAccent((item.data as DailyFinalData).variant);
 
-  // The comparison line: for a plain daily finish, own time vs the day's best;
-  // for a lost top, it's already in the body.
+  // Own time vs the day's best, for a plain daily finish only.
   let detail: string | null = null;
   if (item.kind === "daily_final") {
     const d = item.data as DailyFinalData;
@@ -77,8 +74,7 @@ const Item = (
     })
     : t("notif.panel.opensLeaderboard");
 
-  // A reclaimed card reads as read even if never opened — it's no longer a live
-  // nudge — so it loses the unread accent and dot.
+  // A reclaimed card is no longer a live nudge, so it never shows as unread.
   const unread = !item.read && !reclaimed;
 
   return (
@@ -115,17 +111,17 @@ const Item = (
   );
 };
 
-// The notifications panel: a bottom sheet on mobile, a right-hand side drawer on
-// desktop (purely CSS, adapting the standings sheet's `.standings-modal`). A
-// chip row scopes the list by kind (and can hide reclaimed lost-tops); within
-// the scope, unread ("New") sits above read ("Earlier"). Tapping a card marks it
-// read and opens the day it's about — its board plus the leaderboard.
+// The notifications panel: a bottom sheet on mobile, a side drawer on desktop
+// (CSS only, adapting `.standings-modal`). Chips scope the list by kind (and
+// can hide reclaimed lost-tops); within the scope, unread ("New") sits above
+// read ("Earlier"). Tapping a card marks it read and opens that day's board and
+// leaderboard.
 export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
   const items = notifSignal.value;
   const filter = filterSignal.value;
   const hideR = hideReclaimedSignal.value;
 
-  // Refresh on open so the (cached) list is current; stays populated meanwhile.
+  // Refresh on open; the cached list stays shown meanwhile.
   useEffect(() => {
     refreshNotifications();
   }, []);
@@ -134,21 +130,19 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
 
   const open = (item: NotificationItem) => {
     if (!item.read) markRead([item.id]);
-    // Navigate to the day + board this notification is about (PB for a lost top
-    // spot, Daily for a finalized daily) and surface its leaderboard.
+    // Open the day + board it is about (PB for a lost top, Daily for a final).
     navigateToNotification(item.iteration, item.kind);
     onClose();
   };
 
-  // "Hide reclaimed" drops reclaimed cards; the chips then scope by kind. Counts
-  // reflect what each chip would show (so they match the hide toggle).
+  // "Hide reclaimed" applies first; chip counts reflect what each would show.
   const anyReclaimed = items.some((n) => n.reclaimed);
   const visible = hideR ? items.filter((n) => !n.reclaimed) : items;
   const countFor = (f: NotifFilter) =>
     f === "all" ? visible.length : visible.filter((n) => n.kind === f).length;
 
-  // Reclaimed cards read as read (they don't nag), so they group under Earlier
-  // and never gate "Mark all read".
+  // Reclaimed cards count as read: they group under Earlier and never gate
+  // "Mark all read".
   const shown = visible.filter((n) => filter === "all" || n.kind === filter);
   const unread = shown.filter((n) => !n.read && !n.reclaimed);
   const read = shown.filter((n) => n.read || n.reclaimed);

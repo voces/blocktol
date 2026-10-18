@@ -1,9 +1,9 @@
-// `deno task i18n:translate` — the auto-fixer. Fills every missing/stale target
-// entry and prunes orphans, so the i18n:check gate is cheap to satisfy: edit
-// en.json, run this (or let the GitHub Action run it), commit. The provider sits
-// behind the one-method `Translator` seam; the default adapter talks to the
-// Anthropic Messages API directly (no external gateway). Swapping providers is a
-// new adapter — the batching/planning/validation below is vendor-agnostic.
+// `deno task i18n:translate` — the auto-fixer. Fills every missing or stale
+// target entry and prunes orphans, so the i18n:check gate is cheap to satisfy:
+// edit en.json, run this (or let the GitHub Action), commit. The provider sits
+// behind the one-method `Translator` seam; the default adapter calls the
+// Anthropic Messages API directly. A new provider is a new adapter; the
+// planning and validation below are vendor-agnostic.
 
 import {
   CATALOGS,
@@ -29,8 +29,7 @@ export type TranslateRequest = {
   notes?: string[];
 };
 
-// The seam. An implementation returns key → translated ICU message for every
-// requested entry; everything above it (planning, validation, file IO) is here.
+// The seam: returns key → translated ICU message for every requested entry.
 export interface Translator {
   translate(req: TranslateRequest): Promise<Record<string, string>>;
 }
@@ -48,11 +47,10 @@ export const staleKeys = async (
   return out;
 };
 
-// Call the translator for the stale entries, validate the result (retrying with
-// the errors fed back on a dropped placeholder / bad plural), and build the fresh
-// target catalog:
-// unchanged translations kept, new ones spliced in, orphans dropped (we only
-// iterate en's keys). Returns null when nothing changed.
+// Translate the stale entries, validate the result (retrying with the errors
+// fed back on a dropped placeholder or bad plural), and build the new target
+// catalog: unchanged translations kept, new ones spliced in, orphans dropped
+// (only en's keys are iterated). Returns null when nothing changed.
 export const translateLocale = async (
   translator: Translator,
   locale: string,
@@ -124,8 +122,8 @@ const localeName = (locale: string): string => {
   }
 };
 
-// Stable across every batch and locale (only the glossary varies, rarely), so it
-// caches: marked `cache_control: ephemeral`, each batch reads it at ~0.1×.
+// Stable across batches and locales (only the glossary varies, rarely), so it
+// is marked `cache_control: ephemeral` and each batch reads it at ~0.1×.
 const systemPrompt = (glossary: Glossary): string =>
   `You are a professional game-UI translator. You translate short strings for
 Blocktol, a daily competitive maze-building puzzle game.
@@ -148,8 +146,8 @@ const userPrompt = (req: TranslateRequest): string => {
   const cats = requiredPluralCategories(req.locale);
   const lines = [
     `Translate these strings to ${localeName(req.locale)} (${req.locale}).`,
-    // Deterministic plural guidance — the model otherwise misses categories that
-    // are counterintuitive (e.g. Spanish/French/Portuguese cardinals need "many").
+    // Spell out plural categories: the model misses counterintuitive ones (e.g.
+    // Spanish/French/Portuguese cardinals need "many").
     `Any {…, plural, …} block MUST provide exactly these categories for ${req.locale}: ${
       cats.join(", ")
     } (plus any =N you keep from the source).`,
@@ -172,8 +170,8 @@ const userPrompt = (req: TranslateRequest): string => {
 
 export const makeAnthropicTranslator = (): Translator => ({
   async translate(req) {
-    // Lazy: i18n:check / i18n:unused never load the SDK, and an empty target set
-    // never reaches here (so the pipeline no-ops without a key).
+    // Lazy import: i18n:check / i18n:unused never load the SDK, and nothing
+    // stale never reaches here, so the pipeline no-ops without a key.
     const { default: Anthropic } = await import("npm:@anthropic-ai/sdk");
     const client = new Anthropic();
     const model = Deno.env.get("TRANSLATE_MODEL") ?? "claude-opus-4-8";

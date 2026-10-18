@@ -57,28 +57,23 @@ export const createIteration = (
   thunders: Point[],
   duration: number,
 ) => {
-  // `created` is a DATE (a puzzle is for a calendar day, not an instant — see
-  // migration v14). Bind an explicit `YYYY-MM-DD` rather than a JS Date so the
-  // stored day is unambiguous across transports, derived from the same local
-  // components getDailyIterationId / the gen cron look the day up by.
+  // `created` is a DATE (migration v14). Bind an explicit `YYYY-MM-DD` rather
+  // than a JS Date so the stored day is the same across transports; it uses the
+  // local components getDailyIterationId and the gen cron look the day up by.
   const created = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${
     pad(date.getDate())
   }`;
-  // sqlOnce: a retry after a lost response would attempt a duplicate INSERT for
-  // the day. The UNIQUE(created) key makes that a hard error rather than a
-  // duplicate row, but the caller (ensureDailyIterationId) treats a losing
-  // INSERT as "someone else generated it" and re-reads, so a retry here must not
-  // fire a second write it would then have to reconcile.
+  // sqlOnce: ensureDailyIterationId reads a failed INSERT (UNIQUE(created)) as
+  // "someone else generated it" and re-reads, so a retry must not fire a second
+  // write for it to reconcile.
   //
   // One transaction: the iteration row and its fixed blocks land together or
-  // not at all. Without it, a connection lost between the two INSERTs left a
-  // committed day with NO fixed pieces — and since every generator checks only
-  // that the day's row exists, nothing would ever repair it. The UNIQUE(created)
-  // race is unchanged: the loser's iteration INSERT still fails with the
-  // duplicate-key error (blocking on the winner's uncommitted row first), which
-  // is what ensureDailyIterationId catches before re-reading the winner's id.
-  // The direct transport rolls back a batch that failed mid-transaction
-  // (directTransport.ts), so that aborted attempt leaves nothing open behind it.
+  // not at all. A day row without pieces would never be repaired, since
+  // generators check only that the row exists. In a race the loser's iteration
+  // INSERT blocks on the winner's uncommitted row, then fails with the
+  // duplicate-key error that ensureDailyIterationId catches. The direct
+  // transport rolls back a batch that fails mid-transaction
+  // (directTransport.ts).
   return sqlOnce<[ExecResult, ExecResult, ...unknown[]]>`
     START TRANSACTION;
     INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min)
@@ -141,13 +136,15 @@ export const getDailyIteration = (year: number, month: number, day: number) =>
     id ? getIteration(id) : undefined
   );
 
-// The best build among OTHER players on an iteration — void (abandoned) runs
-// excluded, matching every board/standings query (getIterationBests,
-// getDailyStandings, listDailies, the profile's bestBuild). A void run is
-// invisible everywhere else, so counting it here would let an abandoned free-
-// play maze inflate the "best to beat", block the supreme cue, or suppress a
-// genuine lost-top pass. Feeds the board target, attempts panel, run start,
-// daily summary, the supreme flag, and the lost-top gate.
+// The best build among OTHER players on an iteration. Void runs are excluded,
+// as in every board/standings query (getIterationBests, getDailyStandings,
+// listDailies, the profile's bestBuild): a void row is not a build. A ranked
+// attempt that was started but never built is void and carries the iteration's
+// min as its time (startRun), and so does a legacy free-play row that was never
+// committed (commitRun). Counting either would inflate the "best to beat",
+// block the supreme cue, or suppress a genuine lost-top pass. Feeds the board
+// target, attempts panel, run start, daily summary, the supreme flag, and the
+// lost-top gate.
 export const getIterationOtherBest = (
   iteration: number,
   user: string,

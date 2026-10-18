@@ -9,10 +9,8 @@ import { Modal } from "./Modal.tsx";
 export type Rival = ProfileData["rivals"][number];
 export type Board = "daily" | "pb";
 
-// Which board a record comes from. The two are the standings' own — DAILY (the
-// ranked attempts on days both played) and PB (best builds on dailies both
-// played) — and a row shows one at a time, never both: a record only reads
-// clearly when its pool is named once, at the top.
+// Which board a record comes from: DAILY (ranked attempts on days both played)
+// or PB (best builds on boards both played). A row shows one at a time.
 export const BoardSwitch = (
   { board, onChange }: { board: Board; onChange: (board: Board) => void },
 ) => (
@@ -56,10 +54,9 @@ export const RivalRow = (
       </div>
       <div class="profile-rival__nums">
         {
-          /* Brightness marks who is AHEAD, not whose number it is: yours first
-            either way, but a record you are losing puts their figure forward
-            rather than highlighting your own smaller one. Level reads level,
-            with both figures lit. */
+          /* Brightness marks who is AHEAD, not whose number it is: yours is
+            listed first, but when you trail, their figure is the lit one.
+            Level lights both. */
         }
         <span class="profile-rival__record mono">
           <span
@@ -82,10 +79,9 @@ export const RivalRow = (
   );
 };
 
-// How even a rivalry is, weighted by how often the pair meet: a record of
-// 36–35 over 74 days outranks 5–0 over 5, and a 61–11 drops below both. It is
-// `met - |won - lost|`, which is the meetings left over once the lopsided ones
-// are cancelled out — the games that were actually contests.
+// How even a rivalry is, weighted by how often the pair meet: 36–35 over 74
+// days outranks 5–0 over 5, and 61–11 drops below both. It is
+// `met - |won - lost|`: the meetings left once the lopsided ones cancel out.
 const closeness = (rival: Rival, board: Board) => {
   const record = rival[board];
   return record ? record.met - Math.abs(record.won - record.lost) : -1;
@@ -107,9 +103,8 @@ const SearchIcon = () => (
   </svg>
 );
 
-// The whole head-to-head list, opened from the profile's short one. The full
-// set is fetched here rather than riding on boot, so a big field costs nothing
-// until someone asks to see it.
+// The whole head-to-head list, opened from the profile's short one. Fetched
+// here rather than at boot, so a big field costs nothing until asked for.
 export const RivalsSheet = (
   { onBack, onClose }: { onBack: () => void; onClose: () => void },
 ) => {

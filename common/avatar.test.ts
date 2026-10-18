@@ -7,8 +7,8 @@ import {
 } from "./avatar.ts";
 
 Deno.test("avatarHue is stable and in [0, 360)", () => {
-  // Pinned values: the hue doubles as the wire format standings ships in place
-  // of user ids, and existing users' colours must not shift across releases.
+  // Pinned: the hue is the wire format standings ships instead of user ids, so
+  // existing colours must not shift across releases.
   assertEquals(avatarHue("00000000-0000-4000-8000-000000000000"), 228);
   assertEquals(avatarHue("test-user"), 282);
   for (const seed of ["", "a", "🙂", "some-long-user-id-value"]) {

@@ -4,9 +4,8 @@ import { log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { logMap, routeOf } from "./beginLogger.ts";
 
-// The all-zero trace id OTel's no-op span reports when tracing is off (every
-// instance but the co-located EC2 one) — nothing to correlate, so don't stamp
-// it.
+// The trace id OTel's no-op span reports when tracing is off (every instance
+// but the EC2 one); nothing to correlate, so it isn't stamped.
 const INVALID_TRACE_ID = "00000000000000000000000000000000";
 
 const sizes = ["B", "KB", "MB", "GB", "TB"];
@@ -26,18 +25,15 @@ const prettySize = (size: number) => {
 export const endLogger: Handler = (req, _, prev) => {
   const data = logMap.get(req);
 
-  // Stamp response headers on the way out. Guarded: a few responses (e.g. some
-  // static assets) come back with immutable headers, where set() throws.
+  // Stamp response headers. Guarded: some responses (e.g. static assets) have
+  // immutable headers, where set() throws.
   //   - x-blocktol-server-sha: this process's build, so a running client can
-  //     tell it's older than the deploy now answering and reload (client reads
-  //     it in api.ts → store/version.ts). Every handled response carries it — the
-  //     client only reads it off API responses, but a blanket header is simplest
-  //     and harmless elsewhere.
-  //   - x-blocktol-trace-id: the request span's trace id, so a response can be
-  //     pasted straight into VictoriaTraces to pull its full trace (and, via the
-  //     shared trace_id, its logs). Only on the co-located instance where tracing
-  //     is on; an un-instrumented process (e.g. a Deno Deploy preview) reports
-  //     the invalid all-zero id and gets no header.
+  //     see it is older than the deploy answering and reload (api.ts →
+  //     store/version.ts). Sent on every response; the client reads it off API
+  //     responses only.
+  //   - x-blocktol-trace-id: the request span's trace id, to pull the trace
+  //     (and, via `trace_id`, the logs) from VictoriaTraces. Absent when
+  //     tracing is off.
   if (prev) {
     try {
       prev.headers.set("x-blocktol-server-sha", SHA);
@@ -54,7 +50,7 @@ export const endLogger: Handler = (req, _, prev) => {
     method: req.method,
     status: prev?.status,
     route: routeOf(req),
-    // Numeric ms so it's aggregatable in VictoriaLogs.
+    // Numeric so VictoriaLogs can aggregate it.
     ms: data?.start ? Date.now() - data.start : undefined,
     size: typeof length === "string" ? prettySize(parseInt(length)) : undefined,
   });

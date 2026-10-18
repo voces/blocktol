@@ -3,14 +3,11 @@ import { localRun, mazeBudget, rebuildGrid } from "./helpers.ts";
 import { newGrid, pathDuration, PathSolver } from "../../../common/pathing.ts";
 import { offsets } from "../../../common/constants.ts";
 
-// Free play (and a debounced ranked build) shows the runner from localRun
-// instead of a server response, so localRun MUST agree with what the server
-// computes and accepts — the server times a placement via PathSolver +
-// pathDuration (see validateRun). Same-engine matters beyond length: with
-// thunders, duration depends on the path's geometry, so previewed and
-// persisted times only stay equal if equal-length ties break identically too.
-// This pins them together. (PathSolver's own optimality is asserted against a
-// brute-force full-cell visibility graph in common/pathing.test.ts.)
+// The runner comes from localRun, not a server response, so it MUST agree with
+// the server's PathSolver + pathDuration (see validateRun). With thunders,
+// duration depends on path geometry, so times match only if equal-length ties
+// break identically too. (PathSolver's optimality is tested in
+// common/pathing.test.ts.)
 Deno.test("localRun equals the server's PathSolver + pathDuration", () => {
   // Checkpoints are half-integer cells (see newIteration / validateRun.test).
   const checkpoint = { x: 9.5, y: 9.5 };
@@ -22,8 +19,7 @@ Deno.test("localRun equals the server's PathSolver + pathDuration", () => {
     { x: 6, y: 14 },
     { x: 8, y: 8, thunder: true },
   ];
-  // localRun sees the whole board, `local` marking the player's pieces —
-  // exactly how useGameState's `blocks` is shaped.
+  // The whole board, `local` marking the player's pieces, as in useGameState.
   const blocks = [...fixed, ...player.map((b) => ({ ...b, local: true }))];
 
   const local = localRun(blocks, checkpoint);
@@ -39,9 +35,8 @@ Deno.test("localRun equals the server's PathSolver + pathDuration", () => {
   assertEquals(local?.slows, slows);
 });
 
-// A momentarily path-less state (a wall cutting the board in two) returns
-// undefined rather than throwing, so apply() keeps the prior run instead of
-// blanking the board mid-edit.
+// A path-less state (a wall cutting the board in two) returns undefined rather
+// than throwing, so apply() keeps the prior run mid-edit.
 Deno.test("localRun returns undefined when there is no path", () => {
   const checkpoint = { x: 9.5, y: 9.5 };
   // A solid interior band at y=13..14 — below the checkpoint, above the start
@@ -51,8 +46,8 @@ Deno.test("localRun returns undefined when there is no path", () => {
   assertEquals(localRun(wall, checkpoint), undefined);
 });
 
-// rebuildGrid still feeds the hover/drag validity checks their grid; it must
-// reproduce a fresh grid plus placements exactly, clearing any stale cells.
+// rebuildGrid feeds the hover/drag validity checks; it must reproduce a fresh
+// grid plus placements, clearing stale cells.
 Deno.test("rebuildGrid reproduces a fresh grid with placements", () => {
   const checkpoint = { x: 9.5, y: 9.5 };
   const blocks = [{ x: 5, y: 5 }, { x: 12, y: 3 }];
@@ -68,11 +63,9 @@ Deno.test("rebuildGrid reproduces a fresh grid with placements", () => {
   assertEquals(grid, expected);
 });
 
-// The brick/power chips are a FUNCTION of the maze on the board, not a tally
-// stepped beside it. That's the whole point: the counts can only ever describe
-// the pieces actually placed, so the player can never be offered a brick the
-// iteration's budget doesn't have — which the server rejects at commit ("too
-// many blocks"), losing the run.
+// The chips are a FUNCTION of the maze on the board, not a stepped tally, so
+// the player is never offered a brick the budget lacks (the server rejects it
+// at commit: "too many blocks").
 Deno.test("mazeBudget counts what the maze holds", () => {
   const totals = { bricks: 6, power: 2 };
   assertEquals(mazeBudget([], totals), { bricks: 6, power: 2 });
@@ -80,19 +73,17 @@ Deno.test("mazeBudget counts what the maze holds", () => {
     mazeBudget([{}, { thunder: true }, {}], totals),
     { bricks: 3, power: 1 },
   );
-  // A thunder costs a brick AND a power, exactly as validateRun charges it.
+  // A thunder costs a brick AND a power, as validateRun charges it.
   assertEquals(
     mazeBudget([{ thunder: true }, { thunder: true }], totals),
     { bricks: 4, power: 0 },
   );
 });
 
-// The incident this replaced: a delete refunded a brick, then a gesture landing
-// before the input effects had re-run with the new board wrote back a maze that
-// still held the deleted block. Stepping the count, the refund survived the
-// resurrection and the HUD offered 7 bricks on a 6-brick day. Derived, the
-// board is the only witness — whatever a race writes back, the chips describe
-// THAT maze.
+// The race: a delete refunded a brick, then a gesture landing before the input
+// effects re-ran wrote back a maze still holding the deleted block. A stepped
+// count kept the refund (7 bricks on a 6-brick day); a derived one follows the
+// maze.
 Deno.test("mazeBudget cannot drift from the maze a race writes back", () => {
   const totals = { bricks: 6, power: 2 };
   const maze: { x: number; y: number; thunder?: boolean }[] = [
@@ -102,8 +93,7 @@ Deno.test("mazeBudget cannot drift from the maze a race writes back", () => {
   ];
   const deleted = maze.filter((b) => b !== maze[1]);
   assertEquals(mazeBudget(deleted, totals).bricks, 4);
-  // A stale write puts the deleted block back: the count follows it back too,
-  // rather than keeping the refund.
+  // A stale write puts the block back: the count follows, no kept refund.
   assertEquals(mazeBudget(maze, totals).bricks, 3);
   // Removing a block that is already gone (a double tap) refunds nothing.
   assertEquals(
@@ -112,8 +102,8 @@ Deno.test("mazeBudget cannot drift from the maze a race writes back", () => {
   );
 });
 
-// A board with no budget loaded yet hides both chips (-1), and a maze can never
-// drive a count negative (`mazeBudget` clamps, and `viewMaze` shares it).
+// An unloaded budget hides both chips (-1), and a maze never drives a count
+// negative (`mazeBudget` clamps).
 Deno.test("mazeBudget hides an unloaded budget and clamps at zero", () => {
   assertEquals(mazeBudget([{}], { bricks: -1, power: -1 }), {
     bricks: -1,

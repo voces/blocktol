@@ -8,21 +8,17 @@ import { t } from "../../util/t.ts";
 import { climbColor, scorePercent, Verdict } from "./verdict.ts";
 
 /**
- * The free-play run clock: the timer doubled as a verdict. Unlike the daily
- * clock it doesn't tick up — a free-play result is already yours, so it reads
- * the run's final time straight away, tinted to its score % (the same standing
- * ramp the runs panel uses) with that % shown beside the time. The runner still
- * animates across the board; only the number is settled. Daily attempts stay a
- * blind stopwatch (see Hud); this is free-play only.
+ * The free-play run clock, doubling as a verdict. It shows the run's final time
+ * at once rather than ticking up, tinted to its score % (the runs panel's
+ * ramp) with the % beside it. Daily attempts stay a blind stopwatch (see Hud).
  */
 export const RunClock = (
   { to, min, best }: { to: number; min: number; best: number },
 ) => {
   const percent = Math.max(0, Math.min(1, scorePercent(to, min, best)));
   const color = climbColor(percent);
-  // formatPercentile keeps sub-100 precision (99.7, not a rounded-up 100) and
-  // only ever prints 100 for a genuine field-topping tie/supreme — so a plain PB
-  // never masquerades as a record. Matches the runs panel's own formatting.
+  // formatPercentile prints 100 only for a genuine field-topping tie or
+  // supreme, so a plain PB never reads as a record.
   return (
     <div
       class="hud__run hud__run--score"
@@ -38,13 +34,11 @@ export const RunClock = (
 };
 
 /**
- * The decorated pill a milestone free-play run shows while it executes: the
- * final time and score %, in the outcome's colour. The celebration effects
- * (glow / ripple / confetti / badge) are NOT drawn on the pill — the HUD sits at
- * the top-right corner of `.game`, whose overflow is clipped for the mobile
- * scroll layout, so anything spilling above or right of the pill would be cut
- * off. Instead they render in a viewport-fixed layer anchored to the pill's
- * measured box (see CelebrationOverlay), free to spread on every side.
+ * The pill a milestone free-play run shows while it executes: final time and
+ * score %, in the outcome's colour. The celebration effects are not drawn on
+ * the pill: the HUD sits at the corner of `.game`, whose overflow is clipped
+ * for the mobile scroll layout, so they would be cut off. They render in a
+ * viewport-fixed layer over the pill's measured box (`CelebrationOverlay`).
  */
 export const VerdictPill = ({ verdict }: { verdict: Verdict }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -115,8 +109,8 @@ const CrownIcon = () => (
   </svg>
 );
 
-// Label is a catalog key resolved at render time (so a language switch updates
-// it); the icon is a static element built once.
+// The label is a catalog key resolved at render, so a language switch updates
+// it.
 const BADGE = {
   pb: { labelKey: "badge.pb", icon: <StarIcon /> },
   record: { labelKey: "badge.record", icon: <CheckIcon /> },
@@ -126,9 +120,8 @@ const BADGE = {
   { labelKey: MessageKey; icon: JSX.Element }
 >;
 
-// A personal best throws multi-hued confetti (little squares); a supreme keeps
-// to golds (little sparks), matching the badge. Record ripples the pill instead,
-// so it grows no confetti — its entry is unused.
+// A PB throws multi-hued square confetti; a supreme keeps to gold sparks. A
+// record ripples the pill instead, so its entry is unused.
 const SPARK_COLORS: Record<Verdict["outcome"], string[]> = {
   record: [],
   pb: [
@@ -151,12 +144,9 @@ const SPARK_COLORS: Record<Verdict["outcome"], string[]> = {
   ],
 };
 
-// Confetti scattered on every side of the pill, as fractions of its box: fx/fy
-// are the anchor corner (0 = left/top edge, 1 = right/bottom edge) and dx/dy a
-// pixel nudge past it. So negative dy sits above the pill, dx past the right
-// edge sits to its right, and a positive dy past the bottom edge rains down over
-// the board — a burst that surrounds the button and falls below it rather than
-// trailing off one side. `d` staggers the twinkle.
+// Confetti around the pill: fx/fy anchor on its box (0 = left/top edge, 1 =
+// right/bottom edge) and dx/dy nudge in pixels past it, so a large positive dy
+// rains over the board. `d` staggers the twinkle.
 const SPARKS = [
   // Above the pill.
   { fx: 0.2, fy: 0, dx: 0, dy: -22, size: 6, d: 0 },
@@ -177,11 +167,9 @@ const SPARKS = [
 ];
 
 /**
- * The free-play win overlay, fixed to the viewport and anchored over the pill's
- * measured box so it escapes `.game`'s clipped overflow — glow, ripple, confetti
- * and badge can all spill above / right / around the button without being cut.
- * It fires the instant the run commits (the result is already known) and plays
- * over the run; the pill unmounts it when the board re-stages at finish.
+ * The free-play win overlay: viewport-fixed over the pill's measured box, so
+ * it escapes `.game`'s clipped overflow. It plays from the commit, over the
+ * run; the pill unmounts it when the board re-stages at finish.
  */
 const CelebrationOverlay = (
   { verdict, rect }: { verdict: Verdict; rect: DOMRect },
@@ -199,8 +187,7 @@ const CelebrationOverlay = (
       }}
     >
       {
-        /* Glow / ripple over the pill's footprint (a transparent overlay, so the
-          time reads through) — unclipped up here in the fixed layer. */
+        /* Glow / ripple over the pill; transparent so the time reads. */
       }
       {verdict.outcome === "record" ? <span class="celebrate__ring" /> : (
         <span

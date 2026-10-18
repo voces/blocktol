@@ -9,35 +9,29 @@ import {
 import { getSettings } from "../hooks/useSettings.ts";
 import { flagKey, hoveredSplit, liveFlags } from "../store/flags.ts";
 
-// Same slop the block drag uses (see useInputStart): a flag only MOVES once the
-// pointer has really travelled, so a tap that wobbles still reads as a tap —
-// and a tap clears the flag.
+// Same slop as the block drag (see useInputStart): a flag only MOVES once the
+// pointer has travelled this far (screen px), so a wobbly tap still clears it.
 const DRAG_SLOP = 12;
 
 // The play area is the board minus its wall ring.
 const clampCell = (n: number) => Math.min(Math.max(Math.floor(n), 1), 18);
 
-// Well past any sane use of the feature, and the same bound the server's
-// setFlags validation applies — so the UI refuses the 41st rather than letting
-// the write come back rejected.
+// The bound `setFlags` validation applies (server/routes/iteration/flags.ts),
+// so the UI refuses the 41st rather than getting the write rejected.
 const MAX_FLAGS = 40;
 
-// How far a pennant's pole rises above the cell it's planted in, and the
-// clearance its tip keeps from the board's edge — half the widest stroke a
-// pennant is drawn with (the speculative 0.13), so the STROKE lands on the edge
-// rather than the path does.
+// How far a pennant's pole rises above its cell, and the tip's clearance from
+// the board's edge: half the widest stroke (speculative, 0.13), so the stroke
+// ends on the edge rather than past it.
 const RISE = 1.1;
 const TIP_CLEARANCE = 0.07;
 
-// A pennant on a pole, planted in the centre of its cell and flying up out of
-// it. Orange: the one hue the maze palette leaves free (see the design tokens).
+// A pennant on a pole planted in the centre of its cell. Orange: the one hue
+// the maze palette leaves free.
 //
-// The rise is what's left above the cell, never more: the board's viewBox stops
-// at y=0 (widening it isn't available — `cellAt` and the input hooks all map a
-// pointer through `box.width / 20`), so a row-1 flag asking for the full 1.1
-// tips out at -0.1 and has the top of its pennant sliced off. Row 1 is the only
-// row with less than 1.1 to give, and it gives 0.93 — the flag tucks against
-// the top wall instead of through it, a difference you have to measure to see.
+// The rise is capped at the room above the cell: the viewBox stops at y=0 and
+// can't widen (`cellAt` and the input hooks map pointers through
+// `box.width / 20`), so a full 1.1 rise in row 1 would clip the pennant's top.
 const pennant = (x: number, y: number) => {
   const rise = Math.min(RISE, y - TIP_CLEARANCE);
   return `M${x + 0.5} ${y + 0.5}V${y - rise}h1.1l-.32.5.32.5H${x + 0.5}`;
@@ -46,21 +40,17 @@ const pennant = (x: number, y: number) => {
 /**
  * Flags on the board: the splits tape's manual checkpoints.
  *
- * Drawn while the splits tape is up and only then — a run being reviewed, or
- * the one animating (the caller gates this; see Game/index.tsx). The flags
- * themselves still belong to the BOARD and stay put across runs and reviews;
- * it's SHOWING them that rides with the tape, because a mark you can't read a
- * split off is just something in the way of the cells you're placing into.
+ * Drawn only while the splits tape is up (a run being reviewed or animating;
+ * the caller gates this, see Game/index.tsx). Flags belong to the BOARD; only
+ * showing them rides with the tape.
  *
- * Interactive only while placement is ARMED from the splits panel — with the
- * board visible a bare tap is ambiguous, so arming is what tells a flag tap
- * apart from inspecting a thunder. While armed the board dims behind a
- * scrim (the checkpoint is redrawn on top so it stays legible) and every cell
- * takes a flag; a flag itself drags to move and taps to clear.
+ * Interactive only while placement is ARMED from the splits panel, since a bare
+ * tap is ambiguous with inspecting a thunder. While armed the board dims behind
+ * a scrim (the checkpoint is redrawn on top) and every cell takes a flag; a
+ * flag drags to move and taps to clear.
  *
- * A flag the current run doesn't cross reports nothing, and draws as a dashed
- * outline — a speculative mark waiting for a build that routes the runner past
- * it.
+ * A flag the current run doesn't cross reports nothing and draws dashed
+ * (speculative).
  */
 export const FlagLayer = (
   { flags, armed, checkpoint, onChange }: {
@@ -71,32 +61,26 @@ export const FlagLayer = (
   },
 ) => {
   // The gesture in progress. `index` is the flag being dragged, or -1 while
-  // placing a NEW one — which is a press on empty ground, previewed from the
-  // instant the pointer lands and committed on release, exactly the way a block
-  // is placed. `clientX/Y` is the press point, for the slop test.
+  // placing a NEW one (previewed on press, committed on release, like a block).
+  // `clientX/Y` is the press point, for the slop test.
   const drag = useRef<
     {
       index: number;
       clientX: number;
       clientY: number;
       moved: boolean;
-      // The cell the preview is on. Release commits THIS, never a fresh mapping
-      // of the release point — the same contract the block placement has (see
-      // useInputEnd, which places at `placingBlock`): what you can see is where
-      // it lands, even mid zoom animation, where the board's box is still
-      // moving under the pointer.
+      // The cell the preview is on. Release commits THIS, not a fresh mapping
+      // of the release point, which is wrong mid zoom animation while the
+      // board's box still moves (as in useInputEnd's `placingBlock`).
       cell: Point;
     } | null
   >(null);
-  // Where the dragged (or about-to-be-placed) flag currently sits, so it
-  // follows the pointer.
+  // Where the dragged (or about-to-be-placed) flag sits, following the pointer.
   const [preview, setPreview] = useState<{ index: number } & Point | null>(
     null,
   );
-  // The scrim owns the pointer for the whole gesture, whether it started on
-  // empty ground or on a flag: it's one element that outlives every placement,
-  // so a capture taken here can't be lost when the flag under the finger is
-  // re-rendered.
+  // The scrim captures the pointer for the whole gesture, even one started on a
+  // flag: it outlives re-renders of the flag under the finger.
   const scrim = useRef<SVGRectElement>(null);
   const live = liveFlags.value;
   const hovered = hoveredSplit.value;
@@ -114,10 +98,9 @@ export const FlagLayer = (
     flags.some((f, i) => i !== ignore && f.x === cell.x && f.y === cell.y);
 
   // Take the gesture: capture the pointer on the scrim and, on touch, arm the
-  // placing zoom on the player's configured delay — the same magnification a
-  // block placement gets, so a finger doesn't have to cover the cell it is
-  // aiming at. `placingBlock` is the camera origin the board zooms about
-  // (`placing` stays false, so no block ghost is drawn).
+  // placing zoom (after the player's zoomDelay) as a block placement does.
+  // `placingBlock` is the camera origin; `placing` stays false, so no block
+  // ghost is drawn.
   const take = (
     e: JSX.TargetedPointerEvent<SVGElement>,
     index: number,
@@ -138,8 +121,7 @@ export const FlagLayer = (
     if (e.pointerType === "touch") armTouchZoom(getSettings().zoomDelay);
   };
 
-  // Press on empty ground: the flag appears AT ONCE, previewed under the
-  // pointer, and is only written on release — a block placement, with a flag.
+  // Press on empty ground: the flag previews at once and is written on release.
   const startPlace = (e: JSX.TargetedPointerEvent<SVGElement>) => {
     if (!armed || drag.current) return;
     const cell = cellAt(e);
@@ -159,9 +141,8 @@ export const FlagLayer = (
     if (!held) return;
     const dx = e.clientX - held.clientX;
     const dy = e.clientY - held.clientY;
-    // A new flag tracks the pointer from the first move; an existing one only
-    // once the press has really travelled, so a tap that wobbles still reads as
-    // a tap (and a tap on a flag clears it).
+    // A new flag tracks the pointer at once; an existing one only past the
+    // slop, so a wobbly tap on a flag still clears it.
     if (
       held.index >= 0 && !held.moved && dx * dx + dy * dy <= DRAG_SLOP ** 2
     ) return;
@@ -183,9 +164,8 @@ export const FlagLayer = (
     setPreview(null);
     clearTouchZoom();
     const cell = held.cell;
-    // A new flag lands where its preview stood, unless something is already
-    // there (the preview simply evaporates then, like a block dropped on an
-    // occupied cell).
+    // A new flag lands where its preview stood, unless the cell is occupied
+    // (the preview just vanishes, as with a block).
     if (held.index < 0) {
       if (!occupied(cell)) onChange([...flags, cell]);
       return;
@@ -200,8 +180,7 @@ export const FlagLayer = (
     onChange(flags.map((f, i) => i === held.index ? cell : f));
   };
 
-  // The gesture was taken away (a system gesture, a second finger): drop the
-  // preview without writing anything.
+  // The gesture was taken away (system gesture, second finger): write nothing.
   const cancel = () => {
     drag.current = null;
     setPreview(null);
@@ -213,9 +192,8 @@ export const FlagLayer = (
       {armed && (
         <>
           {
-            /* Dim the pieces so the flags (and where they could go) read as the
-              subject; the checkpoint is redrawn above the scrim because a route
-              without it visible is unreadable. */
+            /* Dim the pieces so the flags read as the subject; the checkpoint
+              is redrawn above the scrim to keep the route legible. */
           }
           <rect
             x={1}
@@ -234,9 +212,8 @@ export const FlagLayer = (
             fill="var(--maze-checkpoint)"
           />
           {
-            /* The placement surface: any cell of the play area takes a flag.
-              It sits under the flags themselves, so a press on one of those is
-              a grab, not a second flag. */
+            /* The placement surface: any play-area cell takes a flag. It sits
+              under the flags, so pressing one grabs it instead. */
           }
           <rect
             ref={scrim}
@@ -264,9 +241,7 @@ export const FlagLayer = (
         />
       )}
       {
-        /* A flag being placed: drawn from the moment the pointer lands, so the
-          gesture reads the way a block placement does, and faded until release
-          because nothing is written until then. */
+        /* A flag being placed: drawn on press, faded until release. */
       }
       {preview?.index === -1 && (
         <path
@@ -276,9 +251,8 @@ export const FlagLayer = (
       )}
       {flags.map((flag, index) => {
         const at = preview?.index === index ? preview : flag;
-        // `live` is set whenever this layer is on the board at all, since the
-        // same signal is what puts it there; the guard only keeps a set-less
-        // render from marking every flag dead.
+        // `live` is set whenever this layer is drawn; the guard only stops a
+        // set-less render from marking every flag speculative.
         const speculative = !!live && !live.has(flagKey(flag));
         return (
           <g key={flagKey(flag)}>
@@ -298,9 +272,8 @@ export const FlagLayer = (
               d={pennant(at.x, at.y)}
             />
             {armed && (
-              // A pennant is a thin stroke; the grab target is the cell it's
-              // planted in plus the pole above it. Only while armed, so a flag
-              // never swallows a board tap the rest of the time.
+              // A pennant is a thin stroke, so the grab target is its cell plus
+              // the pole above. Armed only, so it never swallows a board tap.
               <rect
                 class="flag__grab"
                 x={at.x - 0.2}

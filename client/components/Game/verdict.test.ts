@@ -12,7 +12,7 @@ Deno.test("scorePercent maps time into [min, best]", () => {
 });
 
 Deno.test("computeVerdict: no milestone returns null", () => {
-  // Below your own best (25) and the field best (30) — nothing to celebrate.
+  // Below your own best (25) and the field best (30).
   assertEquals(computeVerdict(22, 10, 30, 25), null);
 });
 
@@ -24,7 +24,7 @@ Deno.test("computeVerdict: a personal best that stays under the field", () => {
 });
 
 Deno.test("computeVerdict: first-ever run is a PB only with a prior best", () => {
-  // No prior personal best (null) and short of the field → not a milestone.
+  // No prior personal best (null) and short of the field: no milestone.
   assertEquals(computeVerdict(28, 10, 30, null), null);
 });
 

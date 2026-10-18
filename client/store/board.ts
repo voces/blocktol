@@ -7,22 +7,19 @@ import { todayIteration } from "./standings.ts";
 // the loaders every board navigation goes through.
 //
 // The loaders exist for request identity. Responses broadcast through the api
-// emitter can't be told apart — click day A then quickly day B and whichever
-// response lands LAST would stage the board, which may be A. Each loader
-// instead consumes its own request's promise and stages only if no newer
-// board request has been made since (a monotonic token). A placement's
-// startRun also takes the token, so an in-flight re-stage from just before
-// the placement can't clobber the freshly opened run.
+// emitter can't be told apart: click day A then day B and whichever response
+// lands LAST stages the board, which may be A. Each loader consumes its own
+// request's promise and stages only if no newer board request has been made
+// since (a monotonic token). A placement's startRun also takes the token, so an
+// in-flight re-stage can't clobber the freshly opened run.
 //
-// The cache makes re-navigation instant: a board we've seen stages
-// synchronously (optimistically) and the response reconciles through the very
-// same handler, so both paths maintain identical invariants.
+// A cached board stages synchronously and the response reconciles through the
+// same handler, so both paths keep the same invariants.
 
 // The staged-board shape: an iteration's fixed pieces and FULL budgets (what
 // handleStaged expects), never the mid-run leftovers.
 export type BoardData = Pick<
-  // getBoard answers { incomplete } while today's daily is unfinished (free play
-  // is locked until then); exclude it so the board shape stays a plain record.
+  // getBoard answers { incomplete } while free play is locked; exclude it.
   Exclude<MessageMap["getBoard"], { incomplete: true }>,
   | "iteration"
   | "date"
@@ -36,9 +33,8 @@ export type BoardData = Pick<
   | "attempts"
 >;
 
-// A board payload as run responses carry it: player blocks mixed in (some
-// without a thunder field at all — the opening block) and the budgets already
-// reduced by them.
+// A board payload as run responses carry it: player blocks mixed in (the
+// opening block has no thunder field) and the budgets already reduced by them.
 type RunBoard = Omit<BoardData, "blocks"> & {
   blocks: { x: number; y: number; thunder?: boolean; player?: boolean }[];
 };
@@ -67,9 +63,8 @@ const boards = new Map<number, BoardData>();
 
 export const getCachedBoard = (iteration: number) => boards.get(iteration);
 
-// Upsert an iteration's board from any board-shaped response. Fixed pieces
-// and budgets are stable per iteration; bests and attempts refresh with every
-// response, so later ingests keep the entry current.
+// Upsert an iteration's board from any board-shaped response. Fixed pieces and
+// budgets are stable per iteration; bests and attempts refresh every ingest.
 export const ingestBoard = (data: RunBoard) => {
   boards.set(data.iteration, toBoardData(data));
 };
@@ -77,14 +72,14 @@ export const ingestBoard = (data: RunBoard) => {
 type Handlers = {
   // A run is live (started or resumed): stage its board mid-run.
   onRun: (data: MessageMap["startRun"]) => void;
-  // Stage a runless free-play board. `data` is either a cache entry
-  // (optimistic) or the fresh response reconciling it.
+  // Stage a runless free-play board: a cache entry or the response reconciling
+  // it.
   onStaged: (data: BoardData) => void;
 };
 
 let handlers: Handlers = { onRun: () => {}, onStaged: () => {} };
 
-// Wired by useInit on every render so the callbacks close over fresh state.
+// Wired by useInit on every render so the callbacks see fresh state.
 export const setBoardHandlers = (h: Handlers) => {
   handlers = h;
 };
@@ -94,27 +89,25 @@ let seq = 0;
 
 /**
  * Claim the board token without issuing a request. Free play's first placement
- * opens a purely-local run (no startRun), so it must still take the token or an
- * in-flight re-stage fired just before the placement would land and clobber the
- * fresh build.
+ * opens a local run (no startRun) but must still take the token, or an
+ * in-flight re-stage would clobber the fresh build.
  */
 export const claimBoard = () => {
   ++seq;
 };
 
 /**
- * The current board token. A deferred re-stage (free play awaiting its commit
- * before showing the next board) captures this and bails if it advanced — i.e.
- * the player navigated away while the commit was still landing.
+ * The current board token. A deferred re-stage (free play awaiting its commit)
+ * captures this and bails if it advanced, i.e. the player navigated away.
  */
 export const boardSeq = () => seq;
 
 /**
  * Stage a board for free play (today's when `iteration` is omitted). A cached
- * iteration stages instantly; the response re-stages with fresh
- * bests/attempts. Resolves true if this request staged the board, false if a
- * newer request superseded it (or it failed) — callers chaining an overlay
- * (view-best) should skip it then.
+ * iteration stages instantly; the response re-stages with fresh bests and
+ * attempts. Resolves true if this request left the board staged (the cache
+ * entry counts when the response fails), false if a newer request superseded
+ * it. Callers chaining an overlay (view-best) skip it on false.
  */
 export const showBoard = (iteration?: number) => {
   const s = ++seq;
@@ -136,12 +129,11 @@ export const showBoard = (iteration?: number) => {
   };
   return req()
     .then((r) =>
-      // { incomplete } means today's daily wasn't finished when this response
-      // was produced — which, for a PRIMED response, may have been at boot,
-      // several attempts ago. Ask again so a stale prime can't wedge the stage
-      // (this is what recovers the linked-day prime a `/YYYYMMDD`-for-today boot
-      // stashes). A genuinely locked board just answers { incomplete } twice and
-      // doesn't stage: useInit owns that screen (resume / prestart), not us.
+      // { incomplete } from a PRIMED response may date from boot, several
+      // attempts ago (e.g. the linked-day prime of a `/YYYYMMDD`-for-today
+      // boot). Ask again so a stale prime can't wedge the stage. A genuinely
+      // locked board answers { incomplete } twice and doesn't stage; useInit
+      // owns that screen.
       "incomplete" in r && s === seq ? req().then(settle) : settle(r)
     )
     .catch(() => !!cached && s === seq);
@@ -149,17 +141,14 @@ export const showBoard = (iteration?: number) => {
 
 /**
  * Navigate to a specific day: its board AND its standings in ONE request
- * (`dayView`), then delegate to `showBoard` for the actual staging. A calendar
- * click / view-best would otherwise fire getBoard (from showBoard) and
- * standings (the dock reacting to the iteration change) separately; this primes
- * both off one composite fetch under the exact inputs those two consumers send,
- * so they consume the slices instead of round-tripping again. It's boot, but
- * for one arbitrary chosen day.
+ * (`dayView`), then stage via `showBoard`. The one composite fetch primes the
+ * getBoard (from showBoard) and standings (from the dock) requests that would
+ * otherwise go out separately.
  *
- * The standings input has to MATCH what the dock will send (see Dock.tsx): a day
- * that is today keys by { timeZone } (the dock treats it as today), a past day
- * by { iteration }. Both getBoard and standings are `RETRYABLE`, so a primed
- * response that fails at transport falls through to a real, retried fetch.
+ * The standings input has to MATCH what the dock sends (see Dock.tsx): today
+ * keys by { timeZone }, a past day by { iteration }. Both methods are
+ * `RETRYABLE`, so a primed response that fails at transport falls through to a
+ * retried fetch.
  */
 export const showDay = (iteration: number) => {
   const timeZone = getTimeZone();
@@ -172,12 +161,11 @@ export const showDay = (iteration: number) => {
   return showBoard(iteration);
 };
 
-// A ranked Start whose answer never arrived (see startDailyRun): the number of
-// ranked attempts the player had spent when they pressed it, held while the
-// re-check is in flight. The getDailySummary listener (useInit) takes it —
-// the api emitter hands it the response before startDailyRun sees it — and
-// resumes the open attempt itself when the server has one more ranked run
-// than that.
+// A ranked Start whose answer never arrived (see startDailyRun): the ranked
+// attempts spent when it was pressed, held while the re-check is in flight. The
+// getDailySummary listener (useInit) takes it, since the api emitter hands it
+// the response before startDailyRun sees it, and resumes the open attempt when
+// the server has one more ranked run than that.
 let lostStart: number | null = null;
 export const takeLostStart = () => {
   const spent = lostStart;
@@ -186,19 +174,18 @@ export const takeLostStart = () => {
 };
 
 /**
- * The prestart's Start: open today's ranked attempt (the one fetch-and-start
- * call). `spent` is how many ranked attempts were already used. Resolves true
- * if this request's attempt took the board — including one recovered after a
- * lost answer — so the button stays down; false re-enables it.
+ * The prestart's Start: open today's ranked attempt. `spent` is how many ranked
+ * attempts were already used. Resolves true if this request's attempt took the
+ * board, including one recovered after a lost answer, so the button stays down;
+ * false re-enables it.
  *
- * startRun isn't retryable (it spends an attempt), and a transport failure
- * doesn't mean the server didn't act: it may have inserted the run and lost
- * only the reply. Re-enabling the button then would let a second press open
- * ANOTHER ranked attempt, burning the first. So on a transport failure, ask the
- * summary first: if it reports an open attempt AND one more ranked run than
- * were spent, that attempt is ours — resume it (the summary listener does).
- * Counting matters: the PREVIOUS attempt's 60s window can still be open just
- * after it executed, and must never be mistaken for the new one and reopened.
+ * startRun isn't retryable (it spends an attempt), and a transport failure may
+ * mean the server inserted the run and only the reply was lost; re-enabling the
+ * button would let a second press burn another attempt. So on a transport
+ * failure, ask the summary: an open attempt AND one more ranked run than
+ * `spent` means it is ours, and the summary listener resumes it. The count
+ * matters: the PREVIOUS attempt's 60s window can still be open just after it
+ * executed and must not be mistaken for the new one.
  */
 export const startDailyRun = async (spent: number) => {
   const s = ++seq;

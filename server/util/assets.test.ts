@@ -22,7 +22,7 @@ Deno.test("stamps ?v= onto the shell's fingerprinted refs, leaves manifest link"
   assert(shell.includes('href="/fonts/fonts.css?v=dddd44"'));
   assert(shell.includes('src="/js/index.js?v=aaaa11"'));
   assert(shell.includes('href="/favicon.svg?v=cccc33"'));
-  // The manifest link is deliberately NOT versioned (it's served no-cache).
+  // The manifest link is NOT versioned (it's served no-cache).
   assert(shell.includes('href="/manifest.webmanifest"'));
 });
 
@@ -76,7 +76,7 @@ Deno.test("immutable only for a matching current ?v", () => {
     immutableFor(version, "/js/index.js", p("v=aaaa11")),
     "public, max-age=31536000, immutable",
   );
-  // Stale hash → not immutable (would otherwise pin the wrong bytes).
+  // Stale hash: not immutable, or it would pin the wrong bytes.
   assertEquals(immutableFor(version, "/js/index.js", p("v=old")), null);
   // No ?v → revalidate.
   assertEquals(immutableFor(version, "/js/index.js", p("")), null);

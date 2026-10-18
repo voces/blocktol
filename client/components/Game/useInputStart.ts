@@ -17,11 +17,9 @@ import {
 import { GameStateContext } from "./useGameState.ts";
 import { getSettings } from "../../hooks/useSettings.ts";
 
-// How far (in screen pixels) a grabbed block's pointer must travel before the
-// grab becomes a move rather than a tap. A tap upgrades to thunder or deletes
-// (see useInputEnd), so a little slop here keeps a straight tap from nudging the
-// block — especially on touch, where the placing zoom slides the board under the
-// finger and would otherwise register as a move.
+// Screen pixels a grabbed block's pointer must travel before the grab becomes
+// a move rather than a tap (see useInputEnd). Matters on touch, where the
+// placing zoom slides the board under the finger.
 const DRAG_SLOP = 12;
 
 export const useInputStart = (svg: SVGSVGElement | null) => {
@@ -37,19 +35,15 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
   } = useContext(GameStateContext);
 
   useEffect(() => {
-    // `press` is a pointer/touch down: if it lands on a local block we grab it
-    // to drag; otherwise it (and subsequent moves) position a placement preview.
-    // `viewing` is checked explicitly (below, once the hovered cell is known): a
-    // reviewed maze keeps a live free-play build's countdown on the clock
-    // (time > 0), but the board must stay inert — bar the thunder radii, which
-    // are the point of studying a maze.
+    // `press` is a pointer/touch down: on a local block it grabs it to drag,
+    // otherwise it (and later moves) positions a placement preview. `viewing`
+    // is checked explicitly (below): a review can keep a live free-play
+    // countdown (time > 0), but the board stays inert bar thunder radii.
     const callback = (clientX: number, clientY: number, press = false) => {
       if (!svg || (!viewing && timeRef.current <= 0)) return;
 
-      // The board and the budget as they stand right now: a press arriving
-      // within a frame of the previous gesture's edit still runs on the closure
-      // this effect was registered with, and a grab resolved against that stale
-      // board pointed at a block the board no longer holds (see useInputEnd).
+      // The board and budget right now, not this effect's closure: a stale
+      // board can resolve a grab to a block that is gone (see useInputEnd).
       const blocks = blocksRef.current;
       const { bricks } = budgetNow();
 
@@ -90,17 +84,16 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
           ? nearest
           : undefined;
 
-      // Reviewing: nothing is placeable, so the only thing a pointer does is
-      // reveal a thunder's radius — the day's pieces and the reviewed maze's
-      // alike (mid-build a hover over your OWN thunder shows the radius through
-      // `transitionBlock` instead, which also previews the upgrade).
+      // Reviewing: the pointer only reveals a thunder's radius, the day's and
+      // the reviewed maze's alike. (Mid-build, your OWN thunder shows it via
+      // `transitionBlock`, which also previews the upgrade.)
       if (viewing) {
         thunderHover.value = overlap?.thunder ? overlap : undefined;
         return;
       }
 
       // Grab a local block on press, remembering the pressed cell and pixel
-      // point so a tap (no real movement) doesn't move it.
+      // point so a tap doesn't move it.
       if (press) {
         dragRef.current = overlap?.local
           ? {
@@ -112,19 +105,17 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
             startClientY: clientY,
           }
           : null;
-        // Pressing an empty cell with bricks in hand starts a placement; keep
-        // that in scope so dragging the preview over an existing block reads as
-        // an invalid spot rather than a tap-to-upgrade.
+        // Pressing an empty cell with bricks in hand starts a placement, so
+        // dragging the preview over a block reads as invalid, not an upgrade.
         placingRef.current = !overlap?.local && bricks > 0;
       }
 
       const drag = dragRef.current;
       if (drag) {
-        // Sticky start: it's only a move once the pointer both leaves the cell
-        // it pressed AND travels past DRAG_SLOP screen pixels. The pixel gate
-        // absorbs a slightly off-centre tap and, crucially, the shift the
-        // placing zoom slides under a held finger (which changes the mapped cell
-        // without the finger really moving) — so straight upgrades/deletes land.
+        // Sticky: a move only once the pointer leaves its pressed cell AND
+        // travels past DRAG_SLOP pixels. The pixel gate absorbs an off-centre
+        // tap and the placing zoom's shift under a held finger, which changes
+        // the mapped cell without the finger moving.
         if (!drag.dragged) {
           const dx = clientX - drag.startClientX;
           const dy = clientY - drag.startClientY;
@@ -135,11 +126,10 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
             drag.dragged = true;
           }
         }
-        // Mirror the sticky flag so the board drops the upgrade radius for the
-        // rest of the drag — including a drag back onto the origin cell.
+        // Mirrored so the board drops the upgrade radius for the rest of the
+        // drag, even back on the origin cell.
         dragMoved.value = drag.dragged;
-        // Center the block on the pointer once dragging (same mapping as
-        // placing a new block); keep it put until then so a tap doesn't nudge.
+        // Follow the pointer once dragging (as placing does); stay put before.
         const tx = drag.dragged ? x : drag.origin.x;
         const ty = drag.dragged ? y : drag.origin.y;
         const atOrigin = tx === drag.origin.x && ty === drag.origin.y;
@@ -151,13 +141,11 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         return;
       }
 
-      // Not dragging (a hover or a fresh press): the upgrade radius is free to
-      // show again on the next grab.
       dragMoved.value = false;
 
-      // Mid-placement, keep the preview visible over any block (it'll be red —
-      // you can't stack there). A bare hover instead hides the preview over your
-      // own block so its tap-to-upgrade radius reads clearly.
+      // Mid-placement the preview stays visible over any block (red: no
+      // stacking). A bare hover hides it over your own block so the
+      // tap-to-upgrade radius reads clearly.
       const placing = placingRef.current;
       placingBlock.value = {
         placing: (placing || !overlap?.local) && bricks > 0,
@@ -180,9 +168,8 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         ? overlap
         : undefined;
 
-      // A bare hover over your own block previews the tap-to-upgrade radius; a
-      // placement dragged over it doesn't — the block can't go there, so no
-      // upgrade is implied.
+      // A bare hover over your own block previews the upgrade radius; a
+      // placement dragged over it doesn't, as no upgrade is implied.
       transitionBlock.value = !placing && overlap?.local ? overlap : undefined;
     };
 
@@ -219,18 +206,15 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         return;
       }
       const touch = e.touches[0];
-      // Ignore taps on the board's border/wall band so they don't zoom or
-      // place blocks — that ring holds the HUD controls (Ready?, best score).
+      // Ignore taps on the border band: it holds the HUD controls (Ready?, best
+      // score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
-      // An inert reviewed maze doesn't zoom (`touching` drives the placing zoom,
-      // which keys off time > 0, live during a view), but the tap still
-      // goes through: with no hover on touch, tapping a thunder is how you see
-      // its radius while studying a maze. It stays up until you tap elsewhere —
-      // the release path leaves it alone while viewing.
-      // Otherwise arm the zoom on the player's configured delay (read
-      // non-reactively so the listeners don't re-register per setting change) —
-      // 0 zooms at once, a larger value lets a quick tap-to-place land before
-      // the board magnifies.
+      // A review doesn't zoom (the placing zoom keys off time > 0, which can be
+      // live during a view), but the tap still goes through: with no hover on
+      // touch, tapping a thunder is how its radius shows, and it stays up until
+      // you tap elsewhere (the release path leaves it alone while viewing).
+      // Otherwise arm the zoom on the configured delay, read non-reactively so
+      // a setting change doesn't re-register the listeners.
       if (!viewing) armTouchZoom(getSettings().zoomDelay);
       callback(touch.clientX, touch.clientY, true);
       e.preventDefault();
@@ -243,8 +227,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("touchstart", touchstartCallback);
       globalThis.removeEventListener("touchmove", touchmoveCallback);
     };
-    // The clock, the board and the budget are read through refs/signals, so the
-    // listeners only re-register when what a gesture MEANS changes — never per
-    // edit.
+    // The clock, board and budget are read through refs/signals, so listeners
+    // re-register only when what a gesture MEANS changes, never per edit.
   }, [svg, checkpoint, viewing]);
 };

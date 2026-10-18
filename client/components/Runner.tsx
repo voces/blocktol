@@ -6,11 +6,10 @@ import { useGame } from "../hooks/useGame.ts";
 import { debug } from "../util/debug.ts";
 import { runnerTime } from "./Game/interaction.ts";
 
-// Distance is integrated forward from each frame's elapsed time, so one frame
-// must never cover enough ground for the runner's speed to have changed inside
-// it. At 32ms the walk is sampled at least as often as a 30fps display, and a
-// frame that runs long (a GC pause, a slow device, a tab handed back) is split
-// into chunks that each re-decide whether the runner is slowed.
+// Distance is integrated per frame, so a frame must not span a speed change.
+// 32ms samples at least as often as a 30fps display; a longer frame (GC pause,
+// slow device) is split into chunks that each re-decide whether the runner is
+// slowed.
 const MAX_STEP_S = 0.032;
 
 export const Runner = (
@@ -19,9 +18,8 @@ export const Runner = (
     slows: { time: number; thunder: Point }[];
     onFinish: () => void;
     onSlow: (thunder: Point) => void;
-    // Holds the walk where it stands, and holds its clock with it — the run
-    // resumes at the time it left off rather than at wall-clock. Read through a
-    // ref below so toggling it never restarts the walk.
+    // Holds the walk and its clock; the run resumes at the time it left off.
+    // Read through a ref so toggling never restarts the walk.
     paused?: boolean;
   },
 ) => {
@@ -31,12 +29,9 @@ export const Runner = (
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
-  // Keyed on the PATH, not just mount: picking another run while one is
-  // animating (a review replay) swaps the prop, and the walk has to start over
-  // on the new route — otherwise the runner carries on travelling the maze you
-  // left. The cleanup cancels the pending frame, so the abandoned walk also
-  // never reaches its finish dispatch. `run` only changes when setRun is called,
-  // so an ordinary re-render can't restart the animation.
+  // Keyed on the PATH, not just mount: picking another run mid-animation (a
+  // review replay) must restart the walk on the new route. The cleanup cancels
+  // the pending frame, so an abandoned walk never dispatches its finish.
   useEffect(() => {
     const start = Date.now();
     let animationFrame: number;
@@ -45,21 +40,17 @@ export const Runner = (
     let pathDistance = 0;
     let last = start;
     let nextSlow = 0;
-    // Time the run is NOT accountable for: a hidden tab, or an explicit pause.
-    // Subtracted from wall-clock rather than summed from frame deltas, so the
-    // clock stays exact instead of drifting over a long walk.
+    // Time not counted against the run (hidden tab, pause). Subtracted from
+    // wall-clock rather than summed from frame deltas, so it can't drift.
     let pausedMs = 0;
     let hiddenAt: number | null = null;
     let isSlowed = false;
 
-    // A hidden tab suspends requestAnimationFrame outright — it is not merely
-    // throttled — so the first frame back would otherwise carry the whole
-    // absence as one delta: every thunder passed meanwhile firing at once, and
-    // the entire span integrated at whichever speed happened to be current when
-    // the tab went away. The runner then lands somewhere its own clock never put
-    // it, and can overshoot the finish (which, in free play, commits and
-    // re-stages a run nobody watched). Treat the absence as a pause instead: the
-    // walk holds, and resumes where it stood.
+    // A hidden tab suspends requestAnimationFrame, so the first frame back
+    // would carry the whole absence as one delta: every missed thunder firing
+    // at once, the span integrated at one speed, and the finish possibly
+    // overshot (in free play that commits a run nobody watched). Treat the
+    // absence as a pause instead.
     const onVisibility = () => {
       if (document.hidden) {
         hiddenAt = Date.now();
@@ -84,14 +75,11 @@ export const Runner = (
       }
 
       const time = (now - start - pausedMs) / 1_000;
-      // How far into the walk we are, for anything that wants to keep pace with
-      // the runner (the splits tape lights the mark it has just reached). A
-      // signal rather than a callback prop: this fires every frame, and a
-      // prop threaded through Board would re-render the tree at that rate.
+      // Walk progress for the splits tape. A signal, not a callback prop: it
+      // changes every frame and a prop would re-render the tree at that rate.
       runnerTime.value = time;
 
-      // Walk this frame in bounded chunks, each re-deciding whether the runner
-      // is slowed, so a long one can't be applied at a single speed sample.
+      // Walk this frame in bounded chunks, each re-deciding whether slowed.
       for (let t = Math.max(0, time - frameMs / 1_000); t < time;) {
         const stepEnd = Math.min(t + MAX_STEP_S, time);
         // Fire every slow that begins before this chunk ends, once each.
@@ -136,10 +124,8 @@ export const Runner = (
         return;
       }
 
-      // Scheduled only while unfinished: queuing the next frame before the
-      // finish check would make finishing depend on the parent unmounting this
-      // component first, and a deferred render would re-dispatch runFinish (and
-      // its startRun) every frame.
+      // Scheduled only while unfinished: queuing before the finish check would
+      // re-dispatch runFinish every frame until the parent unmounts this.
       animationFrame = requestAnimationFrame(cb);
     };
 
@@ -148,8 +134,7 @@ export const Runner = (
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(animationFrame);
-      // No runner, no progress — a finished or abandoned walk must not leave a
-      // mark lit on the tape.
+      // A finished or abandoned walk must not leave a mark lit on the tape.
       runnerTime.value = undefined;
     };
   }, [path]);

@@ -1,9 +1,8 @@
 // The player's local calendar day and the next local-midnight instant, in the
-// SAME zone the app reports to the server (getTimeZone() returns Intl's resolved
-// zone — the browser's — and a Date's local fields are already in it). Ranked
-// play is a strictly local-day affair: a ranked build window is hard-capped at
-// the next local midnight, and a day change (a new daily is available) is
-// detected by watching localDay() tick over. See store/dailyRollover.ts.
+// same zone the app reports to the server (getTimeZone() is the browser's zone,
+// which a Date's local fields already use). A ranked build window is capped at
+// the next local midnight, and a new daily is detected by watching localDay()
+// tick over. See store/dailyRollover.ts.
 
 // [year, month, day], 1-indexed month — matching the server's dailyParts.
 export const localDay = (): [number, number, number] => {
@@ -11,8 +10,7 @@ export const localDay = (): [number, number, number] => {
   return [d.getFullYear(), d.getMonth() + 1, d.getDate()];
 };
 
-// Epoch ms of the upcoming local midnight (00:00 tomorrow, local time). Setting
-// hour 24 rolls to the next day at 00:00:00.000 in the browser's own zone.
+// Epoch ms of the upcoming local midnight (hour 24 rolls to 00:00 tomorrow).
 export const nextLocalMidnight = (): number => {
   const d = new Date();
   d.setHours(24, 0, 0, 0);
@@ -24,9 +22,7 @@ export const sameDay = (
   b: [number, number, number],
 ): boolean => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 
-// True when calendar day `a` falls strictly before `b`. Tuple order is date
-// order (year, then month, then day), so a lexicographic compare is the date
-// compare.
+// True when calendar day `a` falls strictly before `b`.
 export const dayIsBefore = (
   a: [number, number, number],
   b: [number, number, number],

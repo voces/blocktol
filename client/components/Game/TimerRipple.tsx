@@ -5,56 +5,44 @@ import { GameStateContext } from "./useGameState.ts";
 import { timerPulse } from "./timerPulse.ts";
 
 /**
- * Water-ripple time cue for the build window. Players heads-down on the board
- * lose track of the 60s clock, so at set marks a wave floods out across the
- * board's blue surface from the timer button — the button dips (see Hud) and a
- * crest races out, flowing *around* the pieces like water finding its level. A
- * felt nudge, not an alarm.
+ * Water-ripple time cue for the build window. At set marks a wave floods out
+ * across the board from the timer button (which dips, see Hud), flowing around
+ * the pieces. A nudge, not an alarm.
  *
  * The wave is a flood fill, not a circle: a Dijkstra distance field from the
- * source cell over the free cells (pieces are obstacles), rendered as one 1×1
- * cell per free square that lights and fades on a delay proportional to its
- * distance *through the maze*. So the front bends around blocks, leaves them
- * dark (never drawn over a piece), and dissipates as it travels — its crest
- * dimming with distance until it dies before the far wall.
+ * source cell over the free cells (pieces are obstacles), drawn as one 1×1
+ * cell per free square that lights and fades after a delay proportional to its
+ * distance through the maze. The front bends around blocks and never draws
+ * over a piece.
  *
- * Marks descend so a single pass down the clock fires each once; the crest
- * gets *quieter* the closer the window is to closing (see MARK_PEAK) — a
- * fainter nudge as the seconds run out, not a louder alarm.
- * Only during a live `building` countdown — staged/viewing/running are inert.
+ * Only during a live `building` countdown; staged/viewing/running are inert.
  */
-// Remaining-seconds marks that fire a wave → the crest's peak brightness at
-// each. It dims as the clock winds down, so the cue softens toward the end.
+// Remaining-seconds marks that fire a wave → the crest's peak brightness. It
+// dims as the window closes, so the cue softens toward the end.
 const MARK_PEAK: Record<number, number> = { 10: 0.4, 3: 0.3, 2: 0.3, 1: 0.3 };
 const RIPPLE_MARKS = Object.keys(MARK_PEAK).map(Number).sort((a, b) => b - a);
 
-const N = 20; // board is 20×20; interior play area is cells 1..18.
+const N = 20; // The board is 20×20; the play area is cells 1..18.
 const LO = 1;
 const HI = 18;
 
-// Wave tuning (see the flood fill below). DELAY_PER_UNIT sets travel speed (s of
-// delay per unit of maze distance — small = fast); each cell's pulse length is
-// the CSS `floodCell` duration. BASE_DELAY lets the crest launch as the button
-// lands (its drop peaks ~0.14s in, see buildDrop). The crest dims gently with
-// distance — DIM is how much brightness it sheds by the FARTHEST reachable cell
-// (0.4 → the far wall still gets 60%), so it visibly reaches the whole board
-// instead of dying mid-way. Every reachable cell is drawn; a longer maze just
-// takes proportionally longer to fill, which is intended.
+// Wave tuning. DELAY_PER_UNIT is seconds of delay per unit of maze distance
+// (small = fast); each cell's pulse length is the CSS `floodCell` duration.
+// BASE_DELAY launches the crest as the button lands (its drop peaks ~0.14s in,
+// see buildDrop). DIM is the brightness shed by the farthest reachable cell
+// (0.4: the far wall keeps 60%), so the crest reaches the whole board.
 const DELAY_PER_UNIT = 0.02;
 const BASE_DELAY = 0.14;
 const DIM = 0.4;
 
-// Fire each mark this many seconds EARLY — the cue leads the clock so the "1s"
-// ripple kicks off at 1.25s left, giving the wave room to sweep out before the
-// window closes. The whole-second `time` can't express a fractional lead, so the
-// marks are read off the fractional deadline instead.
+// Marks fire this many seconds early (the "1s" ripple starts at 1.25s left) so
+// the wave can sweep out before the window closes. The whole-second `time`
+// can't express a fractional lead, so marks read the fractional deadline.
 const LEAD = 0.25;
 
-// 8-connected, and — unlike the runner — it DELIBERATELY jumps corners: a
-// diagonal step is allowed even between two corner-touching pieces. Obeying the
-// runner's no-squeeze rule would strand the pinched cells dark, and those holes
-// would leak which gaps the runner can't pass — a hint. Water fills them, so the
-// crest closes over every diagonal gap and reveals nothing.
+// 8-connected, and unlike the runner it jumps corners: a diagonal step is
+// allowed between two corner-touching pieces. The runner's no-squeeze rule
+// would leave pinched cells dark, hinting which gaps the runner can't pass.
 const STEPS: Array<[number, number, number]> = [
   [1, 0, 1],
   [-1, 0, 1],
@@ -78,10 +66,8 @@ const key = (x: number, y: number) => y * N + x;
 const free = (x: number, y: number, blocked: Set<number>) =>
   x >= LO && x <= HI && y >= LO && y <= HI && !blocked.has(key(x, y));
 
-// The free interior cell nearest an anchor point — the flood's source. The
-// button sits above the top-right of the board, so the anchor is the top-right
-// interior; if a piece sits exactly there the flood simply starts from the
-// closest open cell.
+// The free interior cell nearest an anchor point: the flood's source. The
+// button sits above the board's top-right.
 const nearestFree = (ax: number, ay: number, blocked: Set<number>): Point => {
   let best: Point = { x: HI, y: LO };
   let bestD = Infinity;
@@ -99,13 +85,10 @@ const nearestFree = (ax: number, ay: number, blocked: Set<number>): Point => {
 };
 
 // Dijkstra from the source over free cells, then a render cell per reachable
-// square. `peak` is this wave's crest brightness (per mark, see MARK_PEAK); the
-// farthest-launching cell is flagged `last` so its animation end can retire the
-// whole wave without a timer.
+// square. `peak` is the crest brightness (see MARK_PEAK); the last-launching
+// cell is flagged `last` so its animation end retires the wave without a timer.
 const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
-  // Every piece is a 2×2 (see Block's `size`): a block at (x,y) fills the four
-  // cells (x,y),(x+1,y),(x,y+1),(x+1,y+1). Mark all four so the crest leaves the
-  // whole piece dark, not just its top-left corner.
+  // Every piece is 2×2 (see Block's `size`): block (x,y) fills four cells.
   const blocked = new Set<number>();
   for (const b of blocks) {
     blocked.add(key(b.x, b.y));
@@ -134,9 +117,8 @@ const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
     }
   }
 
-  // Farthest reachable cell — normalizes the distance-dimming so the fade is
-  // relative to THIS maze's span (the crest reaches the far wall whether the
-  // board is open or a long winding maze).
+  // The dimming is relative to this maze's span, so the crest reaches the far
+  // wall on an open board or a winding maze alike.
   let maxDist = 0;
   for (const d of dist.values()) if (d > maxDist) maxDist = d;
   const norm = maxDist || 1;
@@ -168,20 +150,18 @@ export const TimerRipple = () => {
   const { phase, blocks, deadlineRef } = useContext(GameStateContext);
   const [waves, setWaves] = useState<Wave[]>([]);
   const nextId = useRef(0);
-  // `blocks` changes at pointer speed while building; read it off a ref so it
-  // isn't a dependency of the poll effect.
+  // `blocks` changes at pointer speed; a ref keeps it out of the effect deps.
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
-  // Marks already fired this window, and the deadline they belong to — a fresh
-  // attempt re-arms the clock to a new deadline, which clears and re-arms them.
+  // Marks fired this window, and the deadline they belong to; a new deadline
+  // clears them.
   const firedRef = useRef<Set<number>>(new Set());
   const windowRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (phase !== "building") return;
-    // Poll the fractional time left (not the whole-second `time`) so each mark
-    // can lead by LEAD; a 100ms tick catches every mark within ~0.1s of its
-    // lead point. The interval is torn down the moment the build window ends.
+    // Polls the fractional time left so each mark can lead by LEAD; a 100ms
+    // tick catches a mark within ~0.1s.
     const tick = () => {
       const deadline = deadlineRef.current;
       if (deadline === null) return;
@@ -190,22 +170,19 @@ export const TimerRipple = () => {
         firedRef.current.clear();
       }
       const remaining = (deadline - Date.now()) / 1000;
-      // Never launch once the window is up — the runner is releasing; a wave
-      // fired now would surface after it.
+      // Never launch once the window is up: the runner is releasing.
       if (remaining <= 0) return;
       const passed = RIPPLE_MARKS.filter((m) => remaining <= m + LEAD);
       if (!passed.some((m) => !firedRef.current.has(m))) return;
-      // Mark every passed mark fired (a throttled tab that jumped several at
-      // once must not later replay the ones it skipped), but launch just one
-      // wave — the surface stirs once per crossing, never a burst.
+      // Mark every passed mark fired (a throttled tab that skipped several
+      // must not replay them) but launch one wave.
       for (const m of passed) firedRef.current.add(m);
-      // The most urgent mark reached sets the crest's intensity (dimmer the
-      // closer to the end).
+      // The most urgent mark reached sets the intensity.
       const mark = Math.min(...passed);
       const cells = floodCells(blocksRef.current, MARK_PEAK[mark]);
       if (!cells.length) return;
       setWaves((w) => [...w, { id: nextId.current++, cells }]);
-      // Cue the button's drop, in sync (it is the source).
+      // Cue the button's drop (see Hud).
       timerPulse.value++;
     };
     const iv = setInterval(tick, 100);
@@ -218,9 +195,8 @@ export const TimerRipple = () => {
   return (
     <svg class="board-ripple" viewBox="0 0 20 20" aria-hidden="true">
       {waves.map((wave) => (
-        // Each wave is its own keyed subtree, so adding or retiring one never
-        // makes Preact recycle a sibling wave's animating cells, which cuts an
-        // in-flight wave short and re-animates stray cells.
+        // Keyed per wave so adding or retiring one can't make Preact recycle
+        // a sibling's animating cells, which cuts it short.
         <g key={wave.id}>
           {wave.cells.map((c) => (
             <rect
@@ -231,8 +207,7 @@ export const TimerRipple = () => {
               width={1}
               height={1}
               style={{ "--peak": c.peak, animationDelay: `${c.delay}s` }}
-              // The last-launching cell retires the whole wave when it finishes,
-              // so no cell is cut short and no timer is needed.
+              // The last cell to finish retires the wave.
               onAnimationEnd={c.last ? () => remove(wave.id) : undefined}
             />
           ))}

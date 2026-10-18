@@ -12,10 +12,9 @@ import { selfExcludedPercentiles } from "./math.ts";
 import { notifyDailyFinals } from "./notify.ts";
 import { computeRatingChange } from "./rating.ts";
 
-// Once a day is rated (its ranks locked), tell every player who made a ranked
-// attempt how they finished — the five-way outcome from common/notifications.ts.
-// Kept off the rating write's critical path and self-contained (notifyDailyFinals
-// swallows its own errors), so a notification hiccup never blocks the sweep.
+// Once a day is rated, tell every ranked player how they finished (the five-way
+// outcome from common/notifications.ts). Swallows its own errors so a
+// notification failure never blocks the sweep.
 const notifyIterationFinal = async (iteration: number) => {
   try {
     const [players, meta] = await Promise.all([
@@ -45,7 +44,7 @@ const rateIteration = async (iteration: number) => {
     getRatingParticipants(iteration),
   ]);
 
-  // One pass over the field gives every player's percentile (own run excluded).
+  // One pass gives every time's percentile with the player's own run excluded.
   const percentiles = selfExcludedPercentiles(field);
 
   const deltas: { user: string; delta: number }[] = [];
@@ -59,10 +58,10 @@ const rateIteration = async (iteration: number) => {
     });
   }
 
-  // Claims the iteration (marking it rated even when `deltas` is empty, so it
-  // isn't rechecked) and applies the deltas only if the claim was ours. Another
-  // writer on the same DB may have rated this day since we listed it — then
-  // nothing was applied, and its notifications/posts are that writer's to send.
+  // Claims the iteration (marked rated even when `deltas` is empty, so it isn't
+  // rechecked) and applies the deltas only if the claim was ours. If another
+  // writer rated it since we listed it, nothing is applied and its
+  // notifications/posts are that writer's to send.
   if (!await applyRatings(iteration, deltas)) {
     log.info("daily iteration already rated elsewhere; skipping", {
       iteration,
@@ -71,9 +70,8 @@ const rateIteration = async (iteration: number) => {
   }
   log.info("rated daily iteration", { iteration, players: deltas.length });
 
-  // The day is now final — notify its ranked players and post the day's results
-  // to Discord. After applyRatings so the rating write is never held up by (or
-  // rolled back with) these; both swallow their own errors, so run them together.
+  // After applyRatings so the rating write is neither held up by nor rolled
+  // back with these. Both swallow their own errors, so they run together.
   await Promise.all([
     notifyIterationFinal(iteration),
     announceDailyResult(iteration),
@@ -85,7 +83,7 @@ const rateDailies = async () => {
   try {
     iterations = await getUnratedClosedIterations();
   } catch (err) {
-    // e.g. the `rated` column not migrated in yet — degrade quietly.
+    // Degrade quietly (e.g. a migration not yet applied); the next run retries.
     log.error("failed to list unrated iterations", { error: errText(err) });
     return;
   }
@@ -94,25 +92,21 @@ const rateDailies = async () => {
       await rateIteration(iteration);
     } catch (err) {
       log.error("failed to rate iteration", { iteration, error: errText(err) });
-      // A closed day we found but couldn't rate is stuck: its ELO deltas never
-      // apply and its "daily final" notifications never fire until an operator
-      // intervenes. Bounded (few unrated iterations per run) and operator-
-      // actionable, so alert — a no-op without the webhook. The list-fetch failure
-      // above stays a quiet degrade: it's the documented migration-transient case
-      // that the next run heals on its own.
+      // A closed day we can't rate is stuck until an operator intervenes (no
+      // ELO, no daily-final notifications), so alert. The list-fetch failure
+      // above stays quiet: the next run heals it.
       alertAdmin(`rate-dailies: failed to rate iteration ${iteration}`);
     }
   }
 };
 
 // Runs at :30 each hour (offset from the generation cron). Each daily is rated
-// once its date is fully closed across all timezones.
+// once its date is closed in all timezones.
 //
-// `Deno.cron` is non-overlapping only within ONE instance; a second instance
-// on the same DB is a second writer. DISABLE_CRONS gates registration (see
-// gen.ts) so it normally doesn't run at all, but correctness doesn't rest on
-// that flag: applyRatings claims each day atomically, so a forgotten flag costs
-// duplicate work, never a double-applied rating or a doubled announcement.
+// `Deno.cron` is non-overlapping only within ONE instance. DISABLE_CRONS (see
+// gen.ts) normally keeps a second instance off, but correctness doesn't rest
+// on it: applyRatings claims each day atomically, so a forgotten flag costs
+// duplicate work, never a double rating or announcement.
 if (!Deno.env.get("DISABLE_CRONS")) {
   Deno.cron("rate-dailies", "30 * * * *", rateDailies);
 }

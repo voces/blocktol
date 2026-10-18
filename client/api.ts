@@ -27,18 +27,14 @@ const em = emitter<typeof host, MessageMap>(host);
 // Primed fetches: fired before the app renders (see index.ts) so the boot round
 // trips overlap module evaluation and the first render. The next call with the
 // SAME method + input consumes the in-flight response and continues through the
-// normal handling below — by then listeners are subscribed, so the dispatched
-// event isn't dropped. **Content-addressed** (method + serialized input), so a
-// single bundled `boot` fetch can prime a parameterized method — e.g. `list` for
-// a specific month — and only the call with matching input consumes that slice
-// (the calendar's other months key separately and fetch on their own).
+// normal handling below, by which time listeners are subscribed. Keys are
+// content-addressed (method + serialized input), so one bundled `boot` fetch
+// can prime a parameterized method such as `list` for a given month.
 //
-// A prime lives PRIME_TTL_MS, then is dropped unconsumed: one its consumer
-// never asked for (the dock serving a re-opened day from its own cache) would
-// otherwise answer a refresh minutes later with a snapshot from before the
-// player's latest run. The window restarts when the response arrives, so a
-// slow boot doesn't expire primes whose consumers only fire once it lands. A
-// consumer that arrives late just fetches for real.
+// A prime lives PRIME_TTL_MS, then is dropped unconsumed: an unconsumed one
+// would otherwise answer a refresh minutes later with a snapshot from before
+// the player's latest run. The window restarts when the response arrives, so a
+// slow boot doesn't expire primes. A late consumer just fetches for real.
 const PRIME_TTL_MS = 10_000;
 const primed = primePool<Promise<Response>>(PRIME_TTL_MS);
 
@@ -57,19 +53,19 @@ const doFetch = (method: string, input: unknown) =>
   fetch(`/api/${method}`, {
     method: "POST",
     body: JSON.stringify(input),
-    // x-blocktol-client-sha: this bundle's build, so the server logs the version
-    // skew of who's calling it (beginLogger). The server answers with its own
-    // build in x-blocktol-server-sha, which we read below to detect a stale tab.
+    // x-blocktol-client-sha: this bundle's build, so the server logs the
+    // version skew of who's calling it (beginLogger). The server answers with
+    // its own build in x-blocktol-server-sha, which we read below to detect a
+    // stale tab.
     headers: { authorization: getId(), "x-blocktol-client-sha": CLIENT_SHA },
     keepalive,
   });
 
 // Issue the api calls `fn` makes with `keepalive: true`, so they outlive the
 // page being hidden or unloaded (the ranked saver's flush on pagehide). A call
-// sends its first fetch synchronously, so a flag scoped to the synchronous
-// call is enough — and deliberately doesn't reach a later retry, which only
-// runs while the page is still alive anyway. (keepalive caps the body at 64KB;
-// a maze is a few KB.)
+// sends its first fetch synchronously, so a flag scoped to that extent is
+// enough; a later retry runs only while the page is alive. keepalive caps the
+// body at 64KB; a maze is a few KB.
 export const withKeepalive = <T>(fn: () => T): T => {
   keepalive = true;
   try {
@@ -80,24 +76,19 @@ export const withKeepalive = <T>(fn: () => T): T => {
 };
 
 // Methods safe to auto-retry on a transport failure (fetch rejected, or a
-// gateway/non-JSON response — see TransportError — so the request most likely
-// never landed).
-// Retrying is only sound when a repeat can't double-apply: reads (idempotent)
-// and idempotent/last-write-wins writes. Deliberately EXCLUDED:
-//   - updateRun   — runSaver.ts owns its own coalescing retry+backoff; a second
-//                   layer here would fight it.
-//   - startRun     — a run-lifecycle transition; a lost response after the
-//                   server acted must not be silently redone.
+// gateway/non-JSON response, see TransportError), where the request most likely
+// never landed. Retrying is sound only when a repeat can't double-apply: reads
+// and idempotent writes. EXCLUDED:
+//   - updateRun   — runSaver.ts owns its own coalescing retry+backoff.
+//   - startRun    — a lost response after the server acted must not be redone.
 //   - merge       — destructive, one-shot.
-//   - deleteAccount — destructive lifecycle (id rotation); the client resets its
-//                   local id on success, so a blind retry would act on the stale
-//                   id. (The server op is itself an idempotent no-op on repeat.)
-//   - reportClientError — retrying error reports risks amplifying a bad loop.
-// setFlags IS retryable: it writes the whole flag set as an absolute value, so
-// a repeat lands the same rows. commitRun IS retryable: free play's commit
-// carries a per-attempt clientId and the server INSERT is guarded on it (NOT
-// EXISTS), so a repeat is a no-op. A legacy client's bare commit is an
-// idempotent flip-to-non-void, also safe to repeat.
+//   - deleteAccount — on success the client resets its local id, so a blind
+//                   retry would act on the stale id.
+//   - reportClientError — retrying reports risks amplifying a bad loop.
+// setFlags is retryable: it writes the whole flag set as an absolute value.
+// commitRun is retryable: free play's commit carries a per-attempt clientId and
+// the server INSERT is guarded on it, and a legacy bare commit is an idempotent
+// flip-to-non-void.
 const RETRYABLE = new Set<keyof BlocktolApi>([
   "list",
   "dayView",
@@ -121,18 +112,17 @@ const RETRYABLE = new Set<keyof BlocktolApi>([
   "commitRun",
 ]);
 
-// Backoff before each retry (ms); its length is the retry count. Jitter is added
-// per attempt so a fleet reconnecting together doesn't synchronize its retries.
+// Backoff before each retry (ms); its length is the retry count. Jitter keeps
+// clients reconnecting together from retrying in lockstep.
 const RETRY_BACKOFF_MS = [400, 1_200, 3_000];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// A response that is not the API answering. nginx in front of the co-located
-// instance answers 502/503/504 with an HTML page while the upstream restarts
-// (every deploy), and anything else that isn't JSON came from something other
-// than our handler too. Either way the request most likely never reached the
-// app, so it is a transport failure, not a server verdict: retryable methods
-// retry it, and it feeds the connection tracker rather than the error channel.
+// A response that is not the API answering: nginx's HTML 502/503/504 while the
+// upstream restarts (every deploy), or any other non-JSON body. The request
+// most likely never reached the app, so it is a transport failure, not a server
+// verdict: retryable methods retry it, and it feeds the connection tracker
+// rather than the error channel.
 export class TransportError extends Error {
   constructor(message: string, readonly status: number) {
     super(message);
@@ -152,11 +142,9 @@ const readJson = async (resp: Response) => {
   }
 };
 
-// Fetch and decode a call, retrying transport failures for methods that are
-// safe to repeat: fetch rejecting (no response at all) or a TransportError
-// above. A JSON answer — error statuses included — is a real, deterministic
-// server verdict and is returned as-is for the caller to handle. Non-retryable
-// methods throw on the first transport failure.
+// Fetch and decode a call, retrying transport failures (fetch rejecting, or a
+// TransportError) for RETRYABLE methods; others throw on the first. A JSON
+// answer, error statuses included, is a server verdict and is returned as-is.
 const fetchJson = async (
   method: string,
   input: unknown,
@@ -180,21 +168,18 @@ export const prime = <Method extends keyof BlocktolApi>(
   input: Parameters<BlocktolApi[Method]>[0],
 ) => {
   const p = doFetch(method, input);
-  // Observed so an early failure can't surface as an unhandled rejection;
-  // the consuming call still sees it (and handles it like its own fetch).
+  // Observed so an early failure isn't an unhandled rejection; the consuming
+  // call still sees it.
   p.catch(() => {});
   setPrime(primeKey(method, input), p);
 };
 
-// Prime one method's next call from a slice of a *shared* composite response —
-// the general form of what primeBoot does for boot. `source` is a composite
-// fetch already in flight (e.g. `api.dayView(...)`), `pick` selects this
-// method's slice, and it's stashed under the exact input the consumer will
-// send. So a click that fires one `dayView` primes both the getBoard the
-// board-loader sends AND the standings the dock reacts with, off the one
-// request. If the source fails at transport (or comes back an auth error) the
-// primed promise rejects and the consumer falls through to its own real fetch —
-// a composite hiccup degrades to the per-call path.
+// Prime one method's next call from a slice of a shared composite response
+// (the general form of primeBoot). `source` is a composite fetch already in
+// flight (e.g. `api.dayView(...)`), `pick` selects this method's slice, and it
+// is stashed under the input the consumer will send. If the source fails at
+// transport or returns an error, the primed promise rejects and the consumer
+// falls through to its own fetch.
 export const primeFrom = <Method extends keyof BlocktolApi, Source>(
   method: Method,
   input: Parameters<BlocktolApi[Method]>[0],
@@ -214,21 +199,16 @@ export const primeFrom = <Method extends keyof BlocktolApi, Source>(
 };
 
 // Prime the whole cold boot from ONE request. `boot` composes the handlers
-// server-side; here each is primed with a promise that awaits that single fetch
-// and hands back its slice as a synthetic Response — **content-keyed by the exact
-// input the consumer sends** (see the table below), so every existing call site
-// (App, the Dock, the Calendar, the stores) resolves off the one boot request
-// with no change to those call sites.
+// server-side; each is primed with a promise that awaits that single fetch and
+// hands back its slice as a synthetic Response, keyed by the input its consumer
+// sends (see the table below).
 //
-// `listInputs` are the calendar's mount-month ranges, in the SAME order boot
-// returns them ([current, prev]) — passed in from index.ts (the dailyItems store
-// owns that range shape; taking it as a param avoids an api<->store import
-// cycle). Each is primed under its own month key against boot's matching slice,
-// so both calendar month fetches consume off the one request.
+// `listInputs` are the calendar's mount-month ranges, in the order boot returns
+// them ([current, prev]). They are a parameter because the dailyItems store
+// owns that range shape and importing it here would be an api<->store cycle.
 //
 // If boot fails at transport (or returns a top-level auth error) each slice
-// rejects, and the consumer's existing fall-through fetches that one method for
-// real — a boot hiccup degrades to the per-call path, not a broken boot.
+// rejects and its consumer falls through to a real fetch.
 export const primeBoot = (
   input: Parameters<BlocktolApi["boot"]>[0],
   listInputs: Parameters<BlocktolApi["list"]>[0][],
@@ -263,11 +243,9 @@ export const primeBoot = (
   });
 
   // A `/YYYYMMDD` deep-link boot: `day` is set, so boot also carries the linked
-  // day's slices (`b.linked`). Prime the three requests consumeDeepLink /
-  // showBoard / the dock fire for that day, so it collapses onto this one boot
-  // too. A slice that finds no linked day THROWS, so the consumer falls through
-  // to its own real fetch (the deep-link handler already tolerates an
-  // unresolvable date) — a linked miss degrades to the per-call path.
+  // day's slices (`b.linked`). Prime the three requests consumeDeepLink,
+  // showBoard and the dock fire for that day. A slice with no linked day
+  // throws, so its consumer falls through to a real fetch.
   if (input.day) {
     const [ly, lm, ld] = input.day;
     const linkedSlice = (
@@ -287,9 +265,8 @@ export const primeBoot = (
       linkedSlice((l) => l.standings),
     );
     // The board (showBoard) and the dock's standings key off the ITERATION,
-    // which is only known once boot lands — so set those primes then. They're
-    // ready well before consumeDeepLink's multi-hop resolve→stage reaches them
-    // (a miss just falls through to a real fetch, so ordering is not load-bearing).
+    // which is known only once boot lands, so those primes are set then. A
+    // consumer that gets there first just fetches for real.
     bootData.then((b) => {
       const linked = b?.linked;
       if (!linked || typeof linked.iteration !== "number") return;
@@ -305,21 +282,17 @@ export const primeBoot = (
     }).catch(() => {});
   }
 
-  // Returned so the caller can seed today's iteration id from the response (see
-  // index.ts) — the standings dock needs it to recognize the staged board as
-  // today and consume the primed { timeZone } slice rather than fetching by id.
+  // Returned so the caller can seed today's iteration id (see primeSession in
+  // boot.ts); the standings dock needs it to recognize the staged board as
+  // today and consume the primed { timeZone } slice.
   return bootData as Promise<MessageMap["boot"]>;
 };
 
-// Relay a failed request to the server's log. Through the shared report
-// throttle (util/reportGate.ts), keyed per method + status: every error
-// response would otherwise fire its own report, so a polling or retrying caller
-// hitting the same fault would send one per attempt — the amplification the
-// global handlers' dedupe already prevents for crashes. And never a failed
-// REPORT: reportClientError rides this same proxy, so during an outage every
-// failed report would otherwise fire another — an unbounded loop hammering the
-// server exactly when it's least healthy. Fire-and-forget; its own failure is
-// swallowed so it can't surface as an unhandled rejection.
+// Relay a failed request to the server's log, throttled per method + status by
+// util/reportGate.ts so a polling or retrying caller doesn't send one report
+// per attempt. Never reports a failed `reportClientError`: it rides this same
+// proxy, so during an outage each failed report would fire another.
+// Fire-and-forget.
 const reportFailedRequest = (
   method: string,
   status: number,
@@ -353,9 +326,8 @@ export const api = new Proxy({}, {
       let resp: Response;
       let data: unknown;
       try {
-        // Consume the primed response if there is one; if that primed fetch
-        // failed at the transport level, fall through to a fresh, retried fetch
-        // rather than letting a boot-time network blip surface as a hard error.
+        // A primed fetch that fails at transport falls through to a fresh,
+        // retried fetch instead of surfacing a boot-time blip as an error.
         if (preloaded) {
           try {
             resp = await preloaded;
@@ -367,11 +339,10 @@ export const api = new Proxy({}, {
           ({ resp, data } = await fetchJson(method, input));
         }
       } catch (err) {
-        // Transport-level failure that survived any retries (the server never
-        // answered): feed the connection tracker, which surfaces the
-        // Disconnected overlay once failures persist. A non-JSON body that is
-        // NOT a gateway page is unexpected enough to report (a gateway page is
-        // every deploy, and the server isn't there to hear about it).
+        // Transport failure that survived any retries: feed the connection
+        // tracker, which shows the Disconnected overlay once failures persist.
+        // A non-JSON body that is not a gateway page is reported; gateway pages
+        // happen every deploy and the server isn't up to hear them.
         noteFailure();
         if (
           err instanceof TransportError && !GATEWAY_STATUSES.has(err.status)
@@ -381,10 +352,9 @@ export const api = new Proxy({}, {
         throw err;
       }
       noteSuccess();
-      // Note the server's build off the response header; a build newer than this
-      // bundle marks the tab stale and schedules a reload at a safe moment (see
-      // store/version.ts, useVersionRefresh). Synthetic primed responses carry no
-      // header — a no-op.
+      // A server build newer than this bundle marks the tab stale (see
+      // store/version.ts, useVersionRefresh). Synthetic primed responses carry
+      // no header, so this is a no-op for them.
       noteServerVersion(resp.headers.get("x-blocktol-server-sha"));
       if (data && typeof data === "object" && "error" in data) {
         reportFailedRequest(method, resp.status, data.error);

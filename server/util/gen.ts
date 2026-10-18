@@ -23,14 +23,12 @@ const ensureIteration = async (unix: number) => {
 const ensureIterations = async (offsetDays: number) => {
   let day = Date.now() - offsetDays * ONE_DAY;
   const failures: string[] = [];
-  // Through tomorrow (UTC): a day's iteration is keyed to the server (UTC) date,
-  // but a player's daily is their *local* date, so timezones ahead of UTC reach
-  // a new local day before UTC does — pre-generate tomorrow so they have it.
+  // Through tomorrow (UTC): timezones ahead of UTC reach a new local day before
+  // UTC does, so tomorrow's puzzle must already exist.
   while (day < Date.now() + 2 * ONE_DAY) {
-    // A DB error on one day must not abort the rest of the window, or a blip on
-    // an early day would skip generating every later one — including tomorrow's
-    // puzzle. Log and move on; the next hourly run retries any day still missing
-    // (ensureIteration is idempotent).
+    // A DB error on one day must not skip the later days, tomorrow's included.
+    // Log and move on; the next hourly run retries (ensureIteration is
+    // idempotent).
     try {
       await ensureIteration(day);
     } catch (err) {
@@ -42,11 +40,9 @@ const ensureIterations = async (offsetDays: number) => {
     }
     day += ONE_DAY;
   }
-  // A day left without an iteration has no daily at all — the one generation
-  // failure an operator must actually see, since the only other trace is a line
-  // in the localhost-only log UI. Alert ONCE per run rather than per day (a full
-  // DB outage fails every day in the window) — a no-op without the webhook. The
-  // hourly retry heals transient blips, so a repeat alert means it's still broken.
+  // A day without an iteration has no daily at all, so an operator must see it.
+  // Alert ONCE per run, not per day (a DB outage fails every day in the
+  // window). The hourly retry heals blips: a repeat alert means still broken.
   if (failures.length) {
     const shown = failures.slice(0, 3).join(", ");
     alertAdmin(
@@ -58,17 +54,15 @@ const ensureIterations = async (offsetDays: number) => {
 };
 
 // A day becomes ratable 37h after its UTC start (getUnratedClosedIterations)
-// and rate-dailies tries it every hour from then on; one still unrated this
-// many hours past that close means rating has stopped — the cron isn't running
-// or every attempt is failing.
+// and rate-dailies retries it hourly; one still unrated this many hours past
+// that means rating has stopped.
 const STALE_AFTER_CLOSE_HOURS = 6;
 const CLOSE_HOURS = 37;
 
-// The watchdog for rate-dailies, run from THIS cron so that a rating cron that
-// died (or was never registered) is still noticed — nothing else would: an
-// unrated day just silently never sends its daily-final notifications or ELO.
-// One alert per run at most (hourly, so a repeat means it's still stuck), and a
-// failed probe is only logged — it must never get in the way of generation.
+// The watchdog for rate-dailies. It runs from THIS cron so a dead or
+// unregistered rating cron is still noticed; otherwise an unrated day silently
+// never sends its ELO or daily-final notifications. At most one alert per run,
+// and a failed probe is only logged so it can't block generation.
 const checkRatingLiveness = async () => {
   try {
     const { count, oldest } = await getStaleUnratedIterations(
@@ -87,27 +81,23 @@ const checkRatingLiveness = async () => {
   }
 };
 
-// Bulk daily generation. `Deno.cron` runs once per schedule, never overlapping,
-// so it's a single writer for the whole 33-day window in one pass — cheaper than
-// backfilling day-by-day on request. Hourly is enough: the window reaches
-// tomorrow, so each day is generated ~a day before any timezone needs it (this
-// also seeds new envs / heals gaps). Idempotent; must be registered before
-// `Deno.serve`.
+// Bulk daily generation. `Deno.cron` never overlaps itself, so this is a single
+// writer for the whole 33-day window (31 back, through tomorrow). Hourly is
+// enough: the window reaches tomorrow, so each day exists ~a day before any
+// timezone needs it. It also seeds new envs and heals gaps. Idempotent; must be
+// registered before `Deno.serve`.
 //
-// It is NOT the only writer, though — the per-request backfill
-// (util/newIteration.ts `ensureDailyIterationId`) generates a missing day on
-// demand, because Deno Deploy preview deployments (the only thing Deploy hosts)
-// don't run `Deno.cron` and so never reach this. The two writers can race (two
-// processes both check-then-create), but `iteration.created` is UNIQUE
-// (migration v14), so the duplicate INSERT is rejected rather than standing —
-// the DB is the mutex, and the two writers coexist safely.
+// It is NOT the only writer: the per-request backfill (`ensureDailyIterationId`
+// in util/newIteration.ts) generates a missing day on demand, because Deno
+// Deploy previews don't run `Deno.cron`. The two can race (check-then-create),
+// but `iteration.created` is UNIQUE (migration v14), so the loser's INSERT is
+// rejected: the DB is the mutex.
 //
-// DISABLE_CRONS gates registration so a second instance sharing this DB (a
-// staging box, say) doesn't double-generate. The write path is already
-// race-safe, but skipping the duplicate work is cleaner.
+// DISABLE_CRONS skips registration so a second instance on this DB doesn't
+// duplicate the work.
 //
-// Each run ends with the retention sweep (util/retention.ts): old notifications
-// and never-used profiles, in bounded batches.
+// Each run ends with the rating-liveness check and the retention sweep
+// (util/retention.ts).
 if (!Deno.env.get("DISABLE_CRONS")) {
   Deno.cron("ensure-iterations", "0 * * * *", async () => {
     await ensureIterations(31);

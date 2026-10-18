@@ -12,18 +12,15 @@ import { setRunPinned } from "./pin.ts";
 import { startRun } from "./start.ts";
 import { updateRun } from "./update.ts";
 
-// Integration tests for the run lifecycle — the void/ranked/daily state
-// machine where most of the audit's bugs lived. The semantics live in
-// multi-statement SQL (session variables, window checks, transactions), which a
-// fake couldn't faithfully emulate, so these exercise the REAL route handlers
-// against the real (dev) database:
-// each test plays as a throwaway user and deletes it afterwards (its runs
-// cascade). Skipped wholesale when SQL_PASSWORD isn't available, so a
-// credential-less environment stays green.
+// Integration tests for the run lifecycle (the void/ranked/daily state
+// machine). The semantics live in multi-statement SQL (session variables,
+// window checks, transactions) that a fake can't emulate, so these run the REAL
+// handlers against the dev database. Each test plays as a throwaway user and
+// deletes it afterwards (runs cascade). Skipped without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
-// The routes read the user id off the request the way the middleware leaves
-// it, so build a request and run the middleware on it.
+// Handlers read the user id the way extractUserId leaves it, so run that
+// middleware on the request.
 const authed = (userId: string) => {
   const req = new Request("http://localhost/api/test", {
     headers: { authorization: userId },
@@ -32,8 +29,8 @@ const authed = (userId: string) => {
   return req;
 };
 
-// Seeded up front: run.user is a foreign key, and the app always creates the
-// user (summary/profile) before any start.
+// Seeded up front: run.user is a foreign key and the app creates the user
+// before any start.
 const testUser = async () => {
   const id = `t-${crypto.randomUUID().slice(0, 16)}`;
   await createOrUpdateUser(id);
@@ -58,9 +55,7 @@ const runRows = (user: string) =>
 
 const cleanup = (user: string) => sql`DELETE FROM user WHERE id = ${user};`;
 
-// The pinned flags of the user's runs, in the same order runRows reads them —
-// the pin toggle sets an absolute value, so a test can read back whether a pin
-// actually landed on the row.
+// The pinned flags of the user's runs, in runRows order.
 const pinnedFlags = (user: string) =>
   sql<{ pinned: number }[]>`
     SELECT run.pinned
@@ -70,9 +65,8 @@ const pinnedFlags = (user: string) =>
     r.map((x) => Number(x.pinned))
   );
 
-// Age the user's latest run so it reads as started `seconds` ago — how tests
-// step past the 60s build window (and the 2s start-race guard) without
-// sleeping through them.
+// Age the user's latest run as if started `seconds` ago, to step past the 60s
+// window and the 2s start-race guard without sleeping.
 const backdate = (user: string, seconds: number) =>
   sql`
     UPDATE run
@@ -80,8 +74,7 @@ const backdate = (user: string, seconds: number) =>
     WHERE user = ${user}
     ORDER BY created DESC LIMIT 1;`;
 
-// Legal placements on a board: grown greedily so any prefix (and the whole
-// set) validates together, letting tests build multi-block mazes.
+// Legal placements, grown greedily so any prefix (and the whole set) validates.
 const freeCells = (
   data: Awaited<ReturnType<typeof getIteration>>,
   n: number,
@@ -96,8 +89,8 @@ const freeCells = (
   return cells;
 };
 
-// The daily these tests play (today per UTC — the timeZone every handler call
-// passes). Created if the generation cron hasn't reached it on this database.
+// The daily these tests play (today per UTC, the timeZone every call passes),
+// created if the gen cron hasn't reached it on this database.
 const todayDaily = (() => {
   let promise: Promise<number> | undefined;
   return () => {
@@ -117,8 +110,8 @@ const todayDaily = (() => {
   };
 })();
 
-// Any past iteration works as a free-play board (test runs on it are removed
-// by the user cascade). The oldest is safely outside every daily window.
+// Any past iteration works as a free-play board; the oldest is outside every
+// daily window.
 const pastIteration = (() => {
   let promise: Promise<number> | undefined;
   return () => {
@@ -186,8 +179,7 @@ Deno.test({
       assertEquals(Number(rows[0].ranked), 0, "a past day is never ranked");
       assertEquals(Number(rows[0].void), 1, "void until it executes");
 
-      // Build more, then MOVE a block — the 1a regression: a move must not
-      // commit the run.
+      // Build more, then MOVE a block (1a): a move must not commit the run.
       await updateRun.handler({ iteration, blocks: [c0, c1] }, req);
       await updateRun.handler({ iteration, blocks: [c0, c2] }, req);
       rows = await runRows(user);
@@ -217,8 +209,7 @@ Deno.test({
       const expected = validateRun(data, cells);
       assert(expected.ok);
 
-      // The current client: no startRun/updateRun — the whole maze arrives at
-      // commit with a client-generated id.
+      // The current client: the whole maze arrives at commit.
       const committed = await commitRun.handler(
         { iteration, blocks: cells, clientId: crypto.randomUUID() },
         req,
@@ -253,20 +244,17 @@ Deno.test({
       const data = await getIteration(iteration);
       const cells = freeCells(data, 2);
 
-      // Commit a free-play run the way the current client does (no
-      // startRun/updateRun — the whole maze arrives at commit).
+      // Commit the way the current client does.
       const committed = await commitRun.handler(
         { iteration, blocks: cells, clientId: crypto.randomUUID() },
         req,
       );
       assert(!("error" in committed), "commit-only free play should succeed");
 
-      // The client optimistically shows the just-executed run in its panel while
-      // the runner is still animating — before any re-stage refetches the
-      // authoritative list. To let a pin on THAT row persist, the commit must
-      // hand back the run's server-assigned `created` (the same second-precision
-      // ms the pin query matches on), not leave the client guessing with a
-      // Date.now() stamp of its own.
+      // The client shows the just-executed run optimistically before any
+      // refetch. For a pin on that row to persist, the commit must return the
+      // server-assigned `created` (the second-precision ms the pin query
+      // matches on), not a client Date.now() stamp.
       assertExists(committed.created, "commit returns the run's created");
       assertEquals(
         committed.created % 1000,
@@ -274,10 +262,8 @@ Deno.test({
         "the returned created is the DB's second-precision value",
       );
 
-      // A pin sent with a client wall-clock stamp — millisecond precision off
-      // the player's own clock, as an optimistic row stamped with Date.now()
-      // would — cannot match the server's second-precision row, so it silently
-      // no-ops.
+      // A millisecond-precision client stamp can't match the server's
+      // second-precision row, so the pin silently no-ops.
       const clientStamp = committed.created + 123;
       const stale = await setRunPinned.handler(
         { iteration, created: [clientStamp], pinned: true },
@@ -319,8 +305,8 @@ Deno.test({
       const [cell] = freeCells(data, 1);
       const clientId = crypto.randomUUID();
 
-      // The same commit twice — as a retry across a dropped connection would —
-      // must leave exactly one row; a fresh id makes a genuinely new run.
+      // The same commit twice (a retry after a dropped connection) leaves one
+      // row; a fresh id is a new run.
       await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
       await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
       assertEquals(
@@ -398,9 +384,8 @@ Deno.test({
       );
       await backdate(user, 120);
 
-      // Attempt 2: freshly started, empty — it does NOT hold the daily flag
-      // (attempt 1's build does), so resume must not key off the daily
-      // flag.
+      // Attempt 2: freshly started, empty; attempt 1 holds the daily flag, so
+      // resume must not key off it.
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       const rows = await runRows(user);
       assertEquals(rows.length, 2);
@@ -437,9 +422,8 @@ Deno.test({
       const data = await getIteration(await todayDaily());
       const cells = freeCells(data, 2);
 
-      // Two built attempts with different mazes (durations differ or tie —
-      // either way the invariant must hold: exactly one daily = TRUE among
-      // ranked runs, on a run whose time is the ranked maximum).
+      // Two built attempts with different mazes. Whether durations differ or
+      // tie, exactly one ranked run has daily = TRUE, at the ranked maximum.
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       await updateRun.handler(
         { iteration: data.iteration, blocks: [cells[0]] },
@@ -495,17 +479,15 @@ Deno.test({
     try {
       await todayDaily();
 
-      // Boot does not auto-start: the summary opens no run and counts no
-      // attempt (the client raises an explicit "Start attempt" overlay), so a
-      // background boot can't silently spend one.
+      // The summary opens no run and counts no attempt, so a background boot
+      // can't spend one.
       const boot = await getDailySummary.handler({ timeZone: "UTC" }, req);
       assert(!("error" in boot));
       assertEquals(boot.currentRun, null, "boot opens no run");
       assertEquals(boot.ranked.length, 0, "boot starts no attempt");
 
-      // The explicit Start action opens the attempt; a follow-up summary now
-      // resumes it as currentRun, counts it in ranked, yet keeps it out of the
-      // finished-attempts panel (#98 — it's the board, not a finished row).
+      // After startRun the summary resumes it as currentRun and counts it in
+      // ranked, but keeps it out of the finished-attempts panel (#98).
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       const summary = await getDailySummary.handler({ timeZone: "UTC" }, req);
       assert(!("error" in summary));

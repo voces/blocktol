@@ -9,11 +9,10 @@ const SCHEMA_MIGRATION = `
     applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   );`;
 
-// A single-row lease lock. GET_LOCK can't be used here: it is connection-scoped
-// and every `sql` call is a separate HTTP request to the proxy (a different
-// connection), so a lock taken in one call is gone by the next. A row survives
-// across calls, and the TTL means a migrator that crashes mid-run frees the
-// lease automatically instead of wedging every future boot.
+// A single-row lease lock. GET_LOCK is connection-scoped and each `sql` call is
+// a separate proxy request (a different connection), so it wouldn't survive
+// between calls. A row does, and the TTL frees the lease if a migrator crashes
+// instead of wedging every future boot.
 const SCHEMA_MIGRATION_LOCK = `
   CREATE TABLE IF NOT EXISTS schema_migration_lock (
     id TINYINT NOT NULL PRIMARY KEY,
@@ -23,18 +22,16 @@ const SCHEMA_MIGRATION_LOCK = `
 
 const LOCK_TTL_SECONDS = 60;
 
-// The holder pushes its lease out this often while it works. A migration can
-// outlast the TTL (a big ALTER takes minutes), and a lease that lapsed mid-run
-// would let a waiting isolate claim it and re-apply the same DDL. A third of the
-// TTL leaves room for a renewal or two to fail before the lease actually
-// expires; a holder that truly dies still frees it within the TTL.
+// The holder renews its lease this often. A big ALTER can outlast the TTL, and
+// a lapsed lease would let a waiting isolate re-apply the same DDL. A third of
+// the TTL leaves room for a renewal or two to fail.
 const RENEW_EVERY_MS = (LOCK_TTL_SECONDS / 3) * 1000;
 
 // A loser of the lease election polls at this interval until the winner has
-// recorded the target version, and gives up after WAIT_CAP_MS — longer than any
-// migration we expect, short enough that a wedged migrator surfaces (the throw
+// recorded the target version, and gives up after WAIT_CAP_MS: longer than any
+// expected migration, short enough that a wedged migrator surfaces (the throw
 // lands in index.ts's best-effort catch, which logs, alerts and opens the gate)
-// rather than holding every request on this process indefinitely.
+// instead of holding every request.
 const WAIT_POLL_MS = 2000;
 const WAIT_CAP_MS = 15 * 60 * 1000;
 
@@ -44,9 +41,8 @@ const ensureTables = () =>
     ${raw(SCHEMA_MIGRATION_LOCK)}
     INSERT IGNORE INTO schema_migration_lock (id) VALUES (1);`;
 
-// Try to claim the lease. The WHERE clause matches only when the lock is free
-// (never taken or expired), so exactly one concurrent caller flips the row and
-// sees affectedRows === 1; the rest see 0 and back off.
+// Tries to claim the lease. The WHERE matches only a free lock (never taken or
+// expired), so exactly one concurrent caller sees affectedRows === 1.
 const acquireLock = async (holder: string) => {
   const res = await sql<ExecResult>`
     UPDATE schema_migration_lock
@@ -55,9 +51,9 @@ const acquireLock = async (holder: string) => {
   return res.affectedRows === 1;
 };
 
-// Extend a lease we still hold. Matching on `holder` means a lease that already
-// lapsed and was claimed by someone else is never stolen back — the renewal
-// just reports it (affectedRows 0), so the log shows two migrators overlapped.
+// Extends a lease we still hold. Matching on `holder` means a lapsed lease
+// claimed by someone else is not stolen back; affectedRows 0 reports the
+// overlap.
 const renewLock = (holder: string) =>
   sql<ExecResult>`
     UPDATE schema_migration_lock
@@ -77,10 +73,9 @@ const currentVersion = () =>
 
 const targetVersion = migrations[migrations.length - 1].version;
 
-// Apply every pending migration while holding the lease, renewing it in the
-// background for as long as that takes. Each migration runs through sqlMigrate
-// — no timeout, no retry — see query.ts for why the ordinary guards are unsafe
-// for DDL.
+// Applies every pending migration while holding the lease, renewing it in the
+// background. Each runs through sqlMigrate (no timeout, no retry; see
+// query.ts).
 const applyPending = async (holder: string) => {
   const renew = setInterval(() => {
     renewLock(holder).then((r) => {
@@ -90,8 +85,8 @@ const applyPending = async (holder: string) => {
     );
   }, RENEW_EVERY_MS);
   try {
-    // Re-read under the lock: another isolate may have applied some (or all) of
-    // these between our first check and winning the lease.
+    // Re-read under the lock: another isolate may have applied some of these
+    // since our first check.
     for (const m of pendingMigrations(await currentVersion())) {
       log.info("applying migration", { version: m.version, name: m.name });
       await sqlMigrate`
@@ -105,20 +100,17 @@ const applyPending = async (holder: string) => {
   log.info("schema migrated", { version: targetVersion });
 };
 
-// Bring the database up to the latest schema version, applying every pending
-// migration in order. Safe to call from many isolates at once (e.g. on boot):
-// the lease lock elects a single migrator, and the version is re-read under the
-// lock so a caller that waited never re-applies what the winner already did.
+// Brings the database to the latest schema version. Safe to call from many
+// isolates at once: the lease elects a single migrator, and the version is
+// re-read under the lock so a waiter never re-applies the winner's work.
 //
-// A caller that loses the election WAITS for the winner rather than returning:
-// its resolution is what opens the `ready` gate in index.ts, and returning at
-// once would let a losing process serve requests against a schema its code
-// predates for as long as the winner's migration runs. It polls the recorded
-// version and re-tries the lease each round, so a winner that died mid-run (its
-// lease lapsing) is taken over rather than waited on until the cap.
+// A caller that loses the election WAITS rather than returning: its resolution
+// opens the `ready` gate in index.ts, and returning early would serve requests
+// against a schema its code predates. Each round it polls the recorded version
+// and retries the lease, so a winner that died mid-run is taken over instead of
+// waited on until the cap.
 //
-// Idempotent and cheap when nothing is pending — the common case is two indexed
-// reads and no lock contention.
+// Cheap when nothing is pending (two indexed reads, no lock).
 export const migrate = async () => {
   await ensureTables();
 

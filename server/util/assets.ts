@@ -1,16 +1,13 @@
-// Boot-time asset fingerprinting. The app is served by this dynamic server, so
-// rather than a build step that renames files, we hash the fingerprintable
-// assets once (lazily, on first request) and:
-//   - serve the app shell / manifest with `?v=<hash>` stamped onto their asset
-//     refs, so a content change becomes a NEW url no cache can answer staleley;
-//   - inject the version + precache list + notification-icon url + VAPID public
-//     key into the SW;
-//   - mark any correctly-versioned asset immutable for a year, while the shell,
-//     SW, and manifest stay no-cache so new hashes always propagate.
-//
-// This is what fixes "I changed the icon but everyone still sees the old one":
-// the icon lived at a stable url (`/favicon.svg`) that every layer — HTTP cache,
-// the SW cache, the push notification — kept serving from cache.
+// Asset fingerprinting. Instead of a build step that renames files, the server
+// hashes the fingerprintable assets once per process (lazily, on first request)
+// and:
+//   - serves the app shell / manifest with `?v=<hash>` stamped onto asset refs,
+//     so a content change is a NEW url no cache can answer stale (a stable url
+//     would be served from the HTTP cache, SW cache and push notifications);
+//   - injects the version, precache list, notification-icon url and VAPID
+//     public key into the SW;
+//   - marks a correctly-versioned asset immutable for a year, while the shell,
+//     SW and manifest stay no-cache so new hashes propagate.
 
 import { join } from "@std/path/posix";
 import { getVapidPublicKey } from "./webpush.ts";
@@ -30,13 +27,12 @@ const CONTENT_ADDRESSED_FONT = /^\/fonts\/[a-z0-9-]+-[0-9a-f]{8}\.woff2$/;
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
-// path -> content hash, for the assets that exist. A missing asset is simply
-// absent (served unversioned) rather than crashing the build.
+// path -> content hash, for the assets that exist. A missing asset is absent
+// and served unversioned.
 export type VersionMap = Record<string, string>;
 
-// `Uint8Array<ArrayBuffer>` (not a bare `Uint8Array`, which defaults to
-// `ArrayBufferLike`) is the shape WebCrypto's BufferSource params require under
-// the strict typed-array generics — matching server/util/webpush.ts.
+// `Uint8Array<ArrayBuffer>`, not a bare `Uint8Array` (`ArrayBufferLike`), is
+// what WebCrypto's BufferSource requires; same as webpush.ts.
 const shortHash = async (bytes: Uint8Array<ArrayBuffer>): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest).slice(0, 6))
@@ -48,9 +44,9 @@ const shortHash = async (bytes: Uint8Array<ArrayBuffer>): Promise<string> => {
 const versioned = (version: VersionMap, path: string) =>
   version[path] ? `${path}?v=${version[path]}` : path;
 
-// Cache-Control for a static asset request: immutable when the `?v` matches the
-// asset's CURRENT hash, else null (caller keeps serveFile's revalidating
-// default). A stale `?v` therefore can't pin the wrong bytes as immutable.
+// Cache-Control for a static asset request: immutable when `?v` matches the
+// asset's CURRENT hash, else null (the caller keeps serveFile's revalidating
+// default), so a stale `?v` can't pin the wrong bytes.
 export const immutableFor = (
   version: VersionMap,
   pathname: string,
@@ -61,35 +57,33 @@ export const immutableFor = (
 };
 
 // The pure transform: stamp `?v=` onto the shell/manifest refs and fill the SW's
-// asset-manifest marker. No I/O, so it's unit-testable with in-memory strings.
+// asset-manifest marker.
 export const stampAssets = (
   sources: { indexHtml: string; manifest: string; sw: string },
   version: VersionMap,
-  // The server's VAPID public key, injected into the SW so it can re-subscribe
-  // on `pushsubscriptionchange` with no page open to fetch it from
-  // /api/pushConfig. Public by definition (it's the applicationServerKey every
-  // client already holds). "" when push isn't configured.
+  // The VAPID public key, injected into the SW so it can re-subscribe on
+  // `pushsubscriptionchange` with no page open to fetch /api/pushConfig. Public
+  // by definition. Injected as "" when push isn't configured.
   vapidPublicKey: string | null = null,
 ): { shell: string; sw: string; manifest: string } => {
   const v = (p: string) => versioned(version, p);
 
-  // Shell: stamp the fingerprinted refs. The manifest link stays unversioned —
-  // it's served no-cache and carries the versioned icon itself.
+  // The manifest link stays unversioned: it is served no-cache and carries the
+  // versioned icon itself.
   const shell = sources.indexHtml
     .replaceAll('href="/styles.css"', `href="${v("/styles.css")}"`)
     .replaceAll('href="/fonts/fonts.css"', `href="${v("/fonts/fonts.css")}"`)
     .replaceAll('src="/js/index.js"', `src="${v("/js/index.js")}"`)
     .replaceAll('href="/favicon.svg"', `href="${v("/favicon.svg")}"`);
 
-  // Manifest: version the icon (a relative "favicon.svg" ref).
+  // The manifest refers to the icon as a relative "favicon.svg".
   const icon = version["/favicon.svg"]
     ? `favicon.svg?v=${version["/favicon.svg"]}`
     : "favicon.svg";
   const manifest = sources.manifest.replaceAll('"favicon.svg"', `"${icon}"`);
 
-  // One build id that changes whenever any precached asset changes — the SW
-  // cache name keys off it, so a deploy that touches an asset purges the old
-  // cache on activate.
+  // Changes whenever any precached asset does; the SW cache name keys off it,
+  // so the old cache is purged on activate.
   const assetVersion = FINGERPRINTED.map((p) => version[p] ?? "0").join("");
   const precache = [
     "/",
@@ -113,19 +107,18 @@ export const stampAssets = (
 };
 
 export type Assets = {
-  // The transformed app shell (index.html with `?v=` stamped), served for "/",
-  // "/index.html", and the /YYYYMMDD permalink.
+  // index.html with `?v=` stamped, served for "/", "/index.html" and the
+  // /YYYYMMDD permalink.
   shell: string;
-  // The SW with its ASSET_MANIFEST marker filled in (version, precache, icon).
+  // The SW with its ASSET_MANIFEST marker filled in.
   sw: string;
   // The manifest with its icon url versioned.
   manifest: string;
   // Cache-Control for a static request (immutable for a correctly-versioned
-  // asset, else null). `mtime` is the served file's current modification time:
-  // the hashes are computed once per process, so a file rewritten under a
-  // running process (an in-place deploy, before the restart) no longer has
-  // the bytes its `?v` names — those must not be pinned for a year under the
-  // old url.
+  // asset, else null). `mtime` is the file's current modification time: hashes
+  // are computed once per process, so a file rewritten under a running process
+  // (an in-place deploy before the restart) no longer has the bytes its `?v`
+  // names and must not be pinned for a year.
   cacheControlFor: (
     pathname: string,
     search: URLSearchParams,
@@ -137,8 +130,7 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
   const root = join(Deno.cwd(), publicDir);
   const readText = (p: string) => Deno.readTextFile(join(root, p));
 
-  // Hash each fingerprinted asset; a missing one (e.g. before a client build)
-  // just stays unversioned rather than crashing boot.
+  // A missing asset (e.g. before a client build) stays unversioned.
   const version: VersionMap = {};
   // Each hashed file's mtime as of hashing (see cacheControlFor).
   const hashedAt: Record<string, number | undefined> = {};
@@ -172,9 +164,9 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
   };
 };
 
-// Built once per process on first request (not at import) so tests and other
-// entrypoints don't hit the filesystem; a failed build isn't cached, so the
-// next request retries rather than being served the rejection.
+// Built once per process on first request, not at import, so tests and other
+// entrypoints don't touch the filesystem. A failed build isn't cached; the next
+// request retries.
 let cached: Promise<Assets> | undefined;
 export const assets = (publicDir: string): Promise<Assets> => {
   if (!cached) {

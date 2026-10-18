@@ -12,8 +12,7 @@ import { arrivedViaDeepLink } from "../../store/notifNav.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
 import { intlLocale, t, tJsx } from "../../util/t.ts";
 
-// Best-attempt badge → catalog key, mapped by a literal object so every live
-// key stays greppable (see the i18n conventions).
+// Badge → catalog key, as a literal object so keys stay greppable (see i18n).
 const BADGE_KEY = {
   supreme: "badge.supreme",
   record: "badge.record",
@@ -38,8 +37,8 @@ const ShareIcon = () => (
   </svg>
 );
 
-// Result glyph, tinted to the banner's --beat color: a check for the top half of
-// the field, a dash for the middle, an X for the bottom quartile.
+// Banner glyph in --beat: a check for the top half of the field, a dash for the
+// middle, an X for the bottom quartile.
 const BEAT_ICON = {
   win: "M3 8.5l3.4 3.4L13 4.2",
   mid: "M4 8h8",
@@ -68,8 +67,7 @@ export const Daily = () => {
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
 
-  // Opened from a day deep-link: stay out of the way of the day/leaderboard it
-  // pointed at (the Today panel + standings still carry the numbers).
+  // Opened from a deep link: stay out of the way of the day it pointed at.
   if (!attempts || hideDailyResult || arrivedViaDeepLink.value) {
     return null;
   }
@@ -104,8 +102,7 @@ export const Daily = () => {
   });
   const best = attempts[bestIdx];
   const isSupreme = best.supreme;
-  // A non-supreme run that ties the field's top time gets the peak green-yellow,
-  // a step below supreme gold.
+  // Ties the field's top time without taking the record.
   const isPeak = !isSupreme && best.percent === 1;
   const accent = isSupreme
     ? "var(--gold)"
@@ -116,9 +113,7 @@ export const Daily = () => {
   const beatPct = typeof best.percentile === "number"
     ? Math.round(best.percentile * 100)
     : null;
-  // Banded theme colour (red → amber → green → blue), supreme in gold, a
-  // non-supreme field-topping tie in peak green-yellow — the shared scheme used
-  // by the today-result and attempts panels too.
+  // The same colour scheme as the today-result and attempts panels.
   const beatColor = isSupreme
     ? "var(--gold)"
     : isPeak
@@ -138,9 +133,8 @@ export const Daily = () => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Plain writeText: `ClipboardItem` doesn't exist everywhere (a
-    // ReferenceError there), and the write can be refused. "Copied" is shown
-    // only once it actually landed; a failure just leaves the button as it was.
+    // Plain writeText: `ClipboardItem` is missing in some browsers, and the
+    // write can be refused. "Copied" shows only once it lands.
     Promise.resolve()
       .then(() => navigator.clipboard.writeText(shareText))
       .then(() => {
@@ -246,10 +240,9 @@ export const Daily = () => {
           <Button
             class="result__btn result__btn--keep"
             onClick={() => {
-              // The free-play board was already staged in the background when
-              // this card opened (see useInit's finished-daily path), so
-              // closing usually just closes. The stage-now path is only the
-              // fallback for when that fetch failed or hasn't landed yet.
+              // `useInit`'s finished-daily path stages the free-play board when
+              // this card opens; staging here is the fallback for a fetch that
+              // failed or hasn't landed.
               if (!staged) {
                 clear();
                 showBoard(iteration);

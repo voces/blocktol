@@ -1,12 +1,11 @@
 // The build-time ICU MessageFormat parser + param extractor. Lives in scripts/
-// (never bundled) so the client ships only the compiled AST and the tiny walker
-// in common/i18n.ts — no parser. genI18n.ts turns each i18n/<locale>.json message
-// into an I18nNode[] with parseMessage, and derives the per-key params type map
-// from en.json with collectParams.
+// so the client ships only the compiled AST and the walker in common/i18n.ts.
+// genI18n.ts compiles each i18n/<locale>.json message with parseMessage and
+// derives the per-key params types from en.json with collectParams.
 //
-// Supported ICU subset (all the app's copy needs): plain `{arg}` substitution,
-// `{arg, plural, one {…} other {…} =0 {…}}` with `#`, and `{arg, select, …}`.
-// Apostrophes are literal (no ICU quoting) — none of our messages need escaping.
+// Supported ICU subset: plain `{arg}`, `{arg, plural, one {…} other {…}}` with
+// `=N` and `#`, and `{arg, select, …}`. Apostrophes are literal (no ICU
+// quoting).
 
 import type { I18nNode } from "../common/i18n.ts";
 
@@ -32,8 +31,8 @@ export const parseMessage = (src: string): I18nNode[] => {
     return readIdent();
   };
 
-  // Parse a run of nodes up to the next unmatched `}` (a sub-message terminator)
-  // or end of input (the top-level message). `inPlural` enables `#`.
+  // Parse nodes up to the next unmatched `}` (end of a sub-message) or end of
+  // input. `inPlural` enables `#`.
   const parseNodes = (inPlural: boolean): I18nNode[] => {
     const nodes: I18nNode[] = [];
     let text = "";
@@ -122,9 +121,9 @@ export const parseMessage = (src: string): I18nNode[] => {
   return nodes;
 };
 
-// An argument's TypeScript type: a plural count is `number`, a select key is
-// `string`, a bare `{arg}` could be either. `number` > `string` > `either`
-// wins when an arg appears in more than one role.
+// An argument's TypeScript type: a plural count is `number`, a select key
+// `string`, a bare `{arg}` either. Precedence when an arg has several roles:
+// `number` > `string` > `either`.
 export type ParamKind = "number" | "string" | "either";
 
 const tsType: Record<ParamKind, string> = {

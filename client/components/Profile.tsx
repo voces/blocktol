@@ -44,10 +44,9 @@ import {
 import { intlLocale, t, uiLocale } from "../util/t.ts";
 import { profileRequest, takeProfileRequest } from "../store/notifNav.ts";
 
-// A compact custom language dropdown. A native <select> sizes to its widest
-// option (so the chevron floats far right of a short value like "System") and
-// its popup is OS-rendered/misaligned; this sizes the trigger to the current
-// value and positions the menu itself. Closes on outside-click or Escape.
+// A compact language dropdown. A native <select> sizes to its widest option
+// and has an OS-rendered popup; this sizes the trigger to the current value and
+// positions the menu itself. Closes on outside-click or Escape.
 const LanguageSelect = (
   { value, onChange }: { value: string; onChange: (v: string) => void },
 ) => {
@@ -60,8 +59,8 @@ const LanguageSelect = (
         setOpen(false);
       }
     };
-    // Captured and claimed (preventDefault), so the Escape that closes this
-    // menu doesn't also close the Profile dialog around it (see Modal).
+    // Captured and claimed (preventDefault) so this Escape doesn't also close
+    // the Profile dialog (see Modal).
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
@@ -132,8 +131,7 @@ const LanguageSelect = (
   );
 };
 
-// Theme value → catalog key, mapped by a literal object so every live key stays
-// greppable (see the i18n conventions).
+// Theme value → catalog key, in a literal object so keys stay greppable.
 const THEME_KEY = {
   system: "profile.themeSystem",
   light: "profile.themeLight",
@@ -240,8 +238,7 @@ const Stat = (
   { value, label, sub, color }: {
     value: h.JSX.Element | string;
     label: string;
-    // A line of context under the label ("29 of 75 days") — what the figure is
-    // out of, so the tile reads without the brief that produced it.
+    // What the figure is out of, under the label ("29 of 75 days").
     sub?: string;
     color?: string;
   },
@@ -258,10 +255,9 @@ const Stat = (
 const formatPercent = (share: number) =>
   `${formatDecimal(share * 100, { min: 0, max: 0 })}%`;
 
-// A solve: a ranked attempt that equalled the best build anyone has made on
-// that board. The bar is the board's CURRENT best (free play included), so a
-// solve is lost again if someone later builds longer — it says "nobody has ever
-// done better", which is why it carries the win colour rather than a percentile.
+// A solve: a ranked attempt equal to the board's CURRENT best build (free play
+// included), so it is lost if someone later builds longer. It means "nobody has
+// done better", hence the win colour rather than a percentile.
 const SolveRow = (
   { icon, title, sub, value, of }: {
     icon: h.JSX.Element;
@@ -286,8 +282,7 @@ const SolveRow = (
     <div class="profile-row__fig">
       <div class="profile-row__value mono">{value ?? "—"}</div>
       {
-        /* Shown at zero too ("0% of days"), so a row keeps its height whether
-          or not the player has solved anything yet. */
+        /* Shown at zero too ("0% of days") so the row keeps its height. */
       }
       <div class="profile-row__small mono">
         {value !== null && of > 0
@@ -326,10 +321,9 @@ const Bolt = () => (
   </svg>
 );
 
-// Head-to-head, last block in the sheet: the rivals met most often, with a
-// switch for which board the record comes from (see Rivals.tsx). Only the first
-// few rows live here; the rest are a tap away rather than a scroll, so the
-// block stays a stat and doesn't become a directory.
+// Head-to-head, last block in the sheet: the first few rivals, with a switch
+// for which board the record comes from. The rest are behind a tap (see
+// Rivals.tsx) so the block stays a stat, not a directory.
 const Rivals = (
   { rivals, total, onSeeAll }: {
     rivals: ProfileData["rivals"];
@@ -338,11 +332,10 @@ const Rivals = (
   },
 ) => {
   const [board, setBoard] = useState<Board>("daily");
-  // Two columns fit five rivals beside the settings column; stacked, the block
-  // would run long, so it shows one fewer. Same breakpoint as .profile-cols —
-  // the list follows the layout, not the device. Slicing here (rather than
-  // hiding a row in CSS) keeps the "see all" row honest: with exactly five
-  // rivals, a narrow screen shows four and still offers the fifth.
+  // Five rivals in the two-column layout, one fewer stacked (same breakpoint
+  // as .profile-cols). Slicing here, not hiding rows in CSS, keeps "see all"
+  // honest: with exactly five rivals a narrow screen shows four and still
+  // offers the fifth.
   const wide = useMediaQuery("(min-width: 1200px)");
   const rows = rivals.filter((r) => r[board]).slice(0, wide ? 5 : 4);
   return (
@@ -377,10 +370,9 @@ const Rivals = (
 };
 
 // Says why a preference that reads "on" may still deliver nothing. The toggles
-// are stored settings that gate the SERVER's send decision; whether THIS device
-// can receive is separate state, so a blocked permission or a browser without
-// push would otherwise look identical to a working setup. pushState carries the
-// real answer (client/util/push.ts).
+// gate the SERVER's send decision; whether THIS device can receive is separate
+// (`PushStatus`, client/util/push.ts), and a blocked permission or unsupported
+// browser would otherwise look like a working setup.
 const PushNotice = ({ state }: { state: PushStatus }) => {
   if (state === "ok" || state === "unknown") return null;
   return (
@@ -405,7 +397,7 @@ const PushNotice = ({ state }: { state: PushStatus }) => {
   );
 };
 
-// One notification preference row: an icon tile, its copy, and an on/off switch.
+// One notification preference row: icon tile, copy, and an on/off switch.
 const NotifRow = (
   { icon, accent, title, sub, on, onChange }: {
     icon: h.JSX.Element;
@@ -443,29 +435,25 @@ const ProfileDialog = (
     onMove: () => void;
     onDelete: () => void;
     onRivals: () => void;
-    // Opened by a `?profile=account` link: land on the Account section rather
-    // than the top of the dialog.
+    // Opened by a `?profile=account` link: scroll to the Account section.
     focusAccount?: boolean;
   },
 ) => {
   const accountRef = useRef<HTMLDivElement>(null);
-  // Signal read: the dialog re-renders as the open-time refetch lands.
+  // Signal read: re-renders when the open-time refetch lands.
   const profile = profileSignal.value;
   const { settings, setSettings } = useSettings();
-  // The zoom settings only affect touch placement, so they're hidden entirely on
-  // non-touch (mouse) pointers — there's nothing they'd change there.
+  // The zoom settings only affect touch placement; hidden on mouse pointers.
   const touch = useMediaQuery("(pointer: coarse)");
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // Live Discord presence for the Community card (see store/discord.ts): seeded
-  // from the last-known value so the card doesn't grow a line when the count
-  // lands, refreshed on open.
+  // Live Discord presence for the Community card (store/discord.ts); seeded
+  // from the last-known value so the card doesn't grow when the count lands.
   const online = discordOnline.value;
 
-  // Refresh on open so the (cached) figures are current; the dialog stays
-  // populated from the cache in the meantime.
+  // Refresh on open; the cached figures show meanwhile.
   useEffect(() => {
     fetchProfile();
     fetchDiscordOnline();
@@ -493,9 +481,8 @@ const ProfileDialog = (
     }).catch(() => setSaving(false));
   };
 
-  // Download everything the game holds about this player as a JSON file (GDPR
-  // access/portability). The server assembles the document (see exportData.ts);
-  // here we just offer it as a browser download.
+  // Offer everything held about this player as a JSON download (GDPR access);
+  // the server assembles it (routes/exportData.ts).
   const downloadData = () => {
     if (exporting) return;
     setExporting(true);
@@ -518,9 +505,8 @@ const ProfileDialog = (
     }).catch(() => setExporting(false));
   };
 
-  // Toggle a notification preference. Turning one ON also nudges the browser for
-  // push permission (and subscribes) — silently a no-op if already granted or
-  // unsupported; in-app delivery works regardless of the answer.
+  // Turning a preference ON also requests push permission (a no-op if already
+  // granted or unsupported); in-app delivery works regardless.
   const setNotif = (patch: Partial<NotificationPrefs>) => {
     setSettings({ notifications: { ...settings.notifications, ...patch } });
     const turnedOn = patch.lostTop === true || patch.dailyFinal === true;
@@ -546,8 +532,8 @@ const ProfileDialog = (
       <div class="profile-head">
         {editing
           ? (
-            // A full-width bar replaces the header while editing, so the input
-            // has room instead of being crushed between the avatar and rating.
+            // A full-width bar replaces the header while editing so the input
+            // has room.
             <form
               class="profile-rename"
               onSubmit={(e) => {
@@ -560,9 +546,8 @@ const ProfileDialog = (
                 value={nameInput}
                 maxLength={32}
                 autoFocus
-                // Read as a username field, not a name — no first-letter
-                // capitalization (nudging folks toward handles), no
-                // autocorrect/spellcheck underlining their handle.
+                // A handle, not a name: no capitalization, autocorrect or
+                // spellcheck.
                 autocapitalize="none"
                 autocorrect="off"
                 autocomplete="off"
@@ -628,8 +613,8 @@ const ProfileDialog = (
       </div>
 
       {
-        /* Two columns on desktop, one everywhere else (see .profile-cols): the
-           left is the half a player reads, the right the half they operate. */
+        /* Two columns on desktop, one elsewhere (see .profile-cols): the left
+           is read, the right operated. */
       }
       <div class="profile-cols">
         <div class="profile-col">
@@ -680,9 +665,8 @@ const ProfileDialog = (
             </div>
             <div class="profile-rows">
               {
-                /* First try leads: its count is a subset of the row below, so the
-              rarer figure reads first and "Or on attempt two or three" lands
-              as a continuation of it. */
+                /* First try leads: its count is a subset of the row below, so
+              the rarer figure reads first. */
               }
               <SolveRow
                 icon={<Bolt />}
@@ -705,9 +689,8 @@ const ProfileDialog = (
             <div class="section-title">{t("profile.freePlay")}</div>
             <div class="profile-tally">
               {
-                /* A player with no supreme gets three cells, not a zero: nobody
-              holds more than a handful of boards alone, so the cell would read
-              empty for almost everyone. */
+                /* No supreme means three cells, not a zero: few players hold
+              any, so the cell would read empty. */
               }
               {!!profile?.supremes && (
                 <div class="profile-tally__cell">
@@ -811,8 +794,7 @@ const ProfileDialog = (
             <div class="pref__row">
               <div class="pref__label">{t("profile.language")}</div>
               {
-                /* Custom dropdown (not a native select): each option is an endonym
-              so it stays recognizable whatever language the UI is in. */
+                /* Each option is an endonym, readable in any UI language. */
               }
               <LanguageSelect
                 value={settings.language}
@@ -848,9 +830,8 @@ const ProfileDialog = (
             )}
 
             {
-              /* Delay before the placing zoom kicks in, so a quick tap-to-place
-             finishes before the board magnifies. Touch-only, and moot when the
-             zoom itself is off (1×) — hidden then. */
+              /* Delay before the placing zoom, so a quick tap-to-place finishes
+             before the board magnifies. Touch-only; hidden when zoom is 1×. */
             }
             {touch && settings.zoom > ZOOM_MIN && (
               <div class="pref__row pref__row--stack">
@@ -899,10 +880,8 @@ const ProfileDialog = (
                   {t("profile.discordSub")}
                 </div>
                 {
-                  /* Always rendered so the card's height is stable whether or not
-                 the count is known yet. The dot greys out while the count is
-                 unknown and when it's a genuine zero — a live-green dot only
-                 reads right when someone's actually on. */
+                  /* Always rendered so the card's height is stable. The dot
+                 greys out while the count is unknown or zero. */
                 }
                 <div class="community-card__online mono">
                   <span
@@ -972,12 +951,9 @@ const ProfileDialog = (
             </button>
 
             {
-              /* Same window, in the viewer's language. Not a new tab: the page's
-             rights cards link back into the app (`?profile=`), and an iOS
-             home-screen app opens a new tab in a browser view with its OWN
-             storage — so "delete my data" there would act on a fresh anonymous
-             player, not this one. In the same window the link stays inside the
-             app, on this device's identity. */
+              /* Same window, in the viewer's language. A new tab from an iOS
+             home-screen app has its OWN storage, so the page's `?profile=`
+             rights links would act on a fresh anonymous player. */
             }
             <a
               class="profile-privacy-link tapc"
@@ -996,23 +972,20 @@ export const Profile = () => {
   const { dailyInProgress, phase } = useContext(GameStateContext);
   const profile = profileSignal.value;
   const [open, setOpen] = useState(false);
-  // The move sheet replaces the dialog rather than stacking over it: opening it
-  // closes the dialog; its back button reopens the dialog, its close dismisses
-  // to the board. The delete-confirm sheet works the same way.
+  // The move and delete-confirm sheets replace the dialog rather than stacking:
+  // back reopens the dialog, close dismisses to the board.
   const [moving, setMoving] = useState(false);
   const [rivalsOpen, setRivalsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [focusAccount, setFocusAccount] = useState(false);
 
-  // A profile request (see notifNav — the privacy page's `?profile=` links, or
-  // the prestart overlay's account link): open the dialog on its Account
-  // section, or the delete-confirm sheet directly (its back button still leads
-  // to the dialog). It opens even with today's daily outstanding, when the
-  // button below is hidden: the privacy page promises export and erasure "any
-  // time", and a player's data rights can't wait on three ranked attempts. What
-  // it won't do is land over a live attempt and eat its clock — it's held
-  // through a build or run, and through boot (a resumed attempt may be about to
-  // start), then taken once, so it can't fire again.
+  // A profile request (notifNav: the privacy page's `?profile=` links or the
+  // prestart overlay's account link) opens the dialog on its Account section,
+  // or the delete-confirm sheet directly. It opens even with today's daily
+  // outstanding and the button hidden: the privacy page promises export and
+  // erasure "any time". It is held through boot (a resumed attempt may be about
+  // to start) and any build or run, so it never lands over a live clock, then
+  // taken once.
   const pending = profileRequest.value;
   useEffect(() => {
     if (phase === "loading" || phase === "building" || phase === "running") {
@@ -1028,15 +1001,12 @@ export const Profile = () => {
 
   const name = profile?.name || t("profile.anonymous");
 
-  // The button is hidden while on today's ranked daily (mirrors the calendar
-  // button) — no wandering off to the profile mid-run. Available on a past day
-  // (deep link / held across midnight), where the board isn't the live daily.
-  // The sheets below still render then: the only way to open one without the
-  // button is a profile request above (or a dialog already open when the day
-  // rolls over, which is better left open than yanked away).
+  // The button is hidden on today's ranked daily, like the calendar button.
+  // The sheets below still render then: a profile request above, or a dialog
+  // already open when the day rolls over, must not be yanked away.
   //
-  // Once the (prefetched) profile is loaded, the button is the coloured letter
-  // avatar; until then, the neutral person glyph.
+  // The button is the coloured letter avatar once the profile loads, a neutral
+  // person glyph before.
   return (
     <>
       {!dailyInProgress && (
@@ -1046,9 +1016,8 @@ export const Profile = () => {
             (profile ? "profile-avatar-btn" : "icon-button")}
           style={profile ? { background: avatarColor(getId()) } : undefined}
           onClick={() => setOpen(true)}
-          // Warm the profile the moment intent shows — pointerenter covers mouse
-          // hover and the first touch, onFocus covers keyboard. fetchProfile
-          // coalesces/rate-limits, so repeated events don't spam requests.
+          // Warm the profile on intent: pointerenter (mouse hover, first touch)
+          // and onFocus (keyboard). fetchProfile coalesces repeated calls.
           onPointerEnter={() => {
             fetchProfile();
             fetchDiscordOnline();

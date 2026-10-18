@@ -24,23 +24,22 @@ const load = (): Settings => {
   }
 };
 
-// Instant, flash-free source: the last-applied settings from localStorage,
-// reconciled with the server (see adoptServerSettings) once the profile lands —
-// the server is the cross-device source of truth.
+// The last-applied settings from localStorage (flash-free), reconciled with the
+// server, the cross-device source of truth, by adoptServerSettings.
 let current: Settings = load();
 const subscribers = new Set<(s: Settings) => void>();
 
-// The --background token's two ends. The status/PWA bar rides whichever the
-// RESOLVED theme shows, so it can't diverge from the app the way
-// prefers-color-scheme theme-color metas would (a dark app on a light OS shows
-// a light bar). Kept in step with `--background: light-dark(#f4f4f7, #0c0c11)`.
+// The --background token's two ends, for the status/PWA bar. It follows the
+// RESOLVED theme, which prefers-color-scheme theme-color metas can't (a dark
+// app on a light OS would get a light bar). Keep in step with
+// `--background: light-dark(#f4f4f7, #0c0c11)`.
 const BACKGROUND = { light: "#f4f4f7", dark: "#0c0c11" } as const;
 
 const prefersDark = () =>
   globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 
-// Point the single theme-color meta at the resolved theme's background —
-// "system" resolves against the OS right now (and re-syncs on OS flips below).
+// Point the theme-color meta at the resolved theme's background. "system"
+// resolves against the OS now and re-syncs on OS flips (below).
 const applyThemeColor = (theme: Theme) => {
   const resolved = theme === "system"
     ? (prefersDark() ? "dark" : "light")
@@ -50,9 +49,8 @@ const applyThemeColor = (theme: Theme) => {
 };
 
 /**
- * Map the chosen theme onto the root `color-scheme`, which flips the CSS
- * `light-dark()` tokens, and match the status/PWA bar to it. "system" restores
- * the OS-driven default.
+ * Map the theme onto the root `color-scheme` (which flips the CSS
+ * `light-dark()` tokens) and match the status/PWA bar to it.
  */
 export const applyTheme = (theme: Theme) => {
   document.documentElement.style.colorScheme = theme === "system"
@@ -62,25 +60,23 @@ export const applyTheme = (theme: Theme) => {
 };
 
 /**
- * Apply the chosen UI language: point the `uiLocale` signal (which every `t`
- * call reads, so this re-renders live) at the resolved tag, and mirror the
- * actually-rendered catalog locale onto `<html lang>`. "system" (or empty)
- * follows the device/browser language; an explicit choice wins. An unsupported
- * tag still renders — the catalog resolves it to English.
+ * Apply the UI language: point the `uiLocale` signal (read by every `t` call)
+ * at the resolved tag and mirror the rendered catalog locale onto
+ * `<html lang>`. "system" (or empty) follows the browser language. An
+ * unsupported tag resolves to the English catalog.
  */
 export const applyLanguage = (language: Language) => {
   const tag = language && language !== "system"
     ? language
     : (globalThis.navigator?.language || "en");
-  // Before the signal flips, so the re-render it triggers formats numbers in
-  // the new language too.
+  // Before the signal flips, so its re-render formats numbers in the new
+  // language too.
   setDefaultLocale(tag);
   uiLocale.value = tag;
   document.documentElement.lang = resolveCatalog(tag);
 };
 
-// In "system" mode the bar follows the OS live, so re-sync when the OS flips
-// (an explicit light/dark bar is pinned and ignores this).
+// Re-sync the bar when the OS flips; an explicit light/dark theme ignores it.
 globalThis.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.(
   "change",
   () => {
@@ -99,21 +95,21 @@ const publish = (next: Settings) => {
 };
 
 /**
- * Apply the cached theme + language as early as possible (boot), before first
- * paint, so copy renders in the chosen language and there's no theme flash.
+ * Apply the cached theme and language at boot, before first paint, so there is
+ * no theme flash and copy renders in the chosen language.
  */
 export const initSettings = () => {
   applyTheme(current.theme);
   applyLanguage(current.language);
 };
 
-/** Non-reactive read (e.g. one-off lookups). Components should use useSettings. */
+/** Non-reactive read; components should use useSettings. */
 export const getSettings = () => current;
 
 /**
- * Adopt the server's settings when the profile lands — the cross-device source
- * of truth. No-op when they already match what's applied, so it won't stomp a
- * change the user just made on this device mid-flight.
+ * Adopt the server's settings when the profile lands. No-op when they already
+ * match what's applied, so it won't stomp a change made on this device
+ * mid-flight.
  */
 export const adoptServerSettings = (settings: Settings) => {
   const n = settings.notifications;
@@ -129,9 +125,8 @@ export const adoptServerSettings = (settings: Settings) => {
   publish(settings);
 };
 
-// Persist to the server, debounced so a slider drag (many rapid changes) lands
-// as a single write once it settles. Sends the full current settings — the
-// route merges, so sending both fields is harmless.
+// Persist to the server, debounced so a slider drag lands as one write. Sends
+// the full current settings; the `setSettings` route merges.
 let persistTimer = -1;
 const schedulePersist = () => {
   clearTimeout(persistTimer);
@@ -149,7 +144,7 @@ export const useSettings = () => {
     };
   }, []);
 
-  // Apply locally right away (flash-free), persist to the server debounced.
+  // Apply locally at once; persist to the server debounced.
   const setSettings = (patch: SettingsPatch) => {
     publish({ ...current, ...patch });
     schedulePersist();

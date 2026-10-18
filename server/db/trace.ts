@@ -1,25 +1,18 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 
-// A manual OTel span around every DB call, tagged with the transport used.
+// A manual OTel span around every DB call, tagged with the transport.
 //
-// Why this exists: Deno's built-in OTel (OTEL_DENO=true) auto-instruments
-// outbound `fetch`, so the SQL *proxy* hop already shows up as a span for free.
-// The *direct* connector talks to MariaDB over a raw TCP socket (via mysql2) —
-// which Deno's auto-instrumentation does NOT cover — so without this wrapper a
-// direct-transport deployment would have a blind spot exactly where the proxy
-// deployment has a span. Wrapping both paths keeps DB timing visible regardless
-// of transport, and stamps `db.transport` so a trace makes plain which path a
-// query took.
+// Deno's built-in OTel auto-instruments outbound `fetch`, so the proxy hop is
+// already a span. The direct connector uses a raw TCP socket (mysql2), which
+// that does NOT cover, so this wraps both paths to keep DB timing visible and
+// to stamp `db.transport`.
 //
-// The span carries only low-cardinality, non-sensitive attributes: the SQL
-// verb (SELECT/INSERT/…) and the transport. The full statement is deliberately
-// NOT attached — it embeds user UUIDs (the bearer credential) and other row
-// data, and telemetry must never carry the raw id (see CLAUDE.md observability
-// note).
+// The span carries only the SQL verb and the transport. Never attach the
+// statement: it embeds user UUIDs (the bearer credential) and row data, and
+// telemetry must not carry the raw id (see server/CLAUDE.md, Observability).
 //
-// When OTel is off (every deployment except the co-located EC2 box, and
-// all local/test runs), `@opentelemetry/api` falls back to a no-op tracer that
-// simply invokes the callback — so this is a cheap passthrough there.
+// With OTel off (everywhere but the EC2 box, and in tests) `@opentelemetry/api`
+// uses a no-op tracer, so this is a cheap passthrough.
 const tracer = trace.getTracer("blocktol-db");
 
 export type DbTransport = "proxy" | "direct";

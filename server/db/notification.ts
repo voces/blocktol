@@ -7,10 +7,8 @@ import {
 import { parseSettings, Settings } from "../../common/settings.ts";
 import { sql } from "./query.ts";
 
-// A stored subscription's push-relevant fields (the encryption keys + endpoint),
-// joined to its owner's BCP-47 `locale` for rendering the push copy — null until
-// we've captured a locale for the user, then the push path falls back to the
-// runtime locale.
+// A stored subscription's push fields (endpoint + keys), joined to its owner's
+// BCP-47 `locale` for the push copy. Null falls back to the runtime locale.
 export type PushSubscriptionRow = {
   endpoint: string;
   p256dh: string;
@@ -19,9 +17,9 @@ export type PushSubscriptionRow = {
 };
 
 // One player's notifications, newest first, joined to the daily's calendar day
-// so the client can render "Jul 6" / open that board without a second lookup.
-// Capped — the panel pages the recent slice; older rows age out of view, not the
-// table. `data` is the denormalized JSON written at creation.
+// so the client can render it and open that board without a second lookup.
+// Capped to the recent slice; older rows stay in the table. `data` is the JSON
+// denormalized at creation.
 export const listNotifications = async (
   user: string,
   limit = 50,
@@ -59,7 +57,7 @@ export const listNotifications = async (
     try {
       data = JSON.parse(r.data);
     } catch {
-      return []; // a corrupt payload drops the row rather than crashing the list
+      return []; // a corrupt payload drops the row, not the list
     }
     // The kind determines the payload type; the columns are shared.
     const base = {
@@ -79,9 +77,9 @@ export const listNotifications = async (
     return []; // unknown kind (forward-compat): skip
   });
 
-  // A "lost top" is reclaimed once the viewer holds (or ties) the top of that
-  // day's PB board again — computed live from the current field, so a re-pass
-  // un-strikes it without any stored flag to keep in sync. Only lost-tops can be.
+  // A "lost top" is reclaimed once the viewer holds or ties the top of that
+  // day's PB board again. Computed live from the current field, so there is no
+  // stored flag to keep in sync. Only lost-tops can be.
   const lostIterations = [
     ...new Set(
       notifs.filter((n) => n.kind === "lost_top").map((n) => n.iteration),
@@ -96,12 +94,10 @@ export const listNotifications = async (
   );
 };
 
-// Of the given iterations, those where `user` currently holds or ties the top of
-// the PB board — their best build equals the iteration's best build — tagged
-// "solo" (outright top) or "tied" (shares the top with someone). (Best build =
-// MAX(time) over non-void runs, matching getIterationBests, the same field the
-// lost-top decision reads.) A tie counts as reclaimed: a strict pass is what
-// cost the top, so getting back level restores it.
+// Of the given iterations, those where `user` holds or ties the top of the PB
+// board (best build = MAX(time) over non-void runs, as in getIterationBests and
+// the lost-top decision), tagged "solo" or "tied". A tie counts as reclaimed:
+// only a strict pass costs the top, so getting level restores it.
 const reclaimedIterations = (user: string, iterations: number[]) =>
   sql<{ iteration: number; tied: number }[]>`
     SELECT
@@ -122,11 +118,10 @@ const reclaimedIterations = (user: string, iterations: number[]) =>
     )
   );
 
-// The bell badge count: unread notifications, EXCLUDING reclaimed lost-tops. One
-// you've since reclaimed (you hold or tie the day's top build again) is no longer
-// relevant, so it doesn't nag the badge even if never opened — matching how the
-// panel greys it out. The correlated check mirrors reclaimedIterations: the row
-// counts only while the viewer's best build is still short of the field's best.
+// The bell badge count: unread notifications, EXCLUDING reclaimed lost-tops,
+// which the panel greys out too. The correlated check mirrors
+// reclaimedIterations: a lost-top counts only while the viewer's best build is
+// still short of the field's best.
 export const unreadCount = (user: string) =>
   sql<{ count: number }[]>`
     SELECT COUNT(1) count
@@ -143,8 +138,7 @@ export const unreadCount = (user: string) =>
       );
   `.then((r) => Number(r[0]?.count ?? 0));
 
-// Mark every unread notification read (the "Mark all read" action). Scoped to
-// the caller; a no-op when nothing's unread.
+// Marks every unread notification of the caller read ("Mark all read").
 export const markAllRead = (user: string) =>
   sql`
     UPDATE notification
@@ -152,8 +146,8 @@ export const markAllRead = (user: string) =>
     WHERE user = ${user} AND read_at IS NULL;
   `;
 
-// Mark specific notifications read (opening one). Scoped to the caller so an id
-// they don't own is ignored. Empty list is a no-op.
+// Marks specific notifications read. Scoped to the caller, so ids they don't
+// own are ignored. Empty list is a no-op.
 export const markRead = (user: string, ids: number[]) => {
   if (ids.length === 0) return Promise.resolve();
   return sql`
@@ -163,9 +157,8 @@ export const markRead = (user: string, ids: number[]) => {
   `;
 };
 
-// Mark a day's notification of a given kind read — tapping a push deep-link
-// (`/YYYYMMDD?board=...`) counts as reading the notification it opened, but the
-// link carries the day + board, not the notification id, so this resolves it.
+// Marks a day's notification of a kind read. A push deep-link
+// (`/YYYYMMDD?board=...`) carries the day and board, not the notification id.
 export const markReadByDay = (
   user: string,
   iteration: number,
@@ -180,10 +173,10 @@ export const markReadByDay = (
       AND read_at IS NULL;
   `;
 
-// The existing "lost top" notification for a day, if any — its passer and
-// whether it's still unread. The generator reads it to fire once per passer
-// until read: while the same player keeps building higher on the same day, the
-// card mustn't re-push on every save (the ranked path can call in a tight loop).
+// The existing "lost top" notification for a day, if any: its passer and
+// whether it was read. The generator fires once per passer until read, so a
+// player building higher on every save (the ranked path can call in a tight
+// loop) doesn't re-push each time.
 export const getLostTop = (user: string, iteration: number) =>
   sql<{ data: string; unread: number }[]>`
     SELECT data, (read_at IS NULL) unread
@@ -200,10 +193,9 @@ export const getLostTop = (user: string, iteration: number) =>
     }
   });
 
-// Create-or-resurface the "lost top spot" notification for a day. The UNIQUE
-// (user, iteration, kind) means a repeat pass on the same day updates the one
-// row — refreshing the passer/times and bumping it back to unread and to the
-// top — instead of stacking a second card.
+// Creates or resurfaces the "lost top" notification for a day. UNIQUE (user,
+// iteration, kind) makes a repeat pass update the one row (new passer/times,
+// back to unread and to the top) instead of stacking a second card.
 export const upsertLostTop = (
   user: string,
   iteration: number,
@@ -218,9 +210,9 @@ export const upsertLostTop = (
       read_at = NULL;
   `;
 
-// Bulk-create the day's "daily final" notifications, one per participant.
-// INSERT IGNORE on the UNIQUE key makes re-running the rating sweep a no-op
-// (a player already told keeps their read state). Empty list is a no-op.
+// Bulk-creates the day's "daily final" notifications, one per participant.
+// INSERT IGNORE on the UNIQUE key makes a re-run of the rating sweep a no-op
+// (read state is kept). Empty list is a no-op.
 export const insertDailyFinals = (
   iteration: number,
   finals: { user: string; data: DailyFinalData }[],
@@ -235,9 +227,9 @@ export const insertDailyFinals = (
   `;
 };
 
-// The settings blobs for a set of users, parsed — so the generator can gate a
-// notification (and its push) on the recipient's toggle in one round trip
-// rather than one read per user. Absent users default (both kinds on).
+// Parsed settings for a set of users in one round trip, so the generator can
+// gate a notification and its push on each recipient's toggle. Absent users get
+// the defaults (both kinds on).
 export const getUsersSettings = (users: string[]) => {
   if (users.length === 0) return Promise.resolve(new Map<string, Settings>());
   return sql<{ id: string; settings: string | null }[]>`
@@ -247,21 +239,20 @@ export const getUsersSettings = (users: string[]) => {
   );
 };
 
-// At most this many push subscriptions per user. A player has a handful of
-// devices; the cap exists so one id can't grow the table (and every fan-out to
-// it) without bound. Generous enough that a real player never meets it.
+// At most this many push subscriptions per user, so one id can't grow the table
+// (and every fan-out) without bound. Real players have a handful of devices.
 export const MAX_SUBSCRIPTIONS_PER_USER = 10;
 
-// Store (or move) a push subscription. The endpoint's SHA-256 is the key, so a
-// device that re-subscribes (or switches accounts via a move link) upserts its
-// one row rather than duplicating. Keys refresh in case the browser rotated them.
+// Stores or moves a push subscription. The endpoint's SHA-256 is the key, so a
+// device that re-subscribes or switches accounts upserts its one row. Keys
+// refresh in case the browser rotated them.
 //
-// `created` is bumped on every upsert, so it reads as "last registered": the
-// client re-registers on every boot, which makes it a liveness stamp. The second
-// statement then prunes the user's stalest rows past the cap — keeping this row
-// first whatever the clock says, so the device registering right now is never
-// the one dropped. Both statements are idempotent, so the retrying `sql` is safe.
-// (The derived table is how MariaDB accepts a LIMIT inside an IN subquery.)
+// `created` is bumped on every upsert, so it reads as "last registered" (the
+// client re-registers on every boot). The second statement prunes the user's
+// stalest rows past the cap, ordering this row first so the device registering
+// now is never the one dropped. Both statements are idempotent, so the
+// retrying `sql` is safe. (The derived table is how MariaDB accepts a LIMIT in
+// an IN subquery.)
 export const upsertSubscription = (
   user: string,
   endpointHash: string,
@@ -290,13 +281,13 @@ export const upsertSubscription = (
       );
   `;
 
-// Server-side prune of a subscription the push service disowned (404/410) —
-// whoever owns it, since the endpoint itself is dead.
+// Prunes a subscription the push service disowned (404/410), whoever owns it:
+// the endpoint is dead.
 export const deleteSubscription = (endpointHash: string) =>
   sql`DELETE FROM push_subscription WHERE endpoint_hash = ${endpointHash};`;
 
-// A player dropping a subscription (unsubscribePush): scoped to the caller, so
-// knowing someone else's endpoint isn't enough to cut off their pushes.
+// A player dropping a subscription (unsubscribePush). Scoped to the caller, so
+// knowing another's endpoint can't cut off their pushes.
 export const deleteOwnSubscription = (user: string, endpointHash: string) =>
   sql`
     DELETE FROM push_subscription
@@ -311,9 +302,8 @@ export const getSubscriptions = (user: string) =>
     WHERE ps.user = ${user};
   `;
 
-// Subscriptions for many users at once (the daily-final push fan-out), tagged
-// with their owner so each push carries the right user's payload. Empty list is
-// a no-op.
+// Subscriptions for many users at once (the daily-final fan-out), tagged with
+// their owner. Empty list is a no-op.
 export const getSubscriptionsForUsers = (users: string[]) => {
   if (users.length === 0) {
     return Promise.resolve([] as (PushSubscriptionRow & { user: string })[]);

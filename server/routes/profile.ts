@@ -2,15 +2,13 @@ import { z } from "zod";
 import { createOrUpdateUser, getUserStats } from "../db/user.ts";
 import { method } from "./apiHelpers.ts";
 
-// The signed-in user's own profile stats (see getUserStats). No input beyond
-// the auth header, but the body must still validate — an absent body parses to
-// undefined.
+// The signed-in user's profile stats (see getUserStats). No input; an absent
+// body parses to undefined, hence `.optional()`.
 export const getProfile = method(z.object({}).optional(), true)(
   async ({ userId }) => {
-    // Seed the user row if it doesn't exist yet: boot fetches the profile in
-    // parallel with the summary, so this can win the race against the
-    // summary's createOrUpdateUser and must not read a missing row (a blank
-    // name). Idempotent upsert; a chosen name is never overwritten.
+    // Boot runs this in parallel with the summary, so it can beat the
+    // summary's createOrUpdateUser and must not read a missing row. Idempotent;
+    // never overwrites a chosen name.
     await createOrUpdateUser(userId);
     return getUserStats(userId);
   },

@@ -1,5 +1,4 @@
-// Just enough of the source map v3 format to turn a minified stack position
-// back into a source position — no dependency for a script-only need.
+// Just enough of source map v3 to map a minified stack position back to source.
 
 export type SourceMap = {
   sources: string[];

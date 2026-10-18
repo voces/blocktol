@@ -1,10 +1,8 @@
-// The one place a notification is created: gate on the recipient's setting,
-// persist the in-app row, then fan out Web Push to their devices. Push is
-// best-effort — a dead endpoint is pruned, any other failure is swallowed — so
-// notification creation never fails because a push did. Callers must AWAIT
-// these (a Deno Deploy preview tears the isolate down after the response, so
-// background work can be killed mid-flight; the EC2 instance doesn't, but
-// callers stay uniform).
+// The one place a notification is created: persist the in-app row, then, if the
+// recipient's setting allows, fan out Web Push to their devices. Push is
+// best-effort (a dead endpoint is pruned, any other failure swallowed), so a
+// push never fails notification creation. Callers must AWAIT these: a Deno
+// Deploy preview tears the isolate down after the response.
 
 import {
   DailyFinalData,
@@ -28,44 +26,42 @@ import { pushConfigured, sendPush, sha256hex } from "./webpush.ts";
 
 type Day = [number, number, number];
 
-// The lock-screen payload the service worker renders (see sw.js). `tag` coalesces
-// repeats of the same kind+day into one notification rather than stacking.
 const pad = (n: number) => String(n).padStart(2, "0");
 
+// The lock-screen payload the service worker renders (see public/sw.js). `tag`
+// coalesces repeats of the same kind+iteration instead of stacking them.
 const payloadFor = (
   kind: "lost_top" | "daily_final",
   iteration: number,
   day: Day,
   data: LostTopData | DailyFinalData,
-  // The recipient device's locale (null → the server's own): the copy's numbers
-  // and date render in it, since there's no viewer here to key off.
+  // The recipient device's locale (null: the server's own); the copy's numbers
+  // and date render in it.
   locale: string | null,
 ) => {
   const { title, body } = notificationText(
     { kind, day, data },
     locale ?? undefined,
   );
-  // Deep-link to the day's permalink (see store/notifNav.ts): the `/YYYYMMDD`
-  // path opens that day, and `?board` selects the relevant sort (PB for a lost
-  // top spot, Daily for a finalized daily).
+  // Deep link to the day's permalink (client/store/notifNav.ts); `?board`
+  // selects PB for a lost top, Daily for a finalized daily.
   const [y, m, d] = day;
   const board = kind === "lost_top" ? "pb" : "daily";
   const url = `/${y}${pad(m)}${pad(d)}?board=${board}`;
   return JSON.stringify({ title, body, tag: `${kind}:${iteration}`, url });
 };
 
-// At most this many push requests in flight at once during the daily fan-out.
+// Cap on push requests in flight at once.
 const PUSH_CONCURRENCY = 16;
 
-// Send `payload` to one subscription; prune it if the service says it's gone.
+// Send `payload` to one subscription; prune it if the push service says gone.
 const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
   try {
     const res = await sendPush(sub, payload);
     if (res.gone) {
-      // Deleting a device's last subscription is the exact moment its player
-      // stops receiving anything while their preference toggles still read
-      // "on" — so it is logged, one line, only when a row actually dies;
-      // otherwise the state is undiagnosable from the logs.
+      // A device's last subscription dying is when its player silently stops
+      // receiving while the toggles still read "on"; this line is the only
+      // trace of it.
       log.info("push subscription pruned", {
         status: res.status,
         endpoint: sub.endpoint.slice(0, 60),
@@ -77,8 +73,7 @@ const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
   }
 };
 
-// Run `tasks` with a bounded number in flight, so a big day's fan-out doesn't
-// open thousands of sockets at once.
+// Run `tasks` with at most `limit` in flight.
 const pool = async (tasks: (() => Promise<void>)[], limit: number) => {
   let i = 0;
   const worker = async () => {
@@ -90,10 +85,9 @@ const pool = async (tasks: (() => Promise<void>)[], limit: number) => {
 };
 
 // "Someone passed your #1" for a single recipient. Fires once per passer until
-// read: while the same player keeps building higher (the ranked path can call
-// this on each leading save), an already-unread card from that same passer is
-// left as-is — no DB churn, no repeated push. A different passer, or a re-pass
-// after the recipient has read the last one, resurfaces the card and re-pushes.
+// read: the ranked path calls this on each leading save, and an unread card
+// from the same passer is left alone (no DB write, no repeat push). A different
+// passer, or a re-pass after the card was read, resurfaces it and re-pushes.
 export const notifyLostTop = async (
   user: string,
   iteration: number,
@@ -116,10 +110,8 @@ export const notifyLostTop = async (
       ),
       PUSH_CONCURRENCY,
     );
-    // The counterpart to notifyDailyFinals' summary below. Without it a
-    // lost-top push was invisible unless it failed, so "was anything even
-    // attempted for this player?" had no answer. `pushes: 0` is the
-    // interesting case — opted in, but no live subscription to send to.
+    // Counterpart to notifyDailyFinals' summary below; a successful send logs
+    // nothing else. `pushes: 0` means opted in with no live subscription.
     log.info("lost-top notification", { iteration, pushes: subs.length });
   } catch (err) {
     log.error("notifyLostTop failed", { error: errText(err) });
@@ -127,9 +119,8 @@ export const notifyLostTop = async (
 };
 
 // "A daily you played is final" for every participant at once (the rating cron).
-// Every ranked player gets the in-app row; only players who opted PUSH in (read
-// from one batched settings query) get a push. INSERT IGNORE means a re-run of
-// the sweep is a no-op.
+// Every ranked player gets the in-app row; only those who opted into push (one
+// batched settings query) get a push. INSERT IGNORE makes a re-run a no-op.
 export const notifyDailyFinals = async (
   iteration: number,
   day: Day,
@@ -137,7 +128,7 @@ export const notifyDailyFinals = async (
 ) => {
   if (outcomes.length === 0) return;
   try {
-    // In-app for everyone who played ranked.
+    // In-app for everyone, whatever their push setting.
     await insertDailyFinals(iteration, outcomes);
 
     if (!pushConfigured()) return;

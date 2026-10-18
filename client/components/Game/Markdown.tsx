@@ -8,6 +8,8 @@ type Token = {
   content: string;
 };
 
+// Message syntax: `\c` toggles a colour span, `\\c` is a literal `\c`, and
+// `\localDate(y, m, d)` formats a calendar date in the UI locale.
 const tokenize = (string: string) => {
   const tokens: Token[] = [];
   let index = 0;
@@ -99,8 +101,8 @@ const parse = (string: string) => {
           dateStyle: "medium",
           timeZone: "UTC",
         }).format(
-          // UTC midnight, to match the UTC formatting: a local-midnight date
-          // read in UTC is the day before anywhere east of Greenwich.
+          // UTC midnight to match the UTC formatting; local midnight read in
+          // UTC is the previous day east of Greenwich.
           new Date(Date.UTC(
             parseInt(parts[1]),
             parseInt(parts[2]) - 1,
@@ -122,8 +124,8 @@ export type Colors = Record<string, string | undefined>;
 const ColorMarkdown = (
   { node, colors }: { node: NodeWithChildren; colors: Colors },
 ) => {
-  // A state-backed callback ref: mounting sets the element, triggering the
-  // second render that can read its textContent to pick the colour.
+  // A state-backed ref: mounting triggers a second render that reads the
+  // text and picks its colour. Equal text shares a colour via `colors`.
   const [el, setEl] = useState<HTMLSpanElement | null>(null);
   const content = el?.textContent;
   const color = content

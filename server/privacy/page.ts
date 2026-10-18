@@ -1,16 +1,13 @@
-// The privacy page, rendered per request in the reader's language. A player who
-// plays in German shouldn't be handed their privacy notice in English (GDPR
-// Art. 12 asks for it to be intelligible to the people it's addressed to, and
-// the game addresses them in their language). So its copy is a catalog like the
-// app's: i18n/privacy/en.json is the source, machine-translated by the same
-// pipeline and held to the same i18n:check gate, and compiled to
-// ./catalog.generated.ts — a server-only module, so a page of prose doesn't
-// ride along in every client bundle.
+// The privacy page, rendered in the reader's language (GDPR Art. 12 asks for
+// intelligible notices). Its copy is a catalog like the app's:
+// i18n/privacy/en.json is the source, translated by the same pipeline and held
+// to the same i18n:check gate, compiled to ./catalog.generated.ts. That module
+// is server-only so the prose stays out of the client bundle.
 //
-// The page is plain HTML (no script): links back into the app carry the actions
-// (`/?profile=account|delete`, see client/store/notifNav.ts) rather than the
-// page performing an export or an erasure itself — those flows, the typed
-// DELETE confirm and the fresh-identity reload after it, live in one place.
+// The page is plain HTML (no script). Links into the app
+// (`/?profile=account|delete`, see client/store/notifNav.ts) carry the actions,
+// so export, the typed DELETE confirm and the post-erasure reload live in one
+// place.
 
 import { DISCORD_INVITE } from "../../common/constants.ts";
 import {
@@ -29,14 +26,13 @@ import {
   type MessageParams,
 } from "./catalog.generated.ts";
 
-// When the English text last changed in substance. Bump it with an edit to
-// i18n/privacy/en.json that changes what the page SAYS — not for a typo or a
-// rewording, and never for a translation. The history link beside it is the
-// exact record of every change.
+// When the English text last changed in substance. Bump it for an edit to
+// i18n/privacy/en.json that changes what the page SAYS, not for a typo,
+// rewording or translation. The history link beside it is the exact record.
 export const UPDATED = "2026-10-18";
 
-// The public commit history of the English source — the file IS the page's text,
-// which is why it's a catalog of its own rather than keys in i18n/en.json.
+// The public commit history of the English source; the file IS the page's text,
+// hence a catalog of its own rather than keys in i18n/en.json.
 export const HISTORY_URL =
   "https://github.com/voces/blocktol/commits/prod/i18n/privacy/en.json";
 
@@ -45,10 +41,9 @@ const CONTACT_EMAIL = "admin@blocktol.com";
 const DISCORD_NAME = "Blocktol Discord";
 
 // Pick the page's language: an explicit `?lang` first (the in-app link passes
-// the player's chosen language, which can differ from the browser's), then the
-// browser's Accept-Language preferences in q order, each matched the way the
-// app resolves a locale (exact tag, then language prefix). Undefined when
-// nothing matches — the caller falls back to English.
+// the player's chosen language), then Accept-Language in q order, matched as
+// the app does (exact tag, then language prefix). Undefined when nothing
+// matches; the caller falls back to English.
 export const pickLocale = <L extends string>(
   available: readonly L[],
   lang: string | null,
@@ -81,7 +76,7 @@ const ESCAPES: Record<string, string> = {
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
 // Markup the page builds itself (a link, an emphasis) to splice into a message
-// as one of its args. Inserted verbatim; every other string is escaped.
+// arg. Inserted verbatim; every other string is escaped.
 type Markup = { html: string };
 const markup = (html: string): Markup => ({ html });
 
@@ -91,9 +86,9 @@ type HtmlParams<K extends MessageKey> = {
 type ParamsArg<K extends MessageKey> = keyof MessageParams[K] extends never ? []
   : [HtmlParams<K>];
 
-// Render a privacy-catalog message as HTML — the server-side twin of the
-// client's tJsx: one arg per wrapped span, so a translation can move the link to
-// wherever its grammar puts it. A locale missing the key falls back to English.
+// Render a privacy-catalog message as HTML, the server-side twin of the
+// client's tJsx: one arg per wrapped span, so a translation can place the link
+// where its grammar needs. A locale missing the key falls back to English.
 const message = <K extends MessageKey>(
   locale: Locale,
   key: K,
@@ -105,8 +100,8 @@ const message = <K extends MessageKey>(
     if (typeof node === "string") {
       out += esc(node);
     } else if ("plural" in node || "select" in node) {
-      // A plural/select resolves to plain text (its selector is a number or an
-      // enum, never markup) — delegate the subtree and escape the result.
+      // Resolves to plain text (its selector is a number or enum, never
+      // markup): delegate and escape.
       out += esc(renderMessage([node], locale, values as I18nParams));
     } else if ("pound" in node) {
       // `#` only occurs inside a plural branch, handled above.
@@ -198,7 +193,7 @@ const STYLES = `
     .langs a[aria-current] { color: var(--text); font-weight: 600; text-decoration: none; }
 `;
 
-// The keys that take no arguments — the plain-text ones a list item is made of.
+// Keys that take no arguments: the plain text a list item is made of.
 type PlainKey = {
   [K in MessageKey]: keyof MessageParams[K] extends never ? K : never;
 }[MessageKey];
@@ -206,8 +201,8 @@ type PlainKey = {
 export const renderPrivacyPage = (locale: Locale): string => {
   const m = <K extends MessageKey>(key: K, ...params: ParamsArg<K>) =>
     message(locale, key, ...params);
-  // Labels that name in-app controls come from the APP catalog, so the page
-  // says exactly what the controls it points at say, in the same language.
+  // Labels naming in-app controls come from the APP catalog, so they match the
+  // controls they point at.
   const ui = (
     key:
       | "profile.title"
@@ -215,7 +210,7 @@ export const renderPrivacyPage = (locale: Locale): string => {
       | "profile.exportData"
       | "del.title",
   ) => esc(tApp(locale, key));
-  // A glyph that's decoration, not text: kept out of the accessible name.
+  // Decoration, kept out of the accessible name.
   const glyph = (g: string) => `<span aria-hidden="true">${g}</span>`;
 
   const updated = new Intl.DateTimeFormat(locale, {
@@ -253,8 +248,8 @@ export const renderPrivacyPage = (locale: Locale): string => {
     ["privacy.others.discord.term", "privacy.others.discord.detail"],
   ]);
 
-  // Each right is a card that opens the app straight at it (see notifNav's
-  // `?profile=`), headed by the same label as the in-app button.
+  // Each right is a card that opens the app at it (notifNav's `?profile=`),
+  // headed by the in-app button's label.
   const card = (heading: string, body: PlainKey, href: string) => `
     <section class="card">
       <h3>${heading}</h3>
@@ -277,8 +272,8 @@ export const renderPrivacyPage = (locale: Locale): string => {
     ),
   });
 
-  // Every translation, each named in its own language, so a reader the browser
-  // guessed wrong for can find theirs (and anyone can reach the English).
+  // Every translation, named in its own language, for a reader the browser
+  // guessed wrong for.
   const languages = locales.length < 2 ? "" : `
       <nav aria-label="${m("privacy.languages")}">
         <ul class="langs">${
@@ -375,8 +370,8 @@ export const privacyPage = (req: Request): Response => {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "content-language": locale,
-      // Without a `?lang` the language comes from the request's header, so a
-      // shared cache must key on it.
+      // Without `?lang` the language comes from the header, so caches must key
+      // on it.
       "vary": "accept-language",
       "cache-control": "no-cache",
     },

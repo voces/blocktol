@@ -1,12 +1,11 @@
-// "Someone passed your #1" on the PB (best-build) board. The decision is a pure
-// function of the day's current bests plus the actor's PB *before* their new
-// build, so its tie/lead edge cases are unit-testable; util/pbBoard.ts wires it
-// (alongside the Discord record post) to the database and the notifier.
+// "Someone passed your #1" on the PB (best-build) board. A pure function of the
+// day's current bests plus the actor's PB *before* their new build;
+// util/pbBoard.ts wires it (with the Discord record post) to the database and
+// the notifier.
 //
-// Only fires when a build enters the PB field (a free-play commit, or a ranked
-// build that reaches the field top — see run/commit.ts and run/update.ts), never
-// on every autosave. Scoped to the PB board per the product decision: notify a
-// prior #1/T1 holder who was passed or, if they were the sole #1, newly tied.
+// Fires only when a build enters the PB field (a free-play commit, or a ranked
+// build that reaches the field top; see routes/iteration/run/commit.ts and
+// update.ts), never on every autosave.
 
 export type BestRow = { user: string; name: string; best: number };
 
@@ -19,14 +18,11 @@ const NONE: LostTopDecision = { passer: null, recipients: [] };
 
 /**
  * Decide who just lost the top of the PB board when `actor`'s new build landed.
- * Only a strict PASS costs a holder the top — a tie doesn't — so a tie fires
- * nothing.
+ * Only a strict PASS costs a holder the top; a tie fires nothing.
  *
- * `actorPrevBest` is the actor's best build BEFORE this run (null = none). The
- * guard on it is what stops a player who was already leading from firing a
- * spurious "you lost #1" at the runners-up when they merely extend their lead:
- * the prior leaders count only if they were at least tied for the lead
- * beforehand (actor wasn't already strictly ahead).
+ * `actorPrevBest` is the actor's best build BEFORE this run (null = none). It
+ * stops a player already leading from sending a spurious "you lost #1" to the
+ * runners-up when they merely extend their lead.
  */
 export const decideLostTop = (
   bests: readonly BestRow[],
@@ -46,8 +42,7 @@ export const decideLostTop = (
   // The actor was already strictly ahead → the runners-up never held #1.
   if (othersTop < myPrev) return NONE;
 
-  // A strict pass, or nothing: the actor must exceed the top to displace it (a
-  // tie leaves the holders at the top).
+  // A tie leaves the holders at the top.
   if (myNew <= othersTop) return NONE;
 
   // Passed the leader(s): each holder of the previous top drops off it.

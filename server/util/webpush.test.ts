@@ -33,13 +33,11 @@ Deno.test("isPushEndpoint refuses anything else", () => {
   ) assert(!isPushEndpoint(e), e);
 });
 
-// The complete worked example from RFC 8291 §5. Feeding the RFC's published ECDH
-// shared secret through the post-ECDH pipeline and reproducing its exact output
-// body verifies the whole encryption path — the RFC 8291 auth mix, RFC 8188 HKDF
-// key/nonce derivation, AES-128-GCM, and header framing — against an
-// authoritative fixture, no live push service needed. (The ECDH step itself is
-// bypassed because Deno's WebCrypto can't deriveBits from an imported private
-// key; the standard generateKey ECDH used in production is exercised at runtime.)
+// The worked example from RFC 8291 §5. Feeding its published ECDH shared
+// secret through the post-ECDH pipeline and reproducing its output body
+// verifies the auth mix, HKDF key/nonce derivation, AES-128-GCM and header
+// framing. The ECDH step is bypassed because Deno's WebCrypto can't deriveBits
+// from an imported private key; production's generateKey ECDH isn't covered.
 const fromB64URL = (s: string): Uint8Array<ArrayBuffer> => {
   const b64 = s.replace(/-/g, "+").replace(/_/g, "/") +
     "===".slice((s.length + 3) % 4);

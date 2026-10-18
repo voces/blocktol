@@ -25,18 +25,14 @@ import { t } from "../../util/t.ts";
 
 type Row = NonNullable<ReturnType<typeof boardOf>>["rows"][number];
 
-// One board row. A single accent per row: your identity colour on your own
-// row, overridden by a record state's hue (gold/lime) when you hold one —
-// achievement picks the COLOUR, but the "you" treatments (accented
-// sub/rank/time, stronger wash) persist either way, so your row is findable
-// at #1 too. The accent rides the --you custom property; the stylesheet's
-// green is only the fallback. The avatar keeps the player's identity colour
-// regardless.
+// One board row with a single accent (the --you custom property; the
+// stylesheet's green is only the fallback): your identity colour, overridden by
+// a record state's hue (gold/lime). The "you" treatments persist under a record
+// hue so your row is findable at #1. The avatar keeps the identity colour.
 //
 // The big number is the sort's ranked value; the small line is the other
-// board's value — "PB {pb}" on the daily board, "day {time}" on the PB board.
-// Both boards carry a per-row timestamp (when the daily best / the best build
-// was set), shown as the "2h ago" sub-line.
+// board's ("PB {pb}" on daily, "day {time}" on PB). The "2h ago" sub-line is
+// when that row's daily best / best build was set.
 const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
   const state = row.record === "beat"
     ? "gold"
@@ -89,11 +85,10 @@ const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
   );
 };
 
-// The expanded standings: a bottom sheet on mobile, a right-hand side sheet on
-// desktop (purely CSS, see `.standings-modal`). The podium and the viewer's
-// neighbourhood, with exact "N between" separators where the window skips.
-// Follows the board's viewed day; toggles between the daily and PB sorts — both
-// arrive in one response, so the toggle is instant.
+// The expanded standings: a bottom sheet on mobile, a side sheet on desktop
+// (CSS only, see `.standings-modal`). Shows the podium and the viewer's
+// neighbourhood with "N between" separators where the window skips. Follows the
+// board's viewed day and toggles daily/PB instantly (one response has both).
 export const StandingsSheet = (
   { iteration, isToday, onClose }: {
     iteration?: number;
@@ -101,10 +96,8 @@ export const StandingsSheet = (
     onClose: () => void;
   },
 ) => {
-  // The sort is shared with the dock and persisted across visits. Both boards
-  // ride the same response, so switching it never fetches. The effective sort
-  // (resolved once the board is in hand, below) falls back to PB when the day
-  // has no ranked daily runs.
+  // Shared with the dock and persisted. The effective sort (below) falls back
+  // to PB when the day has no ranked daily runs.
   const persistedSort = standingsSort.value;
 
   useEffect(() => {
@@ -118,8 +111,8 @@ export const StandingsSheet = (
     return () => clearInterval(t);
   }, []);
 
-  // Mobile: dragging the notch/header down slides the sheet with the finger
-  // and closes past the threshold.
+  // Mobile: dragging the notch/header down slides the sheet and closes past a
+  // threshold.
   const { offset, handlers } = useDragToClose(onClose);
 
   const keyIt = isToday ? todayIteration.value : iteration;
@@ -127,8 +120,7 @@ export const StandingsSheet = (
     ? undefined
     : standingsByKey.value.get(keyIt);
 
-  // Keep the last response on screen while a first load is in flight, so the
-  // sheet never collapses to an empty shell.
+  // Keep the last response on screen while a load is in flight.
   const [shown, setShown] = useState<StandingsData | undefined>();
   useEffect(() => {
     if (live) setShown(live);
@@ -137,8 +129,7 @@ export const StandingsSheet = (
   const sort = effectiveSort(s, persistedSort);
   const b = boardOf(s, sort);
 
-  // A bare text button — the active sort is accent-underlined
-  // with a ▾ caret, the other muted.
+  // A bare text button: the active sort is accent-underlined with a ▾ caret.
   const SortTab = (
     { value, label }: { value: StandingsSort; label: string },
   ) => (

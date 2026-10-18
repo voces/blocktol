@@ -21,13 +21,10 @@ import {
 } from "./helpers.ts";
 import { GameStateContext } from "./useGameState.ts";
 
-// Trailing-debounce window for a ranked save, shrinking as the clock runs out.
-// Early in the build a burst of placements collapses to one save (DEBOUNCE_MS);
-// over the final RAMP_SECONDS it ramps linearly to 0, so a late edit is sent
-// almost immediately and is server-confirmed before the window closes rather
-// than caught by it and reverted (the last-second-edit-lost incident). At ~5s
-// left the wait is ~1s, at 1s it's ~0.2s, at 0 it sends now. Free play doesn't
-// use this saver (it persists locally and commits once at execution).
+// Trailing-debounce for a ranked save: DEBOUNCE_MS early in the build, ramping
+// linearly to 0 over the final DEBOUNCE_RAMP_SECONDS so a late edit is
+// confirmed before the window closes instead of reverted (the
+// last-second-edit-lost incident). Free play doesn't use this saver.
 const DEBOUNCE_RAMP_SECONDS = 10;
 const saveDebounce = (secondsLeft: number) =>
   secondsLeft >= DEBOUNCE_RAMP_SECONDS ? DEBOUNCE_MS : Math.max(
@@ -56,29 +53,23 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
   } = useContext(GameStateContext);
 
   useEffect(() => {
-    // Apply a new block list: update the board from the shared engine locally (so
-    // the runner path moves the instant a block lands — no round trip), then
-    // persist. Effectful work stays OUT of the setBlocks updater — updaters are
-    // contractually pure, and a double-invoked updater would double-fire the
-    // save.
+    // Apply a new block list: recompute the runner path locally (no round
+    // trip), then persist. Keep effects OUT of the setBlocks updater: updaters
+    // must be pure, and a double-invoked one would double-fire the save.
     //
-    // Every edit below builds `newBlocks` from `blocksRef`, the board as it
-    // stands right now — NOT from the render that registered these listeners.
-    // Preact re-runs an effect after paint, so a gesture landing within a frame
-    // of the previous one still runs on the old closure; editing that snapshot
-    // writes a board with the previous edit undone (a deleted block back on the
-    // board). The brick counts derive from the board (see useGameState), so
-    // writing it is the whole edit.
+    // Every edit builds `newBlocks` from `blocksRef`, the board right now, NOT
+    // the render that registered these listeners: Preact re-runs an effect
+    // after paint, so a gesture within a frame of the previous one would edit
+    // a stale snapshot and undo the previous edit. The brick counts derive from
+    // the board (see useGameState), so writing it is the whole edit.
     const apply = (newBlocks: ReadonlyArray<BoardBlock>) => {
       rebuildGrid(grid, checkpoint, newBlocks);
       const localBlocks = newBlocks.filter((b) => b.local);
       const r = localRun(newBlocks, checkpoint);
       if (r) setRun(r);
       setBlocks(newBlocks);
-      // Persistence diverges by mode. Free play keeps its state on the client
-      // (localStorage) until commit — no network mid-build. Ranked saves to the
-      // server, debounced by a delay that shrinks to 0 as the clock runs out
-      // (saveDebounce) so a last-second edit still lands.
+      // Free play keeps its state in localStorage until commit; ranked saves to
+      // the server, debounced by saveDebounce.
       if (freePlay) {
         persistFreePlay(
           iteration ?? -1,
@@ -93,33 +84,29 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       }
     };
 
-    // Remove a local block, refunding its brick (and power, if it was a
-    // thunder) — the refund is just the block leaving the board, so removing one
-    // that is already gone (a double tap racing the re-render) refunds nothing.
-    // Shared by a tap-delete and by dragging a block somewhere it can't be
-    // placed.
+    // Remove a local block; the refund is just the block leaving the board, so
+    // removing one already gone (a double tap racing the re-render) refunds
+    // nothing. Used by tap-delete and by dragging a block somewhere invalid.
     const removeBlock = (block: Point & { thunder?: boolean }) => {
       apply(blocksRef.current.filter((b) => b !== block));
     };
 
-    // `onBoard` is whether the release landed on the playable board (not a HUD
-    // control, text, or the border ring / outside the SVG).
+    // `onBoard`: the release landed on the playable board (not a HUD control,
+    // text, the border ring, or outside the SVG).
     const commit = (onBoard: boolean) => {
-      // `viewing` checked explicitly: a reviewed maze keeps a live free-play
-      // build's countdown on the clock (time > 0), but stays non-editable.
+      // `viewing` is checked explicitly: a review can keep a live free-play
+      // countdown (time > 0) but stays non-editable.
       if (viewing || timeRef.current <= 0) {
         dragRef.current = null;
         return;
       }
       if (svg) svg.style.transform = "";
       placingBlock.value = { ...placingBlock.value, placing: false };
-      // The gesture is over: drop any lingering placement / thunder previews so
-      // they don't stick around after release (touch has no follow-up move to
-      // clear them).
+      // Drop lingering previews; touch has no follow-up move to clear them.
       placingRef.current = false;
       thunderHover.value = undefined;
 
-      // The board as it stands at release, not as the registering render saw it.
+      // The board at release, not as the registering render saw it.
       const blocks = blocksRef.current;
 
       const drag = dragRef.current;
@@ -128,8 +115,8 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
         transitionBlock.value = undefined;
         const { origin, dragged } = drag;
 
-        // Never left its origin cell → a tap: upgrade to thunder with power,
-        // otherwise delete.
+        // Never left its origin cell: a tap upgrades to thunder with power in
+        // hand, otherwise deletes.
         if (!dragged) {
           if (!onBoard) return;
           if (!origin.thunder && budgetNow().power > 0) {
@@ -144,10 +131,8 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
           return;
         }
 
-        // Dragged to a different cell on the board: drop it there if valid,
-        // otherwise remove it (refunding its brick / power) — dragging a block
-        // somewhere it can't go deletes it, same as a tap-delete. Back on its
-        // origin, or released off-board, it snaps back untouched.
+        // Dragged to another cell: drop it there if valid, else delete it. Back
+        // on its origin, or released off-board, it snaps back untouched.
         const target = placingBlock.peek();
         if (target.x !== origin.x || target.y !== origin.y) {
           if (!onBoard) return;
@@ -175,22 +160,18 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
       if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return;
 
-      // A placement that walls the runner off entirely is refused outright
-      // (the grid stays untouched — apply() rebuilds it from blocks anyway).
+      // A placement that walls the runner off entirely is refused.
       if (!solvable(blocks, checkpoint, { x, y })) return;
 
       const newBlocks = [...blocks, { x, y, local: true }];
-      // Free play opens the run on this first placement — locally, with no
-      // startRun. The client owns the 60s window (deadline) and mints the
-      // attempt's idempotency id; the server hears nothing until commit. Claim
-      // the board token so an in-flight re-stage fired just before this placement
-      // can't land and clobber the fresh build. `apply` then computes the path
-      // and persists locally, exactly like every later placement.
+      // Free play opens the run on its first placement, locally: the client
+      // owns the 60s deadline and mints the attempt's idempotency id. Claim the
+      // board token so an in-flight re-stage can't land and clobber the fresh
+      // build.
       //
-      // The deadline is what says the run is already open, not `staged` alone
-      // (which this render's closure can still report true a frame after the
-      // opening placement — see apply): re-opening would mint a second
-      // idempotency id and re-arm the window from now.
+      // The deadline, not `staged` alone, says the run is open: this closure
+      // can still report `staged` a frame after the opening placement, and
+      // re-opening would mint a second id and re-arm the window.
       if (staged && deadlineRef.current === null) {
         claimBoard();
         beginFreePlay();
@@ -212,8 +193,8 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     const touchendCallback = (e: TouchEvent) => {
       const touch = e.changedTouches[0];
       const target = touch.target;
-      // Turn the zoom off and cancel any still-pending arm (a tap released
-      // before the delay elapsed must not zoom after the finger is gone).
+      // Cancel any pending zoom arm: a tap released before the delay must not
+      // zoom after the finger is gone.
       clearTouchZoom();
       const onBoard = target instanceof SVGElement &&
         !(target instanceof SVGTextElement) &&
@@ -226,9 +207,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
       globalThis.removeEventListener("mouseup", mouseupCallback);
       globalThis.removeEventListener("touchend", touchendCallback);
     };
-    // The clock, the board and the budgets are read through refs/signals, so the
-    // listeners re-register only on the handful of things that change what a
-    // gesture MEANS — never per edit, which is the window a fast second gesture
-    // would fall into.
+    // The clock, board and budgets are read through refs/signals, so listeners
+    // re-register only when what a gesture MEANS changes, never per edit.
   }, [svg, checkpoint, iteration, staged, freePlay, viewing]);
 };

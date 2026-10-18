@@ -1,41 +1,36 @@
 // Blocktol service worker.
 //
-// The asset manifest — the build's ASSET_VERSION, the precache list, and the
-// notification ICON url — is INJECTED by the server at serve time, replacing the
-// marker comment below (see server/util/assets.ts). The defaults keep this file
-// valid JS if it were ever loaded untransformed (it never is in practice: the
-// server always serves it, no-cache, so updates land promptly).
+// The server injects the asset manifest (ASSET_VERSION, the precache list, the
+// notification ICON url) at serve time, replacing the marker comment below (see
+// server/util/assets.ts). The defaults keep this file valid JS untransformed.
 let ASSET_VERSION = "dev";
 let PRECACHE = ["/", "/index.html"];
 let ICON = "/favicon.svg";
-// The server's VAPID public key, injected alongside the asset manifest so the
-// `pushsubscriptionchange` handler below can re-subscribe without a page open to
-// fetch it. Empty when push isn't configured server-side.
+// The server's VAPID public key, injected with the manifest so
+// `pushsubscriptionchange` can re-subscribe with no page open. Empty when push
+// isn't configured.
 let VAPID_PUBLIC_KEY = "";
 /* __ASSET_MANIFEST__ */
 
-// Per-build cache: bumping ASSET_VERSION (any precached asset changed) makes a
-// new cache, and `activate` deletes the old ones. Font files are
-// content-addressed and change rarely, so they live in their own cache that
-// survives version bumps.
+// Per-build cache: a new ASSET_VERSION makes a new cache, and `activate`
+// deletes the old ones. Fonts are content-addressed, so their cache survives.
 const ASSET_CACHE = `blocktol-assets-${ASSET_VERSION}`;
 const FONT_CACHE = "blocktol-fonts";
-// Where the page mirrors the device credential for the SW to read (see
-// client/util/push.ts). A service worker can't reach localStorage, and
-// `pushsubscriptionchange` fires with no page open to ask — so re-registering a
-// rotated subscription needs the id from a store both sides can see. Cache
-// Storage is the same same-origin exposure class as the localStorage copy it
-// mirrors, so this moves the credential between stores, not across a boundary.
+// Where the page mirrors the device credential for the SW (see
+// client/util/push.ts). A SW can't reach localStorage and
+// `pushsubscriptionchange` fires with no page open, so re-registering needs a
+// store both sides see. Cache Storage has the same same-origin exposure as the
+// localStorage copy.
 const CRED_CACHE = "blocktol-cred";
 const CRED_URL = "/__push-credential";
-// The self-hosted font files (public/fonts/): their names carry a hash of their
-// bytes, so a cached copy is never stale. fonts.css itself is a `?v` asset.
+// Self-hosted font files (public/fonts/); the name carries a hash of the bytes,
+// so a cached copy is never stale. fonts.css itself is a `?v` asset.
 const FONT_FILE = /^\/fonts\/[a-z0-9-]+-[0-9a-f]{8}\.woff2$/;
 
 self.addEventListener("install", (event) => {
-  // Precache each entry independently so one missing asset can't fail the whole
-  // install (unlike cache.addAll's all-or-nothing). Versioned entries are
-  // checked against their `?v` like any cache fill (see cacheFirst).
+  // Precache entries independently so one missing asset can't fail the install
+  // (cache.addAll is all-or-nothing). `?v` entries are verified (see
+  // putIfVersion).
   event.waitUntil(
     caches.open(ASSET_CACHE).then((cache) =>
       Promise.allSettled(PRECACHE.map(async (url) => {
@@ -53,7 +48,7 @@ self.addEventListener("activate", (event) => {
       if ("navigationPreload" in self.registration) {
         await self.registration.navigationPreload.enable();
       }
-      // Drop every cache from an older build; keep the current assets + fonts.
+      // Drop caches from older builds.
       const keep = new Set([ASSET_CACHE, FONT_CACHE, CRED_CACHE]);
       for (const key of await caches.keys()) {
         if (!keep.has(key)) await caches.delete(key);
@@ -63,8 +58,8 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// The `?v` a response's bytes actually deserve: the same truncated SHA-256 the
-// server stamps (server/util/assets.ts `shortHash` — keep the two in step).
+// The `?v` a response's bytes deserve: the same truncated SHA-256 as
+// `shortHash` in server/util/assets.ts (keep the two in step).
 const contentVersion = async (res) => {
   const digest = await crypto.subtle.digest("SHA-256", await res.arrayBuffer());
   return Array.from(new Uint8Array(digest).slice(0, 6))
@@ -72,14 +67,12 @@ const contentVersion = async (res) => {
     .join("");
 };
 
-// Serve from cache, fetching and filling on a miss. Used for fingerprinted
-// assets, whose url changes on any content change — so a cached hit is never
-// stale. Only bytes that really ARE the requested version get cached: during
-// an in-place deploy the outgoing process still stamps its old `?v` while the
-// files on disk are already the new build, and caching those new bytes under
-// the old url pinned them there for good — the new bundle then met the old
-// server's SHA, reloaded, got the same cached bundle, and looped. A mismatch
-// is still served (the page has to load), just never stored.
+// Serve from cache, filling on a miss. For fingerprinted assets, whose url
+// changes with content, so a hit is never stale. Only bytes that match the
+// requested `?v` are cached: during an in-place deploy the outgoing process
+// still stamps its old `?v` over new files on disk, and caching those bytes
+// under the old url loops the client (new bundle, old server SHA, reload, same
+// cached bundle). A mismatch is served but never stored.
 const cacheFirst = async (request, cacheName) => {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(request);
@@ -89,8 +82,8 @@ const cacheFirst = async (request, cacheName) => {
   return res;
 };
 
-// Store `res` for `request` — when the url is versioned, only if the bytes
-// match that version (see cacheFirst).
+// Store `res` for `request`; a versioned url is stored only if the bytes match
+// (see cacheFirst).
 const putIfVersion = async (cache, request, res) => {
   const v = new URL(request.url ?? request, self.location.origin).searchParams
     .get("v");
@@ -106,14 +99,13 @@ self.addEventListener("fetch", (event) => {
   // The API is always live; never serve it from a cache.
   if (url.pathname.startsWith("/api/")) return;
   if (url.protocol === "chrome-extension:") return;
-  // The credential mirror is SW-private state, not a served resource. The
-  // offline fallback below reaches for `caches.match()`, which searches EVERY
-  // cache — so leave this url to the network (a 404) rather than let a failed
-  // request be answered out of CRED_CACHE.
+  // SW-private state, not a served resource. The offline fallback's
+  // `caches.match()` searches EVERY cache, so leave this url to the network
+  // (a 404) rather than answer it out of CRED_CACHE.
   if (url.pathname === CRED_URL) return;
 
-  // Navigations: network-first, so a fresh shell (and its new asset hashes) wins
-  // online; fall back to the cached shell offline (the PWA still opens).
+  // Navigations: network-first so a fresh shell wins online; the cached shell
+  // opens the PWA offline.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
@@ -132,8 +124,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Font files (content-addressed): cache-first, kept across builds for
-  // offline text.
+  // Font files (content-addressed): cache-first, kept across builds.
   if (url.origin === self.location.origin && FONT_FILE.test(url.pathname)) {
     event.respondWith(cacheFirst(request, FONT_CACHE));
     return;
@@ -157,12 +148,10 @@ self.addEventListener("fetch", (event) => {
 
 // ---- Web Push ----
 
-// A push arrives as the JSON the server encrypted (see server/util/notify.ts):
-// { title, body, tag, url }. `tag` coalesces repeats of the same kind+day into
-// one notification instead of stacking. userVisibleOnly subscriptions MUST show
-// a notification for every push, so fall back to a generic one if the payload is
-// missing or unparseable. The icon is the server-injected versioned url, so it
-// busts when the icon changes.
+// The payload is the JSON the server encrypted (server/util/notify.ts):
+// { title, body, tag, url }. `tag` coalesces repeats of the same kind+day.
+// userVisibleOnly subscriptions MUST show a notification per push, so a missing
+// or unparseable payload falls back to a generic one.
 self.addEventListener("push", (event) => {
   let data = {};
   try {
@@ -172,10 +161,8 @@ self.addEventListener("push", (event) => {
   }
   event.waitUntil(
     (async () => {
-      // Let EVERY open tab refresh its store, focused or not — it's a data
-      // store, so a backgrounded tab stays current in the background and is
-      // fresh the instant you return to it. A visible tab also gives its bell a
-      // quick, silent swing off this hand-off.
+      // Tell EVERY open tab, focused or not, to refresh its store; a visible
+      // tab also swings its bell silently.
       const clients = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
@@ -183,8 +170,8 @@ self.addEventListener("push", (event) => {
       for (const client of clients) {
         client.postMessage({ type: "notification" });
       }
-      // Only fire a system banner when nothing is on screen; a visible tab
-      // handles it in-app. userVisibleOnly tolerates this focused-skip.
+      // System banner only when nothing is on screen; a visible tab handles it
+      // in-app (userVisibleOnly tolerates this skip).
       if (clients.some((c) => c.visibilityState === "visible")) return;
 
       const title = data.title || "Blocktol";
@@ -200,8 +187,8 @@ self.addEventListener("push", (event) => {
   );
 });
 
-// Tapping a notification focuses an existing app window (navigating it to the
-// target) or opens a new one.
+// Tapping a notification focuses an app window (navigating it to the target) or
+// opens one.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || "/";
@@ -213,22 +200,18 @@ self.addEventListener("notificationclick", (event) => {
       });
       for (const client of all) {
         if (!("focus" in client)) continue;
-        // Reuse an existing app window. On Android Chrome, navigate() hands back
-        // a FRESH client handle; focusing the stale pre-navigation reference is
-        // a silent no-op — the window navigates but never comes forward. Focus
-        // whatever navigate() returns, falling back to the original handle.
+        // On Android Chrome navigate() returns a FRESH client handle, and
+        // focusing the stale one is a silent no-op. Focus what navigate()
+        // returns.
         if ("navigate" in client && new URL(client.url).pathname !== url) {
           const navigated = await client.navigate(url).catch(() => null);
           return (navigated || client).focus();
         }
         return client.focus();
       }
-      // App fully closed (no window client): launch it. On Android Chrome
-      // openWindow can open the PWA at the right URL WITHOUT bringing it to the
-      // foreground — the tap looks like it did nothing, the window sits in the
-      // background on the target day, and only a manual open reveals it (the
-      // reported "tap dismisses, PWA doesn't open"). Focus the opened window so
-      // it actually comes forward.
+      // No window client: launch the app. On Android Chrome openWindow can open
+      // the PWA WITHOUT foregrounding it, so the tap looks like it did nothing.
+      // Focus the opened window.
       if (!self.clients.openWindow) return;
       const opened = await self.clients.openWindow(url).catch(() => null);
       if (opened && "focus" in opened) await opened.focus().catch(() => {});
@@ -238,8 +221,8 @@ self.addEventListener("notificationclick", (event) => {
 
 // ---- Subscription rotation ----
 
-// base64url VAPID key -> the Uint8Array applicationServerKey expects. Mirrors
-// client/util/push.ts's copy; the SW can't import from the bundle.
+// base64url VAPID key -> the Uint8Array applicationServerKey expects. Copy of
+// the one in client/util/push.ts; the SW can't import from the bundle.
 const vapidKeyBytes = (base64) => {
   const padded = base64.replace(/-/g, "+").replace(/_/g, "/") +
     "=".repeat((4 - (base64.length % 4)) % 4);
@@ -266,29 +249,26 @@ const callApi = async (method, credential, body) =>
     body: JSON.stringify(body),
   });
 
-// The browser can retire a push subscription on its own — Chrome on Android does
-// it after a Play Services re-registration, a browser update, or a long idle
-// stretch, and it's also how a userVisibleOnly budget revocation surfaces. The
-// endpoint we hold server-side is dead from that moment: sends 410 and the
-// fan-out prunes the row (server/util/notify.ts), leaving a player whose
-// preference toggles still read "on" receiving nothing.
+// The browser can retire a push subscription on its own (Chrome on Android
+// after Play Services re-registration, an update, or long idle; also a
+// userVisibleOnly budget revocation). The server-side endpoint then 410s and
+// the fan-out prunes the row (server/util/notify.ts), leaving a player whose
+// toggles read "on" receiving nothing.
 //
-// Waiting for syncPushSubscription() on the next app OPEN isn't enough: a
-// daily-final push is often the thing that would have brought the player back,
-// so the failure sustains itself. Re-subscribe and re-register here, while the
-// SW is awake and holding the event.
+// Waiting for syncPushSubscription() on the next app open isn't enough: the
+// push that would bring the player back never arrives. Re-subscribe and
+// re-register here, while the SW holds the event.
 self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil(
     (async () => {
       const credential = await readCredential();
-      // No mirrored credential (the page has never run the current client) or no
-      // server key: nothing useful to do. The next app open re-registers.
+      // No mirrored credential (page never ran the current client) or no server
+      // key: the next app open re-registers.
       if (!credential || !VAPID_PUBLIC_KEY) return;
 
       try {
-        // Chrome fires this event WITHOUT populating newSubscription, so the
-        // common path is to mint one ourselves; Firefox hands one over. Either
-        // way the old subscription is already invalid by the time we're called.
+        // Chrome fires this WITHOUT newSubscription, so we mint one; Firefox
+        // supplies one. The old subscription is already invalid either way.
         const sub = event.newSubscription ||
           await self.registration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -304,17 +284,16 @@ self.addEventListener("pushsubscriptionchange", (event) => {
           keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
         });
 
-        // Drop the dead row when the browser told us which one it was. Chrome
-        // usually doesn't, and that's fine: the stale endpoint 410s on the next
-        // send and the fan-out prunes it then.
+        // Drop the dead row when the browser names it; otherwise the next send
+        // 410s and the fan-out prunes it.
         const old = event.oldSubscription && event.oldSubscription.endpoint;
         if (old && old !== json.endpoint) {
           await callApi("unsubscribePush", credential, { endpoint: old })
             .catch(() => {});
         }
       } catch {
-        // Best-effort: permission revoked, offline, or the push service refused.
-        // syncPushSubscription() retries on the next app open.
+        // Best-effort (revoked, offline, refused); syncPushSubscription()
+        // retries on the next app open.
       }
     })(),
   );

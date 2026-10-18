@@ -1,15 +1,5 @@
 import { sql } from "./query.ts";
 
-// Every row we hold that belongs to one user, for their "export my data" (GDPR
-// access / portability). Six result sets in one round trip: the user row, all
-// their runs (void included — it's their data, even abandoned attempts), their
-// notification history, their push subscriptions, their board flags, and the
-// Discord top-PB records currently announced under their id (pb_top).
-// Timestamps come back as epoch millis (UNIX_TIMESTAMP * 1000) so the caller
-// ships plain numbers rather than the proxy's datetime strings. The route
-// shapes these into the export document (see routes/exportData.ts) —
-// deserializing the maze blob, parsing the JSON columns, and dropping the push
-// encryption keys (crypto material, not meaningful personal data).
 export type ExportUserRow = {
   id: string;
   name: string | null;
@@ -58,6 +48,14 @@ export type ExportPbTopRow = {
   announced_at: number | null;
 };
 
+// Every row held about one user, for "export my data" (GDPR access /
+// portability), as six result sets in one round trip: the user row, all their
+// runs (void included, since it is their data), notifications, push
+// subscriptions, board flags, and the top-PB records announced under their id
+// (pb_top). Timestamps are epoch millis so the caller ships numbers, not
+// datetime strings. routes/exportData.ts shapes these into the export document:
+// it deserializes the maze blob, parses the JSON columns and drops the push
+// keys (crypto material, not personal data).
 export const exportUserData = (userId: string) =>
   sql<[
     ExportUserRow[],

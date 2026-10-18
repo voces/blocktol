@@ -1,22 +1,22 @@
 // Pure assembly for the standings API: rank a sorted field and slice out the
-// display window (the podium plus the viewer's neighbourhood). Split from the
-// route so the tie/window/gap edge cases are unit-testable without a database.
+// display window (the podium plus the viewer's neighbourhood). Split from
+// routes/iteration/standings.ts so the tie/window/gap edge cases are testable
+// without a database.
 
 export type FieldEntry = {
-  // The player's id — used only to find the viewer; NEVER emitted in a row
-  // (the raw id is the bearer credential; see common/avatar.ts).
+  // Used only to find the viewer; NEVER emitted in a row (the raw id is the
+  // bearer credential; see common/avatar.ts).
   user: string;
   name: string;
   hue: number;
-  // The ranked value: the daily-best time on the daily board, the all-time PB
-  // on the PB board. Higher is better (longest maze wins).
+  // The ranked value: the daily-best time on the daily board, the PB on the PB
+  // board. Higher is better.
   time: number;
   at: number;
-  // The OTHER value, shown as the row's small metric line: the player's PB on
-  // the daily board, their time that day on the PB board. Absent/null when it
-  // can't be computed (e.g. a PB-board player who didn't play the viewed day) —
-  // the daily board sets it here; the PB board attaches it per-window afterward
-  // (see the route), so this is optional.
+  // The OTHER board's value, shown as the row's small metric line: the PB on
+  // the daily board, the day's daily time on the PB board. Absent/null when
+  // there is none (a PB-board player with no ranked run that day). Set by
+  // `project` in routes/iteration/standings.ts.
   secondary?: number | null;
 };
 
@@ -28,29 +28,24 @@ export type StandingsRow = {
   name: string;
   hue: number;
   time: number;
-  // The small metric line (the other board's value): PB on the daily board,
-  // the day's time on the PB board. null when there's none.
+  // The small metric line (the other board's value); null when there's none.
   secondary: number | null;
-  // When this best was first set (ms epoch) — the row's "2h ago" sub-line.
-  // 0 on the PB board (all-time, no single timestamp).
+  // When this best was first set (ms epoch), for the row's "2h ago" sub-line.
   at: number;
-  // The field's record states, mirroring the attempts panel's supreme/peak
-  // split: a UNIQUE field-best is "beat" (gold, crowned); rows tying a SHARED
-  // field-best are "match" (lime). null for everyone else.
+  // Mirrors the attempts panel's supreme/peak split: a UNIQUE field-best is
+  // "beat" (gold); rows tying a SHARED field-best are "match" (lime).
   record: "beat" | "match" | null;
-  // Players between this row and the previously displayed one (0 = adjacent),
-  // so the client renders exact "N between" separators without knowing the
-  // full field.
+  // Players between this row and the previous displayed one (0 = adjacent), for
+  // exact "N between" separators.
   gapBefore: number;
 };
 
-// `field` must be sorted best-first (time DESC, at ASC — getDailyStandings'
-// order). Standard competition ranking: tied times share a rank and the next
-// distinct time skips past them (1, 2, 2, 4).
+// `field` must be sorted best-first (time DESC, at ASC), as `project` in
+// routes/iteration/standings.ts produces. Standard competition ranking: tied
+// times share a rank and the next distinct time skips (1, 2, 2, 4).
 //
-// The default window is generous — small fields ship whole and big ones still
-// fill a desktop-height sheet — and the client just renders what it gets
-// (the sheet scrolls); gaps stay exact either way.
+// The default window is generous (small fields ship whole, big ones fill a
+// desktop sheet); the client renders whatever it gets and gaps stay exact.
 export const buildStandings = (
   field: readonly FieldEntry[],
   viewer: string,
@@ -68,8 +63,7 @@ export const buildStandings = (
 
   const meIdx = field.findIndex((e) => e.user === viewer);
 
-  // The window: the podium ∪ the viewer's neighbourhood, deduped via a set of
-  // indices. A viewer inside the podium simply widens nothing.
+  // The window: the podium plus the viewer's neighbourhood, deduped by index.
   const indices = new Set<number>();
   for (let i = 0; i < Math.min(top, field.length); i++) indices.add(i);
   if (meIdx >= 0) {
@@ -83,10 +77,9 @@ export const buildStandings = (
   const recordOf = (i: number): "beat" | "match" | null =>
     field[i].time === topTime ? (topShared ? "match" : "beat") : null;
 
-  // The viewer's self-excluded ranked percentile (how much of the field they
-  // beat, ties split — the convention ratings/profile/calendar share), used
-  // to colour their rank on the percentile ramp. null when there's nobody to
-  // rank against.
+  // The viewer's self-excluded percentile (ties split, the convention ratings,
+  // profile and calendar share), which colours their rank. null when there's
+  // nobody to rank against.
   const percentileOf = (i: number) => {
     const others = field.length - 1;
     if (others === 0) return null;
@@ -131,8 +124,8 @@ export const buildStandings = (
       percentile: percentileOf(meIdx),
     },
     rows,
-    // The window's player ids, parallel to `rows` (and `meUser`), so the route
-    // can attach each row's secondary without the ids ever reaching the wire.
+    // Player ids parallel to `rows`. The route drops them (and `meUser`) before
+    // responding: they must never reach the wire.
     rowUsers: windowIdx.map((i) => field[i].user),
     meUser: meIdx < 0 ? null : field[meIdx].user,
   };

@@ -1,15 +1,12 @@
-// POST /iteration/run/commit
-//   - Free-play only (daily attempts already commit on build, so this never
-//     touches them). The client calls it the moment the run begins executing;
-//     leaving before then means the run is never committed (abandoned).
-//   - Two shapes, for backwards compatibility with cached clients:
-//       * { iteration, blocks, clientId } — the current client. Free play runs
-//         entirely locally (no startRun/updateRun), so the whole maze arrives
-//         here. Validate it server-side (legality + the authoritative time from
-//         the shared engine — only the 60s build budget is trusted to the
-//         client) and INSERT the run, idempotent on clientId.
-//       * { iteration } — a legacy client that still start+update+bare-committed.
-//         Its row already exists with the maze; just flip it non-void.
+// `commitRun`: free play only (ranked attempts commit on build). The client
+// calls it when the run starts executing; leaving earlier abandons the run.
+// Two shapes, for cached clients:
+//   - { iteration, blocks, clientId }: the current client. Free play is local,
+//     so the whole maze arrives here. Validate it (legality, and the
+//     authoritative time from the shared engine; only the 60s build budget is
+//     trusted to the client) and INSERT, idempotent on clientId.
+//   - { iteration }: a legacy client that did startRun + updateRun. Its row
+//     exists with the maze; flip it non-void.
 
 import { z } from "zod";
 import {
@@ -27,40 +24,33 @@ import { piece } from "./piece.ts";
 
 const commitRunBody = z.object({
   iteration: z.number().min(1),
-  // New (commit-only free play). Absent from legacy clients — zod strips the
-  // unknown `freePlay` key an old client may still send, and their commit falls
-  // through to the flip-void path below.
+  // Absent from legacy clients, whose commit takes the flip-void path below.
   // Capped at 400 (> the board's 324 interior cells) so an oversized maze is
-  // rejected before validateRun's per-piece walk — see updateRun for the bound.
+  // rejected before validateRun's per-piece walk; see updateRun.
   blocks: z.array(piece).max(400).optional(),
   clientId: z.string().min(1).max(64).optional(),
-  // The player's zone, for the board gate's "today or later". Optional only for
-  // cached clients from before it was sent; the gate reads its absence as the
-  // westernmost zone (see util/boardAccess.ts).
+  // For the board gate's "today or later". Optional for cached clients that
+  // omit it; the gate then assumes the westernmost zone (util/boardAccess.ts).
   timeZone: z.string().optional(),
 });
 
 export const commitRun = method(commitRunBody, true)(
   async ({ userId, iteration, blocks, clientId, timeZone }, req) => {
-    // The run's server-assigned created (ms epoch), handed back so the client can
-    // pin the just-executed run off its optimistic panel row (see
-    // insertFreePlayRun). Null on the legacy flip-void path — that client already
-    // has the row's created from getBoard and never renders an optimistic row.
+    // The run's server-assigned created (ms epoch), so the client can pin the
+    // just-executed run off its optimistic panel row (see insertFreePlayRun).
+    // Null on the legacy flip-void path, which renders no optimistic row.
     let created: number | null = null;
 
-    // The board gate (util/boardAccess.ts), for both shapes: a commit inserts a
-    // run into the iteration's live PB field (and, on a still-rankable day, a run
-    // row that startRun's @priorRuns would count), so it must not land on a
-    // board the caller can't see — nor answer with validateRun's reasons, which
-    // would let a locked board be mapped cell by cell. The honest client only
-    // commits a board getBoard just staged for it, so it never lands here.
+    // The board gate (util/boardAccess.ts), for both shapes: a commit must not
+    // land on a locked board (it would enter the PB field, and on a rankable
+    // day add a row startRun's @priorRuns counts), nor answer with
+    // validateRun's reasons, which would map a locked board cell by cell.
     try {
       if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
         return { error: "board locked", status: 403 };
       }
     } catch (err) {
-      // A bad timeZone or an unknown iteration is the caller's fault (400/404
-      // via the router), not a server error to log.
+      // A bad timeZone or unknown iteration is the caller's fault (400/404).
       if (err instanceof UserError) throw err;
       log.error(req, "failed to check board access", { error: errText(err) });
       return { error: "failed to commit run", status: 500 };
@@ -85,15 +75,12 @@ export const commitRun = method(commitRunBody, true)(
       log.error(req, "failed to commit run", { error: errText(err) });
       return { error: "failed to commit run", status: 500 };
     }
-    // The committed run just entered the PB field: run the PB-board side
-    // effects (lost-top notifications for anyone this build passed, and the
-    // Discord "top PB" record post/tie edit). Awaited on purpose (a Deploy
-    // preview kills work left running after the response), but each effect
-    // short-circuits when nothing changed. onPbBuild never throws, so it can't
-    // fail the commit.
+    // The run just entered the PB field: send lost-top notifications and the
+    // Discord top-PB post/edit. Awaited because a Deploy preview kills work
+    // left running after the response. Never throws, so it can't fail the
+    // commit.
     await onPbBuild(iteration, userId);
-    // The iteration rides back so the client can refresh that day's standings —
-    // a committed free-play run just entered the field and may move the PB board.
+    // The iteration lets the client refresh that day's standings.
     return { kind: "commitRun" as const, iteration, created };
   },
 );

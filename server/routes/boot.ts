@@ -9,38 +9,27 @@ import { getDailyIterationId } from "../db/iteration.ts";
 import { dailyParts } from "../util/dailyParts.ts";
 import { method } from "./apiHelpers.ts";
 
-// One request for the whole cold boot. This composes the boot handlers
-// (getDailySummary/getProfile/standings/getNotifications/getBoard/list) in
-// parallel and bundles their results, so the client primes each off this single
-// fetch (see client `primeBoot`) with no second wave of refetches.
+// One request for the whole cold boot: runs the boot handlers (getDailySummary,
+// getProfile, standings, getNotifications, getBoard, list) in parallel and
+// bundles the results, so the client primes each off this single fetch (client
+// `primeBoot`).
 //
-// Composition (not reimplementation) is deliberate: each sub-handler keeps its
-// exact, tested semantics — including getDailySummary never opening a ranked
-// attempt and getBoard's free-play gate — and re-derives userId
-// from the request itself (see apiHelpers.method), so nothing is threaded. On the
-// cohost these run against the local DB with the per-iteration solver cache and
-// the standings LRU warm, so the fan-out is a handful of cheap parallel reads.
+// It composes the handlers rather than reimplementing them, so each keeps its
+// tested semantics (getDailySummary never opens a ranked attempt; getBoard's
+// free-play gate). Each re-derives userId from the request (apiHelpers.method).
 //
-// An unfinished daily comes back `{ incomplete }` (200) — the client stages
-// currentRun (from the summary) when present and only falls back to this board
-// once the daily is done.
+// An unfinished daily's `board` is `{ incomplete }` (200); the client stages
+// the summary's currentRun instead.
 //
-// `list` is the calendar's two mount months — CURRENT and PREV — derived from
-// the caller's timezone so they match the client's local-month keys (the client
-// content-keys each prime by the same [year, month, 1]..[next] range — see
-// dailyItems.monthListInput). Returned as `[current, prev]`; the client primes
-// each month under its own key, so both the current- and prev-month calendar
-// fetches consume boot's slices. (When the calendar shows only the current month
-// — mobile / late in the month — the prev prime simply goes unconsumed.)
+// `list` is the calendar's two mount months, `[current, prev]`, derived from
+// the caller's timezone so they match the client's content keys (see
+// dailyItems.monthListInput). A prev month the calendar doesn't show goes
+// unconsumed.
 //
-// `day` is the cold-load-onto-a-particular-day case: a `/YYYYMMDD` permalink (a
-// notification tap, a shared link, or just reloading while viewing a past day —
-// the view sync writes that day into the URL). When present, boot ALSO resolves
-// that date to its iteration and bundles the linked day's board + standings, so
-// a day-link boot collapses to this one request too (see client `primeBoot`'s
-// `day` branch). `dayView` stays the WARM in-app day navigation; this is its
-// cold-boot twin. A date with no daily resolves to `linked: null` and the client
-// falls through (its deep-link handler already tolerates an unresolvable day).
+// `day` is a `/YYYYMMDD` permalink cold load: boot also resolves that date to
+// its iteration and bundles the day's board + standings as `linked` (see client
+// `primeBoot`). `dayView` is the warm in-app twin. A date with no daily gives
+// `linked: null` and the client falls through.
 const bootBody = z.object({
   timeZone: z.string(),
   day: z.tuple([z.number(), z.number(), z.number()]).optional(),
@@ -60,10 +49,8 @@ export const boot = method(bootBody, true)(
     const prevYear = month === 1 ? year - 1 : year;
     const prevMonth = month === 1 ? 12 : month - 1;
 
-    // The linked day's iteration must be known before its board/standings can
-    // join the fan-out (both key off it), so resolve it up front — one fast
-    // indexed lookup ahead of the parallel reads. Non-throwing: an unknown date
-    // yields undefined → linked: null.
+    // Both linked reads key off the iteration, so resolve it before the
+    // fan-out. Non-throwing: an unknown date yields undefined → linked: null.
     const linkedIteration = day
       ? await getDailyIterationId(day[0], day[1], day[2])
       : undefined;
@@ -86,11 +73,9 @@ export const boot = method(bootBody, true)(
       getBoard.handler({ timeZone }, req),
       listIterations.handler(monthRange(year, month), req),
       listIterations.handler(monthRange(prevYear, prevMonth), req),
-      // The same call showBoard sends for that day, so the client primes it
-      // under the same key. Same composition as dayView. A link to TODAY while
-      // the daily is unfinished answers { incomplete } here; the prime then
-      // carries that "not yet", and showBoard's re-request picks up the real
-      // board once the attempts are spent (see store/board.ts).
+      // The same calls as dayView, so the client primes them under showBoard's
+      // keys. A link to TODAY with the daily unfinished answers { incomplete };
+      // showBoard re-requests once the attempts are spent (store/board.ts).
       linkedIteration !== undefined
         ? getBoard.handler({ iteration: linkedIteration, timeZone }, req)
         : Promise.resolve(undefined),
@@ -105,11 +90,10 @@ export const boot = method(bootBody, true)(
       standings: standingsField,
       notifications,
       board,
-      // [current, prev] — the client primes each under its month key.
+      // [current, prev]
       list: [listCurrent, listPrev],
-      // The linked day's slices (board + standings), or null for a bare `/` boot
-      // or an unresolvable date. `iteration` lets the client key the primes the
-      // deep-link handler consumes (getBoard/standings by iteration).
+      // Null for a bare `/` boot or an unresolvable date. `iteration` keys the
+      // primes the deep-link handler consumes.
       linked: linkedIteration !== undefined
         ? {
           iteration: linkedIteration,

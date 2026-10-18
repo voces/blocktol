@@ -13,47 +13,36 @@ import {
 } from "./standings.ts";
 
 // True once the app was opened via a day deep-link this session (a notification
-// or a `/YYYYMMDD` permalink). The daily result modal reads it and stays hidden
-// so it doesn't cover the day the link points at (the Today panel and the
-// standings sheet still carry the numbers). Sticky for the session.
+// or a `/YYYYMMDD` permalink). The daily result modal stays hidden on it so it
+// doesn't cover the linked day. Sticky for the session.
 export const arrivedViaDeepLink = signal(false);
 
-// Gate the view→URL sync until boot has settled the initial view (consumeDeepLink
-// has run and staged any deep-linked day). Without it the dock writes "/" on
-// first mount — before the deep link is restored — clobbering the entry URL and
-// flashing the bar back to root. Flipped true at every exit of consumeDeepLink.
+// Gates the view->URL sync until consumeDeepLink has staged any linked day.
+// Without it the dock writes "/" on first mount and clobbers the entry URL.
+// Flipped true at every exit of consumeDeepLink.
 export const viewReady = signal(false);
 
-// Snapshot the entry URL at import — before the view can rewrite it via
-// syncViewUrl on first mount — so the boot deep-link reads where we actually
-// landed, not wherever the sync has since moved the bar.
+// Snapshot the entry URL at import, before syncViewUrl can rewrite it.
 const entryPath = location.pathname;
 const entrySearch = location.search;
 
-// The `/YYYYMMDD` day link we booted onto, if any — parsed synchronously at
-// import so the boot-time today-staging paths can read it before they run. A
-// plain constant, not the effect-set `arrivedViaDeepLink`, so the gate is
-// reliable no matter when each boot path runs.
+// The `/YYYYMMDD` day link we booted onto, if any. A constant parsed at import,
+// not the effect-set `arrivedViaDeepLink`, so the boot-time today-staging paths
+// can read it whenever they run.
 const entryDay = entryPath.match(/^\/(\d{4})(\d{2})(\d{2})$/);
 export const entryIsDayLink = entryDay !== null;
 
-// Of those, only the links for a day strictly BEFORE today. This — not the raw
-// `entryIsDayLink` — is what suppresses boot-time today-staging (resume /
-// prestart / finished-board prime): the suppression exists so `consumeDeepLink`
-// can win the board with a PAST day (past boards are ungated and replayable). A
-// link to TODAY has no other day to stage, and a FUTURE day must not be staged
-// at all — tomorrow's puzzle is one you'll rank tomorrow (previewing it is a
-// leak) and next week's doesn't exist yet. Both fall through to today's normal
-// flow instead. Gating on the raw day-link would strand a fresh user on a
-// today-or-future permalink (neither day has a board to stage: today's
-// `getBoard` answers { incomplete } until the three ranked attempts are spent,
-// and a future day is locked), leaving an inert loading board with no way
-// forward.
+// Of those, only the links for a day strictly BEFORE today. This, not the raw
+// `entryIsDayLink`, suppresses boot-time today-staging (resume / prestart /
+// finished-board prime) so `consumeDeepLink` can win the board with a PAST day.
+// A link to TODAY or a FUTURE day must fall through to today's normal flow:
+// neither has a board to stage (today's `getBoard` answers { incomplete } until
+// the ranked attempts are spent; a future day is locked), so gating on the raw
+// link would strand the user on an inert loading board.
 //
 // It holds only while the link can still win: a past link that fails to
-// resolve (a bad date like /20260231, or a transient failure) drops it — see
-// abandonPastDayLink — so today's flow takes the board back. Read it through
-// the function, at the moment it matters.
+// resolve (a bad date like /20260231, or a transient failure) drops it, see
+// abandonPastDayLink. Read it through the function, at the moment it matters.
 let pastDayLink = entryDay !== null &&
   dayIsBefore(
     [Number(entryDay[1]), Number(entryDay[2]), Number(entryDay[3])],
@@ -61,7 +50,7 @@ let pastDayLink = entryDay !== null &&
   );
 export const stagingPastDayLink = () => pastDayLink;
 
-// Whether boot's summary has landed — by then useInit already stepped aside
+// Whether boot's summary has landed. By then useInit has already stepped aside
 // for the link, so giving the board back means asking for it again.
 let summarySeen = false;
 api.addEventListener("getDailySummary", () => {
@@ -69,26 +58,24 @@ api.addEventListener("getDailySummary", () => {
 });
 
 // The past link couldn't be staged: hand the board to today's normal flow
-// (resume / prestart / finished board). Staging today directly with showBoard
-// can't do that — with today's daily outstanding it answers { incomplete },
-// leaving an inert loading board. A summary still in flight will see the gate
-// down by itself; one already handled is re-requested (safe: it resumes an
-// open run but never starts one).
+// (resume / prestart / finished board). showBoard can't stand in for it: with
+// the daily outstanding it answers { incomplete }. A summary still in flight
+// sees the gate down by itself; one already handled is re-requested, which
+// resumes an open run but never starts one.
 const abandonPastDayLink = () => {
   if (!pastDayLink) return;
   pastDayLink = false;
   if (summarySeen) api.getDailySummary({ timeZone: getTimeZone() });
 };
 
-// A pending request to open the profile somewhere other than its top: the
-// Account section, or straight to the delete-confirm sheet. Two sources, since
-// the profile BUTTON is hidden while today's daily is outstanding:
-//   - `?profile=account|delete` on the entry URL — the privacy page's rights
-//     cards link here, so a player reading the page can act on it without
-//     hunting for the controls. Read from the entry snapshot like the day link.
+// A pending request to open the profile at its Account section or the
+// delete-confirm sheet. Two sources, since the profile BUTTON is hidden while
+// today's daily is outstanding:
+//   - `?profile=account|delete` on the entry URL (the privacy page's rights
+//     cards), read from the entry snapshot like the day link;
 //   - requestProfile, from a control outside the button (the prestart overlay's
 //     account link).
-// Profile takes it once, when it's able to open (see takeProfileRequest).
+// Profile takes it once, when it can open (see takeProfileRequest).
 export type ProfileRequest = "account" | "delete";
 const entryProfile = new URLSearchParams(entrySearch).get("profile");
 export const profileRequest = signal<ProfileRequest | null>(
@@ -99,10 +86,9 @@ export const requestProfile = (req: ProfileRequest) => {
   profileRequest.value = req;
 };
 
-// Hand the pending request over exactly once, dropping an entry param from the
-// bar so a refresh doesn't reopen the sheet. (The dock's syncViewUrl would
-// usually rewrite the bar anyway, but only once it mounts, and only while it's
-// tracking a day.)
+// Hand the pending request over once, dropping the entry param from the bar so
+// a refresh doesn't reopen the sheet. syncViewUrl wouldn't reliably do it: it
+// runs only once the dock mounts.
 export const takeProfileRequest = (): ProfileRequest | null => {
   const req = profileRequest.peek();
   if (!req) return null;
@@ -117,10 +103,9 @@ export const takeProfileRequest = (): ProfileRequest | null => {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-// Reflect the current view in the URL (replaceState — no history entry, so Back
-// isn't hijacked): the viewed day in the path (`/` for today), the open board in
-// `?board`. So a refresh restores exactly what's on screen — the PWA included,
-// where the bar is invisible — and web links stay meaningful and shareable.
+// Reflect the view in the URL with replaceState (no history entry, so Back
+// isn't hijacked): the viewed day in the path (`/` for today), the open board
+// in `?board`. A refresh then restores what's on screen, in the PWA too.
 export const syncViewUrl = (
   day: readonly [number, number, number] | undefined, // undefined = today
   sheetOpen: boolean,
@@ -138,9 +123,8 @@ export const syncViewUrl = (
 const sortFor = (kind: NotificationKind): StandingsSort =>
   kind === "lost_top" ? "pb" : "daily";
 
-// Go to a day + board: select the sort, stage that day's board, and ask the dock
-// to surface the leaderboard once it's there. Shared by the in-app panel tap
-// (which already has the iteration id) and the permalink boot below.
+// Go to a day + board: select the sort, stage the board, and ask the dock to
+// surface the leaderboard.
 const goToDay = (iteration: number, sort?: StandingsSort) => {
   if (sort) setStandingsSort(sort);
   showBoard(iteration);
@@ -154,15 +138,13 @@ export const navigateToNotification = (
 ) => goToDay(iteration, sortFor(kind));
 
 // On boot, restore the view the entry URL points at. `/YYYYMMDD` (the format
-// notification pushes use) opens that day's board; `?board=pb|daily` reopens the
-// leaderboard sheet on that sort AND names the notification kind (pb → lost_top,
-// daily → daily_final) whose read state a push tap settles. A bare `/YYYYMMDD`
-// (no board) restores the board with the sheet CLOSED, so refreshing after you
-// closed it doesn't re-pop it. The client knows the date, not the iteration id,
-// so it resolves via the standings endpoint (whose response also warms the
-// sheet). Never throws — a bad/unknown day just leaves the app on its default
-// landing. Reads the entry snapshot, not the live URL (the view sync may have
-// already moved the bar by the time this runs).
+// notification pushes use) opens that day's board; `?board=pb|daily` reopens
+// the leaderboard sheet on that sort and names the notification kind (pb ->
+// lost_top, daily -> daily_final) whose read state a push tap settles. A bare
+// `/YYYYMMDD` restores the board with the sheet CLOSED. The client knows the
+// date, not the iteration id, so it resolves via standings by date. Never
+// throws: a bad day leaves the app on its default landing. Reads the entry
+// snapshot, not the live URL.
 export const consumeDeepLink = async () => {
   const boardParam = new URLSearchParams(entrySearch).get("board");
   const sort: StandingsSort | undefined = boardParam === "pb"
@@ -173,7 +155,7 @@ export const consumeDeepLink = async () => {
 
   const m = entryPath.match(/^\/(\d{4})(\d{2})(\d{2})$/);
   if (!m) {
-    // No day in the path — a bare `?board` restores today's open sheet + sort.
+    // No day in the path: a bare `?board` restores today's open sheet and sort.
     if (sort) {
       setStandingsSort(sort);
       requestStandings(undefined);
@@ -193,19 +175,14 @@ export const consumeDeepLink = async () => {
   arrivedViaDeepLink.value = true;
   try {
     const s = await fetchStandingsForDate(year, month, day);
-    // The link didn't resolve to a day — fall back to today (boot's own
-    // today-staging stepped aside for a past link; a today/future link never
-    // took the board from it).
+    // The link didn't resolve to a day: fall back to today.
     if (!s) return abandonPastDayLink();
     if (sort) setStandingsSort(sort);
-    // Stage a PAST day's board here; only reopen the sheet when the link says it
-    // was open (the view sync then keeps the URL honest as you interact). Awaited
-    // so the sync gate opens only once the day is actually staged. A today-link
-    // hands staging to the normal boot flow instead — `useInit` owns today's
-    // resume / prestart, and today's board stays { incomplete } until the ranked
-    // attempts are spent, so staging it here would stage nothing (or race that
-    // flow). A past board that won't stage (its getBoard failed) would strand
-    // the board like an unresolved link, so it falls back the same way.
+    // Stage a PAST day's board here, awaited so the sync gate opens only once
+    // it is staged. A today-link leaves staging to `useInit`, which owns
+    // today's resume / prestart; staging it here would stage nothing or race
+    // that flow. A past board that won't stage falls back like an unresolved
+    // link. Reopen the sheet only when the link says it was open.
     if (stagingPastDayLink() && !(await showBoard(s.iteration))) {
       return abandonPastDayLink();
     }
@@ -215,7 +192,7 @@ export const consumeDeepLink = async () => {
       if (kind) markReadForDay(s.iteration, kind);
     }
   } catch {
-    abandonPastDayLink(); // same fallback to today on error
+    abandonPastDayLink();
   } finally {
     viewReady.value = true;
   }

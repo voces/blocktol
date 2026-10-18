@@ -4,12 +4,10 @@ import { api } from "../api.ts";
 import { flagWrites } from "./flagWrites.ts";
 
 // Flags: the splits tape's manual checkpoints (see common/splits.ts). A flag
-// belongs to the BOARD, not to a run — place one and every build of that maze is
-// timed against it — so the store is keyed by iteration and mirrors what the
-// server holds for this player. Boards arrive with their flags attached
-// (getBoard, and so boot / dayView / the board loaders through it), so nothing
-// here fetches; it folds in what a board response already carried and writes
-// edits back.
+// belongs to the BOARD, not to a run, so the store is keyed by iteration and
+// mirrors what the server holds for this player. Board responses (getBoard, and
+// so boot / dayView) carry their flags, so nothing here fetches; it folds those
+// in and writes edits back.
 
 const NONE: readonly Point[] = [];
 
@@ -32,52 +30,46 @@ const writes = flagWrites(
       .then((r) => !(r && "error" in r)),
 );
 
-// While a write is in flight, a board response produced before it (a re-stage
-// racing the save) would fold the OLD set back over the edit the player just
-// made, so ingestion steps aside until every write settles — at which point
-// the local set and the server's agree anyway.
+// A board response produced before an in-flight write (a re-stage racing the
+// save) would fold the OLD set over the player's edit, so ingestion steps aside
+// until every write settles.
 api.addEventListener("getBoard", (board) => {
   if ("incomplete" in board || writes.saving(board.iteration)) return;
   put(board.iteration, board.flags);
 });
 
 /**
- * Replace this board's flags, optimistically. The write is an absolute-value
- * upsert of the whole set (and `setFlags` is in the client's RETRYABLE
- * allowlist), so a burst of edits is last-write-wins and a dropped connection
- * retries harmlessly. If the newest write is rejected the board rolls back to
- * the last set the server confirmed (see flagWrites), the way the runs panel's
- * pin toggle does.
+ * Replace this board's flags, optimistically. The write is an absolute upsert
+ * of the whole set and `setFlags` is RETRYABLE, so a burst of edits is
+ * last-write-wins and a dropped connection retries harmlessly. If the newest
+ * write is rejected the board rolls back to the last confirmed set (see
+ * flagWrites).
  */
 export const saveFlags = (iteration: number, flags: readonly Point[]) => {
   writes.save(iteration, flags);
 };
 
-// Placement is explicitly ARMED rather than implied by the panel being open:
-// with the board visible a bare tap is ambiguous (inspecting a thunder's radius
-// vs. dropping a flag), so the footer's "Add flag" arms it and Done exits.
+// Placement is ARMED explicitly, not implied by the panel being open: a bare
+// tap is ambiguous (inspecting a thunder's radius vs. dropping a flag). The
+// footer's "Add flag" arms it and Done exits.
 export const flagsArmed = signal(false);
 
 // The mark a tape row is hovering, as the board rectangle to ring: a thunder is
-// a 2x2 piece, a flag or the checkpoint a single cell. Pointer-frequency UI
-// state, so a signal — the board redraws, the panel doesn't (same reasoning as
-// Game/interaction.ts).
+// 2x2, a flag or the checkpoint one cell. A signal for pointer-frequency state,
+// as in Game/interaction.ts.
 export const hoveredSplit = signal<
   { x: number; y: number; size: number } | undefined
 >(undefined);
 
-// The flags the run being reviewed actually crosses, as "x,y" keys. A flag the
-// runner misses reports nothing, and the board draws it as a dashed outline —
-// a speculative mark waiting for a build that routes past it. Written by the
-// splits panel, which is what knows. Undefined when no tape is up, which is
-// also the board's cue that there are no flags to draw at all (see
-// `splitsShowing`).
+// The flags the run being reviewed crosses, as "x,y" keys (see flagKey). The
+// board draws a flag the runner misses as a dashed outline. Written by the
+// splits panel. Undefined when no tape is up, which is also the board's cue to
+// draw no flags (see `splitsShowing`).
 export const liveFlags = signal<ReadonlySet<string> | undefined>(undefined);
 
-// Is the splits tape up? Derived from `liveFlags` rather than tracked beside it
-// so the two can never disagree: the panel sets that one signal, and the board
-// reads this. Flags are the tape's marks, so the board draws them exactly when
-// the tape is there to read them off — never on a board you are building on.
+// Is the splits tape up? Derived from `liveFlags` so the two can't disagree.
+// The board draws flags exactly when the tape is there to read them, never on a
+// board being built on.
 export const splitsShowing = computed(() => liveFlags.value !== undefined);
 
 export const flagKey = (flag: Point) => `${flag.x},${flag.y}`;

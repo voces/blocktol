@@ -5,23 +5,20 @@ export const useClock = () => {
   const { setTime, staged, deadlineRef } = useContext(GameStateContext);
 
   useEffect(() => {
-    // Staged (free play, pre-placement) holds the build clock still — the run,
-    // and its countdown, only begin on the first placement.
+    // Staged free play holds the clock still until the first placement.
     if (staged) return;
 
-    // Derive the countdown from the wall-clock deadline rather than
-    // decrementing: intervals throttle in background tabs and drift, while the
-    // server's 60s window marches on regardless. However late a tick fires,
-    // the clock lands on the honest value — including 0, which starts the run.
-    // Sub-second ticks make the catch-up after a throttled stretch immediate;
-    // an unchanged value bails out of re-rendering.
+    // Derive the countdown from the wall-clock deadline, not by decrementing:
+    // background-tab intervals throttle and drift while the server's 60s window
+    // doesn't. However late a tick fires, the clock lands on the honest value,
+    // including 0, which starts the run. Sub-second ticks make the catch-up
+    // immediate; an unchanged value bails out of re-rendering.
     const interval = setInterval(
       () =>
         setTime((time) => {
           if (time <= 0) return time;
           const deadline = deadlineRef.current;
-          // No deadline yet (the opening placement's startRun response is
-          // still in flight): hold until it lands.
+          // No deadline yet: hold.
           if (deadline === null) return time;
           return Math.max(0, Math.ceil((deadline - Date.now()) / 1_000));
         }),

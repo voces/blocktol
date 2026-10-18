@@ -4,16 +4,15 @@ import { assets } from "../util/assets.ts";
 import { Handler } from "../util/Router.ts";
 
 // The shell / SW / manifest are precomputed (with `?v=` stamps injected) and
-// served no-cache, so a new asset hash always reaches the client on the next
-// visit. Fingerprinted assets carry their own year-long immutable cache.
+// served no-cache, so a new asset hash reaches the client on its next visit.
 const noCache = (body: string, contentType: string) =>
   new Response(body, {
     headers: { "content-type": contentType, "cache-control": "no-cache" },
   });
 
-// Serve the SPA shell (index.html) for a client-routed path — e.g. the
-// `/YYYYMMDD` day permalink, which isn't a real file. Registered ahead of
-// staticServe so the file server passes its response through.
+// Serve the SPA shell for a client-routed path such as the `/YYYYMMDD`
+// permalink. Register ahead of staticServe, which passes a prior response
+// through.
 export const serveApp = (publicDir: string): Handler => async () => {
   const { shell } = await assets(publicDir);
   return noCache(shell, "text/html; charset=utf-8");
@@ -24,8 +23,8 @@ export const staticServe =
     if (prev) return prev;
 
     const url = new URL(req.url);
-    // A malformed escape (`/%E0%A4%A`) makes decodeURI throw — the client's
-    // fault, so a 400 rather than the router's 500 + error log.
+    // A malformed escape (`/%E0%A4%A`) makes decodeURI throw: a 400, not the
+    // router's 500 + error log.
     let decoded: string;
     try {
       decoded = decodeURI(url.pathname);
@@ -53,9 +52,9 @@ export const staticServe =
         return await serveFile(req, join(path, "index.html"));
       }
       const res = await serveFile(req, path);
-      // A correctly-versioned asset (`?v=<current hash>`, its file unchanged
-      // since this process hashed it) is immutable for a year; anything else
-      // keeps serveFile's revalidating ETag default.
+      // A correctly versioned asset (`?v=<current hash>`, file unchanged since
+      // this process hashed it) is immutable for a year; anything else keeps
+      // serveFile's revalidating ETag default.
       const cc = a.cacheControlFor(pathname, url.searchParams, stat.mtime);
       if (cc) res.headers.set("cache-control", cc);
       return res;
