@@ -192,18 +192,23 @@ const announce = async (
     day,
     holders.slice(1).map((h) => h.name),
   );
-  if (action === "edit" && marker?.messageId) {
+  // A standing message deleted in Discord can't be edited: post afresh instead
+  // of retrying the PATCH on every build until the edit window lapses.
+  const edited = action === "edit" && marker?.messageId
+    ? await editResult(marker.messageId, embed)
+    : null;
+  if (edited === "ok") {
     // editPbTop leaves the window anchor alone, so edits can't defer a re-post.
-    if (await editResult(marker.messageId, embed)) {
-      await editPbTop(iteration, top, holders.length);
-    }
+    await editPbTop(iteration, top, holders.length);
+  } else if (edited === "failed") {
+    // Leave the marker; the next build retries the edit.
   } else {
     // A fresh post supersedes the standing message: grey the old one out first,
     // rebuilt from the marker (the name is re-derived from the holder's current
     // row). Greying first means a failed post retries, and re-greys, on the
     // next save rather than leaving two coloured messages. topTime is non-null
     // whenever messageId is (written together).
-    if (marker?.messageId && marker.topTime != null) {
+    if (edited !== "gone" && marker?.messageId && marker.topTime != null) {
       const prevName = bests.find((b) => b.user === marker.topUser)?.name ??
         "anonymous";
       await editResult(marker.messageId, {
@@ -211,8 +216,8 @@ const announce = async (
         color: GREY,
       });
     }
-    // Also reached by an "edit" whose marker has no message id. Advance the
-    // marker only on success, so a failed post retries next save.
+    // Also reached by an "edit" whose message is gone or was never recorded.
+    // Advance the marker only on success, so a failed post retries next save.
     const messageId = await postResult(embed);
     if (messageId) {
       await upsertPbTop(iteration, messageId, holder.user, top, holders.length);

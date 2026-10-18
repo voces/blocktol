@@ -1,12 +1,8 @@
 import { storage } from "./storage.ts";
 
-const getRandomValues = crypto.getRandomValues.bind(crypto) ??
-  ((arr: number[]) => {
-    for (let i = 0; i < arr.length; i++) {
-      arr[i] = Math.floor(Math.random() * 256);
-    }
-    return arr;
-  });
+// No Math.random fallback: the id is a bearer credential, and every browser the
+// app runs in has Web Crypto.
+const getRandomValues = crypto.getRandomValues.bind(crypto);
 
 // 64 bits of randomness encoded as a single base36 big integer (13 chars).
 // Collisions stay negligible well past any realistic user count (birthday bound

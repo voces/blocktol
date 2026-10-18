@@ -343,20 +343,6 @@ export const IntroBoard = (
     return best;
   }, [bare]);
 
-  // Where the halt falls, as a fraction of the route's length. By DISTANCE, not
-  // node index: the legs are uneven (a 1.4-unit hop, then an 8-unit run). The
-  // bare board has no thunders, so time is proportional to distance.
-  const cutFraction = useMemo(() => {
-    const seg = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
-    let upTo = 0, total = 0;
-    for (let i = 1; i < bare.path.length; i++) {
-      const d = seg(bare.path[i - 1], bare.path[i]);
-      total += d;
-      if (i <= cut) upTo += d;
-    }
-    return total === 0 ? 0 : upTo / total;
-  }, [bare, cut]);
-
   const live = useMemo(() => localRun(blocks, introCheckpoint), [blocks]);
   const duration = live?.duration ?? bare.duration;
 
@@ -404,8 +390,9 @@ export const IntroBoard = (
     });
   }, [step, bare, settle]);
 
-  // The elapsed time at which the runner reaches the checkpoint, by DISTANCE
-  // rather than node index (see cutFraction).
+  // The elapsed time at which the runner reaches the checkpoint. By DISTANCE,
+  // not node index: the legs are uneven (a 1.4-unit hop, then an 8-unit run).
+  // The bare board has no thunders, so time is proportional to distance.
   const haltAt = useMemo(() => {
     const seg = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
     let upTo = 0, total = 0;

@@ -96,8 +96,6 @@ Deno.test("empty and single-player fields", () => {
     players: 0,
     me: null,
     rows: [],
-    rowUsers: [],
-    meUser: null,
   });
 
   const solo = buildStandings(fieldOf(40), "u0");
@@ -114,20 +112,15 @@ Deno.test("empty and single-player fields", () => {
   assertEquals(solo.rows.map((r) => r.record), ["beat"]);
 });
 
-Deno.test("secondary passes through; window users are returned, not on rows", () => {
-  // Rows surface each entry's secondary; the parallel user list is returned
-  // beside the rows for the route to drop.
+Deno.test("secondary passes through; rows carry no user", () => {
   const field: FieldEntry[] = [
     { user: "a", name: "a", hue: 0, time: 40, at: 0, secondary: 42 },
     { user: "b", name: "b", hue: 1, time: 38, at: 0, secondary: 39 },
     { user: "c", name: "c", hue: 2, time: 36, at: 0 }, // no secondary → null
   ];
-  const { rows, me, rowUsers, meUser } = buildStandings(field, "b");
+  const { rows, me } = buildStandings(field, "b");
   assertEquals(rows.map((r) => r.secondary), [42, 39, null]);
   assertEquals(me?.secondary, 39);
-  assertEquals(rowUsers, ["a", "b", "c"]);
-  assertEquals(meUser, "b");
-  // rowUsers is a sibling of rows, never a field ON a row.
   for (const row of rows) assert(!("user" in row));
 });
 
