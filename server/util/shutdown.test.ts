@@ -12,8 +12,9 @@ Deno.test("drain waits for a running job, then refuses new ones", async () => {
   log.push("drained");
   await running;
 
-  await tracked("late", async () => {
+  await tracked("late", () => {
     log.push("late ran");
+    return Promise.resolve();
   })();
   assertEquals(log, ["slow done", "drained"]);
 });
