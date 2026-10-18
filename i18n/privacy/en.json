@@ -180,7 +180,7 @@
     "description": "Card text under the \"Export my data\" heading."
   },
   "privacy.rights.delete.body": {
-    "message": "Permanently removes your profile, name, preferences, flags, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player — with no way to connect them back to you — so the historical results of days other people competed in aren't rewritten. Names already posted to Discord stay there. This can't be undone, and your device starts over as a brand-new player.",
+    "message": "Permanently removes your profile, name, preferences, flags, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player, linked to you by nothing we keep, so the historical results of days other people competed in aren't rewritten. Names already posted to Discord, and your name in notifications already sent to other players (deleted after 90 days), stay there. This can't be undone, and your device starts over as a brand-new player.",
     "description": "Card text under the \"Delete my data\" heading."
   },
   "privacy.rights.more": {
@@ -196,7 +196,7 @@
     "description": "Section heading: data retention."
   },
   "privacy.retention.body": {
-    "message": "Your profile and builds are kept while you play, so your stats and history stay intact. Delete your data (above) to remove them sooner. In-app notifications are deleted after 90 days, and a profile that never played is removed after 30 days. Diagnostics are deleted after about 30 days, and server access logs after 14 days. Backups, kept only to recover from a failure, are deleted after at most 30 days; if we ever restore one, we delete again any data you had asked us to delete.",
+    "message": "Your profile and builds are kept while you play, so your stats and history stay intact. Delete your data (above) to remove them sooner. In-app notifications are deleted after 90 days, and a profile that never played is removed after 30 days. Diagnostics are deleted after about 30 days, and server access logs after 14 days. Backups, kept only to recover from a failure, are deleted after at most 30 days; if we ever restore one, we delete again any data you had asked us to delete. To make that possible we keep a one-way hash of a deleted profile's old ID, which can't be turned back into the ID.",
     "description": "The retention section's text."
   },
   "privacy.children.heading": {

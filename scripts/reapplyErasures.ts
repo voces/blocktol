@@ -9,7 +9,9 @@
 // hashes every id in the restored `user` table and runs `anonymizeUser` on the
 // matches.
 //
-// Feed it the hashes, one per line, from the box (VictoriaLogs is localhost-only):
+// Feed it the hashes, one per line. Each erasure posts `erasure <hash>` to the
+// admin Discord channel (routes/deleteAccount.ts), which survives losing the
+// box; while the box is up, VictoriaLogs (localhost-only) has the same list:
 //
 //   curl -s localhost:9428/select/logsql/query --data-urlencode \
 //     'query=_time:30d "request finish" "deleteAccount" | unpack_logfmt

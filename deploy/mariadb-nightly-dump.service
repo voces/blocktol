@@ -4,9 +4,12 @@
 Description=Nightly MariaDB dump to /data/mariadb-backups
 After=mariadb.service
 Requires=mariadb.service
-# /data is mounted nofail; never dump into the bare mountpoint on /.
+# /data is mounted nofail; never dump into the bare mountpoint on /. Assert,
+# not Condition: a missing /data must FAIL the run (and alert), not skip it.
 RequiresMountsFor=/data
-ConditionPathIsMountPoint=/data
+AssertPathIsMountPoint=/data
+# A failed night posts to the admin channel (see unit-failure-alert@.service).
+OnFailure=unit-failure-alert@%n.service
 
 [Service]
 Type=oneshot
