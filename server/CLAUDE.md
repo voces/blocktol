@@ -246,11 +246,11 @@ previews log nothing either way). The positive signals are the two fan-out
 summaries, `daily-final notifications` and `lost-top notification` (both carry a
 `pushes` count; `pushes=0` is "opted in, but no live subscription"), and
 `push subscription pruned` — the one line a dying row emits — a 410 prune is
-exactly how a device goes quiet. Failures are `push send failed`,
-`push send rejected (vapid
-key)` (a rotated key — see above), `push send error`,
-and `push fan-out error`. Nothing is extracted at ingest, so filter on raw text
-first and unpack after:
+exactly how a device goes quiet. Failures are `push send failed` (its `reason`
+is the push service's own explanation), `push send rejected (vapid
+key)` (a
+rotated key — see above), `push send error`, and `push fan-out error`. Nothing
+is extracted at ingest, so filter on raw text first and unpack after:
 `_time:30d "daily-final notifications" | unpack_logfmt | fields _time, iteration, inApp, pushes`.
 
 ## Discord results

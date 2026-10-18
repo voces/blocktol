@@ -345,8 +345,10 @@ export const sendPush = async (
       // Never follow a redirect off the allowlisted host.
       redirect: "manual",
     });
-    // Drain the body so the connection can be reused/closed.
-    await res.arrayBuffer().catch(() => {});
+    // Always drain the body so the connection can be reused/closed. On a
+    // failure it carries the push service's reason (Apple sends
+    // `{"reason":"BadJwtToken"}`), the only way to tell one 400 from another.
+    const reply = await res.text().catch(() => "");
     const gone = res.status === 404 || res.status === 410;
     if (!res.ok && !gone) {
       // A 403 means the subscription wasn't minted under the VAPID key signing
@@ -361,6 +363,7 @@ export const sendPush = async (
           : "push send failed",
         {
           status: res.status,
+          reason: reply.slice(0, 200),
           endpoint: sub.endpoint.slice(0, 60),
         },
       );
