@@ -92,8 +92,8 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Votre profil et vos builds sont conservés tant que vous jouez, afin que vos statistiques et votre historique restent intacts. Supprimez vos données (ci-dessus) pour les retirer plus tôt. Les diagnostics sont supprimés après environ 30 jours, et les journaux d'accès du serveur après 14 jours.",
-    "hash": "10d2866dc1c9c0fe963414abc2d86841e1f93ff37dbc4377a882eaaf0b1a613b"
+    "message": "Votre profil et vos builds sont conservés pendant que vous jouez, afin que vos statistiques et votre historique restent intacts. Supprimez vos données (ci-dessus) pour les retirer plus tôt. Les notifications dans l'application sont supprimées après 90 jours, et un profil qui n'a jamais joué est supprimé après 30 jours. Les diagnostics sont supprimés après environ 30 jours, et les journaux d'accès au serveur après 14 jours.",
+    "hash": "1ce92c394889c7035b034179252dff1bd05ef61e079ca118336428c39b3b495e"
   },
   "privacy.retention.heading": {
     "message": "Combien de temps nous les conservons",

@@ -104,6 +104,14 @@ export const updateUserLocale = (id: string, locale: string) =>
 //      the raw id is the bearer credential (see common/avatar.ts).
 // Each half of a comparison is a per-iteration MAX over the same `time` column,
 // so equality is exact: the two sides read the identical stored value.
+//
+// Cost scales with the PLAYER, not the table: every field-side read is reached
+// through the iterations the player has runs on (`playedIterations`, a seek on
+// run's (user, …) indexes), then joins that iteration's runs through the
+// (iteration, …) index. Nothing groups over the whole run table — before this,
+// the "others" sides did, and grew with every run anyone made. Those joins are
+// STRAIGHT_JOINs: left to choose, MariaDB scanned all of `run` and probed the
+// player's iterations instead (EXPLAIN on prod) — the very cost this avoids.
 export const getUserStats = async (user: string) => {
   const [userRows, ranked, solves, boards, total, days, daily, pb] = await sql<[
     {
@@ -129,10 +137,10 @@ export const getUserStats = async (user: string) => {
     FROM (
       SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) mine,
              MAX(CASE WHEN r.user != ${user} THEN r.time END) others
-      FROM iteration i
-      JOIN run r ON r.iteration = i.id AND r.ranked = TRUE AND r.void = FALSE
-      WHERE i.rated = TRUE
-      GROUP BY i.id
+      FROM (${raw(playedIterations(user, "AND ranked = TRUE"))}) p
+      STRAIGHT_JOIN iteration i ON i.id = p.iteration AND i.rated = TRUE
+      STRAIGHT_JOIN run r ON r.iteration = p.iteration AND r.ranked = TRUE AND r.void = FALSE
+      GROUP BY p.iteration
       HAVING mine IS NOT NULL AND others IS NOT NULL
     ) field;
 
@@ -149,22 +157,23 @@ export const getUserStats = async (user: string) => {
       GROUP BY iteration
     ) mine
     JOIN (
-      SELECT iteration, MAX(time) best FROM run WHERE void = FALSE
-      GROUP BY iteration
+      SELECT p.iteration, MAX(r.time) best
+      FROM (${raw(playedIterations(user, "AND ranked = TRUE"))}) p
+      STRAIGHT_JOIN run r ON r.iteration = p.iteration AND r.void = FALSE
+      GROUP BY p.iteration
     ) top ON top.iteration = mine.iteration;
 
     SELECT
-      SUM(CASE WHEN others.best IS NULL OR mine.best > others.best THEN 1 ELSE 0 END) supremes,
-      SUM(CASE WHEN mine.best = others.best THEN 1 ELSE 0 END) records,
+      SUM(CASE WHEN others IS NULL OR mine > others THEN 1 ELSE 0 END) supremes,
+      SUM(CASE WHEN mine = others THEN 1 ELSE 0 END) records,
       COUNT(*) played
     FROM (
-      SELECT iteration, MAX(time) best FROM run
-      WHERE user = ${user} AND void = FALSE GROUP BY iteration
-    ) mine
-    LEFT JOIN (
-      SELECT iteration, MAX(time) best FROM run
-      WHERE user != ${user} AND void = FALSE GROUP BY iteration
-    ) others ON others.iteration = mine.iteration;
+      SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) mine,
+             MAX(CASE WHEN r.user != ${user} THEN r.time END) others
+      FROM (${raw(playedIterations(user, ""))}) p
+      STRAIGHT_JOIN run r ON r.iteration = p.iteration AND r.void = FALSE
+      GROUP BY p.iteration
+    ) b;
 
     SELECT COUNT(*) boards, CAST(CURDATE() AS char) today
     FROM iteration WHERE created <= CURDATE();
@@ -221,27 +230,37 @@ type RivalRow = {
   tied: number;
 };
 
+// The iterations `user` has a non-void run on (`filter` narrows it, e.g. to
+// ranked), as a derived table to drive the field-side joins in getUserStats.
+// DISTINCT over the user's own index range — cheap, and small.
+const playedIterations = (user: string, filter: string) =>
+  format`
+    SELECT DISTINCT iteration FROM run
+    WHERE user = ${user} AND void = FALSE ${raw(filter)}`;
+
 // A rival's record on one board: the viewer's best time per iteration against
 // every other player's, over the iterations they both ran. `rankedOnly` narrows
 // both sides to ranked attempts (the daily board); empty counts every non-void
 // run (the PB board). Written as SQL text so the two boards are one query each
-// with no duplicated shape.
+// with no duplicated shape. The field side is reached through the viewer's own
+// iterations (`m`), so the cost follows their history, not the table's.
 const rivals = (user: string, rankedOnly: string) =>
   format`
     SELECT o.user user, u.name name, COUNT(*) met,
-           SUM(CASE WHEN m.t > o.t THEN 1 ELSE 0 END) won,
-           SUM(CASE WHEN m.t < o.t THEN 1 ELSE 0 END) lost,
-           SUM(CASE WHEN m.t = o.t THEN 1 ELSE 0 END) tied
+           SUM(CASE WHEN o.mt > o.t THEN 1 ELSE 0 END) won,
+           SUM(CASE WHEN o.mt < o.t THEN 1 ELSE 0 END) lost,
+           SUM(CASE WHEN o.mt = o.t THEN 1 ELSE 0 END) tied
     FROM (
-      SELECT iteration, MAX(time) t FROM run r
-      WHERE r.user = ${user} AND r.void = FALSE ${raw(rankedOnly)}
-      GROUP BY iteration
-    ) m
-    JOIN (
-      SELECT iteration, user, MAX(time) t FROM run r
+      SELECT m.iteration, m.t mt, r.user, MAX(r.time) t
+      FROM (
+        SELECT iteration, MAX(time) t FROM run r
+        WHERE r.user = ${user} AND r.void = FALSE ${raw(rankedOnly)}
+        GROUP BY iteration
+      ) m
+      STRAIGHT_JOIN run r ON r.iteration = m.iteration
       WHERE r.user != ${user} AND r.void = FALSE ${raw(rankedOnly)}
-      GROUP BY iteration, user
-    ) o ON o.iteration = m.iteration
+      GROUP BY m.iteration, m.t, r.user
+    ) o
     JOIN user u ON u.id = o.user
     GROUP BY o.user, u.name
     ORDER BY met DESC
@@ -265,7 +284,7 @@ const RIVAL_CAP = 500;
 // on the way out. A rival appears if EITHER board has enough meetings; the
 // board that doesn't reach the minimum comes back null and the client shows a
 // dash for it.
-const mergeRivals = (daily: RivalRow[], pb: RivalRow[]) => {
+export const mergeRivals = (daily: RivalRow[], pb: RivalRow[]) => {
   const record = (r: RivalRow | undefined) =>
     r && Number(r.met) >= RIVAL_MINIMUM
       ? {

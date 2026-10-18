@@ -92,8 +92,8 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Tu perfil y tus construcciones se conservan mientras juegas, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para eliminarlos antes. Los diagnósticos se eliminan después de unos 30 días, y los registros de acceso del servidor después de 14 días.",
-    "hash": "10d2866dc1c9c0fe963414abc2d86841e1f93ff37dbc4377a882eaaf0b1a613b"
+    "message": "Tu perfil y tus builds se conservan mientras juegas, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para borrarlos antes. Las notificaciones dentro de la aplicación se eliminan después de 90 días, y un perfil que nunca jugó se elimina después de 30 días. Los diagnósticos se eliminan después de aproximadamente 30 días, y los registros de acceso al servidor después de 14 días.",
+    "hash": "1ce92c394889c7035b034179252dff1bd05ef61e079ca118336428c39b3b495e"
   },
   "privacy.retention.heading": {
     "message": "Cuánto tiempo lo conservamos",

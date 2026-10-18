@@ -357,7 +357,14 @@ double-write):**
   connection can't leave a day with no pieces. Each run also ends with the
   **rate-dailies watchdog** (`checkRatingLiveness`): a closed day still unrated
   6h past its close means rating has stopped, and it `alertAdmin`s (once per
-  run) — run from this cron so a dead `rate-dailies` is still noticed.
+  run) — run from this cron so a dead `rate-dailies` is still noticed. It then
+  runs the **retention sweep** (`util/retention.ts` → `db/retention.ts`):
+  notifications older than 90 days, and `user` rows over 30 days old that hold
+  nothing (no runs, flags, push subscriptions, settings, locale, `pb_top`
+  mention, or chosen name — one-off visitors and crawlers). Both delete in
+  bounded `LIMIT` batches, so a backlog drains over several runs inside the 3s
+  timeout. There is no last-seen column, so age is `created`; a pruned device
+  that boots again just gets a fresh row.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
   percentile-based), then fires "daily final" notifications and posts the day's
@@ -503,9 +510,12 @@ Other invariants:
   bar there would invite grinding every board to its ceiling. **Head-to-head**
   ships one row per rival with both boards' records (daily = ranked days both
   played, pb = boards both built on), each appearing only after 5 meetings, and
-  carries `name` + `hue`, never the rival's id. What it deliberately does NOT
-  show is anything measuring the player against a computed ceiling: telling the
-  leader they could do better is what makes a record feel like a chore.
+  carries `name` + `hue`, never the rival's id. It all runs on every boot, so
+  each field-side query is reached through the iterations the player has runs on
+  — cost follows the player's history, never the whole run table. What it
+  deliberately does NOT show is anything measuring the player against a computed
+  ceiling: telling the leader they could do better is what makes a record feel
+  like a chore.
 - **Identity / move / merge:** the UUID in the `authorization` header _is_ the
   bearer credential — there's no password, so possession alone _is_ the whole
   authorization. That's a sensitive credential: anyone who obtains it can act as
