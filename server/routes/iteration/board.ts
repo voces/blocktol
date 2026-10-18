@@ -7,7 +7,6 @@ import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
 import type { Point } from "../../../common/types.ts";
 import { errText, log } from "../../util/logging.ts";
-import { getFlags } from "../../db/flags.ts";
 import { getIteration, getIterationOtherBest } from "../../db/iteration.ts";
 import { ensureDailyIterationId } from "../../util/newIteration.ts";
 import { getOwnBest } from "../../db/user.ts";
@@ -37,15 +36,11 @@ export const getBoard = method(getBoardBody, true)(
       return { incomplete: true as const };
     }
 
-    const [data, ownBest, otherBest, attempts, flags] = await Promise.all([
+    const [data, ownBest, otherBest, attempts] = await Promise.all([
       getIteration(iteration),
       getOwnBest(userId, iteration),
       getIterationOtherBest(iteration, userId),
       iterationAttempts(userId, iteration),
-      // The splits tape's manual checkpoints. They ride this response because
-      // every staging path (boot, dayView, board loaders) already makes the
-      // call.
-      getFlags(userId, iteration),
     ]);
 
     let path: Point[] | undefined;
@@ -72,7 +67,6 @@ export const getBoard = method(getBoardBody, true)(
       ownBest,
       best: Math.max(otherBest ?? 0, ownBest ?? 0, data.min),
       attempts,
-      flags,
       remainingTime: 60,
     };
   },

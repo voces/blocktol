@@ -32,9 +32,6 @@ export const nonVoidRunCount = (user: string) =>
 // deleted id, and the merged holder's next build would read as a lead CHANGE
 // (a fresh post) instead of the same holder improving (an edit).
 //
-// Splits flags come across only for boards the primary has none of (INSERT
-// IGNORE on the (user, iteration) key); the rest go with the secondary's row.
-//
 // One query runs on one connection, so the transaction commits the reassign,
 // demote and delete together or not at all.
 export const mergeUsers = (primary: string, secondary: string) =>
@@ -59,9 +56,6 @@ export const mergeUsers = (primary: string, secondary: string) =>
       AND (o.created < r.created OR (o.created = r.created AND o.time > r.time))
     SET r.daily = FALSE
     WHERE r.user = ${primary} AND r.daily = TRUE;
-
-    INSERT IGNORE INTO flag (user, iteration, data)
-      SELECT ${primary}, iteration, data FROM flag WHERE user = ${secondary};
 
     UPDATE pb_top SET top_user = ${primary} WHERE top_user = ${secondary};
 

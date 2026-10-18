@@ -29,14 +29,16 @@ Deno.test({
     const recent = await seedUser("abruptfalcon", 5);
     const named = await seedUser("Abrupt Falcon", 40);
     const played = await seedUser("abruptfalcon", 40);
-    const flagged = await seedUser(null, 40);
-    const all = [empty, recent, named, played, flagged];
+    const subscribed = await seedUser(null, 40);
+    const all = [empty, recent, named, played, subscribed];
+    const endpoint = `https://push.invalid/${subscribed}`;
     try {
       await sql`
         INSERT INTO run (user, iteration, time, data, void)
         VALUES (${played}, ${iteration}, 1, '', TRUE);
-        INSERT INTO flag (user, iteration, data)
-        VALUES (${flagged}, ${iteration}, '1,1');`;
+        INSERT INTO push_subscription
+          (endpoint_hash, user, endpoint, p256dh, auth)
+        VALUES (SHA2(${endpoint}, 256), ${subscribed}, ${endpoint}, '', '');`;
       await drain(() => pruneUnusedUsers(30, 1000), 1000, 1000);
       assertEquals(await Promise.all(all.map(exists)), [
         false,

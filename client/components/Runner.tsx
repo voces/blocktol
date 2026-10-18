@@ -75,7 +75,7 @@ export const Runner = (
       }
 
       const time = (now - start - pausedMs) / 1_000;
-      // Walk progress for the splits tape. A signal, not a callback prop: it
+      // Walk progress (see `runnerTime`). A signal, not a callback prop: it
       // changes every frame and a prop would re-render the tree at that rate.
       runnerTime.value = time;
 
@@ -134,7 +134,7 @@ export const Runner = (
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(animationFrame);
-      // A finished or abandoned walk must not leave a mark lit on the tape.
+      // A finished or abandoned walk must not leave its time published.
       runnerTime.value = undefined;
     };
   }, [path]);

@@ -12,11 +12,11 @@ import { sql } from "./query.ts";
 // resolves. The new id is random with no stored old->new mapping, so this is
 // anonymization, not pseudonymization.
 //
-// Push subscriptions, notifications and flags are hard-deleted: a push endpoint
-// is a device identifier (and must not stay a live target), and the other two
-// are private to the player, with no one else's numbers computed from them.
-// They cascade from user anyway, but are deleted by the OLD id before the
-// rotation so the intent is on the statement.
+// Push subscriptions and notifications are hard-deleted: a push endpoint is a
+// device identifier (and must not stay a live target), and notifications are
+// private to the player, with no one else's numbers computed from them. Both
+// cascade from user anyway, but are deleted by the OLD id before the rotation
+// so the intent is on the statement.
 //
 // `pb_top.top_user` has no FK, so the rotation doesn't reach it and it would
 // keep the old id, the player's credential, forever. It is rewritten to the new
@@ -33,7 +33,6 @@ export const anonymizeUser = (userId: string, newId: string) =>
 
     DELETE FROM push_subscription WHERE user = ${userId};
     DELETE FROM notification WHERE user = ${userId};
-    DELETE FROM flag WHERE user = ${userId};
 
     UPDATE pb_top SET top_user = ${newId} WHERE top_user = ${userId};
 

@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef } from "preact/compat";
 
 import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
-import { FlagLayer } from "./FlagLayer.tsx";
 import { debug } from "../util/debug.ts";
 import { Point } from "../../common/types.ts";
 import { useSettings } from "../hooks/useSettings.ts";
@@ -29,9 +28,6 @@ export const Board = (
     date,
     dragMoved,
     implosions,
-    flags,
-    flagsArmed,
-    onFlagsChange,
   }: {
     placingBlock: Point & { placing: boolean };
     touching: boolean;
@@ -62,21 +58,12 @@ export const Board = (
     date: number;
     // Optional: the intro board never reverts, so it has no ghosts.
     implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
-    // Optional: the player's splits flags, and whether placing one is armed.
-    // Passed only while the splits tape is up (a run being reviewed or
-    // animating); absent on the intro board, while building, and in a ranked
-    // daily. See FlagLayer.
-    flags?: ReadonlyArray<Point>;
-    flagsArmed?: boolean;
-    onFlagsChange?: (flags: Point[]) => void;
   },
 ) => {
   // Board magnification while placing (touch); 1× disables it.
   const { settings } = useSettings();
   const zoom = settings.zoom;
-  // The placing zoom also serves flag placement, which happens on a REVIEWED
-  // board (time < 0).
-  const zooming = touching && (time > 0 || !!flagsArmed) && zoom > 1;
+  const zooming = touching && time > 0 && zoom > 1;
   // Animate transform-origin (pan) only once already zoomed in; the initial
   // tap-to-zoom jumps the origin so it zooms straight into the tapped point.
   const wasZooming = useRef(false);
@@ -240,14 +227,6 @@ export const Board = (
             width={0.9}
             height={0.9}
             fill="var(--maze-checkpoint)"
-          />
-        )}
-        {flags && onFlagsChange && (
-          <FlagLayer
-            flags={flags}
-            armed={!!flagsArmed}
-            checkpoint={checkpoint}
-            onChange={onFlagsChange}
           />
         )}
         {

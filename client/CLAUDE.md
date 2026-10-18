@@ -102,80 +102,15 @@ build — the record stays, and staging its board within the window resumes it. 
 free-play run that FINISHES doesn't clear the board either: the re-stage still
 runs (it refreshes the board's bests and recents), and the executed maze is then
 overlaid back onto it as a review — the run you just watched stays up, its row
-reads "viewing", and its splits are there to read. Play stages a fresh board
-when you want one. Its window doesn't pause either: reviewing a past maze keeps
-the live countdown in the HUD's Play slot alongside the reset button, and reset
-there clears the attempt while staying on the reviewed maze (the input hooks
-gate on `viewing`, so the ticking clock never makes a reviewed board editable).
-Should the window expire mid-review, the board hands back to the build (restored
-from the local record via `pendingFreePlay`, the one read that ignores the
-deadline) and it executes normally — committed, runner released.
-`useClock`/`RunClock` run the 60s/animation timing; `verdict.ts` computes the
-result.
-
-## Splits and flags
-
-**Splits & flags (`Game/Splits.tsx`, `components/FlagLayer.tsx`,
-`store/flags.ts`):** the tape above the runs list, rendered inside `.attempts`
-so it scrolls with the list it describes. On desktop the dock and the runs are
-one `.game__rail` spanning both grid rows (a separate dock row would take the
-taller today card's height and leave a dead gap above the runs); the rail's
-`--rail-gap` is also the tape's bottom margin, so the tape sits evenly between
-the two. It appears only for **a run in free play** — one you're reviewing, or
-the one currently animating
-(`(viewing || phase === "running") && !dailyInProgress`), so a run's splits are
-readable while you watch it and its row is marked viewing from the moment it
-executes. Mid-daily it would spoil the attempt being built, and a board with no
-run has nothing to describe. Everything is computed locally: the maze on the
-board and the reference (the best run in `viewedAttempts`) are each re-solved
-with `localRun` and read through `computeSplits`, so the tape can never disagree
-with the time on the row and costs no round trip. Viewing your own best hides
-the delta column and shows absolute times — there is nothing to compare against;
-otherwise each row is tinted by how it stands (`--split-tone`: green ahead, red
-behind, amber dead level), the delta wearing it outright and the absolute time a
-dimmed mix. The panel is a **fixed collapsed height** and holds that space even
-when there is no tape to show (a `.splits--placeholder` on any free-play board),
-so the runs below never hop as you move between a run, your best, and a live
-board. Collapsed, every mark sits on one **wrapping** line; expanded, one row
-per mark with the delta leading and the absolute time trailing, sliding open on
-a `0fr -> 1fr` grid row (no measured height, and it degrades to a snap where
-`fr` can't interpolate). While the runner is **animating**, the mark it is
-running TOWARD is lit in both states — the split in progress, the way a speedrun
-timer reads it, so the highlight moves the instant a mark is reached rather than
-trailing a leg behind (past the last mark nothing is lit; there is no next one).
-The runner's own colour, so it reads as "the runner is here" rather than joining
-the gain/loss tones, and matched by time so marks sharing an instant (a flag on
-the checkpoint) light together — the pill's width is padding every mark carries
-lit or not, since the collapsed line wraps and appearing padding would reflow
-it. `Runner` publishes its elapsed seconds to `runnerTime`
-(`Game/interaction.ts`, alongside the pointer-frequency signals and for the same
-reason: it is written every frame), and the tape reads it through a
-`useComputed` that collapses it to the reached mark, so a re-render costs only
-when the lit mark moves. Open/closed persists per player (`splitsOpen`). Its
-caret is the standings dock's glyph in the dock's colour — one family for the
-rail — but pointed differently on purpose: the dock opens a sheet (up, or left
-into a desktop drawer), this discloses in place (right, rotating down). **The
-flags on the board come and go with the tape**, on the same condition — the
-board draws them only while the panel is up, so a board you are BUILDING on
-(free play or ranked) shows none. They are the tape's marks: one you can't read
-a split off is just something in the way of the cells you're placing into. The
-flags themselves still belong to the board and stay put across runs and reviews;
-only their visibility rides along. Flag placement is explicitly **armed** from
-the footer (with the board visible a bare tap is ambiguous — inspecting a
-thunder's radius vs. dropping a flag); armed, the board dims behind a scrim, any
-cell takes a flag, and a flag drags to move / taps to clear. The gesture mirrors
-a BLOCK placement, down to the placing zoom and its delay: the flag appears
-under the pointer the instant it lands, follows it, and is written on release —
-at the cell its preview stood on, never a fresh mapping of the release point,
-since the zoom animation is still moving the board's box under the finger (the
-same reason `useInputEnd` commits `placingBlock` rather than re-reading the
-pointer). `store/flags.ts` folds flags in from board responses, writes them back
-optimistically, and carries the two board-facing signals (`liveFlags` — which
-flags this run actually crosses, the rest drawing dashed as speculative; **unset
-when no tape is up**, which is also what `splitsShowing` derives the board's
-draw-them-at-all gate from, so the two can't drift — and `hoveredSplit`, the
-mark a hovered row rings), the same signals-not-context split
-`Game/interaction.ts` uses.
+reads "viewing". Play stages a fresh board when you want one. Its window doesn't
+pause either: reviewing a past maze keeps the live countdown in the HUD's Play
+slot alongside the reset button, and reset there clears the attempt while
+staying on the reviewed maze (the input hooks gate on `viewing`, so the ticking
+clock never makes a reviewed board editable). Should the window expire
+mid-review, the board hands back to the build (restored from the local record
+via `pendingFreePlay`, the one read that ignores the deadline) and it executes
+normally — committed, runner released. `useClock`/`RunClock` run the
+60s/animation timing; `verdict.ts` computes the result.
 
 ## Push notifications
 

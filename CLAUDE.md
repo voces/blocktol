@@ -74,10 +74,10 @@ the EC2 cohost after CI passes on `prod`.
 Three source roots with a strict dependency direction:
 
 - **`common/`** — pure, framework-free logic shared by both sides (the pathing
-  engine, the splits derived from it, domain math, serialization, notification
-  classification, settings parsing). Must import nothing from `server/` or
-  `client/`. `client/api.ts` imports **types only** from `server/routes/api.ts`
-  — that type-only edge is the API contract, not a runtime dependency.
+  engine, domain math, serialization, notification classification, settings
+  parsing). Must import nothing from `server/` or `client/`. `client/api.ts`
+  imports **types only** from `server/routes/api.ts` — that type-only edge is
+  the API contract, not a runtime dependency.
 - **`server/`** — the Deno backend. May import `common/`.
 - **`client/`** — the Preact frontend, bundled to `public/js/`. May import
   `common/`. JSX uses the `h`/`Fragment` pragma (`preact`), configured in
@@ -94,14 +94,13 @@ automatically when you work in that directory. Read the relevant one before
 changing an area, including from elsewhere (a server change the client depends
 on, say):
 
-- `common/CLAUDE.md` — the pathing engine (`common/pathing.ts`) and splits.
+- `common/CLAUDE.md` — the pathing engine (`common/pathing.ts`).
 - `server/CLAUDE.md` — entry, router, the one-endpoint API, `boot`/`dayView`
   composition, crons, push notifications, the Discord posts, environment
   variables, observability, and the build SHA / stale-client reload.
 - `server/db/CLAUDE.md` — **migrations (read before adding one)**, the two DB
   transports, and the `sql`/`sqlOnce` choice.
-- `client/CLAUDE.md` — boot, the API client, stores, the game loop, splits and
-  flags.
+- `client/CLAUDE.md` — boot, the API client, stores and the game loop.
 - `i18n/CLAUDE.md` — catalogs, `t(...)`, and picking the language.
 - `public/CLAUDE.md` — the static shell, fonts, icons and the share-card policy.
 - `deploy/README.md` — the EC2 box: setup, operating, backups and restore.
@@ -109,8 +108,8 @@ on, say):
 ## Domain model & invariants
 
 Tables: `user`, `iteration`, `block` (an iteration's fixed pieces, kind
-`block|thunder`), `run`, `notification`, `push_subscription`, `flag`, `pb_top`.
-Key run flags — get these right, they encode the whole competitive model:
+`block|thunder`), `run`, `notification`, `push_subscription`, `pb_top`. Key run
+flags — get these right, they encode the whole competitive model:
 
 - **`ranked`** — this run is one of the daily's three counting attempts.
   Recorded **only at `startRun`**, because it depends on the player's _claimed
@@ -134,16 +133,6 @@ Key run flags — get these right, they encode the whole competitive model:
 - **`pinned`** — a player's bookmark that floats a run to the top of their own
   Attempts panel. The panel merges runs that built the identical maze into one
   row, so pinning toggles the whole maze-group together.
-
-**Flags** (`flag`, migration v15) are the one other player-owned row: the splits
-tape's manual checkpoints. A flag belongs to the **board**, not to a run — one
-row per `(user, iteration)` holding the whole set in a single column, the way a
-run's maze is stored (`util/flags.ts`) — so every build of that maze is timed
-against the same marks. They ride the `getBoard` response (and so `boot` /
-`dayView` / every board loader through it) and are written back whole by
-`setFlags`, an absolute-value upsert that is therefore idempotent and retryable.
-Nothing but the owner reads them: they never touch timing, standings, or
-validation.
 
 Other invariants:
 
@@ -270,26 +259,25 @@ Other invariants:
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,
-  notifications, push endpoints, board flags, the top-PB records it holds) as
-  one JSON document the client offers as a download. `deleteAccount`
+  notifications, push endpoints, the top-PB records it holds) as one JSON
+  document the client offers as a download. `deleteAccount`
   (`routes/deleteAccount.ts` → `db/deleteAccount.ts`, `anonymizeUser`) is
   **anonymize-in-place, not a row delete**: it hard-deletes the caller's push
-  subscriptions + notifications + flags (private annotations nothing else is
-  computed from), then rotates `user.id` to a fresh random UUID and clears
-  `name`/`settings`/`locale` (and points `pb_top.top_user`, which has no FK to
-  cascade, at the new id). The runs ride along via
-  `FK_run_user ON UPDATE CASCADE`, so the player's build history survives as one
-  distinct **anonymous** competitor — the day's field, others' percentiles, and
-  the applied ELO deltas aren't rewritten, and every `JOIN user` still resolves.
-  The new id is never returned, so the link to the person is gone
-  (anonymization, not pseudonymization). Each erasure posts the old id's
-  **hash** (never the id) to the admin Discord channel: an off-box ledger that
-  lets `scripts/reapplyErasures.ts` re-apply deletions after a restore even if
-  the box and its logs are lost. The op is an idempotent no-op on retry (the old
-  id is gone), but `deleteAccount` is still **excluded from the client
-  `RETRYABLE` allowlist** because on success the client mints a fresh local id +
-  reloads, so a blind retry would act on the stale id. The confirm is gated
-  behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html` is the
+  subscriptions + notifications (nothing else is computed from them), then
+  rotates `user.id` to a fresh random UUID and clears `name`/`settings`/`locale`
+  (and points `pb_top.top_user`, which has no FK to cascade, at the new id). The
+  runs ride along via `FK_run_user ON UPDATE CASCADE`, so the player's build
+  history survives as one distinct **anonymous** competitor — the day's field,
+  others' percentiles, and the applied ELO deltas aren't rewritten, and every
+  `JOIN user` still resolves. The new id is never returned, so the link to the
+  person is gone (anonymization, not pseudonymization). Each erasure posts the
+  old id's **hash** (never the id) to the admin Discord channel: an off-box
+  ledger that lets `scripts/reapplyErasures.ts` re-apply deletions after a
+  restore even if the box and its logs are lost. The op is an idempotent no-op
+  on retry (the old id is gone), but `deleteAccount` is still **excluded from
+  the client `RETRYABLE` allowlist** because on success the client mints a fresh
+  local id + reloads, so a blind retry would act on the stale id. The confirm is
+  gated behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html` is the
   disclosure page linked from the same panel (the SQL proxy is first-party
   infra, not listed as a third-party recipient). It is **server-rendered in the
   reader's language** (`server/privacy/page.ts`: an explicit `?lang` — the

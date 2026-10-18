@@ -64,8 +64,8 @@
     "description": "Stored-data list item term."
   },
   "privacy.store.gameplay.detail": {
-    "message": "The mazes you build, their times, and which attempts counted, so we can score the daily and show leaderboards. This includes any flags you place on a board to break a run into splits.",
-    "description": "Explanation for the \"Your gameplay\" list item. \"daily\", \"flags\", and \"splits\" are game terms (see the glossary)."
+    "message": "The mazes you build, their times, and which attempts counted, so we can score the daily and show leaderboards.",
+    "description": "Explanation for the \"Your gameplay\" list item. \"daily\" is a game term (see the glossary)."
   },
   "privacy.store.prefs.term": {
     "message": "Preferences",
@@ -176,11 +176,11 @@
     "description": "Lead-in to the two cards (export / delete) below; ends with a colon. {place} is the in-game menu path, already localized, e.g. \"Profile → Account\"."
   },
   "privacy.rights.export.body": {
-    "message": "Downloads a JSON file with everything we hold about you — your profile, every run, your flags, your notifications, and your push subscriptions.",
+    "message": "Downloads a JSON file with everything we hold about you — your profile, every run, your notifications, and your push subscriptions.",
     "description": "Card text under the \"Export my data\" heading."
   },
   "privacy.rights.delete.body": {
-    "message": "Permanently removes your profile, name, preferences, flags, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player, linked to you by nothing we keep, so the historical results of days other people competed in aren't rewritten. Names already posted to Discord, and your name in notifications already sent to other players (deleted after 90 days), stay there. This can't be undone, and your device starts over as a brand-new player.",
+    "message": "Permanently removes your profile, name, preferences, notifications, and push subscriptions, and unlinks every maze you've built from you. Your builds stay on past leaderboards as an anonymous player, linked to you by nothing we keep, so the historical results of days other people competed in aren't rewritten. Names already posted to Discord, and your name in notifications already sent to other players (deleted after 90 days), stay there. This can't be undone, and your device starts over as a brand-new player.",
     "description": "Card text under the \"Delete my data\" heading."
   },
   "privacy.rights.more": {

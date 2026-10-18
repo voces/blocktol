@@ -11,7 +11,6 @@ import { api, MessageMap } from "../../api.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
 import { intlLocale, t } from "../../util/t.ts";
 import { mazeKey } from "./helpers.ts";
-import { Splits } from "./Splits.tsx";
 import { GameStateContext } from "./useGameState.ts";
 
 // Best-run badge → catalog key, mapped by a literal object so every live key
@@ -202,11 +201,6 @@ export const Attempts = () => {
 
   return (
     <div class="attempts">
-      {
-        /* The splits tape (free play only, see Splits.tsx). Inside this scroll
-          column so it scrolls with the list it describes. */
-      }
-      <Splits />
       <div class="attempts__head">
         <div class="section-title">
           {

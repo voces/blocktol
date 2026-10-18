@@ -336,6 +336,13 @@ export const migrations: Migration[] = [
     up:
       "ALTER TABLE `user` MODIFY COLUMN `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;",
   },
+  {
+    version: 17,
+    name: "drop-flag",
+    // Drops v15's `flag` table, which held each player's per-board flags for
+    // the splits feature, which is gone; nothing reads or writes it.
+    up: "DROP TABLE IF EXISTS `flag`;",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

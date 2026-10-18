@@ -66,9 +66,8 @@ export const localRun = (
 
 /**
  * Order-independent key for a maze, so a stored run and the board compare equal
- * regardless of piece order. Used to merge the runs panel's rows, flag the row
- * being reviewed, and tell the splits panel whether the board IS the reference
- * best.
+ * regardless of piece order. Used to merge the runs panel's rows and mark the
+ * row being reviewed.
  */
 export const mazeKey = (
   maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean }>,
