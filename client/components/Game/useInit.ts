@@ -7,7 +7,7 @@ import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
 import { regradedIterations } from "../../store/notifications.ts";
-import { entryIsPastDayLink } from "../../store/notifNav.ts";
+import { stagingPastDayLink } from "../../store/notifNav.ts";
 import { useGame, useGameListener } from "../../hooks/useGame.ts";
 import { getTimeZone } from "../../util/timeZone.ts";
 import { nextLocalMidnight } from "../../util/dayBoundary.ts";
@@ -364,7 +364,7 @@ export const useInit = () => {
         // run — that would steal the board from the linked day. The cache seeded
         // above lets navigating home resume it instantly. A today-link has no
         // other day to protect, so it resumes today's run normally.
-        if (!entryIsPastDayLink) return handleRun(currentRun);
+        if (!stagingPastDayLink()) return handleRun(currentRun);
         return;
       }
 
@@ -380,7 +380,7 @@ export const useInit = () => {
         // staging today here would race consumeDeepLink's showBoard and steal
         // the board (and the URL) back from the linked day. A today-link stages
         // today here (consumeDeepLink steps aside for it), which is correct.
-        if (!entryIsPastDayLink) showBoard(iteration);
+        if (!stagingPastDayLink()) showBoard(iteration);
         return;
       }
 
@@ -392,7 +392,7 @@ export const useInit = () => {
       // on a PAST-day-link boot, which stages that linked day instead. A
       // today-link falls through to here: there's no other day to stage, so a
       // fresh user gets the prestart rather than stranding on an inert board.
-      if (time === -2 && !entryIsPastDayLink) enterPrestart();
+      if (time === -2 && !stagingPastDayLink()) enterPrestart();
     },
   );
 

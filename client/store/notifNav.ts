@@ -1,6 +1,8 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
+import { api } from "../api.ts";
 import { dayIsBefore, localDay } from "../util/dayBoundary.ts";
+import { getTimeZone } from "../util/timeZone.ts";
 import { showBoard } from "./board.ts";
 import { markReadForDay } from "./notifications.ts";
 import {
@@ -46,11 +48,36 @@ export const entryIsDayLink = entryDay !== null;
 // today-or-future permalink (today's `getBoard` answers { incomplete } until the
 // three ranked attempts are spent; a future date 400s or, worse, served
 // tomorrow's board), leaving an inert loading board with no way forward.
-export const entryIsPastDayLink = entryDay !== null &&
+//
+// It holds only while the link can still win: a past link that fails to
+// resolve (a bad date like /20260231, or a transient failure) drops it — see
+// abandonPastDayLink — so today's flow takes the board back. Read it through
+// the function, at the moment it matters.
+let pastDayLink = entryDay !== null &&
   dayIsBefore(
     [Number(entryDay[1]), Number(entryDay[2]), Number(entryDay[3])],
     localDay(),
   );
+export const stagingPastDayLink = () => pastDayLink;
+
+// Whether boot's summary has landed — by then useInit already stepped aside
+// for the link, so giving the board back means asking for it again.
+let summarySeen = false;
+api.addEventListener("getDailySummary", () => {
+  summarySeen = true;
+});
+
+// The past link couldn't be staged: hand the board to today's normal flow
+// (resume / prestart / finished board). Staging today directly with showBoard
+// can't do that — with today's daily outstanding it answers { incomplete },
+// leaving an inert loading board. A summary still in flight will see the gate
+// down by itself; one already handled is re-requested (safe: it resumes an
+// open run but never starts one).
+const abandonPastDayLink = () => {
+  if (!pastDayLink) return;
+  pastDayLink = false;
+  if (summarySeen) api.getDailySummary({ timeZone: getTimeZone() });
+};
 
 // A pending request to open the profile somewhere other than its top: the
 // Account section, or straight to the delete-confirm sheet. Two sources, since
@@ -166,11 +193,9 @@ export const consumeDeepLink = async () => {
   try {
     const s = await fetchStandingsForDate(year, month, day);
     // The link didn't resolve to a day — fall back to today (boot's own
-    // today-staging stepped aside for the link, so nothing else will).
-    if (!s) {
-      showBoard();
-      return;
-    }
+    // today-staging stepped aside for a past link; a today/future link never
+    // took the board from it).
+    if (!s) return abandonPastDayLink();
     if (sort) setStandingsSort(sort);
     // Stage a PAST day's board here; only reopen the sheet when the link says it
     // was open (the view sync then keeps the URL honest as you interact). Awaited
@@ -178,15 +203,18 @@ export const consumeDeepLink = async () => {
     // hands staging to the normal boot flow instead — `useInit` owns today's
     // resume / prestart, and today's board stays { incomplete } until the ranked
     // attempts are spent, so staging it here would stage nothing (or race that
-    // flow).
-    if (entryIsPastDayLink) await showBoard(s.iteration);
+    // flow). A past board that won't stage (its getBoard failed) would strand
+    // the board like an unresolved link, so it falls back the same way.
+    if (stagingPastDayLink() && !(await showBoard(s.iteration))) {
+      return abandonPastDayLink();
+    }
     if (boardParam) {
       requestStandings(s.iteration);
       // Tapping the push counts as reading its notification.
       if (kind) markReadForDay(s.iteration, kind);
     }
   } catch {
-    showBoard(); // same fallback to today on error
+    abandonPastDayLink(); // same fallback to today on error
   } finally {
     viewReady.value = true;
   }

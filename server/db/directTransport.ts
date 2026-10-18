@@ -46,7 +46,9 @@ type Pool = { getConnection: () => Promise<Connection> };
 //     regardless.
 // tinyint(1) booleans come back as 0/1 numbers either way (callers do `!!flag`).
 
-class SQLError extends Error {}
+// A server-reported SQL error (either transport): deterministic, never retried,
+// and something a caller can tell apart from a transport failure.
+export class SQLError extends Error {}
 
 // A server-reported SQL error (bad syntax, constraint violation, ...) carries a
 // `sqlState` string; a transport/connection failure (ECONNREFUSED, connection

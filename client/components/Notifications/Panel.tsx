@@ -21,7 +21,7 @@ import {
   setNotifFilter,
 } from "../../store/notifications.ts";
 import { formatAgo } from "../Standings/helpers.ts";
-import { t } from "../../util/t.ts";
+import { intlLocale, t } from "../../util/t.ts";
 import { Check, Crown, Flag } from "./icons.tsx";
 
 // A daily outcome's accent — the tile hue and the emphasis colour, mirroring the
@@ -50,7 +50,7 @@ const CHIP_LABEL_KEY = {
 const Item = (
   { item, onOpen }: { item: NotificationItem; onOpen: () => void },
 ) => {
-  const { title, body } = notificationText(item);
+  const { title, body } = notificationText(item, intlLocale());
   const reclaimed = item.reclaimed;
   const accent = reclaimed
     ? null
@@ -72,7 +72,9 @@ const Item = (
   }
 
   const link = item.kind === "lost_top"
-    ? t("notif.panel.opensDay", { date: formatNotifDate(item.day) })
+    ? t("notif.panel.opensDay", {
+      date: formatNotifDate(item.day, intlLocale()),
+    })
     : t("notif.panel.opensLeaderboard");
 
   // A reclaimed card reads as read even if never opened — it's no longer a live

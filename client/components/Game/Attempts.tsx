@@ -9,7 +9,7 @@ import {
 } from "../../../common/percentileColor.ts";
 import { api, MessageMap } from "../../api.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
-import { t } from "../../util/t.ts";
+import { intlLocale, t } from "../../util/t.ts";
 import { mazeKey } from "./helpers.ts";
 import { Splits } from "./Splits.tsx";
 import { GameStateContext } from "./useGameState.ts";
@@ -68,7 +68,7 @@ const formatWhen = (created: number) => {
     if (m < 60) return t("time.minsAgo", { m });
     return t("time.hoursAgo", { h: Math.floor(m / 60) });
   }
-  return when.toLocaleDateString(undefined, { dateStyle: "medium" });
+  return when.toLocaleDateString(intlLocale(), { dateStyle: "medium" });
 };
 
 // Every run on the viewed maze (ranked and free play, fed by startRun / getBoard

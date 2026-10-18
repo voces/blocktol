@@ -4,7 +4,7 @@
 // the same, so the unit tests are unchanged.
 
 import { formatDecimal } from "../../../common/format.ts";
-import { t } from "../../util/t.ts";
+import { intlLocale, t } from "../../util/t.ts";
 
 // "T2" when the rank is shared, plain "2" otherwise. Large ranks (the PB
 // board's thousands) collapse to an approximate "~1.9k" — exact digits there
@@ -47,7 +47,7 @@ export const formatCountdown = (closesAt: number, now = Date.now()) => {
 // The sheet's header date ("Jul 7") from the server's [y, m, d] day tuple.
 // Built as a LOCAL date so locale formatting can't shift it across midnight.
 export const formatDay = ([y, m, d]: readonly [number, number, number]) =>
-  new Date(y, m - 1, d).toLocaleDateString(undefined, {
+  new Date(y, m - 1, d).toLocaleDateString(intlLocale(), {
     month: "short",
     day: "numeric",
   });

@@ -307,9 +307,15 @@ export const App = () => {
       {
         /* Boot failure, or persistent mid-game transport failures (the run
         saver keeps retrying underneath — this just tells the player why the
-        board stopped responding). */
+        board stopped responding). A staged free-play board needs no network
+        until its commit, which the outbox holds until it lands, so there it
+        only gets the non-blocking pill: covering it stopped offline play. */
       }
-      {(disconnected || failures.value >= 2) && <Disconnected />}
+      {(disconnected || failures.value >= 2) && (
+        <Disconnected
+          compact={gameState.freePlay && gameState.phase !== "loading"}
+        />
+      )}
       {
         /* Storage-blocked heads-up — game view only, never over the tour.
           A blocked browser also blocks sessionStorage, so the gateToast can't

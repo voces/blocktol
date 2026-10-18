@@ -10,7 +10,7 @@ import { Logo } from "../Logo.tsx";
 import { showBoard } from "../../store/board.ts";
 import { arrivedViaDeepLink } from "../../store/notifNav.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
-import { t, tJsx } from "../../util/t.ts";
+import { intlLocale, t, tJsx } from "../../util/t.ts";
 
 // Best-attempt badge → catalog key, mapped by a literal object so every live
 // key stays greppable (see the i18n conventions).
@@ -74,11 +74,11 @@ export const Daily = () => {
     return null;
   }
 
-  const date = new Date().toLocaleDateString(undefined, {
+  const date = new Date().toLocaleDateString(intlLocale(), {
     dateStyle: "medium",
   });
   // Shorter month + day for the title; the clipboard keeps the full `date`.
-  const displayDate = new Date().toLocaleDateString(undefined, {
+  const displayDate = new Date().toLocaleDateString(intlLocale(), {
     month: "short",
     day: "numeric",
   });

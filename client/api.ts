@@ -3,6 +3,7 @@ import { noteFailure, noteSuccess } from "./store/connection.ts";
 import { CLIENT_SHA, noteServerVersion } from "./store/version.ts";
 import { Emitter, emitter } from "./util/emitter.ts";
 import { getId } from "./util/id.ts";
+import { primePool } from "./util/primePool.ts";
 import { allowReport } from "./util/reportGate.ts";
 
 export type MessageMap =
@@ -31,7 +32,20 @@ const em = emitter<typeof host, MessageMap>(host);
 // single bundled `boot` fetch can prime a parameterized method — e.g. `list` for
 // a specific month — and only the call with matching input consumes that slice
 // (the calendar's other months key separately and fetch on their own).
-const primed = new Map<string, Promise<Response>>();
+//
+// A prime lives PRIME_TTL_MS, then is dropped unconsumed: one its consumer
+// never asked for (the dock serving a re-opened day from its own cache) would
+// otherwise answer a refresh minutes later with a snapshot from before the
+// player's latest run. The window restarts when the response arrives, so a
+// slow boot doesn't expire primes whose consumers only fire once it lands. A
+// consumer that arrives late just fetches for real.
+const PRIME_TTL_MS = 10_000;
+const primed = primePool<Promise<Response>>(PRIME_TTL_MS);
+
+const setPrime = (key: string, p: Promise<Response>) => {
+  primed.set(key, p);
+  p.then(() => primed.touch(key, p), () => {});
+};
 
 const primeKey = (method: string, input: unknown) =>
   `${method}:${JSON.stringify(input ?? null)}`;
@@ -169,7 +183,7 @@ export const prime = <Method extends keyof BlocktolApi>(
   // Observed so an early failure can't surface as an unhandled rejection;
   // the consuming call still sees it (and handles it like its own fetch).
   p.catch(() => {});
-  primed.set(primeKey(method, input), p);
+  setPrime(primeKey(method, input), p);
 };
 
 // Prime one method's next call from a slice of a *shared* composite response —
@@ -196,7 +210,7 @@ export const primeFrom = <Method extends keyof BlocktolApi, Source>(
     );
   });
   p.catch(() => {});
-  primed.set(primeKey(method, input), p);
+  setPrime(primeKey(method, input), p);
 };
 
 // Prime the whole cold boot from ONE request. `boot` composes the handlers
@@ -241,11 +255,11 @@ export const primeBoot = (
     ["getBoard", { timeZone: tz }, (b) => b.board],
   ];
   for (const [method, consumerInput, pick] of single) {
-    primed.set(primeKey(method, consumerInput), slice(pick));
+    setPrime(primeKey(method, consumerInput), slice(pick));
   }
   // Each calendar month, keyed by its range, against boot.list[i].
   listInputs.forEach((li, i) => {
-    primed.set(primeKey("list", li), slice((b) => b.list[i]));
+    setPrime(primeKey("list", li), slice((b) => b.list[i]));
   });
 
   // A `/YYYYMMDD` deep-link boot: `day` is set, so boot also carries the linked
@@ -268,7 +282,7 @@ export const primeBoot = (
       return s;
     };
     // consumeDeepLink resolves the date first, via standings BY DATE.
-    primed.set(
+    setPrime(
       primeKey("standings", { year: ly, month: lm, day: ld }),
       linkedSlice((l) => l.standings),
     );
@@ -280,11 +294,11 @@ export const primeBoot = (
       const linked = b?.linked;
       if (!linked || typeof linked.iteration !== "number") return;
       const it = linked.iteration;
-      primed.set(
+      setPrime(
         primeKey("getBoard", { iteration: it, timeZone: tz }),
         Promise.resolve(new Response(JSON.stringify(linked.board))),
       );
-      primed.set(
+      setPrime(
         primeKey("standings", { iteration: it }),
         Promise.resolve(new Response(JSON.stringify(linked.standings))),
       );
@@ -335,8 +349,7 @@ export const api = new Proxy({}, {
 
     return async (input: Parameters<BlocktolApi[keyof BlocktolApi]>) => {
       const key = primeKey(method, input);
-      const preloaded = primed.get(key);
-      if (preloaded) primed.delete(key);
+      const preloaded = primed.take(key);
       let resp: Response;
       let data: unknown;
       try {

@@ -247,7 +247,11 @@ consume off boot (boot derives the two months from the caller's timezone to
 match `dailyItems.monthListInput`). `primeBoot` also seeds `todayIteration` from
 boot's standings slice so the dock recognizes the staged board as today and
 consumes the primed `standings` rather than refetching by id. On a boot failure
-each slice rejects and the consumer falls through to its own fetch.
+each slice rejects and the consumer falls through to its own fetch. Every prime
+(boot's and `primeFrom`'s) expires 10s after its response arrives
+(`util/primePool.ts`), so one its consumer never took — the dock answering a
+re-opened day from its own cache — can't be served minutes later as a stale
+snapshot; a late consumer just fetches.
 
 A `/YYYYMMDD` **permalink cold-load** boots through the same one request:
 `primeBoot` passes the URL's date as `boot`'s optional `day`, and boot resolves
@@ -263,17 +267,20 @@ collide with today's timezone-keyed primes — today's slices still feed the
 dock/calendar/summary while the linked day feeds the staged board. An
 unresolvable date (or a linked slice that can't be served) throws, so the
 consumer falls through to its own fetch — the old skip-boot day-link path is
-gone. `entryIsPastDayLink` (a `/YYYYMMDD` for a day _strictly before_ today)
-gates today-**staging** so a linked past day wins the board (`useInit`). A link
-to _today_ or a _future_ day is deliberately **not** suppressed: today has no
-other day to stage, and a future day must not be staged at all (tomorrow's
-iteration exists — the gen cron runs a day ahead — so staging it would leak the
-puzzle you'll rank tomorrow; next week's 400s). Both fall through to today's
-normal resume/prestart flow, and `consumeDeepLink` stages only for a
-strictly-past link — so a today/future link lets `useInit` own the board.
-(Gating on the raw day-link stranded a fresh user on a today/future permalink —
-today's `getBoard` 403s until the three ranked attempts are spent, so nothing
-staged _and_ the prestart was suppressed, leaving an inert loading board.)
+gone. `stagingPastDayLink()` (a `/YYYYMMDD` for a day _strictly before_ today)
+gates today-**staging** so a linked past day wins the board (`useInit`) — until
+that link fails to resolve or stage (a bad date, a transient failure), which
+drops the gate and re-asks `getDailySummary`, handing the board back to today's
+resume/prestart rather than an inert loading board. A link to _today_ or a
+_future_ day is deliberately **not** suppressed: today has no other day to
+stage, and a future day must not be staged at all (tomorrow's iteration exists —
+the gen cron runs a day ahead — so staging it would leak the puzzle you'll rank
+tomorrow; next week's 400s). Both fall through to today's normal resume/prestart
+flow, and `consumeDeepLink` stages only for a strictly-past link — so a
+today/future link lets `useInit` own the board. (Gating on the raw day-link
+stranded a fresh user on a today/future permalink — today's `getBoard` 403s
+until the three ranked attempts are spent, so nothing staged _and_ the prestart
+was suppressed, leaving an inert loading board.)
 
 **`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
 `getBoard` + `standings` for a chosen `{ iteration, timeZone }` — because a day
@@ -346,7 +353,9 @@ its `ready` gate onto a half-migrated schema. **The runner keys off `version`
 only — editing an already-shipped migration's SQL never re-runs it.** So the
 rule is **append-only once a migration has reached prod**: fix forward with a
 new migration. (Editing in place is allowed only while a migration has _only_
-reached dev — see the long note at the bottom of that file.)
+reached dev — see the long note at the bottom of that file.) Every user-text
+column is utf8mb4 (v16 moved `user.name`, the last utf8mb3 holdout, so an emoji
+display name stores; `rename` answers any remaining DB refusal as a 400).
 
 **Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
 `DISABLE_CRONS` is set, so a second instance sharing the DB doesn't
@@ -639,8 +648,10 @@ saver's flush on `pagehide`/hidden).
   ranked run than were spent — instead of re-enabling a button that would burn a
   second one), `standings`, `profile`, `notifications`, `notifNav` (deep-link
   routing — effectively the app's router), `connection` (drives the Disconnected
-  overlay), `dailyItems`, `discord`. `store/query.ts` is not a data store but
-  the shared coalesce/dedupe/stale-window cache primitive the others build on.
+  overlay — blocking, except over a staged free-play board, which plays offline
+  and gets a non-blocking pill instead), `dailyItems`, `discord`.
+  `store/query.ts` is not a data store but the shared
+  coalesce/dedupe/stale-window cache primitive the others build on.
 - `client/components/Game/interaction.ts` holds pointer-frequency board state as
   signals so a drag only re-renders the board, not the tree.
 
@@ -972,12 +983,16 @@ change, mirroring `applyTheme`) points the `uiLocale` signal at the tag —
 `"system"` resolves to `navigator.language`, so **an un-overridden user gets
 their browser language**, falling back to English — and stamps
 `document.documentElement.lang` with the resolved catalog locale. Because every
-`t(...)` reads `uiLocale`, a switch re-renders live. The Profile → Preferences
-picker is a native `<select>` of `locales` (endonyms via `Intl.DisplayNames`)
-plus a System option. An **explicit** choice also rides to the server
-(`setSettings` → `updateUserLocale`) so push copy — rendered in `user.locale` —
-matches; `"system"` leaves `user.locale` as the browser tag captured passively
-at push-subscribe, so the two stay in step.
+`t(...)` reads `uiLocale`, a switch re-renders live. Dates and numbers follow
+the same choice, not the browser's locale: format a date with `intlLocale()`
+(`client/util/t.ts` — `uiLocale`, read so the component re-renders, guarded
+against a malformed tag), and `common/format.ts` takes the language as its
+client-side default (`setDefaultLocale`, set by `applyLanguage`). The Profile →
+Preferences picker is a native `<select>` of `locales` (endonyms via
+`Intl.DisplayNames`) plus a System option. An **explicit** choice also rides to
+the server (`setSettings` → `updateUserLocale`) so push copy — rendered in
+`user.locale` — matches; `"system"` leaves `user.locale` as the browser tag
+captured passively at push-subscribe, so the two stay in step.
 
 ## Environment variables
 

@@ -369,6 +369,21 @@ export const migrations: Migration[] = [
         CONSTRAINT \`FK_flag_iteration\` FOREIGN KEY (\`iteration\`) REFERENCES \`iteration\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
   },
+  {
+    version: 16,
+    name: "user-name-utf8mb4",
+    // `user.name` was the one column still on utf8mb3 (inherited from the
+    // original schema — see v1), which can't hold a 4-byte character: an emoji
+    // display name failed the rename under strict mode. Convert it to the
+    // table's utf8mb4 / utf8mb4_unicode_ci, keeping its type, length,
+    // nullability and default exactly. varchar(32) counts characters in either
+    // charset, so no stored name can be truncated, and the `name` index stays
+    // well under InnoDB's key limit at 4 bytes a character. Every other text
+    // column (settings, locale, notification/flag data) already took the
+    // table's utf8mb4 default. Re-running it is a no-op.
+    up:
+      "ALTER TABLE `user` MODIFY COLUMN `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

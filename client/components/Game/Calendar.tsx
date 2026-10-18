@@ -20,7 +20,7 @@ import {
 } from "../../store/dailyItems.ts";
 import { useMediaQuery } from "../../hooks/useMediaQuery.ts";
 import { clearFreePlay } from "./freePlay.ts";
-import { t, uiLocale } from "../../util/t.ts";
+import { intlLocale, t } from "../../util/t.ts";
 import { narrowWeekdays } from "../../util/dateNames.ts";
 import { GameStateContext } from "./useGameState.ts";
 
@@ -76,7 +76,7 @@ export const Calendar = () => {
   // Weekday initials + the month/day labels below follow the UI locale (reading
   // .value re-renders on a language switch); English renders exactly the old
   // hardcoded arrays.
-  const locale = uiLocale.value;
+  const locale = intlLocale();
   const weekdays = narrowWeekdays(locale);
   // How many whole months back from the default view we've paged (0 = default).
   const [page, setPage] = useState(0);
