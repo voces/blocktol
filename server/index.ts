@@ -38,6 +38,15 @@ const server = Deno.serve({
   onListen: ({ port }) => log.info("listening", { port }),
 }, async (req) => {
   await ready;
+  // HEAD is GET without the body. Uptime monitors and link checkers send it,
+  // and the router only registers GET, so route it as one and drop the body.
+  if (req.method === "HEAD") {
+    const res = await router.route(
+      new Request(req.url, { method: "GET", headers: req.headers }),
+    );
+    await res.body?.cancel();
+    return withSecurityHeaders(new Response(null, res));
+  }
   return withSecurityHeaders(await router.route(req));
 });
 

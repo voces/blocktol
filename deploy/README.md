@@ -244,8 +244,9 @@ systemctl start unit-failure-alert@test.service   # posts "test failed"
 ```
 
 Nothing on the box can report the box itself being down. Point a free external
-uptime monitor (UptimeRobot, healthchecks.io, …) at `https://blocktol.com/` so
-an outage reaches you before players do.
+uptime monitor (UptimeRobot, …) at `https://blocktol.com/health` as a plain HTTP
+check: it answers 200 only when the app, the database and puzzle generation all
+work (`server/routes/health.ts`), and 503 with the reason otherwise.
 
 ## Operating
 
