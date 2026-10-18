@@ -351,6 +351,14 @@
     "message": "LE LIEN CONNECTE EN TANT QUE",
     "hash": "403a7f5da9c401aeed5103f975d4afe890461ca922395234ff6a96cda1c06522"
   },
+  "mg.linkUnknown": {
+    "message": "Lien de connexion non reconnu",
+    "hash": "459a710158c63b96a16d5858cc97d11daee443c21be6e064e3a031983ad783fd"
+  },
+  "mg.linkUnknownSub": {
+    "message": "Vous jouez toujours en tant que {name}.",
+    "hash": "6e76f7422ea063374d57eca0774cb125c3f18516744487872be02766e3e8f07c"
+  },
   "mg.mergeAccounts": {
     "message": "Fusionner les comptes",
     "hash": "3f284252b3814ab3851453421aa97477d336068d7a357199e36cef19fca0cd79"
