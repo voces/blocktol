@@ -18,6 +18,23 @@ ELO-style rating.
 There is no login/password. Identity is a per-device UUID sent as the
 `authorization` header (see the identity model below).
 
+## ⚠️ A push is a deploy, and a deploy migrates
+
+There is no step between `git push` and a database:
+
+- **Pushing any branch** builds a Deno Deploy **dev preview**, which boots
+  against the shared `blocktol-dev` database and **applies every pending
+  migration on that branch**. Nobody runs it by hand; "please run migration vN
+  on dev" is never a step — the push already did it.
+- **Merging to `prod`** deploys the EC2 instance (`deploy.yml`), which applies
+  the same migrations to the **production** database on boot.
+
+So a migration is live on dev the moment its branch is pushed, before review,
+and can't be taken back by deleting the branch. Before pushing one: make sure
+its version number isn't also taken by another open branch (two branches' v17s
+collide on dev), and that it is safe to run against real data. Don't push a
+migration just to try it out. See `server/db/CLAUDE.md`.
+
 ## Commands
 
 Everything is a Deno task (`deno.jsonc`). Deno v2.x; no `package.json`, no
@@ -47,9 +64,10 @@ Most tests are pure and need no permissions. The `*.test.ts` under
 `server/routes/iteration/run/` and a few others are **run-lifecycle integration
 tests** that hit the dev database through the SQL proxy; they self-skip unless
 `SQL_PASSWORD` is set. CI (`.github/workflows/ci.yml`) runs fmt-check,
-typecheck, `deno task test`, then `deno task build`. Deployment is separate —
-the Deno Deploy GitHub integration builds and serves `server/index.ts`; the
-workflow only checks.
+typecheck, `deno task test`, then `deno task build`. The workflow only checks;
+deployment is separate (see the push-is-a-deploy warning above): Deno Deploy
+builds a dev preview of every pushed branch, and `deploy.yml` deploys prod to
+the EC2 cohost after CI passes on `prod`.
 
 ## Layout & the import rule
 
@@ -324,19 +342,20 @@ connection goes back to the pool (otherwise the next borrower inherits the open
 transaction), and a transport error or timeout destroys it. It also bounds the
 wait for a pooled connection (5s acquire timeout, 500-deep queue).
 
-**Migrations (`server/db/migrations.ts` + `db/migrate.ts`):** ordered,
-contiguous from v1, each run once and recorded in `schema_migration`. A lease
-lock elects a single migrator across isolates on boot; the holder renews its 60s
-lease every 20s while it works, and the losers **wait** (polling, retrying the
-lease in case the winner died; capped at 15 min, then a logged/alerted throw)
-until the target version is recorded — so no process opens its `ready` gate onto
-a half-migrated schema. **The runner keys off `version` only — editing an
-already-shipped migration's SQL never re-runs it.** So the rule is **append-only
-once a migration has reached prod**: fix forward with a new migration. (Editing
-in place is allowed only while a migration has _only_ reached dev — see the long
-note at the bottom of that file.) Every user-text column is utf8mb4 (v16 moved
-`user.name`, the last utf8mb3 holdout, so an emoji display name stores; `rename`
-answers any remaining DB refusal as a 400).
+**Migrations (`server/db/migrations.ts` + `db/migrate.ts`):** applied on boot —
+so pushing a branch applies its migrations to dev (see the warning at the top).
+Ordered, contiguous from v1, each run once and recorded in `schema_migration`. A
+lease lock elects a single migrator across isolates on boot; the holder renews
+its 60s lease every 20s while it works, and the losers **wait** (polling,
+retrying the lease in case the winner died; capped at 15 min, then a
+logged/alerted throw) until the target version is recorded — so no process opens
+its `ready` gate onto a half-migrated schema. **The runner keys off `version`
+only — editing an already-shipped migration's SQL never re-runs it.** So the
+rule is **append-only once a migration has reached prod**: fix forward with a
+new migration. (Editing in place is allowed only while a migration has _only_
+reached dev — see the long note at the bottom of that file.) Every user-text
+column is utf8mb4 (v16 moved `user.name`, the last utf8mb3 holdout, so an emoji
+display name stores; `rename` answers any remaining DB refusal as a 400).
 
 **Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
 `DISABLE_CRONS` is set, so a second instance sharing the DB doesn't

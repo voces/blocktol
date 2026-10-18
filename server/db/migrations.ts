@@ -3,6 +3,11 @@ export type Migration = { version: number; name: string; up: string };
 // Ordered schema migrations. Each runs exactly once per database, in version
 // order, recorded in `schema_migration` (see migrate.ts).
 //
+// ⚠️ These run on boot, and every push deploys: pushing a branch that adds a
+// migration applies it to the shared DEV database straight away (the Deno
+// Deploy preview), and merging to prod applies it to PRODUCTION. Nothing is run
+// by hand. Read server/db/CLAUDE.md before adding one.
+//
 // v1 is the baseline — the schema as it exists today. It is written to be
 // idempotent (`CREATE TABLE IF NOT EXISTS`) so that adopting the framework on
 // the already-provisioned production database is a safe no-op that simply
