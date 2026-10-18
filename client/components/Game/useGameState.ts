@@ -125,17 +125,15 @@ export const useGameState = () => {
    * NOT state — there is nothing here a render can't see, and holding it as
    * state is what let it be wrong.
    *
-   * It used to be stepped per gesture (-1 on a placement, +1 on a delete) while
-   * the maze itself was written from the render's snapshot. The two disagree
-   * whenever a gesture lands before Preact has re-run the input effects with the
-   * previous edit's board: the stale write puts a deleted block back, but its
-   * refund already landed, so the HUD offered a brick the iteration's budget
-   * never had. Spending it built a maze one piece over budget, which
-   * `validateRun` rejects at commit ("too many blocks") — free play's single
-   * round trip, so the run was simply lost. Derived, the board is the only
-   * witness: whatever a race writes back, the chips describe THAT maze, and
-   * every path that changes the maze (an edit, a resume, a revert, a review) is
-   * correct by construction instead of by remembering to re-sync.
+   * Do not step it per gesture (-1 on a placement, +1 on a delete): a gesture
+   * landing before Preact re-runs the input effects writes a stale board that
+   * puts a deleted block back after its refund already landed, so the HUD
+   * offers a brick the iteration's budget never had. Spending it builds a maze
+   * one piece over budget, which `validateRun` rejects at commit ("too many
+   * blocks") — free play's single round trip, so the run is lost. Derived, the
+   * board is the only witness: whatever a race writes back, the chips describe
+   * THAT maze, and every path that changes the maze (an edit, a resume, a
+   * revert, a review) is correct by construction.
    *
    * The totals carry the -1 "no board loaded" sentinel, so `clear`/prestart
    * blank the chips by clearing the budget rather than the count.
@@ -161,8 +159,8 @@ export const useGameState = () => {
     });
   const [time, _setTime] = useState(-2);
   // Handlers registered once (the input hooks) read the clock through this
-  // mirror rather than putting `time` in their dependency arrays — which
-  // re-registered the global listeners on every tick.
+  // mirror rather than putting `time` in their dependency arrays, which would
+  // re-register the global listeners on every tick.
   const timeRef = useRef(time);
   const setTime: typeof _setTime = (t) => {
     timeRef.current = typeof t === "function" ? t(timeRef.current) : t;

@@ -137,7 +137,7 @@ export const StandingsSheet = (
   const sort = effectiveSort(s, persistedSort);
   const b = boardOf(s, sort);
 
-  // A bare text button per the design — the active sort is accent-underlined
+  // A bare text button — the active sort is accent-underlined
   // with a ▾ caret, the other muted.
   const SortTab = (
     { value, label }: { value: StandingsSort; label: string },

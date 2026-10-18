@@ -31,9 +31,9 @@ let current: Settings = load();
 const subscribers = new Set<(s: Settings) => void>();
 
 // The --background token's two ends. The status/PWA bar rides whichever the
-// RESOLVED theme shows, so it can't diverge from the app the way the old
-// prefers-color-scheme theme-color metas did (a dark app on a light OS showed a
-// light bar). Kept in step with `--background: light-dark(#f4f4f7, #0c0c11)`.
+// RESOLVED theme shows, so it can't diverge from the app the way
+// prefers-color-scheme theme-color metas would (a dark app on a light OS shows
+// a light bar). Kept in step with `--background: light-dark(#f4f4f7, #0c0c11)`.
 const BACKGROUND = { light: "#f4f4f7", dark: "#0c0c11" } as const;
 
 const prefersDark = () =>

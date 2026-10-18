@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { PIECE_MAX, PIECE_MIN } from "../../../util/validateRun.ts";
 
-// One player piece as the run endpoints accept it: whole-cell anchors inside the
-// placeable range. A bare `z.number()` let fractional / off-board pieces through
-// to the solver, which reads an out-of-grid cell as free (see validateRun, which
-// re-checks the same bounds for the audit path and any future caller).
+// One player piece as the run endpoints accept it: whole-cell anchors inside
+// the placeable range. A bare `z.number()` would let fractional / off-board
+// pieces through to the solver, which reads an out-of-grid cell as free (see
+// validateRun, which re-checks the same bounds for the audit path and any
+// future caller).
 const coord = z.number().int().min(PIECE_MIN).max(PIECE_MAX);
 
 export const pieceCoords = z.object({ x: coord, y: coord });

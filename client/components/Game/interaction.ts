@@ -4,10 +4,10 @@ import { Point } from "../../../common/types.ts";
 // Pointer-frequency interaction state as signals. These change on every
 // mousemove/touchmove; as context state they re-rendered the entire game tree
 // at pointer speed (every write rebuilt the context value, and every consumer
-// re-rendered). As signals, writes bypass the render path entirely and only
-// the component reading `.value` — the board area — re-renders. Handlers read
-// the latest value via `.peek()`/`.value` like a ref, so the input effects no
-// longer need these in their dependency arrays either.
+// re-rendered). As signals, writes bypass the render path entirely and only the
+// component reading `.value` — the board area — re-renders. Handlers read the
+// latest value via `.peek()`/`.value` like a ref, so the input effects don't
+// need these in their dependency arrays either.
 
 export type PlacingBlock = Point & { placing: boolean };
 export type BoardBlock = Point & {

@@ -2,11 +2,11 @@ import { Point } from "../../common/types.ts";
 import { deserializeRun, serializeRun } from "../util/run.ts";
 import { raw, sql, sqlOnce } from "./query.ts";
 
-// Every run starts void. A daily attempt counts once its maze is built
-// (updateCurrentRun clears void for ranked runs); a free-play run counts only
-// once it actually executes (commitRun). Navigating away before either leaves
-// the run void — i.e. abandoned — so no explicit abandon call is needed for
-// free play.
+// A ranked attempt starts void (startRun) and counts once its maze is built
+// (updateCurrentRun clears void). Navigating away before that leaves it void —
+// i.e. abandoned — so no explicit abandon call is needed. Free play writes no
+// row until it executes (insertFreePlayRun); `commitRun` below is the legacy
+// path that flips a void free-play row from an old cached client.
 //
 // `ranked` — this run is one of the daily's three attempts — is recorded here
 // and only here: among the user's first three runs on the iteration, AND the
@@ -62,11 +62,11 @@ export const startRun = (
         AND TIMESTAMPDIFF(SECOND, created, NOW()) < 2
     );`;
 
-// Mark the caller's current free-play run non-void once it actually executes
-// (timer expiry or an explicit start). Free-play runs are inserted void and only
-// counted here, so leaving before the run runs keeps it void (abandoned).
-// ranked = FALSE scopes it to free play — daily attempts are already committed
-// on build.
+// Legacy free-play commit, for old cached clients that still startRun +
+// updateRun and then send a bare commitRun: mark the caller's current free-play
+// run non-void once it actually executes, so leaving before it runs keeps it
+// void (abandoned). ranked = FALSE scopes it to free play — daily attempts are
+// already committed on build. Current clients use insertFreePlayRun instead.
 export const commitRun = (user: string, iteration: number) =>
   sql`
     UPDATE run
@@ -78,15 +78,16 @@ export const commitRun = (user: string, iteration: number) =>
     LIMIT 1;
   `;
 
-// Free play's single-request commit: insert the executed run directly, non-void,
-// with the server-computed time. Free play no longer calls startRun/updateRun —
-// the client builds the maze and enforces the 60s window locally (see the client
-// run loop), so this is the only row a free-play attempt ever writes. void = FALSE
-// (it's committing because it executed), ranked = FALSE and daily = FALSE (free
-// play never counts as one of the day's three ranked attempts).
+// Free play's single-request commit: insert the executed run directly,
+// non-void, with the server-computed time. Free play never calls
+// startRun/updateRun — the client builds the maze and enforces the 60s window
+// locally (see the client run loop), so this is the only row a free-play
+// attempt ever writes. void = FALSE (it's committing because it executed),
+// ranked = FALSE and daily = FALSE (free play never counts as one of the day's
+// three ranked attempts).
 //
 // sqlOnce + a NOT EXISTS guard on client_id makes the write idempotent: commitRun
-// is retryable now, so a retry after a lost response re-runs this exact INSERT and
+// is retryable, so a retry after a lost response re-runs this exact INSERT and
 // the guard drops the duplicate. clientId is the client's per-attempt id.
 //
 // Returns the run's server-assigned `created` as ms epoch — the same
@@ -149,8 +150,8 @@ export const insertFreePlayRun = (
 // closes at floor(insert) + 61: never before insert + 60s, at most 1s after. (A
 // sub-second `created` would make it exact, but that's a migration.) Freshness
 // is evaluated ONCE, into @fresh, and the UPDATE is gated on that same value:
-// the SELECT and UPDATE used to call NOW() separately, so a save straddling the
-// boundary could answer saved:true without writing, or write and answer false.
+// calling NOW() separately in the SELECT and the UPDATE lets a save straddling
+// the boundary answer saved:true without writing, or write and answer false.
 //
 // The whole batch rides one transaction: a failure between the save and the
 // daily re-pointing must not leave void cleared with the counted-result flags

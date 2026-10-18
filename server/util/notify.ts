@@ -1,9 +1,10 @@
 // The one place a notification is created: gate on the recipient's setting,
 // persist the in-app row, then fan out Web Push to their devices. Push is
 // best-effort — a dead endpoint is pruned, any other failure is swallowed — so
-// notification creation never fails because a push did. Callers must AWAIT these
-// (this Deploy tears the isolate down after the response, so background work can
-// be killed mid-flight).
+// notification creation never fails because a push did. Callers must AWAIT
+// these (a Deno Deploy preview tears the isolate down after the response, so
+// background work can be killed mid-flight; the EC2 instance doesn't, but
+// callers stay uniform).
 
 import {
   DailyFinalData,
@@ -63,9 +64,8 @@ const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
     if (res.gone) {
       // Deleting a device's last subscription is the exact moment its player
       // stops receiving anything while their preference toggles still read
-      // "on" — and it used to happen in total silence, which is why the state
-      // was undiagnosable from the logs. One line, only when a row actually
-      // dies.
+      // "on" — so it is logged, one line, only when a row actually dies;
+      // otherwise the state is undiagnosable from the logs.
       log.info("push subscription pruned", {
         status: res.status,
         endpoint: sub.endpoint.slice(0, 60),

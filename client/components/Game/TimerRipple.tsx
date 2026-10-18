@@ -219,8 +219,8 @@ export const TimerRipple = () => {
     <svg class="board-ripple" viewBox="0 0 20 20" aria-hidden="true">
       {waves.map((wave) => (
         // Each wave is its own keyed subtree, so adding or retiring one never
-        // makes Preact recycle a sibling wave's animating cells — that recycling
-        // was cutting an in-flight wave short and re-animating stray cells.
+        // makes Preact recycle a sibling wave's animating cells, which cuts an
+        // in-flight wave short and re-animates stray cells.
         <g key={wave.id}>
           {wave.cells.map((c) => (
             <rect

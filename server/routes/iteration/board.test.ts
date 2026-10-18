@@ -52,7 +52,7 @@ Deno.test({
       assertEquals(locked, { incomplete: true });
       // And it stays that way when reached through the day-navigation composite
       // — how a calendar pick asks for it, and how a `/YYYYMMDD`-for-today boot
-      // gets its linked slice. Both used to hand the client a 403 to relay.
+      // gets its linked slice. Neither may hand the client a 403 to relay.
       const { year, month, day } = dailyParts("UTC");
       const todayId = await ensureDailyIterationId(year, month, day);
       const viaDay = await dayView.handler(

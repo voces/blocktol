@@ -8,7 +8,7 @@ import { todayIteration } from "./standings.ts";
 //
 // The loaders exist for request identity. Responses broadcast through the api
 // emitter can't be told apart — click day A then quickly day B and whichever
-// response lands LAST used to stage the board, which may be A. Each loader
+// response lands LAST would stage the board, which may be A. Each loader
 // instead consumes its own request's promise and stages only if no newer
 // board request has been made since (a monotonic token). A placement's
 // startRun also takes the token, so an in-flight re-stage from just before
@@ -150,11 +150,11 @@ export const showBoard = (iteration?: number) => {
 /**
  * Navigate to a specific day: its board AND its standings in ONE request
  * (`dayView`), then delegate to `showBoard` for the actual staging. A calendar
- * click / view-best used to fire getBoard (from showBoard) and standings
- * (the dock reacting to the iteration change) separately; this primes both off
- * one composite fetch under the exact inputs those two consumers send, so they
- * consume the slices instead of round-tripping again. It's boot, but for one
- * arbitrary chosen day.
+ * click / view-best would otherwise fire getBoard (from showBoard) and
+ * standings (the dock reacting to the iteration change) separately; this primes
+ * both off one composite fetch under the exact inputs those two consumers send,
+ * so they consume the slices instead of round-tripping again. It's boot, but
+ * for one arbitrary chosen day.
  *
  * The standings input has to MATCH what the dock will send (see Dock.tsx): a day
  * that is today keys by { timeZone } (the dock treats it as today), a past day
@@ -193,8 +193,8 @@ export const takeLostStart = () => {
  *
  * startRun isn't retryable (it spends an attempt), and a transport failure
  * doesn't mean the server didn't act: it may have inserted the run and lost
- * only the reply. Re-enabling the button then let a second press open ANOTHER
- * ranked attempt, burning the first. So on a transport failure, ask the
+ * only the reply. Re-enabling the button then would let a second press open
+ * ANOTHER ranked attempt, burning the first. So on a transport failure, ask the
  * summary first: if it reports an open attempt AND one more ranked run than
  * were spent, that attempt is ours — resume it (the summary listener does).
  * Counting matters: the PREVIOUS attempt's 60s window can still be open just

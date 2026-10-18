@@ -1,10 +1,10 @@
-// POST /iteration/:iteration/run
-//     - must pass `timezone`
-//     - if daily not complete
-//         - :iteration MUST be the daily
-//         - if last is in progress, 400s
-//     - if daily complete, can always start a new
-//     - returns a run id
+// startRun: opens a run and hands back the board to build on.
+//   - `iteration: "daily"` opens a ranked attempt for the caller's local day
+//     (`ranked` is stamped here, from `timeZone`, and nowhere else).
+//   - A numeric `iteration` is free play, behind the board gate
+//     (util/boardAccess.ts); its optional opening `block` rides along.
+//   - The row is inserted void; a ranked run clears void on its first build
+//     (updateRun), a free-play run when it executes (commitRun).
 
 import { z } from "zod";
 import { errText, log } from "../../../util/logging.ts";
@@ -60,12 +60,12 @@ export const startRun = method(startRunBody, true)(
     ]);
 
     // Validated up front so the opening block can be persisted below. A run
-    // always starts void now: a free-play run (this is the only startRun that
+    // always starts void: a free-play run (this is the only startRun that
     // carries a block) stays void until it executes (commitRun).
     const validation = block ? validateRun(data, [block]) : null;
 
-    // Must finish within the request: the new Deploy tears down the isolate
-    // after the response, so a still-pending write can be killed mid-flight.
+    // Awaited, never fire-and-forget: a Deno Deploy preview tears the isolate
+    // down after the response, killing a still-pending write.
     try {
       await dbStartRun(iteration, userId, data.min, year, month, day);
     } catch (err) {

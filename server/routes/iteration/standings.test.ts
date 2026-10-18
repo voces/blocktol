@@ -206,9 +206,9 @@ Deno.test({
   ignore: !live,
   fn: async () => {
     // Two days (A < B, by monotonic iteration id) and one player who ONLY free
-    // plays day A — no ranked daily run there. This is the regression the PB
-    // board is built around: such a day used to render zero rows because the
-    // field was drawn from the ranked daily board alone.
+    // plays day A — no ranked daily run there. The PB board must still show
+    // such a day, not render zero rows as a field drawn from the ranked daily
+    // board alone would.
     const dayA = await testIteration();
     const dayB = await testIteration();
     const user = await testUser();

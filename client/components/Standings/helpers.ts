@@ -1,7 +1,7 @@
 // Formatting for the standings dock/sheet, split out for unit tests. Each takes
 // `now` so tests don't race the clock. The relative-time / countdown words route
-// through the catalog (`time.*`) so they localize; English renders byte-for-byte
-// the same, so the unit tests are unchanged.
+// through the catalog (`time.*`) so they localize; English output is what the
+// unit tests assert.
 
 import { formatDecimal } from "../../../common/format.ts";
 import { intlLocale, t } from "../../util/t.ts";

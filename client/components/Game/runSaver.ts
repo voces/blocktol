@@ -9,10 +9,10 @@ import { api, MessageMap, withKeepalive } from "../../api.ts";
 // double-enqueue from the same edit harmless.
 //
 // Network failures retry the latest maze with backoff, silently: the board
-// stays optimistic, and if the run starts before a save confirms, finalize()
-// tells the caller to snap back to the accepted maze (see useInit). Server
-// verdicts don't retry — an expired save can never land (the window is
-// closed), and a rejected one would be rejected again.
+// stays optimistic, and if the run starts before a save confirms,
+// `flushRunSaver` comes back expired and `onExpired` snaps back to the accepted
+// maze (see useInit). Server verdicts don't retry — an expired save can never
+// land (the window is closed), and a rejected one would be rejected again.
 
 type LocalBlock = Point & { local?: boolean; thunder?: boolean };
 type Save = { iteration: number; blocks: LocalBlock[] };
@@ -45,14 +45,14 @@ let inFlight = false;
 let attempt = 0;
 let retryTimer = -1;
 // Trailing-debounce timer: a burst of placements collapses to one save instead
-// of one-per-placement. Only ranked builds use this saver now (free play persists
+// of one-per-placement. Only ranked builds use this saver (free play persists
 // locally). The delay is passed per-save by the caller (useInputEnd, `saveDebounce`),
 // which shrinks it toward 0 as the clock runs out so a last-second edit still
 // lands before the window closes. DEBOUNCE_MS is the ceiling (and the default
 // when no delay is given).
 let debounceTimer = -1;
 export const DEBOUNCE_MS = 2_000;
-// Bumped by reset/finalize; an in-flight response from a previous generation
+// Bumped by `resetRunSaver`; an in-flight response from a previous generation
 // is ignored so a late verdict can't mutate a board it no longer describes.
 let gen = 0;
 
@@ -89,10 +89,9 @@ const flush = () => {
     if (g !== gen) return;
     inFlight = false;
     // Network failure: retry the latest maze with backoff. After the schedule
-    // runs dry, give up — the board stays optimistic and finalize() reconciles
-    // it at run start (the visible "blocks reverted"). Report that abandonment
-    // so these recovery failures are no longer invisible: this is exactly the
-    // block-revert incident we otherwise had no signal for.
+    // runs dry, give up — the board stays optimistic and the run-start flush
+    // reconciles it (the visible "blocks reverted"). Report the abandonment:
+    // it is the only signal for the block-revert incident.
     const delay = BACKOFF_MS[attempt++];
     if (delay === undefined) {
       api.reportClientError({

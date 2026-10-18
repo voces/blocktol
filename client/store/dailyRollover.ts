@@ -46,8 +46,8 @@ const check = () => {
 };
 
 // Switch to the new day: re-pin, re-stage its fresh prestart, and refresh the
-// day-scoped stores so "today" moves as one coordinated step (rather than the
-// piecemeal re-resolution that used to desync at midnight). The summary keeps
+// day-scoped stores so "today" moves as one coordinated step (piecemeal
+// re-resolution desyncs at midnight). The summary keeps
 // the attempt count honest; standings re-seeds todayIteration; the month
 // refresh surfaces the new day's calendar cell.
 export const playNewDaily = () => {

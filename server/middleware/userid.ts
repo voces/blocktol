@@ -36,7 +36,7 @@ export const extractUserId: Handler = async (req, _, prev) => {
     setLoggingContext(req, (c) => ({ ...c, userHash }));
     // Colour the request span with the same hashed tag, so a trace can be
     // filtered to one player without the raw credential ever touching telemetry.
-    // No-ops when OTel is off (no active span) — e.g. the Deno Deploy instance.
+    // No-ops when OTel is off (no active span) — e.g. a Deno Deploy preview.
     trace.getActiveSpan()?.setAttribute("user.hash", userHash);
   }
   return prev;

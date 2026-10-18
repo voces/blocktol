@@ -12,13 +12,12 @@
 // NOTHING about the missing config appears in the logs. `curl -X POST
 // <host>/api/pushConfig -d '{}'` is the check; a null there means push is off.
 //
-// ROTATING the keys invalidates every existing subscription. This used to claim
-// the server prunes those "as sends 404/410 and clients re-subscribe on next
-// load" — it does not, and that assumption is exactly why a rotation was
-// undiagnosable. A subscription minted under a retired key fails with **403**,
-// which is neither 404 nor 410, so the fan-out does NOT prune it: the row
-// survives indefinitely and the client used to re-register the same dead
-// endpoint on every boot. Recovery is client-side — `keyMatches` in
+// ROTATING the keys invalidates every existing subscription. The server does
+// NOT prune those on its own, which makes a rotation hard to diagnose. A
+// subscription minted under a retired key fails with **403**, which is neither
+// 404 nor 410, so the fan-out does NOT prune it: the row survives indefinitely
+// (and without the check below the client would re-register the same dead
+// endpoint on every boot). Recovery is client-side — `keyMatches` in
 // client/util/push.ts compares the subscription's applicationServerKey against
 // this one and re-subscribes on a mismatch. So prefer restoring the ORIGINAL
 // pair over minting a new one: same keys means every live subscription keeps

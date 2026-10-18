@@ -28,11 +28,9 @@ initSettings();
 // slice content-keyed by the input its consumer sends, so every call site
 // consumes off this single fetch.
 //
-// Skipped mid-onboarding: boot auto-starts the daily's ranked attempt (opening
-// the 60s clock), which must not happen during the tutorial — so a first-time
-// user primes instead the moment they finish (App's onDone → primeSession),
-// exactly when the app would auto-start the daily anyway. So this runs only for
-// an already-onboarded user.
+// Skipped mid-onboarding: the tutorial outlasts a prime's lifetime
+// (PRIME_TTL_MS), so a first-time user primes instead the moment they finish
+// (App's onDone → primeSession). This runs only for an already-onboarded user.
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   primeSession();
 }

@@ -12,7 +12,7 @@ import { timerPulse } from "./timerPulse.ts";
 
 const IDLE_MS = 5_000;
 
-// The block budget: a single isometric cube (not the old brick-wall) — the piece
+// The block budget: a single isometric cube — the piece
 // is a "block" in copy, so the icon is one block. Cool blue to balance the warm
 // gold thunder bolt; the board pieces keep their own gameplay tints.
 export const BrickIcon = () => (
@@ -26,10 +26,9 @@ export const BrickIcon = () => (
   </svg>
 );
 
-// A lightning bolt (not the old snowflake asterisk) — the piece is a "thunder"
-// in copy, so the icon reads as one. Gold, its iconic lightning colour — the
-// same "use the thing's own colour" logic as the terracotta brick icon (the
-// board pieces carry their own gameplay tints separately).
+// A lightning bolt — the piece is a "thunder" in copy, so the icon reads as
+// one. Gold, its iconic lightning colour (the board pieces carry their own
+// gameplay tints separately).
 export const PowerIcon = () => (
   <svg width={16} height={16} viewBox="0 0 24 24">
     <path d="M13 2 L3.5 13.5 H11 L10 22 L20.5 10 H13 Z" fill="#f2b134" />

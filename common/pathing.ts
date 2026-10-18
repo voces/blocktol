@@ -190,7 +190,7 @@ const cornerNodes = (grid: boolean[][]): Point[] => {
 // Built for surfaces that repeatedly solve placements on the SAME base board
 // (an iteration's fixed pieces): the base board's structure is precomputed
 // once, then each `solve` only pays for what the player's pieces change,
-// three ways:
+// four ways:
 //
 // - Base-pair visibility is precomputed. Adding blocks never *creates*
 //   visibility, so a base node pair invisible on the base board stays

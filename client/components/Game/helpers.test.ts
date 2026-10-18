@@ -113,7 +113,7 @@ Deno.test("mazeBudget cannot drift from the maze a race writes back", () => {
 });
 
 // A board with no budget loaded yet hides both chips (-1), and a maze can never
-// drive a count negative — the clamp `viewMaze` relied on, now shared.
+// drive a count negative (`mazeBudget` clamps, and `viewMaze` shares it).
 Deno.test("mazeBudget hides an unloaded budget and clamps at zero", () => {
   assertEquals(mazeBudget([{}], { bricks: -1, power: -1 }), {
     bricks: -1,

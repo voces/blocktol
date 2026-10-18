@@ -223,7 +223,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
       // place blocks — that ring holds the HUD controls (Ready?, best score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
       // An inert reviewed maze doesn't zoom (`touching` drives the placing zoom,
-      // which keys off time > 0 — live during a view now), but the tap still
+      // which keys off time > 0, live during a view), but the tap still
       // goes through: with no hover on touch, tapping a thunder is how you see
       // its radius while studying a maze. It stays up until you tap elsewhere —
       // the release path leaves it alone while viewing.

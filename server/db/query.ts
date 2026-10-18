@@ -23,8 +23,9 @@ const SQL_PROXY_URL = Deno.env.get("SQL_PROXY_URL") ?? "https://w3x.io/sql";
 //   - "direct": the MySQL wire protocol straight to the DB (directTransport.ts),
 //     for the deployment co-located with the database — no proxy hop at all.
 // Both return the identical result shape (see directTransport.ts), so nothing
-// downstream of `query` cares which is in use. Deno Deploy leaves this unset and
-// stays on the proxy; only the co-located box sets SQL_TRANSPORT=direct.
+// downstream of `query` cares which is in use. Deno Deploy previews leave this
+// unset and stay on the proxy; only the co-located box sets
+// SQL_TRANSPORT=direct.
 const useDirect = Deno.env.get("SQL_TRANSPORT") === "direct";
 
 // How one `query` call behaves on failure: `retries` re-sends after a transport
@@ -41,9 +42,9 @@ const proxyQuery = async <T = unknown>(
   { retries, timeoutMs }: QueryOptions,
 ): Promise<T> => {
   // One attempt, timeout and all. The abort covers the BODY read too, not just
-  // the headers: the timer used to be cleared as soon as `fetch` resolved, so a
-  // proxy that sent its headers and then stalled mid-body hung the request (and
-  // everything awaiting it) forever.
+  // the headers (a timer cleared when `fetch` resolves lets a proxy that sends
+  // its headers and then stalls mid-body hang the request, and everything
+  // awaiting it, forever).
   const attempt = async () => {
     const controller = new AbortController();
     const timeout = timeoutMs === null

@@ -17,7 +17,7 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 // data, and telemetry must never carry the raw id (see CLAUDE.md observability
 // note).
 //
-// When OTel is off (every deployment except the co-located blocktol.com box, and
+// When OTel is off (every deployment except the co-located EC2 box, and
 // all local/test runs), `@opentelemetry/api` falls back to a no-op tracer that
 // simply invokes the callback — so this is a cheap passthrough there.
 const tracer = trace.getTracer("blocktol-db");

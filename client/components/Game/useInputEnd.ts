@@ -66,9 +66,9 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     // stands right now — NOT from the render that registered these listeners.
     // Preact re-runs an effect after paint, so a gesture landing within a frame
     // of the previous one still runs on the old closure; editing that snapshot
-    // wrote a board with the previous edit undone (a deleted block back on the
-    // board), and the brick counts drifted with it. The counts now derive from
-    // the board (see useGameState), so writing it is the whole edit.
+    // writes a board with the previous edit undone (a deleted block back on the
+    // board). The brick counts derive from the board (see useGameState), so
+    // writing it is the whole edit.
     const apply = (newBlocks: ReadonlyArray<BoardBlock>) => {
       rebuildGrid(grid, checkpoint, newBlocks);
       const localBlocks = newBlocks.filter((b) => b.local);
@@ -228,7 +228,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     };
     // The clock, the board and the budgets are read through refs/signals, so the
     // listeners re-register only on the handful of things that change what a
-    // gesture MEANS — never per edit, which is exactly the window a fast second
-    // gesture used to fall into.
+    // gesture MEANS — never per edit, which is the window a fast second gesture
+    // would fall into.
   }, [svg, checkpoint, iteration, staged, freePlay, viewing]);
 };

@@ -5,7 +5,7 @@
 // id was rotated away), but every request is logged with the hash of the caller's
 // id (`userHash`, util/hashUserId.ts), and logs outlive every backup (30 days in
 // VictoriaLogs vs at most ~28 for a backup — see deploy/README.md "Backups"). So
-// the successful `deleteAccount` calls since the backup name, by hash, exactly
+// the successful `deleteAccount` calls since the backup, by hash, are exactly
 // the players to erase again: this hashes every id in the restored `user` table
 // and anonymizes the matches with the same `anonymizeUser` the endpoint runs.
 //

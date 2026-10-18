@@ -11,7 +11,7 @@ export type StandingsSort = "daily" | "pb";
 // follow whichever day is selected on the board (so past days keep their boards
 // around while navigating). Each response carries BOTH boards (daily + PB), so
 // toggling the sort is a pure client switch — no refetch. Today's board is
-// warmed on boot (the primed fetch in index.ts) and refreshed on attempt
+// warmed on boot (the primed fetch in boot.ts) and refreshed on attempt
 // boundaries.
 export const standingsByKey = signal<ReadonlyMap<number, StandingsData>>(
   new Map(),
@@ -146,9 +146,9 @@ export const refreshStandings = (iteration?: number) => {
 //   - getDailySummary — a daily attempt settled (dailies commit on build); this
 //     lands at boot and after the final attempt, refreshing today's board.
 //   - commitRun — a FREE-PLAY run just became non-void and entered the field,
-//     which can change the PB board (and your rank on it). It fires while the
-//     run is still void at startRun, so startRun was the wrong signal; commit is
-//     the moment it counts. The response carries its iteration, so a free-played
+//     which can change the PB board (and your rank on it). startRun is the
+// wrong signal (the run is still void then); commit is the moment it counts.
+// The response carries its iteration, so a free-played
 //     PAST day refreshes itself, not just today.
 const refreshToday = () => refreshStandings(undefined);
 api.addEventListener("getDailySummary", refreshToday);

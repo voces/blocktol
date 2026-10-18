@@ -7,12 +7,12 @@
 // bundle's baked value are byte-identical by construction — no env plumbing and
 // no short-vs-full mismatch to make every client look perpetually stale.
 //
-// Uses the deploy-stamped GIT_SHA env if set (a build env that has it but no
+// Uses the GIT_SHA env if set (a build env that has it but no
 // git), else the working tree's short SHA (local build / CI), else "dev" (an
 // unbuilt checkout), in which case the version machinery no-ops (see
 // noteServerVersion). Because it's a build artifact like public/js, `deno task
-// start` requires a prior build — the same build-before-serve contract that
-// already produces the client bundle.
+// start` requires a prior build — the same build-before-serve contract as
+// the client bundle.
 const gitSha = async (): Promise<string> => {
   const fromEnv = Deno.env.get("GIT_SHA");
   if (fromEnv) return fromEnv;

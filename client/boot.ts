@@ -10,10 +10,10 @@ import { getTimeZone } from "./util/timeZone.ts";
 //   - index.ts, at module eval, for a returning (already-onboarded) user; and
 //   - App's onboarding `onDone`, for a first-time user (or anyone whose
 //     localStorage was cleared / an incognito session) — their module-eval prime
-//     was skipped because boot auto-starts the daily's ranked attempt, and that
-//     60s clock must not open mid-tutorial. Finishing onboarding IS the moment
-//     the app auto-starts the daily anyway, so priming here just overlaps that
-//     one request with the re-render into the game instead of fanning out.
+//     is skipped: the app defers its fetches during the tutorial, and a prime
+//     expires (PRIME_TTL_MS) long before the tutorial ends. Finishing
+//     onboarding is when the fetches start, so priming here overlaps that one
+//     request with the re-render into the game instead of fanning out.
 //
 // `day` is the `/YYYYMMDD` permalink's date (boot bundles that day's board +
 // standings too); read from the URL, which is still the entry path at both call

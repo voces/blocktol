@@ -24,9 +24,9 @@ Deno.test("PB board breaks ties by who reached the build first", () => {
 });
 
 Deno.test("PB tie-break ignores the daily time, ranks by the build's timestamp", () => {
-  // The regression: the tie used to fall through to the daily time (then name),
-  // which has nothing to do with who built first. `b` has the worse daily time
-  // but the earlier build, so it must lead.
+  // A PB tie must not fall through to the daily time (then name), which has
+  // nothing to do with who built first. `b` has the worse daily time but the
+  // earlier build, so it must lead.
   const field = project([
     player({ user: "a", pb: 42.5, pbAt: 300, daily: 40 }),
     player({ user: "b", pb: 42.5, pbAt: 100, daily: 10 }),

@@ -145,9 +145,9 @@ export const getDailyIteration = (year: number, month: number, day: number) =>
 // excluded, matching every board/standings query (getIterationBests,
 // getDailyStandings, listDailies, the profile's bestBuild). A void run is
 // invisible everywhere else, so counting it here would let an abandoned free-
-// play maze inflate the "best to beat", block the supreme cue, or (before this)
-// suppress a genuine lost-top pass. Feeds the board target, attempts panel, run
-// start, daily summary, the supreme flag, and the lost-top gate.
+// play maze inflate the "best to beat", block the supreme cue, or suppress a
+// genuine lost-top pass. Feeds the board target, attempts panel, run start,
+// daily summary, the supreme flag, and the lost-top gate.
 export const getIterationOtherBest = (
   iteration: number,
   user: string,

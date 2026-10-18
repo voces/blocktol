@@ -12,9 +12,9 @@ import { method } from "../../apiHelpers.ts";
 import { piece } from "./piece.ts";
 
 // Whether the save commits (daily attempt) or stays void until execution (free
-// play) is derived server-side in updateCurrentRun from the run itself — the
-// client no longer sends a freePlay flag (old cached clients still may; zod
-// strips unknown keys).
+// play) is derived server-side in updateCurrentRun from the run itself; the
+// body carries no freePlay flag (a cached client that still sends one is
+// stripped by zod).
 const updateRunBody = z.object({
   iteration: z.number(),
   // The interior of the 20×20 board (its 18×18 non-border cells) is 324 cells, so
@@ -25,10 +25,10 @@ const updateRunBody = z.object({
 });
 
 // Stale-while-revalidate per (iteration, user), so a burst of saves doesn't
-// re-run the field query each time. Bounded: the old unbounded `trailer` kept
-// one entry per player per day forever on the long-lived process. 10k keys
-// comfortably covers every builder active at once; an evicted one just pays a
-// fresh fetch on its next save.
+// re-run the field query each time. Bounded (`boundedTrailer`): an unbounded
+// cache would keep one entry per player per day forever on the long-lived
+// process. 10k keys comfortably covers every builder active at once; an evicted
+// one just pays a fresh fetch on its next save.
 const getIterationOtherBest = boundedTrailer(getIterationOtherBestRaw, 10_000);
 
 export const updateRun = method(updateRunBody, true)(
@@ -63,8 +63,8 @@ export const updateRun = method(updateRunBody, true)(
     }
     const { path, duration, slows } = validation;
 
-    // Must finish within the request: the new Deploy tears down the isolate
-    // after the response, so a still-pending write can be killed mid-flight.
+    // Awaited, never fire-and-forget: a Deno Deploy preview tears the isolate
+    // down after the response, killing a still-pending write.
     try {
       const { saved } = await updateCurrentRun(
         userId,
@@ -91,8 +91,8 @@ export const updateRun = method(updateRunBody, true)(
     // once. The gate includes an exact TIE (>=) and the no-other-player case
     // (otherBest == null, this is the day's first build) because both can newly
     // set or match the day's record even though decideLostTop stays silent on
-    // them. Awaited — background work is unsafe on this Deploy — and it never
-    // throws.
+    // them. Awaited (a Deploy preview kills work left running after the
+    // response) and it never throws.
     //
     // Accepted edge case: because this fires per build save (not at
     // finalization), a build can momentarily reach the field top — firing the
@@ -102,8 +102,8 @@ export const updateRun = method(updateRunBody, true)(
     // worsen the maze in the same window) and low-harm: the upsert/dedupe keeps
     // it to one card, which deep-links to live standings, so it reads as stale
     // rather than wrong. Deferring until the attempt finalizes would be the clean
-    // fix, but this Deploy has no cheap cancelable one-off scheduler (a
-    // `setTimeout` past the response dies with the isolate; `Deno.cron` is
+    // fix, but there is no cheap cancelable one-off scheduler (a `setTimeout`
+    // past the response dies with a Deploy preview's isolate; `Deno.cron` is
     // hourly, not per-run), so real-time with rare staleness is the deliberate
     // trade. Free play doesn't have this — its `commitRun` hook fires once at
     // execution, when the build is already locked.

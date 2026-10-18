@@ -638,8 +638,8 @@ a:hover {
       "panel";
     /* Pack the board + panel at the top; leftover height falls to the bottom.
        Without this the auto rows stretch to fill the fixed height (default
-       align-content), pushing the runs down into the middle now that the
-       calendar no longer fills the panel. */
+       align-content), pushing the runs down into the middle (the calendar no
+       longer fills the panel). */
     align-content: start;
     /* Tighter than the desktop 24px so the runs sit closer under the board
        (~20px total with the panel's top padding, matching header→hud). */
@@ -690,10 +690,10 @@ a:hover {
     flex-shrink: 0;
   }
 
-  /* The calendar no longer sits below the runs on mobile (it's a picker now),
-     so the runs are free to expand to their full height and the whole page
-     scrolls. Descendant selector so it beats the later base rule by
-     specificity (base .attempts comes after in source). */
+  /* The calendar doesn't sit below the runs on mobile (it's a picker), so the
+     runs are free to expand to their full height and the whole page scrolls.
+     Descendant selector so it beats the later base rule by specificity (base
+     .attempts comes after in source). */
   .game__panel .attempts {
     padding: 0;
   }
@@ -722,7 +722,7 @@ a:hover {
   position: relative;
 }
 
-/* Daily "Start attempt" gate (Prestart.tsx). A ranked attempt no longer opens
+/* Daily "Start attempt" gate (Prestart.tsx). A ranked attempt never opens
    on load — the player starts it here, so a background boot can't spend one.
    A themed blur mask (light and dark) over the board, backed by a decorative,
    blurred copy of the tutorial maze — a real-looking board that is NOT today's
@@ -776,18 +776,16 @@ a:hover {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* 18px, not 16px: the scrim above used to add `backdrop-filter: blur(7px)`
-     over this, and blur radii compose in quadrature — sqrt(16² + 7²) ≈ 17.5 —
-     so this is what the stack already looked like. See the scrim below for why
-     the backdrop-filter is gone. */
+  /* 18px: folds in the 7px blur the scrim once added as a backdrop-filter —
+     radii compose in quadrature, sqrt(16² + 7²) ≈ 17.5. See the scrim below for
+     why that backdrop-filter is gone. */
   filter: blur(18px) saturate(0.9);
   opacity: light-dark(0.5, 0.6);
   /* Pin this blurred subtree to its own composited backing, so a board-sized
      `filter: blur` rasterizes as one texture rather than per raster-tile.
-     Prophylactic, not a fix for a seen bug: this was added to chase the
-     tab-hover seam and did NOT clear it (that was the scrim's backdrop-filter —
-     see below), but it's the right shape for a filter this large and costs one
-     layer. */
+     Prophylactic: promotion does NOT clear the tab-hover seam (that was the
+     scrim's backdrop-filter — see below), but it suits a filter this large and
+     costs one layer. */
   transform: translateZ(0);
 }
 
@@ -818,13 +816,11 @@ a:hover {
    promotion: a backdrop-filter has no own raster to pin, and promoting this
    element changes nothing about how the backdrop is snapshotted.
 
-   Nothing is lost by dropping it. It blurred two things: the deco below (folded
-   into that element's own blur — see the quadrature note above) and the real
-   board behind the overlay, which `enterPrestart` empties (`setBlocks([])`), so
-   it was softening a bare grid. Note it DID reach that board — `isolation:
-   isolate` and `clip-path` on .prestart do not establish a backdrop root in
-   Chrome despite the spec listing both — so this is also one less path for the
-   board behind to show through. */
+   Nothing is lost without it. It would blur the deco below (folded into that
+   element's own blur — see the quadrature note above) and the real board behind
+   the overlay, which `enterPrestart` empties (`setBlocks([])`) — a bare grid.
+   It does reach that board: `isolation: isolate` and `clip-path` on .prestart
+   do not establish a backdrop root in Chrome despite the spec listing both. */
 .prestart::before {
   content: "";
   position: absolute;
@@ -1658,8 +1654,8 @@ a:hover {
 
 /* Open/close slides: the body is a grid row animated from 0fr to 1fr, with the
    inner wrapper clipping the overflow — no measured pixel height, so the tape
-   can be any length. Browsers that can't interpolate fr units simply snap, the
-   behaviour before this. Collapsed, `visibility: hidden` (applied only once the
+   can be any length. Browsers that can't interpolate fr units simply snap.
+   Collapsed, `visibility: hidden` (applied only once the
    slide has finished) takes the rows and the flag controls out of the tab order
    and off the accessibility tree. */
 .splits__body {
@@ -1891,7 +1887,7 @@ a:hover {
 /* Part of the card, not a shelf under it. The divider is the same weight as the
    ones between rows (a heavier rule read as the panel ENDING there), and the
    fill is the card's own surface lifted a hair — the same recipe the checkpoint
-   row uses. --surface-2 was the trap: in dark it sits above --surface and reads
+   row uses. Avoid --surface-2: in dark it sits above --surface and reads
    fine, but in light it lands within a hair of the page background, so on a
    phone the footer looked like it had fallen out of the panel. */
 .splits__foot {
@@ -2127,7 +2123,7 @@ a:hover {
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* Run clock: the build slot, now counting the live run up. */
+/* Run clock: the build slot, counting the live run up. */
 .hud__run {
   display: flex;
   align-items: center;
@@ -2938,7 +2934,7 @@ a:hover {
    half you read (ranked, free play, head-to-head) and the right the half you
    operate (notifications, preferences, community, account), so the split is by
    what a section is FOR, not by what fits. Below the breakpoint the columns
-   stack in source order and the sheet is exactly as it was on mobile. Shares
+   stack in source order and the sheet is the mobile layout. Shares
    the 1200px breakpoint the centred card already uses — one desktop, not two. */
 .profile-cols {
   display: grid;

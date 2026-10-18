@@ -89,15 +89,15 @@ export const newIteration = async (date: Date) => {
 // The `ensure-iterations` cron (util/gen.ts) is the bulk generator, but it only
 // runs on a deployment that executes `Deno.cron` — and Deno Deploy PREVIEW
 // deployments (what dev is usually served by) don't. So a dev/gappy environment
-// routinely asks for a daily nothing ever produced, which is where the old
-// "no daily available for that date yet" came from.
+// routinely asks for a daily nothing ever produced ("no daily available for
+// that date yet").
 //
-// This reinstates the per-request backfill that was removed for being racy —
-// now made safe by DB structure, not app coordination: `iteration.created` is
-// UNIQUE (migration v14), so two isolates racing to create the same day can't
-// duplicate it. Both may run the (idempotent) generation, but only one INSERT
-// lands; the loser's is rejected by the unique key, and it re-reads the winner's
-// row. That's why this needs no lock — the database IS the mutex.
+// The per-request backfill is safe by DB structure, not app coordination:
+// `iteration.created` is UNIQUE (migration v14), so two processes racing to
+// create the same day can't duplicate it. Both may run the (idempotent)
+// generation, but only one INSERT lands; the loser's is rejected by the unique
+// key, and it re-reads the winner's row. That's why this needs no lock — the
+// database IS the mutex.
 //
 // Bounded on both sides (see backfillWindow): no later than tomorrow UTC, so a
 // far-future deep link can't leak a puzzle, and no earlier than the first day

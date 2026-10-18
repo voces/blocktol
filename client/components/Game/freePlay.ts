@@ -5,11 +5,11 @@
 // INSERT keyed by a per-attempt clientId (see server db/run.ts insertFreePlayRun).
 // This module owns that per-attempt id and the local-resume record.
 //
-// Trusting the client here is deliberate and safe: free play only unlocks after
-// the day's three ranked attempts are spent, it never feeds the ELO/ranked field,
-// and the server still recomputes the time from the submitted maze — only the 60s
-// build budget is taken on trust, which a determined player could evade offline
-// anyway.
+// Trusting the client here is deliberate and safe: free play never feeds the
+// ELO/ranked field, a board's own-today is locked until its three ranked
+// attempts are spent (util/boardAccess.ts), and the server still recomputes the
+// time from the submitted maze — only the 60s build budget is taken on trust,
+// which a determined player could evade offline anyway.
 
 import { Point } from "../../../common/types.ts";
 import { api } from "../../api.ts";
@@ -66,11 +66,11 @@ export const persistFreePlay = (
   } catch { /* storage unavailable/full — resume is best-effort */ }
 };
 
-// The in-flight commit for the attempt that just executed. runFinish awaits this
-// before re-staging, so a slow commit — e.g. one retrying its way across a deploy
-// that dropped the connection — can't let the re-stage's getBoard fetch a recents
-// list that predates the run and drop it from the panel. Defaults resolved (an
-// empty attempt commits nothing).
+// The in-flight commit for the attempt that just executed. runFinish awaits
+// this before re-staging, so a slow commit — e.g. one retrying across a deploy
+// restart that dropped the connection — can't let the re-stage's getBoard fetch
+// a recents list that predates the run and drop it from the panel. Defaults
+// resolved (an empty attempt commits nothing).
 let pendingCommit: Promise<unknown> = Promise.resolve();
 
 export const setPendingCommit = (p: Promise<unknown>) => {
@@ -237,8 +237,9 @@ export const installFreePlayOutbox = () => {
   globalThis.addEventListener("online", () => flushFreePlayOutbox());
 };
 
-// Drop the local record and the id. Called at commit (the run is the server's
-// now) and on re-stage/abandon (a fresh board must not resume the old build).
+// Drop the local record and the id. Called at execution (the commit outbox
+// holds the run from there) and on re-stage/abandon (a fresh board must not
+// resume the old build).
 export const clearFreePlay = () => {
   clientId = null;
   try {
@@ -264,11 +265,10 @@ const readRecord = (): FreePlayState | null => {
 
 // A resumable attempt for `iteration`, or null: present, same day, its window
 // still open, and non-empty. Adopts the stored id so the resumed attempt commits
-// idempotently under it. A mismatched/expired record is discarded so it can't
-// resurrect onto the wrong board. Deliberately KEPT when it merely doesn't match
-// the board being staged: navigating away (another day, a reviewed maze) doesn't
-// abandon the build — its window keeps running, and coming back within it
-// resumes.
+// idempotently under it. A non-matching record is never resumed onto the wrong
+// board but is deliberately KEPT, not deleted: navigating away (another day, a
+// reviewed maze) doesn't abandon the build — its window keeps running, and
+// coming back within it resumes.
 export const resumableFreePlay = (
   iteration: number,
   now: number,

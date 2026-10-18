@@ -11,8 +11,8 @@ const toGamma = (c: number) =>
 
 // linear sRGB <-> OKLab (Björn Ottosson's matrices). OKLab is perceptually
 // uniform, so interpolating there (in polar OKLCh form below) keeps the ramp's
-// midpoints as vivid and evenly-lit as its stops — where the old raw-sRGB lerp
-// dipped through duller, darker in-between colours.
+// midpoints as vivid and evenly-lit as its stops (a raw-sRGB lerp dips through
+// duller, darker in-between colours).
 const linToLab = (
   r: number,
   g: number,

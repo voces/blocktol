@@ -40,7 +40,7 @@ const standingsBody = z.union([
 ]);
 
 // How long a cached day's field is served before a refetch. Applies to every
-// day, not just live ones: the field now counts free play (the PB sort), and a
+// day, not just live ones: the field counts free play (the PB sort), and a
 // closed day's PB can still move when someone replays that old board — so no
 // day is truly frozen, and none is cached indefinitely.
 const FRESH_MS = 15_000;

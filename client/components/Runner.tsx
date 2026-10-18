@@ -94,7 +94,7 @@ export const Runner = (
       // is slowed, so a long one can't be applied at a single speed sample.
       for (let t = Math.max(0, time - frameMs / 1_000); t < time;) {
         const stepEnd = Math.min(t + MAX_STEP_S, time);
-        // Off by 1 error
+        // Fire every slow that begins before this chunk ends, once each.
         for (
           ;
           nextSlow < slows.length && slows[nextSlow].time < stepEnd;
@@ -136,10 +136,10 @@ export const Runner = (
         return;
       }
 
-      // Scheduled only while unfinished — previously the next frame was queued
-      // before the finish check, so finishing depended on the parent unmounting
-      // this component before that frame fired; anything deferring that render
-      // would have re-dispatched runFinish (and its startRun) every frame.
+      // Scheduled only while unfinished: queuing the next frame before the
+      // finish check would make finishing depend on the parent unmounting this
+      // component first, and a deferred render would re-dispatch runFinish (and
+      // its startRun) every frame.
       animationFrame = requestAnimationFrame(cb);
     };
 
