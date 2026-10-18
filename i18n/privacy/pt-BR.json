@@ -92,8 +92,8 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Seu perfil e suas builds são mantidos enquanto você joga, para que suas estatísticas e seu histórico permaneçam intactos. Exclua seus dados (acima) para removê-los mais cedo. As notificações no aplicativo são excluídas após 90 dias, e um perfil que nunca jogou é removido após 30 dias. Os diagnósticos são excluídos após cerca de 30 dias, e os registros de acesso ao servidor após 14 dias.",
-    "hash": "1ce92c394889c7035b034179252dff1bd05ef61e079ca118336428c39b3b495e"
+    "message": "Seu perfil e suas builds são mantidos enquanto você joga, para que suas estatísticas e seu histórico permaneçam intactos. Exclua seus dados (acima) para removê-los mais cedo. As notificações no aplicativo são excluídas após 90 dias, e um perfil que nunca jogou é removido após 30 dias. Os diagnósticos são excluídos após cerca de 30 dias, e os registros de acesso ao servidor após 14 dias. Os backups, mantidos apenas para recuperação em caso de falha, são excluídos após no máximo 30 dias; se algum dia restaurarmos um deles, excluímos novamente quaisquer dados que você tenha nos pedido para excluir.",
+    "hash": "33ca7f7fda9baaad648b5f63708b1748d7a6c0d05269b4cb98c83e7c0481c440"
   },
   "privacy.retention.heading": {
     "message": "Por quanto tempo mantemos",
