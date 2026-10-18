@@ -109,7 +109,9 @@ export const updateUserLocale = (id: string, locale: string) =>
 // through the iterations the player has runs on (`playedIterations`, a seek on
 // run's (user, …) indexes), then joins that iteration's runs through the
 // (iteration, …) index. Nothing groups over the whole run table — before this,
-// the "others" sides did, and grew with every run anyone made.
+// the "others" sides did, and grew with every run anyone made. Those joins are
+// STRAIGHT_JOINs: left to choose, MariaDB scanned all of `run` and probed the
+// player's iterations instead (EXPLAIN on prod) — the very cost this avoids.
 export const getUserStats = async (user: string) => {
   const [userRows, ranked, solves, boards, total, days, daily, pb] = await sql<[
     {
@@ -136,8 +138,8 @@ export const getUserStats = async (user: string) => {
       SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) mine,
              MAX(CASE WHEN r.user != ${user} THEN r.time END) others
       FROM (${raw(playedIterations(user, "AND ranked = TRUE"))}) p
-      JOIN iteration i ON i.id = p.iteration AND i.rated = TRUE
-      JOIN run r ON r.iteration = p.iteration AND r.ranked = TRUE AND r.void = FALSE
+      STRAIGHT_JOIN iteration i ON i.id = p.iteration AND i.rated = TRUE
+      STRAIGHT_JOIN run r ON r.iteration = p.iteration AND r.ranked = TRUE AND r.void = FALSE
       GROUP BY p.iteration
       HAVING mine IS NOT NULL AND others IS NOT NULL
     ) field;
@@ -157,7 +159,7 @@ export const getUserStats = async (user: string) => {
     JOIN (
       SELECT p.iteration, MAX(r.time) best
       FROM (${raw(playedIterations(user, "AND ranked = TRUE"))}) p
-      JOIN run r ON r.iteration = p.iteration AND r.void = FALSE
+      STRAIGHT_JOIN run r ON r.iteration = p.iteration AND r.void = FALSE
       GROUP BY p.iteration
     ) top ON top.iteration = mine.iteration;
 
@@ -169,7 +171,7 @@ export const getUserStats = async (user: string) => {
       SELECT MAX(CASE WHEN r.user = ${user} THEN r.time END) mine,
              MAX(CASE WHEN r.user != ${user} THEN r.time END) others
       FROM (${raw(playedIterations(user, ""))}) p
-      JOIN run r ON r.iteration = p.iteration AND r.void = FALSE
+      STRAIGHT_JOIN run r ON r.iteration = p.iteration AND r.void = FALSE
       GROUP BY p.iteration
     ) b;
 
@@ -255,7 +257,7 @@ const rivals = (user: string, rankedOnly: string) =>
         WHERE r.user = ${user} AND r.void = FALSE ${raw(rankedOnly)}
         GROUP BY iteration
       ) m
-      JOIN run r ON r.iteration = m.iteration
+      STRAIGHT_JOIN run r ON r.iteration = m.iteration
       WHERE r.user != ${user} AND r.void = FALSE ${raw(rankedOnly)}
       GROUP BY m.iteration, m.t, r.user
     ) o
