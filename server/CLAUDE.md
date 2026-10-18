@@ -26,14 +26,18 @@ notifications for good.
 
 **Router (`server/util/Router.ts` + `server/router.ts`):** a small Express-like
 middleware chain over `URLPattern`. Path params are type-derived from the route
-string. Every request flows: `beginLogger` → login-link routes → `extractUserId`
-→ **`POST /api/:method`** → the `/YYYYMMDD` day-permalink (serves the SPA shell)
-→ `/privacy.html` (rendered per language — see _Data rights_ in the root
-`CLAUDE.md`) → `staticServe` → `endLogger`. A thrown `UserError` becomes a 400
-(its `NotFoundError` subclass — e.g. an unknown iteration id — a 404); anything
-else is a 500 — logged (`console.error` → VictoriaLogs) and recorded on the
-request span (`recordException` → VictoriaTraces). Every response — the router's
-own fallbacks included — leaves through `withSecurityHeaders`
+string. `HEAD` is answered as `GET` without the body (`index.ts`); the router
+itself registers only `GET`. Every request flows: `beginLogger` → login-link
+routes → `GET /health` (the uptime monitor's probe: one query for today's
+puzzle, so 200 means app, database and generation all work; 503 says which
+failed; `routes/health.ts`) → `extractUserId` → **`POST /api/:method`** → the
+`/YYYYMMDD` day-permalink (serves the SPA shell) → `/privacy.html` (rendered per
+language — see _Data rights_ in the root `CLAUDE.md`) → `staticServe` →
+`endLogger`. A thrown `UserError` becomes a 400 (its `NotFoundError` subclass —
+e.g. an unknown iteration id — a 404); anything else is a 500 — logged
+(`console.error` → VictoriaLogs) and recorded on the request span
+(`recordException` → VictoriaTraces). Every response — the router's own
+fallbacks included — leaves through `withSecurityHeaders`
 (`middleware/securityHeaders.ts`, applied in `index.ts`): nosniff,
 `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, HSTS, and a
 deliberately minimal CSP (`frame-ancestors`/`base-uri`/`object-src` only — a

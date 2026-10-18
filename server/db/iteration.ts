@@ -198,3 +198,11 @@ export const getIterationDailyTimeCounts = (iteration: number) =>
     GROUP BY time
     ORDER BY time;
   `;
+
+// Whether today's (UTC) puzzle exists: the health check's database probe. The
+// gen cron builds a day ahead, so a miss means generation has been failing for
+// a while, not just a race at midnight.
+export const hasTodaysIteration = () =>
+  sql<{ ok: number }[]>`
+    SELECT 1 ok FROM iteration WHERE created = UTC_DATE() LIMIT 1;
+  `.then((rows) => rows.length > 0);

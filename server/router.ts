@@ -3,6 +3,7 @@ import { endLogger } from "./middleware/endLogger.ts";
 import { serveApp, staticServe } from "./middleware/staticServe.ts";
 import { extractUserId } from "./middleware/userid.ts";
 import { api } from "./routes/api.ts";
+import { health } from "./routes/health.ts";
 import { loginLink } from "./routes/loginLink.ts";
 import { privacyPage } from "./privacy/page.ts";
 import { Router } from "./util/Router.ts";
@@ -17,6 +18,9 @@ router.get("/login/:id", loginLink);
 // server. Our logs redact these paths (`redactPath` in beginLogger.ts), but
 // Deno's OTel span and nginx's access log still see them.
 router.get("/l/:id", loginLink);
+// For the external uptime monitor (routes/health.ts). Before extractUserId:
+// it needs no id.
+router.get("/health", health);
 router.use(extractUserId);
 router.post("/api/:method", api);
 // The `/YYYYMMDD` day permalink (notification deep-links) is client-routed:
