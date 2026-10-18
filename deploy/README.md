@@ -183,6 +183,18 @@ zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb --one-database blockto
 Restoring over a live database replaces its tables with the dump's; to inspect
 first, load it into a scratch MariaDB instance.
 
+**After restoring `blocktol-prod`, re-apply data deletions.** A backup still
+holds every player who used "Delete my data" after it was taken, and the privacy
+page promises that deletion sticks. `scripts/reapplyErasures.ts` finds them by
+the hashed id each `deleteAccount` request logged (logs are kept 30 days, longer
+than any backup here) and anonymizes them again; its header has the exact
+VictoriaLogs query and invocation. Run it before reopening the game.
+
+Retention is what keeps backups compatible with deletion: a dump lives 14 days,
+and a snapshot (default policy, 14 days at most) can carry a dump up to 14 more,
+so erased data is out of every backup within about 30 days. The privacy page
+states that bound; lengthening either retention means updating it.
+
 **journald** — `journald-size.conf` (installed as
 `/etc/systemd/journald.conf.d/size.conf`, then
 `systemctl restart systemd-journald`) caps the persistent journal at 500M. It
