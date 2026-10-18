@@ -1,0 +1,24 @@
+#!/bin/bash
+# Reference template — nothing reads this file live. The authoritative copy is
+# /usr/local/sbin/mariadb-nightly-dump (root:root 0750), copied from here; see
+# the Backups section of deploy/README.md.
+#
+# Nightly logical backup of every MariaDB database to /data (a separate EBS
+# volume from the datadir on /). All user tables are InnoDB, so
+# --single-transaction gives a consistent snapshot without locking writers.
+# Runs as root over the unix socket (unix_socket auth): no password on disk.
+# Installed by hand; driven by mariadb-nightly-dump.timer.
+set -euo pipefail
+umask 077
+DIR=/data/mariadb-backups
+KEEP_DAYS=14
+mkdir -p "$DIR"
+out="$DIR/all-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+tmp="$out.partial"
+trap 'rm -f "$tmp"' EXIT
+mariadb-dump --all-databases --single-transaction --routines --events --triggers \
+  --hex-blob --flush-privileges | gzip -6 > "$tmp"
+gzip -t "$tmp"
+mv "$tmp" "$out"
+find "$DIR" -name 'all-*.sql.gz' -mtime +"$KEEP_DAYS" -delete
+echo "wrote $out ($(du -h "$out" | cut -f1))"
