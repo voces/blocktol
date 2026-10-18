@@ -8,7 +8,7 @@ import { formatSeconds } from "../../../common/format.ts";
 import { startDailyRun } from "../../store/board.ts";
 import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
 import { requestProfile } from "../../store/notifNav.ts";
-import { t } from "../../util/t.ts";
+import { intlLocale, t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";
 
 const ATTEMPTS = 3;
@@ -59,7 +59,7 @@ export const Prestart = () => {
     ? previous.duration - priorToPrevious.duration
     : null;
 
-  const displayDate = new Date().toLocaleDateString(undefined, {
+  const displayDate = new Date().toLocaleDateString(intlLocale(), {
     month: "short",
     day: "numeric",
   });

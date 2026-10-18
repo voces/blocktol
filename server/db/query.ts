@@ -2,15 +2,13 @@ import SqlString from "sqlstring";
 import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
 import { errText, log } from "../util/logging.ts";
-import { directQuery } from "./directTransport.ts";
+import { directQuery, SQLError } from "./directTransport.ts";
 import { withDbSpan } from "./trace.ts";
 
 const isSqlError = is.object({
   code: is.number,
   message: is.string,
 });
-
-class SQLError extends Error {}
 
 // The SQL proxy endpoint. Defaults to the public proxy over the internet; on a
 // host co-located with the proxy (the EC2 cohost) set SQL_PROXY_URL to its

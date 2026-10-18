@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/compat";
 import { Fragment, h, JSX } from "preact";
 import { randomColor } from "./helpers.ts";
+import { intlLocale } from "../../util/t.ts";
 
 type Token = {
   kind: "text" | "inline" | "newline" | "localDate";
@@ -94,15 +95,17 @@ const parse = (string: string) => {
         continue;
       }
       chain[chain.length - 1].children.push(
-        new Intl.DateTimeFormat(undefined, {
+        new Intl.DateTimeFormat(intlLocale(), {
           dateStyle: "medium",
           timeZone: "UTC",
         }).format(
-          new Date(
+          // UTC midnight, to match the UTC formatting: a local-midnight date
+          // read in UTC is the day before anywhere east of Greenwich.
+          new Date(Date.UTC(
             parseInt(parts[1]),
             parseInt(parts[2]) - 1,
             parseInt(parts[3]),
-          ),
+          )),
         ),
       );
       continue;
@@ -175,6 +178,9 @@ export const Markdown = (
     }
   });
 
+  // Dates in the tree are formatted at parse time, so a language switch
+  // re-parses.
+  const locale = intlLocale();
   useEffect(() => {
     try {
       setTree(parse(message));
@@ -182,7 +188,7 @@ export const Markdown = (
       console.error(err);
       setTree("");
     }
-  }, [message]);
+  }, [message, locale]);
 
   return <InnerMarkdown node={tree} colors={colors} />;
 };

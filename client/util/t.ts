@@ -19,6 +19,20 @@ import {
 
 export const uiLocale = signal<string | undefined>(undefined);
 
+// The locale to hand `Intl` for dates: the chosen UI language, not the
+// browser's. Reading it in render subscribes the component like `t` does, so a
+// language switch re-renders the date. A malformed stored tag would make Intl
+// throw mid-render, so it falls back to the browser's locale instead.
+export const intlLocale = (): string | undefined => {
+  const l = uiLocale.value;
+  if (!l) return undefined;
+  try {
+    return Intl.getCanonicalLocales(l)[0];
+  } catch {
+    return undefined;
+  }
+};
+
 export const t = <K extends MessageKey>(
   key: K,
   ...params: keyof MessageParams[K] extends never ? [] : [MessageParams[K]]

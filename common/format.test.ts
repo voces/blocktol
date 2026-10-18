@@ -1,5 +1,10 @@
 import { assertEquals } from "@std/assert";
-import { formatCount, formatDecimal, formatSeconds } from "./format.ts";
+import {
+  formatCount,
+  formatDecimal,
+  formatSeconds,
+  setDefaultLocale,
+} from "./format.ts";
 
 // An explicit locale is passed so the assertions don't depend on the host's
 // default locale; the `undefined` (viewer/runtime) path is exercised by the
@@ -48,4 +53,14 @@ Deno.test("a malformed locale falls back to the runtime default", () => {
   const out = formatSeconds(35.1, { locale: "not a locale!!" });
   assertEquals(typeof out, "string");
   assertEquals(out.length > 0, true);
+});
+
+Deno.test("the default locale applies only when a call names none", () => {
+  setDefaultLocale("de-DE");
+  try {
+    assertEquals(formatSeconds(35.1), "35,10");
+    assertEquals(formatSeconds(35.1, { locale: "en-US" }), "35.10");
+  } finally {
+    setDefaultLocale(undefined);
+  }
 });

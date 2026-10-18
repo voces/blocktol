@@ -13,7 +13,7 @@ import {
   startFreshId,
 } from "../util/id.ts";
 import { Logo } from "./Logo.tsx";
-import { t, tJsx } from "../util/t.ts";
+import { intlLocale, t, tJsx } from "../util/t.ts";
 
 // A sign-in link opened on a device that already has a profile is a fork, not a
 // sign-in (see getPendingLink). This gate resolves it before the app boots —
@@ -63,7 +63,7 @@ const Avatar = (
 
 const runs = (n: number) => t("mg.runs", { count: n });
 const joinedLabel = (ms: number) =>
-  new Date(ms).toLocaleDateString(undefined, {
+  new Date(ms).toLocaleDateString(intlLocale(), {
     month: "short",
     year: "numeric",
   });
