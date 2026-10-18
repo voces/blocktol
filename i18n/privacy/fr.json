@@ -100,12 +100,12 @@
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Supprime définitivement votre profil, votre nom, vos préférences, vos drapeaux, vos notifications et vos abonnements aux notifications push, et dissocie de vous chaque labyrinthe que vous avez construit. Vos constructions restent dans les classements passés sous la forme d'un joueur anonyme, rattaché à vous par rien de ce que nous conservons, afin que les résultats historiques des jours où d'autres personnes ont concouru ne soient pas réécrits. Les noms déjà publiés sur Discord, ainsi que votre nom dans les notifications déjà envoyées à d'autres joueurs (supprimées après 90 jours), y restent. Cette action est irréversible, et votre appareil repart de zéro en tant que tout nouveau joueur.",
-    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
+    "message": "Supprime définitivement votre profil, votre nom, vos préférences, vos notifications et vos abonnements push, et dissocie de vous chaque labyrinthe que vous avez construit. Vos builds restent dans les classements passés en tant que joueur anonyme, liés à vous par aucune donnée que nous conservons, afin que les résultats historiques des jours où d'autres personnes ont concouru ne soient pas réécrits. Les noms déjà publiés sur Discord, ainsi que votre nom dans les notifications déjà envoyées à d'autres joueurs (supprimées après 90 jours), y restent. Cette action est irréversible, et votre appareil repart de zéro en tant que tout nouveau joueur.",
+    "hash": "5956e089c7d3dd0f8ed19638dcac4c5afae44f3ae3c70165a3701add4624ad4a"
   },
   "privacy.rights.export.body": {
-    "message": "Télécharge un fichier JSON contenant tout ce que nous détenons à votre sujet — votre profil, chaque partie, vos drapeaux, vos notifications et vos abonnements push.",
-    "hash": "bd43631c4f9a402ac65761fc3d6b116ba213f91f1282c0a36fd70cf2fbc4873e"
+    "message": "Télécharge un fichier JSON contenant tout ce que nous détenons à votre sujet — votre profil, chaque run, vos notifications et vos abonnements push.",
+    "hash": "945e2495e85c2edbd3aab639dd82e01607329033125de9da8872097039e21ece"
   },
   "privacy.rights.heading": {
     "message": "Vos droits",
@@ -132,8 +132,8 @@
     "hash": "268f14bbfe119c1e92150583af960a086d7db9619a097f8aa72ff6779842f610"
   },
   "privacy.store.gameplay.detail": {
-    "message": "Les labyrinthes que vous construisez, leurs temps et les tentatives comptabilisées, afin que nous puissions attribuer un score au défi quotidien et afficher les classements. Cela comprend tous les drapeaux que vous placez sur un plateau pour découper une partie en splits.",
-    "hash": "1e64086f7f91c8005135329c8d607dbc7152f405e711426f2e2b2bb2bf05c810"
+    "message": "Les labyrinthes que vous construisez, leurs temps et les tentatives qui ont compté, afin que nous puissions calculer le score du daily et afficher les classements.",
+    "hash": "9628acbc7d2a202e79a271545507aedf43e7f5474bdd58d231bcdb5f79118bfc"
   },
   "privacy.store.gameplay.term": {
     "message": "Votre jeu",

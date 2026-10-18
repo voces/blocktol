@@ -100,12 +100,12 @@
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Elimina de forma permanente tu perfil, nombre, preferencias, banderas, notificaciones y suscripciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones pasadas como un jugador anónimo, sin nada que guardemos que las vincule contigo, de modo que los resultados históricos de los días en que compitieron otras personas no se reescriben. Los nombres ya publicados en Discord, y tu nombre en notificaciones ya enviadas a otros jugadores (eliminadas tras 90 días), permanecen ahí. Esto no se puede deshacer, y tu dispositivo empieza de nuevo como un jugador completamente nuevo.",
-    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
+    "message": "Elimina de forma permanente tu perfil, tu nombre, tus preferencias, tus notificaciones y tus suscripciones de notificaciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones anteriores como un jugador anónimo, vinculadas a ti por nada que conservemos, de modo que los resultados históricos de los días en los que compitieron otras personas no se reescriben. Los nombres ya publicados en Discord, y tu nombre en las notificaciones ya enviadas a otros jugadores (eliminadas después de 90 días), permanecen ahí. Esto no se puede deshacer, y tu dispositivo empieza de nuevo como un jugador completamente nuevo.",
+    "hash": "5956e089c7d3dd0f8ed19638dcac4c5afae44f3ae3c70165a3701add4624ad4a"
   },
   "privacy.rights.export.body": {
-    "message": "Descarga un archivo JSON con todo lo que tenemos sobre ti: tu perfil, cada carrera, tus banderines, tus notificaciones y tus suscripciones push.",
-    "hash": "bd43631c4f9a402ac65761fc3d6b116ba213f91f1282c0a36fd70cf2fbc4873e"
+    "message": "Descarga un archivo JSON con todo lo que tenemos sobre ti: tu perfil, cada carrera, tus notificaciones y tus suscripciones de notificaciones push.",
+    "hash": "945e2495e85c2edbd3aab639dd82e01607329033125de9da8872097039e21ece"
   },
   "privacy.rights.heading": {
     "message": "Tus derechos",
@@ -132,8 +132,8 @@
     "hash": "268f14bbfe119c1e92150583af960a086d7db9619a097f8aa72ff6779842f610"
   },
   "privacy.store.gameplay.detail": {
-    "message": "Los laberintos que construyes, sus tiempos y qué intentos contaron, para poder puntuar el diario y mostrar las clasificaciones. Esto incluye cualquier banderín que coloques en un tablero para dividir una carrera en parciales.",
-    "hash": "1e64086f7f91c8005135329c8d607dbc7152f405e711426f2e2b2bb2bf05c810"
+    "message": "Los laberintos que construyes, sus tiempos y qué intentos contaron, para que podamos puntuar el diario y mostrar las clasificaciones.",
+    "hash": "9628acbc7d2a202e79a271545507aedf43e7f5474bdd58d231bcdb5f79118bfc"
   },
   "privacy.store.gameplay.term": {
     "message": "Tu juego",

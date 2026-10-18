@@ -100,12 +100,12 @@
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Entfernt dauerhaft dein Profil, deinen Namen, deine Einstellungen, Flaggen, Benachrichtigungen und Push-Abonnements und löst jedes von dir gebaute Labyrinth von dir. Deine Builds bleiben in vergangenen Bestenlisten als anonymer Spieler erhalten, mit nichts, was wir aufbewahren, mit dir verknüpft, damit die historischen Ergebnisse von Tagen, an denen andere Personen angetreten sind, nicht umgeschrieben werden. Namen, die bereits in Discord gepostet wurden, und dein Name in Benachrichtigungen, die bereits an andere Spieler gesendet wurden (nach 90 Tagen gelöscht), bleiben dort. Dies kann nicht rückgängig gemacht werden, und dein Gerät beginnt als brandneuer Spieler von vorn.",
-    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
+    "message": "Entfernt dauerhaft dein Profil, deinen Namen, deine Einstellungen, Benachrichtigungen und Push-Abonnements und trennt jedes Labyrinth, das du gebaut hast, von dir. Deine Builds bleiben in vergangenen Bestenlisten als anonymer Spieler erhalten, durch nichts, was wir aufbewahren, mit dir verknüpft, damit die historischen Ergebnisse von Tagen, an denen andere Personen angetreten sind, nicht umgeschrieben werden. Namen, die bereits auf Discord gepostet wurden, und dein Name in Benachrichtigungen, die bereits an andere Spieler gesendet wurden (nach 90 Tagen gelöscht), bleiben dort erhalten. Dies kann nicht rückgängig gemacht werden, und dein Gerät beginnt als brandneuer Spieler von vorn.",
+    "hash": "5956e089c7d3dd0f8ed19638dcac4c5afae44f3ae3c70165a3701add4624ad4a"
   },
   "privacy.rights.export.body": {
-    "message": "Lädt eine JSON-Datei mit allem herunter, was wir über dich gespeichert haben — dein Profil, jeden Lauf, deine Flaggen, deine Benachrichtigungen und deine Push-Abonnements.",
-    "hash": "bd43631c4f9a402ac65761fc3d6b116ba213f91f1282c0a36fd70cf2fbc4873e"
+    "message": "Lädt eine JSON-Datei mit allem herunter, was wir über dich gespeichert haben – dein Profil, jeden Lauf, deine Benachrichtigungen und deine Push-Abonnements.",
+    "hash": "945e2495e85c2edbd3aab639dd82e01607329033125de9da8872097039e21ece"
   },
   "privacy.rights.heading": {
     "message": "Deine Rechte",
@@ -132,8 +132,8 @@
     "hash": "268f14bbfe119c1e92150583af960a086d7db9619a097f8aa72ff6779842f610"
   },
   "privacy.store.gameplay.detail": {
-    "message": "Die Labyrinthe, die du baust, ihre Zeiten und welche Versuche gezählt haben, damit wir das Daily werten und Bestenlisten anzeigen können. Dazu gehören auch alle Flaggen, die du auf einem Spielfeld platzierst, um einen Lauf in Splits zu unterteilen.",
-    "hash": "1e64086f7f91c8005135329c8d607dbc7152f405e711426f2e2b2bb2bf05c810"
+    "message": "Die Labyrinthe, die du baust, ihre Zeiten und welche Versuche gezählt haben, damit wir das Daily werten und Bestenlisten anzeigen können.",
+    "hash": "9628acbc7d2a202e79a271545507aedf43e7f5474bdd58d231bcdb5f79118bfc"
   },
   "privacy.store.gameplay.term": {
     "message": "Dein Spielverlauf",
