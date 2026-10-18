@@ -6,6 +6,7 @@ import { alertAdmin } from "./adminAlert.ts";
 import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
 import { pruneStaleData } from "./retention.ts";
+import { tracked } from "./shutdown.ts";
 
 const ONE_MINUTE = 1_000 * 60;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
@@ -99,9 +100,13 @@ const checkRatingLiveness = async () => {
 // Each run ends with the rating-liveness check and the retention sweep
 // (util/retention.ts).
 if (!Deno.env.get("DISABLE_CRONS")) {
-  Deno.cron("ensure-iterations", "0 * * * *", async () => {
-    await ensureIterations(31);
-    await checkRatingLiveness();
-    await pruneStaleData();
-  });
+  Deno.cron(
+    "ensure-iterations",
+    "0 * * * *",
+    tracked("ensure-iterations", async () => {
+      await ensureIterations(31);
+      await checkRatingLiveness();
+      await pruneStaleData();
+    }),
+  );
 }

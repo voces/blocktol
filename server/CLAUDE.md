@@ -17,7 +17,12 @@ Most deploys carry no pending migration, so `ready` resolves at once; a
 migration deploy briefly holds requests instead of dropping them.
 (`deno task start` runs with `--no-check` — CI's `deno check`/`test` is the type
 gate — so boot skips the redundant local type-check, further shrinking the
-restart gap.)
+restart gap.) With `PORT` set it listens on **127.0.0.1 only**, so nginx is the
+one way in. On SIGTERM (every deploy's restart) it stops cleanly: in-flight
+requests finish and any running cron completes (`util/shutdown.ts`; capped at
+~65s, under the unit's `TimeoutStopSec`), and no new cron starts. Killing
+`rate-dailies` between claiming a day and announcing it would lose that day's
+notifications for good.
 
 **Router (`server/util/Router.ts` + `server/router.ts`):** a small Express-like
 middleware chain over `URLPattern`. Path params are type-derived from the route

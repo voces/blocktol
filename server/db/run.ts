@@ -19,6 +19,11 @@ import { raw, sql, sqlOnce } from "./query.ts";
 // updateCurrentRun). The seed sits on a void row, which every read ignores, so
 // it counts for nothing until a build re-points it.
 //
+// @priorRuns counts RANKED runs only, matching the board gate and the client's
+// attempts left: unranked rows on the iteration (a merge's demoted attempts, or
+// free play from when the day was already past in the player's zone) must not
+// use up the day's three.
+//
 // The NOT EXISTS guard dedupes near-simultaneous starts (a double-fired event,
 // two tabs racing boot): the @priorRuns check and the INSERT are separate
 // statements, so two concurrent batches could otherwise both insert — spending
@@ -41,7 +46,8 @@ export const startRun = (
     SELECT @priorRuns := COUNT(1)
     FROM run
     WHERE user = ${user}
-    AND iteration = ${iteration};
+    AND iteration = ${iteration}
+    AND ranked = TRUE;
 
     SELECT @isDaily := (id = ${iteration})
     FROM iteration

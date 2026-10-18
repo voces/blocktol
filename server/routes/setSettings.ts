@@ -10,6 +10,8 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "../../common/settings.ts";
+import { canonicalLocale } from "../util/locale.ts";
+import { UserError } from "../util/UserError.ts";
 import { method } from "./apiHelpers.ts";
 
 // A partial patch of only what changed, merged onto the stored settings.
@@ -30,6 +32,13 @@ const settingsBody = z.object({
 
 export const setSettings = method(settingsBody, true)(
   async ({ userId, notifications, ...patch }) => {
+    // Stored canonical, and refused if malformed: it also becomes user.locale,
+    // which push copy is rendered in.
+    if (patch.language && patch.language !== "system") {
+      const canonical = canonicalLocale(patch.language);
+      if (!canonical) throw new UserError("Invalid language");
+      patch.language = canonical;
+    }
     const current = await getUserSettings(userId);
     const next = {
       ...current,

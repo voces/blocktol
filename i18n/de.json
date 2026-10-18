@@ -263,10 +263,6 @@
     "message": "Tippe auf einen platzierten Block, um ihn zu einem Donner aufzuwerten, der den Läufer verlangsamt.",
     "hash": "8773ef1817f4001b749a4253f06fa2b841e9d0c6be4d9bb48bee4724a5cde82f"
   },
-  "mg.cameAlong": {
-    "message": "{runs} von diesem Gerät kamen mit.",
-    "hash": "6d74ee8d2ed44a85a36835399822c6671c434001a78a693b06f10a682f24481e"
-  },
   "mg.cameFirst": {
     "message": "zuerst kam",
     "hash": "ffccb6f9767adfe1b5069ad652a0b15da7c69d84b7788ac62d105db0f0e4d871"
@@ -311,10 +307,6 @@
     "message": "es",
     "hash": "2ad8a7049d7c5511ac254f5f51fe70a046ebd884729056f0fe57f5160d467153"
   },
-  "mg.fbOtherProfile": {
-    "message": "deinem anderen Profil",
-    "hash": "80567250f728903049bad941e90ded53a1fb87b0916ff38032358e26335a1409"
-  },
   "mg.fbPlayer": {
     "message": "Spieler",
     "hash": "64aee8c6cbd026d9ea9221661f7632351d9a741198cd01ca017450b56f78a206"
@@ -358,6 +350,14 @@
   "mg.linkSignsInAs": {
     "message": "DER LINK MELDET AN ALS",
     "hash": "403a7f5da9c401aeed5103f975d4afe890461ca922395234ff6a96cda1c06522"
+  },
+  "mg.linkUnknown": {
+    "message": "Anmeldelink nicht erkannt",
+    "hash": "459a710158c63b96a16d5858cc97d11daee443c21be6e064e3a031983ad783fd"
+  },
+  "mg.linkUnknownSub": {
+    "message": "Du spielst weiterhin als {name}.",
+    "hash": "6e76f7422ea063374d57eca0774cb125c3f18516744487872be02766e3e8f07c"
   },
   "mg.mergeAccounts": {
     "message": "Konten zusammenführen",
@@ -410,10 +410,6 @@
   "mg.sideSub": {
     "message": "beigetreten {date} · {runs}",
     "hash": "3250187aba2d32ef3ef40862cd5c6e1b52ad6801400c3a14865ea2033e286377"
-  },
-  "mg.signedInAs": {
-    "message": "Angemeldet als {name}",
-    "hash": "599a82d9808993c5c461f162f0fdb10090df39fdbb4ef22fd3faf827968f3034"
   },
   "mg.startNewGame": {
     "message": "Nicht du? Neues Spiel starten",

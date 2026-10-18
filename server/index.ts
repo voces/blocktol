@@ -6,6 +6,7 @@ import { withSecurityHeaders } from "./middleware/securityHeaders.ts";
 import { router } from "./router.ts";
 import { alertAdmin } from "./util/adminAlert.ts";
 import { errText, log } from "./util/logging.ts";
+import { drainJobs } from "./util/shutdown.ts";
 
 // Bind the port FIRST, then migrate. The cohost fronts a single upstream
 // (nginx → 127.0.0.1:3040), so any window with the port unbound is a hard 502.
@@ -26,13 +27,32 @@ const ready = migrate().catch((err) => {
 });
 
 // `PORT` is set locally and on the cohost (nginx's upstream, see deploy/); a
-// Deno Deploy preview leaves it unset and the platform picks the port.
+// Deno Deploy preview leaves it unset and the platform picks the port. With a
+// PORT, listen on loopback only: nginx is the one way in, so TLS and its rate
+// limits can't be bypassed if a firewall rule ever opens the port.
 const port = Number(Deno.env.get("PORT")) || undefined;
 
-Deno.serve({
+const server = Deno.serve({
   port,
+  hostname: port ? "127.0.0.1" : undefined,
   onListen: ({ port }) => log.info("listening", { port }),
 }, async (req) => {
   await ready;
   return withSecurityHeaders(await router.route(req));
 });
+
+// Graceful stop on SIGTERM (systemd's restart on every deploy): finish
+// in-flight requests and any running cron (see util/shutdown.ts) before
+// exiting, rather than dropping them. Capped below the unit's TimeoutStopSec.
+// Deno Deploy has no signal listeners; there the platform manages shutdown.
+const DRAIN_MS = 60_000;
+try {
+  Deno.addSignalListener("SIGTERM", async () => {
+    log.info("shutting down");
+    await Promise.race([
+      Promise.allSettled([server.shutdown(), drainJobs(DRAIN_MS)]),
+      new Promise((resolve) => setTimeout(resolve, DRAIN_MS + 5_000)),
+    ]);
+    Deno.exit(0);
+  });
+} catch { /* no signal support on this platform */ }

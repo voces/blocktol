@@ -28,11 +28,14 @@ export const signInLink = (id: string) =>
 
 // The id in the current URL if it is a sign-in link: `/#l=<id>` (see
 // signInLink) or the legacy path forms `/login/<id>` and `/l/<id>`, still in
-// old QRs and saved links. Null otherwise.
-const linkIdFromPath = () => {
+// old QRs and saved links. Null otherwise, including for an id of a shape the
+// server never mints (it would treat it as no credential at all, so adopting
+// one would leave the device unable to make an authed call).
+const ID_SHAPE = /^[A-Za-z0-9_-]{1,36}$/;
+const rawLinkId = () => {
   if (location.hash.startsWith("#l=")) {
     try {
-      return decodeURIComponent(location.hash.slice(3)) || null;
+      return decodeURIComponent(location.hash.slice(3));
     } catch {
       return null;
     }
@@ -42,6 +45,10 @@ const linkIdFromPath = () => {
   }
   if (location.pathname.startsWith("/l/")) return location.pathname.slice(3);
   return null;
+};
+const linkIdFromPath = () => {
+  const id = rawLinkId();
+  return id && ID_SHAPE.test(id) ? id : null;
 };
 
 export const getId = () => {
@@ -92,5 +99,5 @@ export const startFreshId = () => {
 // Drop the #l=<id> (or legacy /l/<id>, /login/<id>) from the URL so a refresh
 // doesn't re-open the gate after a decision is made.
 export const clearLinkFromUrl = () => {
-  if (linkIdFromPath()) history.replaceState(null, "", "/");
+  if (rawLinkId()) history.replaceState(null, "", "/");
 };
