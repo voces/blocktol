@@ -31,9 +31,9 @@ export const thunderHover = signal<(Point & { local?: boolean }) | undefined>(
 );
 
 // Seconds into the runner's walk while one is animating, else undefined (Runner
-// clears it on unmount). Written every animation frame, hence a signal. The
-// splits tape reads it through a computed that collapses it to the mark the
-// runner has reached, so the tape re-renders only when that moves.
+// clears it on unmount). Written every animation frame, hence a signal: the
+// intro board's stopwatch and checkpoint stop read it (IntroBoard.tsx) without
+// re-rendering the board at that rate.
 export const runnerTime = signal<number | undefined>(undefined);
 
 // Whether the previewed placement/move is illegal (red preview).

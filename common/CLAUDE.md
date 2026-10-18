@@ -41,29 +41,10 @@ diverge — the server's accepted time must equal what the client previewed.
   (halved while slowed); a thunder within radius 4 triggers at the earliest
   instant strictly in range with its 3.2s cooldown passed, resetting the shared
   6s slow (never stacking); exact ties fire together. Times round to the two
-  decimals the game stores. The walk itself is `pathTimeline`, which
-  `pathDuration` is a rounding wrapper over: it also returns each node's
-  cumulative distance, a closed-form `timeAt(distance)` (its state is recorded
-  at every trigger, so any point on the route resolves without re-walking), and
-  per slow the seconds of slow the trigger **destroyed** by resetting a
-  still-running one (plus, on the last, whatever was still owed at the finish).
-  `circleWindows` is the shared geometry — a thunder's trigger windows and a
-  flag's passes are the same circle/polyline intersection (for a flag the window
-  only says it WAS passed; the mark is timed at the closest approach within it,
-  so a flag on the checkpoint reads the checkpoint's own time rather than half a
-  cell early).
-- `common/splits.ts` reads a solved path back as **splits**: the run's time at
-  every mark it crosses — each thunder trigger (`local` distinguishing the
-  player's piece from the day's), the checkpoint, and the player's flags —
-  numbered per kind in crossing order and each carrying a cross-run `key` (the
-  piece's cell plus which of ITS crossings this is). `splitDeltas` pairs a run's
-  marks against the reference run's **by that key, never by ordinal**: a
-  different build routes the runner differently, so the 3rd flag of one run may
-  be a different flag entirely. A slow's `wasted` is the timeline's lost slow
-  seconds **halved** — at half speed a second of slow only buys half a second of
-  finish time, and the tape is about the clock. All of it is pure and derived
-  from the path, so the splits panel needs no server data (see
-  `client/CLAUDE.md`).
+  decimals the game stores. Range is pure geometry (`circleWindows`: a thunder's
+  trigger windows as circle/polyline intersections in distance along the path),
+  and between events the distance-to-time map is linear, so the walk advances
+  event to event in closed form.
 - Placement legality lives in `server/util/validateRun.ts` (`validateRun`) — it
   reuses the same engine (via `cachedSolver`, per iteration shape), so what the
   audit script accepts is exactly what the write path accepts. It first rejects

@@ -35,11 +35,6 @@ export type ExportPushRow = {
   created: number;
 };
 
-export type ExportFlagRow = {
-  iteration: number;
-  data: string;
-};
-
 export type ExportPbTopRow = {
   iteration: number;
   message_id: string | null;
@@ -49,10 +44,9 @@ export type ExportPbTopRow = {
 };
 
 // Every row held about one user, for "export my data" (GDPR access /
-// portability), as six result sets in one round trip: the user row, all their
+// portability), as five result sets in one round trip: the user row, all their
 // runs (void included, since it is their data), notifications, push
-// subscriptions, board flags, and the top-PB records announced under their id
-// (pb_top). Timestamps are epoch millis so the caller ships numbers, not
+// subscriptions, and the top-PB records announced under their id (pb_top). Timestamps are epoch millis so the caller ships numbers, not
 // datetime strings. routes/exportData.ts shapes these into the export document:
 // it deserializes the maze blob, parses the JSON columns and drops the push
 // keys (crypto material, not personal data).
@@ -62,7 +56,6 @@ export const exportUserData = (userId: string) =>
     ExportRunRow[],
     ExportNotificationRow[],
     ExportPushRow[],
-    ExportFlagRow[],
     ExportPbTopRow[],
   ]>`
     SELECT id, name, rating, plays, settings, locale,
@@ -80,8 +73,6 @@ export const exportUserData = (userId: string) =>
 
     SELECT endpoint, UNIX_TIMESTAMP(created) * 1000 created
     FROM push_subscription WHERE user = ${userId};
-
-    SELECT iteration, data FROM flag WHERE user = ${userId} ORDER BY iteration ASC;
 
     SELECT iteration, message_id, top_time, holders,
            UNIX_TIMESTAMP(announced_at) * 1000 announced_at

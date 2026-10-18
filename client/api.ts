@@ -85,7 +85,6 @@ export const withKeepalive = <T>(fn: () => T): T => {
 //   - deleteAccount — on success the client resets its local id, so a blind
 //                   retry would act on the stale id.
 //   - reportClientError — retrying reports risks amplifying a bad loop.
-// setFlags is retryable: it writes the whole flag set as an absolute value.
 // commitRun is retryable: free play's commit carries a per-attempt clientId and
 // the server INSERT is guarded on it, and a legacy bare commit is an idempotent
 // flip-to-non-void.
@@ -108,7 +107,6 @@ const RETRYABLE = new Set<keyof BlocktolApi>([
   "subscribePush",
   "unsubscribePush",
   "setRunPinned",
-  "setFlags",
   "commitRun",
 ]);
 

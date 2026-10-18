@@ -100,12 +100,12 @@
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Remove permanentemente seu perfil, nome, preferências, bandeiras, notificações e assinaturas de push, e desvincula de você cada labirinto que você construiu. Suas construções permanecem nos placares antigos como um jogador anônimo, sem nenhum vínculo que mantenhamos com você, para que os resultados históricos dos dias em que outras pessoas competiram não sejam reescritos. Nomes já publicados no Discord, e seu nome em notificações já enviadas a outros jogadores (excluídas após 90 dias), permanecem lá. Isso não pode ser desfeito, e seu dispositivo recomeça como um jogador totalmente novo.",
-    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
+    "message": "Remove permanentemente seu perfil, nome, preferências, notificações e inscrições push, e desvincula de você cada labirinto que você construiu. Suas construções permanecem nas classificações passadas como um jogador anônimo, sem nada que mantemos ligando-as a você, para que os resultados históricos dos dias em que outras pessoas competiram não sejam reescritos. Os nomes já publicados no Discord, e seu nome em notificações já enviadas a outros jogadores (excluídas após 90 dias), permanecem lá. Isso não pode ser desfeito, e seu dispositivo recomeça como um jogador totalmente novo.",
+    "hash": "5956e089c7d3dd0f8ed19638dcac4c5afae44f3ae3c70165a3701add4624ad4a"
   },
   "privacy.rights.export.body": {
-    "message": "Baixa um arquivo JSON com tudo o que temos sobre você — seu perfil, todas as corridas, suas flags, suas notificações e suas inscrições de push.",
-    "hash": "bd43631c4f9a402ac65761fc3d6b116ba213f91f1282c0a36fd70cf2fbc4873e"
+    "message": "Baixa um arquivo JSON com tudo o que mantemos sobre você — seu perfil, cada corrida, suas notificações e suas inscrições push.",
+    "hash": "945e2495e85c2edbd3aab639dd82e01607329033125de9da8872097039e21ece"
   },
   "privacy.rights.heading": {
     "message": "Seus direitos",
@@ -132,8 +132,8 @@
     "hash": "268f14bbfe119c1e92150583af960a086d7db9619a097f8aa72ff6779842f610"
   },
   "privacy.store.gameplay.detail": {
-    "message": "Os labirintos que você constrói, os tempos deles e quais tentativas contaram, para que possamos pontuar o daily e mostrar os placares. Isso inclui quaisquer flags que você coloca em um tabuleiro para dividir uma corrida em splits.",
-    "hash": "1e64086f7f91c8005135329c8d607dbc7152f405e711426f2e2b2bb2bf05c810"
+    "message": "Os labirintos que você constrói, seus tempos e quais tentativas foram contadas, para que possamos pontuar o diário e mostrar as classificações.",
+    "hash": "9628acbc7d2a202e79a271545507aedf43e7f5474bdd58d231bcdb5f79118bfc"
   },
   "privacy.store.gameplay.term": {
     "message": "Sua jogabilidade",

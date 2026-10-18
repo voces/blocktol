@@ -2,7 +2,7 @@
   "Blocktol": "the game's name — never translate.",
   "runner": "the entity that travels the maze; a common noun, translate it.",
   "block": "a piece the player places to lengthen the path; translate it. User copy always says \"block\" (never \"brick\" — that's an internal variable name only).",
-  "thunder": "the slow-field the player places; translate it. User copy always says \"thunder\" (\"power\" and \"slow\" are internal code terms and never appear on screen). Use your language's word for THUNDER — the storm/sound sense — not lightning: de Donner (not Blitz), zh-Hans 雷电 (not 闪电), es trueno, fr foudre, pt-BR trovão, ja サンダー. Whatever splits.thunderN already uses in that locale is the term; keep every key consistent with it.",
+  "thunder": "the slow-field the player places; translate it. User copy always says \"thunder\" (\"power\" and \"slow\" are internal code terms and never appear on screen). Use your language's word for THUNDER — the storm/sound sense — not lightning: de Donner (not Blitz), zh-Hans 雷电 (not 闪电), es trueno, fr foudre, pt-BR trovão, ja サンダー. Whatever intro.tipThunder already uses in that locale is the term; keep every key consistent with it.",
   "daily": "the day's ranked puzzle; translate as the noun for the daily challenge.",
   "board": "the 20x20 grid a daily is played on — the surface, not the day's puzzle (that's \"daily\") and not what the player builds on it (that's \"maze\"/\"build\"). Translate it; copy uses it only for the grid itself (\"Reset board\").",
   "maze": "the arrangement of blocks and thunders a player builds on a board, and the thing a run is timed on. Translate it. \"build\" is the same object named as the player's result (see below); prefer the wording the source uses in each message.",
@@ -16,7 +16,5 @@
   "RECORD": "a badge for a held top build — keep it short; all-caps if the language allows. The profile also uses it lower-case and plural as a stat label (\"Records\": dailies where the player shares the top build); there, match the sentence case of the labels around it.",
   "BEST": "a badge for a personal best — keep it short; all-caps if the language allows.",
   "DELETE": "the literal word the user must type to confirm account deletion — keep it as the English word DELETE unless a localized equivalent is unambiguous and standard.",
-  "slow": "the state a thunder puts the runner in (half speed for 6s). An internal term — copy never names it as a thing; where the effect has to be described, it appears as the plain adjective \"slowed\" (see splits.wasteTitle).",
-  "splits": "the per-mark breakdown of a run (speedrunning sense: the time at each point along the route); translate with the term your language's speedrunning/racing communities use.",
-  "flag": "a marker the player plants on a board to add a split point; translate it as the pennant/marker sense."
+  "slow": "the state a thunder puts the runner in (half speed for 6s). An internal term — copy never names it as a thing; where the effect has to be described, it is a verb or a plain adjective (\"slows the runner\", \"slowed\")."
 }

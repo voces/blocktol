@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { parseSettings } from "../../common/settings.ts";
 import { exportUserData } from "../db/export.ts";
-import { deserializeFlags } from "../util/flags.ts";
 import { deserializeRun } from "../util/run.ts";
 import { method } from "./apiHelpers.ts";
 
@@ -26,7 +25,6 @@ export const exportData = method(z.object({}).optional(), true)(
       runs,
       notifications,
       subscriptions,
-      flags,
       pbTops,
     ] = await exportUserData(userId);
     const u = users[0];
@@ -65,11 +63,6 @@ export const exportData = method(z.object({}).optional(), true)(
       pushSubscriptions: subscriptions.map((s) => ({
         endpoint: s.endpoint,
         created: Number(s.created),
-      })),
-      // Splits flags per board (see common/splits.ts), decoded to cells.
-      flags: flags.map((f) => ({
-        iteration: f.iteration,
-        cells: deserializeFlags(f.data),
       })),
       // Days whose Discord top-PB post currently names the player as holder.
       pbRecords: pbTops.map((t) => ({

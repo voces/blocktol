@@ -14,12 +14,6 @@ import { useClock } from "./useClock.ts";
 import { useInputStart } from "./useInputStart.ts";
 import { useInputEnd } from "./useInputEnd.ts";
 import { useOnSlow } from "./useOnSlow.ts";
-import {
-  flagsArmed,
-  flagsFor,
-  saveFlags,
-  splitsShowing,
-} from "../../store/flags.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { Daily } from "./Daily.tsx";
 import { Prestart } from "./Prestart.tsx";
@@ -47,12 +41,7 @@ const BoardArea = (
     setRun,
     date,
     implosions,
-    iteration,
   } = useContext(GameStateContext);
-  // Flags show only with the splits tape (a review or the animating run), never
-  // on a board being built, where they'd clutter the cells. `splitsShowing` is
-  // Splits.tsx saying the tape is up, so the two can't drift.
-  const flagged = splitsShowing.value && iteration !== undefined;
   return (
     <Board
       placingBlock={placingBlock.value}
@@ -72,11 +61,6 @@ const BoardArea = (
       date={date}
       dragMoved={dragMoved.value}
       implosions={implosions}
-      flags={flagged ? flagsFor(iteration) : undefined}
-      flagsArmed={flagsArmed.value}
-      onFlagsChange={flagged
-        ? (flags) => saveFlags(iteration, flags)
-        : undefined}
     />
   );
 };

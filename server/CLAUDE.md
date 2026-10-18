@@ -49,9 +49,7 @@ is _derived from the registry_ and is the only thing the client imports — add 
 route by adding a `{ validation, handler }` (see `routes/apiHelpers.ts`'s
 `method(...)` helper) to that object and the client's typed `api.<method>()`
 appears automatically. A handler returning `{ status: >=500 }` (or throwing) is
-reported; 4xx are treated as expected client faults. (`setFlags` —
-`routes/iteration/flags.ts` — is the splits tape's one write; the flags
-invariant is in the root `CLAUDE.md`.)
+reported; 4xx are treated as expected client faults.
 
 **`boot` composes, it doesn't reimplement.** `routes/boot.ts` is one endpoint
 that `Promise.all`s the boot handlers (`getDailySummary`, `getProfile`,
@@ -157,7 +155,7 @@ double-write):**
   rating has stopped, and it `alertAdmin`s (once per run) — run from this cron
   so a dead `rate-dailies` is still noticed. It then runs the **retention
   sweep** (`util/retention.ts` → `db/retention.ts`): notifications older than 90
-  days, and `user` rows over 30 days old that hold nothing (no runs, flags, push
+  days, and `user` rows over 30 days old that hold nothing (no runs, push
   subscriptions, settings, locale, `pb_top` mention, or chosen name — one-off
   visitors and crawlers). Both delete in bounded `LIMIT` batches, so a backlog
   drains over several runs inside the 3s timeout. There is no last-seen column,
