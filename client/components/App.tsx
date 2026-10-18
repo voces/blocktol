@@ -61,8 +61,7 @@ const Shell = (
   return (
     // The provider wraps the header too, so its calendar button can share game
     // state with the (mobile) calendar modal rendered down in the game tree.
-    // (Server entities — daily list, profile — live in module stores now, no
-    // provider needed.)
+    // Server entities (daily list, profile) live in module stores, not here.
     <GameStateContext.Provider value={gameState}>
       <div style={{ textAlign: "center" }}>
         {
@@ -189,7 +188,7 @@ export const App = () => {
         return;
       }
       bootErrors.current = 0;
-      // Staging is the summary listener's job now (useInit): it resumes an
+      // Staging is the summary listener's job (useInit): it resumes an
       // in-progress run (currentRun) or raises the explicit "Start attempt"
       // overlay when attempts remain. Nothing auto-starts here — an attempt
       // opens only when the player taps Start, so a background boot can't
@@ -200,7 +199,7 @@ export const App = () => {
       again();
     });
     // Warm the profile cache in parallel — the route seeds the user row
-    // itself, so this no longer waits on the summary's first-load seeding.
+    // itself, so it needn't wait on the summary.
     // Its payload carries the server-persisted settings; adopt them (the
     // cross-device source of truth) over the boot-time localStorage guess.
     fetchProfile().then((p) => {
@@ -289,9 +288,9 @@ export const App = () => {
             // Fire the one boot request NOW, before the re-render mounts Game and
             // its effects fetch — so a first-time user's first load consolidates
             // to a single request instead of fanning out (the module-eval prime
-            // was skipped so boot's daily auto-start didn't open the 60s clock
-            // mid-tutorial; finishing onboarding is when it should). Set
-            // synchronously here, the primes are in place before the effects run.
+            // is skipped mid-onboarding, since the app defers its fetch then).
+            // Set synchronously here, the primes are in place before the
+            // effects run.
             primeSession();
             setShowOnboarding(false);
             setHasCompletedOnboarding();

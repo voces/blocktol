@@ -79,10 +79,10 @@ const QUEUE_LIMIT = 500;
 let poolPromise: Promise<Pool> | null = null;
 
 // Lazily create the pool (and lazily import mysql2) on first use, so a
-// proxy-transport deployment — including Deno Deploy — never loads the driver or
-// opens a socket. `env` supplies the defaults so a co-located box only needs to
-// flip SQL_TRANSPORT=direct: user/database default to `blocktol-<env>` (the same
-// names the proxy passes through), host to loopback.
+// proxy-transport deployment — including a Deno Deploy preview — never loads
+// the driver or opens a socket. `env` supplies the defaults so a co-located box
+// only needs to flip SQL_TRANSPORT=direct: user/database default to
+// `blocktol-<env>` (the same names the proxy passes through), host to loopback.
 const getPool =
   () => (poolPromise ??= import("mysql2/promise").then(({ createPool }) =>
     createPool({

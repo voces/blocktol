@@ -6,9 +6,9 @@ import { errText, log } from "./logging.ts";
 //
 // Uses Discord's plain webhook REST endpoint — a webhook URL is the ONLY thing
 // it needs: no bot token, no gateway connection, and deliberately no discord.js
-// (the library is large and pulls in a gateway/websocket stack we don't want on
-// an ephemeral isolate). Just a POST with a JSON `{ content }` body. Create the
-// URL in the target channel's Settings → Integrations → Webhooks.
+// (the library is large and pulls in a gateway/websocket stack we don't want in
+// a short-lived process). Just a POST with a JSON `{ content }` body. Create
+// the URL in the target channel's Settings → Integrations → Webhooks.
 //
 // Never awaited, never throws, and a no-op without DISCORD_ADMIN_WEBHOOK_URL —
 // so local/dev and an unconfigured prod stay silent rather than erroring. The
@@ -36,8 +36,8 @@ export const alertAdmin = (message: string): void => {
     headers: { "content-type": "application/json" },
     // Alerts quote player-controlled text; never let it ping anyone.
     body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
-    // Fire-and-forget still holds a socket (and, on Deploy, the isolate) open
-    // for as long as Discord leaves it hanging; bound it.
+    // Fire-and-forget still holds a socket (and, on a Deploy preview, the
+    // isolate) open for as long as Discord leaves it hanging; bound it.
     signal: AbortSignal.timeout(10_000),
   })
     .then((r) => {

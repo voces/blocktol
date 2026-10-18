@@ -40,14 +40,15 @@ export const entryIsDayLink = entryDay !== null;
 // Of those, only the links for a day strictly BEFORE today. This — not the raw
 // `entryIsDayLink` — is what suppresses boot-time today-staging (resume /
 // prestart / finished-board prime): the suppression exists so `consumeDeepLink`
-// can win the board with a PAST day (past boards are ungated and replayable).
-// A link to TODAY has no other day to stage, and a FUTURE day must not be
-// staged at all — tomorrow's puzzle is one you'll rank tomorrow (previewing it
-// is a leak) and next week's doesn't exist yet. Both fall through to today's
-// normal flow instead. Gating on the raw day-link stranded a fresh user on a
-// today-or-future permalink (today's `getBoard` answers { incomplete } until the
-// three ranked attempts are spent; a future date 400s or, worse, served
-// tomorrow's board), leaving an inert loading board with no way forward.
+// can win the board with a PAST day (past boards are ungated and replayable). A
+// link to TODAY has no other day to stage, and a FUTURE day must not be staged
+// at all — tomorrow's puzzle is one you'll rank tomorrow (previewing it is a
+// leak) and next week's doesn't exist yet. Both fall through to today's normal
+// flow instead. Gating on the raw day-link would strand a fresh user on a
+// today-or-future permalink (neither day has a board to stage: today's
+// `getBoard` answers { incomplete } until the three ranked attempts are spent,
+// and a future day is locked), leaving an inert loading board with no way
+// forward.
 //
 // It holds only while the link can still win: a past link that fails to
 // resolve (a bad date like /20260231, or a transient failure) drops it — see

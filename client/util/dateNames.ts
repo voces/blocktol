@@ -2,9 +2,9 @@
 // header row is never a hardcoded English array. Follows the passed locale (the
 // client's `uiLocale`, undefined = the viewer's own) and is cached per locale —
 // the board's calendar rebuilds this on every render and Intl constructors
-// aren't free. English (`undefined`) renders byte-for-byte the old array
-// ("S M T W T F S"). (Month/day labels use `toLocaleDateString` directly so the
-// locale controls word order; only the weekday initials need this loop.)
+// aren't free. English (`undefined`) yields "S M T W T F S". (Month/day labels
+// use `toLocaleDateString` directly so the locale controls word order; only the
+// weekday initials need this loop.)
 
 const weekdayCache = new Map<string, readonly string[]>();
 

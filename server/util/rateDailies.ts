@@ -108,7 +108,7 @@ const rateDailies = async () => {
 // Runs at :30 each hour (offset from the generation cron). Each daily is rated
 // once its date is fully closed across all timezones.
 //
-// `Deno.cron` is non-overlapping only within ONE deployment; a second instance
+// `Deno.cron` is non-overlapping only within ONE instance; a second instance
 // on the same DB is a second writer. DISABLE_CRONS gates registration (see
 // gen.ts) so it normally doesn't run at all, but correctness doesn't rest on
 // that flag: applyRatings claims each day atomically, so a forgotten flag costs

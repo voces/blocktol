@@ -6,10 +6,10 @@ import { sql } from "./query.ts";
 // notification history, their push subscriptions, their board flags, and the
 // Discord top-PB records currently announced under their id (pb_top).
 // Timestamps come back as epoch millis (UNIX_TIMESTAMP * 1000) so the caller
-// ships plain numbers rather than the proxy's datetime strings. The route shapes these into the export
-// document (see routes/exportData.ts) — deserializing the maze blob, parsing the
-// JSON columns, and dropping the push encryption keys (crypto material, not
-// meaningful personal data).
+// ships plain numbers rather than the proxy's datetime strings. The route
+// shapes these into the export document (see routes/exportData.ts) —
+// deserializing the maze blob, parsing the JSON columns, and dropping the push
+// encryption keys (crypto material, not meaningful personal data).
 export type ExportUserRow = {
   id: string;
   name: string | null;

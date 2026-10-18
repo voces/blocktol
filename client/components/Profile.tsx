@@ -376,11 +376,11 @@ const Rivals = (
   );
 };
 
-// Why a preference that reads "on" still delivers nothing. The toggles are
-// stored settings that gate the SERVER's send decision; whether THIS device can
-// receive is separate state it never reflected, so a blocked permission or a
-// browser without push looked identical to a working setup. pushState carries
-// the real answer (client/util/push.ts).
+// Says why a preference that reads "on" may still deliver nothing. The toggles
+// are stored settings that gate the SERVER's send decision; whether THIS device
+// can receive is separate state, so a blocked permission or a browser without
+// push would otherwise look identical to a working setup. pushState carries the
+// real answer (client/util/push.ts).
 const PushNotice = ({ state }: { state: PushStatus }) => {
   if (state === "ok" || state === "unknown") return null;
   return (

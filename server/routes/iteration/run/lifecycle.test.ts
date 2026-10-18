@@ -13,11 +13,10 @@ import { startRun } from "./start.ts";
 import { updateRun } from "./update.ts";
 
 // Integration tests for the run lifecycle — the void/ranked/daily state
-// machine where most of the audit's bugs lived (1a, 1c, 1g, 3b, the #98
-// in-panel run exclusion). The semantics live in multi-statement SQL (session
-// variables, window checks, transactions), which a fake couldn't faithfully
-// emulate, so
-// these exercise the REAL route handlers against the real (dev) database:
+// machine where most of the audit's bugs lived. The semantics live in
+// multi-statement SQL (session variables, window checks, transactions), which a
+// fake couldn't faithfully emulate, so these exercise the REAL route handlers
+// against the real (dev) database:
 // each test plays as a throwaway user and deletes it afterwards (its runs
 // cascade). Skipped wholesale when SQL_PASSWORD isn't available, so a
 // credential-less environment stays green.
@@ -275,9 +274,10 @@ Deno.test({
         "the returned created is the DB's second-precision value",
       );
 
-      // A pin sent with a client wall-clock stamp — millisecond precision off the
-      // player's own clock, as the buggy optimistic row used — cannot match the
-      // server's second-precision row, so it silently no-ops (the reported bug).
+      // A pin sent with a client wall-clock stamp — millisecond precision off
+      // the player's own clock, as an optimistic row stamped with Date.now()
+      // would — cannot match the server's second-precision row, so it silently
+      // no-ops.
       const clientStamp = committed.created + 123;
       const stale = await setRunPinned.handler(
         { iteration, created: [clientStamp], pinned: true },
@@ -399,8 +399,8 @@ Deno.test({
       await backdate(user, 120);
 
       // Attempt 2: freshly started, empty — it does NOT hold the daily flag
-      // (attempt 1's build does), which is exactly what broke the old
-      // daily-flag-based resume.
+      // (attempt 1's build does), so resume must not key off the daily
+      // flag.
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       const rows = await runRows(user);
       assertEquals(rows.length, 2);
@@ -495,7 +495,7 @@ Deno.test({
     try {
       await todayDaily();
 
-      // Boot no longer auto-starts: the summary opens no run and counts no
+      // Boot does not auto-start: the summary opens no run and counts no
       // attempt (the client raises an explicit "Start attempt" overlay), so a
       // background boot can't silently spend one.
       const boot = await getDailySummary.handler({ timeZone: "UTC" }, req);

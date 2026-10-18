@@ -1,12 +1,11 @@
-// The privacy page, rendered per request in the reader's language. It used to be
-// a static public/privacy.html — deliberately left in English while the rest of
-// the game was localized — but a player who plays in German shouldn't then be
-// handed their privacy notice in English (GDPR Art. 12 asks for it to be
-// intelligible to the people it's addressed to, and the game addresses them in
-// their language). So its copy is a catalog like the app's: i18n/privacy/en.json
-// is the source, machine-translated by the same pipeline and held to the same
-// i18n:check gate, and compiled to ./catalog.generated.ts — a server-only module,
-// so a page of prose doesn't ride along in every client bundle.
+// The privacy page, rendered per request in the reader's language. A player who
+// plays in German shouldn't be handed their privacy notice in English (GDPR
+// Art. 12 asks for it to be intelligible to the people it's addressed to, and
+// the game addresses them in their language). So its copy is a catalog like the
+// app's: i18n/privacy/en.json is the source, machine-translated by the same
+// pipeline and held to the same i18n:check gate, and compiled to
+// ./catalog.generated.ts — a server-only module, so a page of prose doesn't
+// ride along in every client bundle.
 //
 // The page is plain HTML (no script): links back into the app carry the actions
 // (`/?profile=account|delete`, see client/store/notifNav.ts) rather than the

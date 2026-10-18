@@ -5,25 +5,22 @@
 // a rated day is frozen, so there's nothing to edit later. Never throws — a
 // webhook hiccup must not disturb the rating sweep.
 //
-// The same sweep sends a SECOND, separate message: the day's TOP BUILD — the top
-// of the best-build board and everyone holding it. Those records used to reach
-// the channel live, as "top PB" posts while the daily was still open, which
-// handed everyone still holding attempts the shape of the ceiling; util/pbBoard.ts
-// holds that post until the day is rated, and this is where the day's own record
-// surfaces instead, after the field is frozen.
+// The same sweep sends a SECOND, separate message: the day's TOP BUILD — the
+// top of the best-build board and everyone holding it. Live "top PB" posts are
+// held back while the daily is open (they'd hand everyone still holding
+// attempts the shape of the ceiling); util/pbBoard.ts holds that post until the
+// day is rated, and this is where the day's own record surfaces instead, after
+// the field is frozen.
 //
 // It is literally the same post pbBoard keeps for the rest of the day — same
 // embed, same `pb_top` marker — because it is the same fact. That matters:
 // writing the marker is what makes a later free-play record SUPERSEDE this
 // message (greying it) instead of standing a second lit record post beside it.
 //
-// It used to be a different post, and a wrong one. It listed whoever had reached
-// the RANKED winning time off the ranked board, which got all of: the bar (the
-// ranked winner's time, which the best-build board is not measured against), the
-// people (anyone above that bar, most of whom hold no record at all), and the
-// omissions (the daily's winner was excluded for being a winner, even when their
-// own free play held the day's top build) wrong at once. The subject was never
-// "who beat the ranked winner" — it is "what is the best build of the day".
+// The subject is "what is the best build of the day", NOT "who beat the ranked
+// winner": the ranked winning time is not the bar the best-build board is
+// measured against, and the daily's winner can hold the top build via free
+// play, so they must not be excluded for being a winner.
 //
 // It stays a separate MESSAGE rather than an addendum inside the summary (or a
 // second embed on the same post) so the two can be moderated independently: the

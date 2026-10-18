@@ -74,8 +74,7 @@ export const Calendar = () => {
   // is discarded by the board loader.
   const selected = iteration;
   // Weekday initials + the month/day labels below follow the UI locale (reading
-  // .value re-renders on a language switch); English renders exactly the old
-  // hardcoded arrays.
+  // .value re-renders on a language switch).
   const locale = intlLocale();
   const weekdays = narrowWeekdays(locale);
   // How many whole months back from the default view we've paged (0 = default).

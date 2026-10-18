@@ -4,9 +4,10 @@ import { standings } from "./iteration/standings.ts";
 import { method } from "./apiHelpers.ts";
 
 // One request for a day navigation: a chosen iteration's board + its standings.
-// A calendar click / view-best / notification jump used to fire getBoard (from
-// showBoard) AND standings (the dock reacting to the iteration change) as two
-// separate requests; this composes them — boot, but for one arbitrary day.
+// A calendar click / view-best / notification jump would otherwise fire
+// getBoard (from showBoard) AND standings (the dock reacting to the iteration
+// change) as two separate requests; this composes them — boot, but for one
+// arbitrary day.
 //
 // Composition (not reimplementation): each sub-handler keeps its tested semantics
 // (getBoard's free-play gate, standings' cached field) and re-derives userId from

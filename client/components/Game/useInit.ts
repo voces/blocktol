@@ -344,11 +344,10 @@ export const useInit = () => {
       //
       // The server keeps the open-window run out of `attempts` — it's the
       // board, not a finished row. On boot that's right (the run resumes
-      // below, and a phantom row would spoil nothing but look wrong). But the
-      // post-final-attempt refetch happens moments after the run EXECUTED on
-      // this client — its 60s window can still be open server-side — and
-      // without folding it back in from `ranked` (same shaping) the panel
-      // shows 2 of 3 rounds until the next board load.
+      // below). But the post-final-attempt refetch happens moments after the
+      // run EXECUTED on this client — its 60s window can still be open
+      // server-side — so it is folded back in from `ranked` (same shaping);
+      // otherwise the panel shows 2 of 3 rounds until the next board load.
       const panel = time === -2 ? attempts : [
         ...attempts,
         ...ranked.filter((r) => !attempts.some((a) => a.created === r.created)),
@@ -531,15 +530,15 @@ export const useInit = () => {
         // the entire executed maze goes in one idempotent write, keyed by the
         // attempt's client id. The server recomputes the authoritative time from
         // it (only the 60s budget was client-enforced). It's retryable — a
-        // connection dropped by a deploy retries onto a fresh isolate and lands —
-        // and it goes through the commit outbox (freePlay.ts), which holds the
+        // connection dropped by a deploy restart is retried and lands — and it
+        // goes through the commit outbox (freePlay.ts), which holds the
         // maze + id until the server answers, so even a commit that outlasts its
         // retries (or a reload mid-animation) is re-sent at the next boot or
         // when the browser is back online rather than lost. Hold the promise so
         // the re-stage below waits for it (see runFinish).
         const commit = commitFreePlay(iteration, maze, run.duration);
-        // A commit that exhausts its retries is no longer a loss, but it IS a
-        // sustained outage worth seeing — mirroring the run saver's
+        // An exhausted commit stays queued in the outbox, but it signals a
+        // sustained outage worth seeing — same as the run saver's
         // abandonment report.
         commit.catch(() =>
           api.reportClientError({
@@ -665,11 +664,11 @@ export const useInit = () => {
     rebuildGrid(grid, checkpoint, next);
     setBlocks(next);
     // The run goes back with the maze, recomputed on the same engine as every
-    // other maze change. Without it the runner kept the path (and the HUD the
-    // time) of the edit being undone — a run the server never recorded. An
-    // expired save usually reverts after the execute flush already released
-    // the runner; swapping its path restarts the walk on the maze the server
-    // actually holds (Runner keys its animation on the path).
+    // other maze change; otherwise the runner and HUD time would keep the
+    // undone edit's run, which the server never recorded. An expired save
+    // usually reverts after the execute flush already released the runner;
+    // swapping its path restarts the walk on the maze the server actually holds
+    // (Runner keys its animation on the path).
     const r = localRun(next, checkpoint);
     if (r) setRun(r);
   };
@@ -679,11 +678,12 @@ export const useInit = () => {
   // generation (see runSaver.ts), so these can act without re-checking.
   setRunSaverHandlers({
     onAccepted: (blocks) => {
-      // The confirmed maze becomes the revert target. The DISPLAYED run is owned
-      // by apply()'s local compute (the same engine the server runs), not by this
-      // response: a debounced save can be a step behind the board, so echoing its
-      // older path here would snap the runner backwards. Update only the revert
-      // target — what a later expired/rejected save falls back to.
+      // The confirmed maze becomes the revert target. The DISPLAYED run is
+      // owned by useInputEnd's `apply` local compute (the same engine the
+      // server runs), not by this response: a debounced save can be a step
+      // behind the board, so echoing its older path here would snap the runner
+      // backwards. Update only the revert target — what a later
+      // expired/rejected save falls back to.
       savedBlocksRef.current = blocks;
     },
     onExpired: () => {

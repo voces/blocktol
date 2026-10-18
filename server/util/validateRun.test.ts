@@ -59,7 +59,7 @@ Deno.test("validateRun", async (t) => {
   });
 
   // Fractional / off-grid coordinates read `undefined` (free) in the solver's
-  // grid, so each of these used to validate.
+  // grid, so without the whole-cell check each of these would validate.
   await t.step("a fractional piece is an invalid path", () => {
     // Half over the fixed block at (4,4).
     assertEquals(validateRun(withBlock, [{ x: 4.5, y: 4 }]), invalid);

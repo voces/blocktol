@@ -22,9 +22,9 @@ const TrashIcon = () => (
   </svg>
 );
 
-// The word the confirm input must match, case-insensitive. A deliberate friction
-// step so an account isn't wiped on a stray tap — the button stays disabled until
-// it's typed exactly (see the safety note below).
+// The word the confirm input must match (trimmed, case-insensitive). A
+// deliberate friction step so an account isn't wiped on a stray tap — the
+// button stays disabled until it's typed.
 const CONFIRM_WORD = "DELETE";
 
 /**

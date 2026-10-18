@@ -4,8 +4,9 @@ import { log } from "../util/logging.ts";
 import { Handler } from "../util/Router.ts";
 import { logMap, routeOf } from "./beginLogger.ts";
 
-// The all-zero trace id OTel's no-op span reports when tracing is off (the Deno
-// Deploy instance) — nothing to correlate, so don't stamp it.
+// The all-zero trace id OTel's no-op span reports when tracing is off (every
+// instance but the co-located EC2 one) — nothing to correlate, so don't stamp
+// it.
 const INVALID_TRACE_ID = "00000000000000000000000000000000";
 
 const sizes = ["B", "KB", "MB", "GB", "TB"];
@@ -35,8 +36,8 @@ export const endLogger: Handler = (req, _, prev) => {
   //   - x-blocktol-trace-id: the request span's trace id, so a response can be
   //     pasted straight into VictoriaTraces to pull its full trace (and, via the
   //     shared trace_id, its logs). Only on the co-located instance where tracing
-  //     is on; the un-instrumented Deno Deploy process reports the invalid
-  //     all-zero id and gets no header.
+  //     is on; an un-instrumented process (e.g. a Deno Deploy preview) reports
+  //     the invalid all-zero id and gets no header.
   if (prev) {
     try {
       prev.headers.set("x-blocktol-server-sha", SHA);
@@ -53,7 +54,7 @@ export const endLogger: Handler = (req, _, prev) => {
     method: req.method,
     status: prev?.status,
     route: routeOf(req),
-    // Numeric ms (was "12ms") so it's aggregatable in VictoriaLogs.
+    // Numeric ms so it's aggregatable in VictoriaLogs.
     ms: data?.start ? Date.now() - data.start : undefined,
     size: typeof length === "string" ? prettySize(parseInt(length)) : undefined,
   });

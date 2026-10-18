@@ -14,8 +14,8 @@ export const ZOOM_DEFAULT = 2;
 
 // Delay (ms) before the placing zoom kicks in on a touch. The default lets a
 // quick tap-to-place finish before the board magnifies, so a plain tap never
-// triggers the (disorienting) zoom-in/zoom-out; 0 restores the old behaviour of
-// zooming the instant a finger lands.
+// triggers the (disorienting) zoom-in/zoom-out; 0 zooms the instant a finger
+// lands.
 export const ZOOM_DELAY_MIN = 0;
 export const ZOOM_DELAY_MAX = 500;
 export const ZOOM_DELAY_DEFAULT = 175;

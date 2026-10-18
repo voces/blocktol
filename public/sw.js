@@ -15,8 +15,9 @@ let VAPID_PUBLIC_KEY = "";
 /* __ASSET_MANIFEST__ */
 
 // Per-build cache: bumping ASSET_VERSION (any precached asset changed) makes a
-// new cache, and `activate` deletes the old ones. Fonts are cross-origin and
-// change rarely, so they live in their own cache that survives version bumps.
+// new cache, and `activate` deletes the old ones. Font files are
+// content-addressed and change rarely, so they live in their own cache that
+// survives version bumps.
 const ASSET_CACHE = `blocktol-assets-${ASSET_VERSION}`;
 const FONT_CACHE = "blocktol-fonts";
 // Where the page mirrors the device credential for the SW to read (see
@@ -272,10 +273,10 @@ const callApi = async (method, credential, body) =>
 // fan-out prunes the row (server/util/notify.ts), leaving a player whose
 // preference toggles still read "on" receiving nothing.
 //
-// Without this handler the only recovery was syncPushSubscription() the next
-// time the app was OPENED — and a daily-final push is often the thing that would
-// have brought the player back, so the failure is self-sustaining. Re-subscribe
-// and re-register here, while the SW is awake and holding the event.
+// Waiting for syncPushSubscription() on the next app OPEN isn't enough: a
+// daily-final push is often the thing that would have brought the player back,
+// so the failure sustains itself. Re-subscribe and re-register here, while the
+// SW is awake and holding the event.
 self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil(
     (async () => {

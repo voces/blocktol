@@ -9,17 +9,14 @@ import { getDailyIterationId } from "../db/iteration.ts";
 import { dailyParts } from "../util/dailyParts.ts";
 import { method } from "./apiHelpers.ts";
 
-// One request for the whole cold boot. The app used to fan out ~8 calls in two
-// serial waves — getDailySummary/getProfile/standings/getBoard/list/
-// getNotifications in parallel, then a SECOND wave (a redundant standings + list
-// refetch) that the first wave's responses cascaded, roughly doubling
-// time-to-quiet. This composes the boot handlers in parallel and bundles their
-// results, so the client primes each off this single fetch (see client
-// `primeBoot`) with no second wave.
+// One request for the whole cold boot. This composes the boot handlers
+// (getDailySummary/getProfile/standings/getNotifications/getBoard/list) in
+// parallel and bundles their results, so the client primes each off this single
+// fetch (see client `primeBoot`) with no second wave of refetches.
 //
 // Composition (not reimplementation) is deliberate: each sub-handler keeps its
-// exact, tested semantics — including getDailySummary's server-side auto-start of
-// the next ranked attempt and getBoard's free-play gate — and re-derives userId
+// exact, tested semantics — including getDailySummary never opening a ranked
+// attempt and getBoard's free-play gate — and re-derives userId
 // from the request itself (see apiHelpers.method), so nothing is threaded. On the
 // cohost these run against the local DB with the per-iteration solver cache and
 // the standings LRU warm, so the fan-out is a handful of cheap parallel reads.

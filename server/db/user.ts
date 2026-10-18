@@ -12,7 +12,7 @@ import { format, raw, sql } from "./query.ts";
 // The most runs the attempts panel loads for one player on one iteration. High
 // enough that no real player is ever truncated (a heavy free-play replayer sits
 // in the low hundreds), but a hard ceiling so a runaway client can't ask us to
-// serialize an unbounded maze list. Hitting it means the panel is now dropping
+// serialize an unbounded maze list. Hitting it means the panel drops
 // that player's NEWEST runs (the read keeps the oldest RUN_CAP, see
 // allRunsByIteration) — a human-actionable oddity, so alert once (see
 // below).
@@ -108,8 +108,8 @@ export const updateUserLocale = (id: string, locale: string) =>
 // Cost scales with the PLAYER, not the table: every field-side read is reached
 // through the iterations the player has runs on (`playedIterations`, a seek on
 // run's (user, …) indexes), then joins that iteration's runs through the
-// (iteration, …) index. Nothing groups over the whole run table — before this,
-// the "others" sides did, and grew with every run anyone made. Those joins are
+// (iteration, …) index. Nothing groups over the whole run table (a whole-table
+// "others" side would grow with every run anyone makes). Those joins are
 // STRAIGHT_JOINs: left to choose, MariaDB scanned all of `run` and probed the
 // player's iterations instead (EXPLAIN on prod) — the very cost this avoids.
 export const getUserStats = async (user: string) => {
@@ -659,19 +659,20 @@ export const ratingDeltaUpdate = (deltas: { user: string; delta: number }[]) =>
 //
 // The claim is `rated = FALSE -> TRUE`, and every delta is gated on it having
 // landed. Two writers on one DB (a second instance missing DISABLE_CRONS, a dev
-// deploy pointed at prod) used to both rate the same day: each read the ratings,
-// and the plain `SET rated = TRUE` let both commit — doubling every player's
-// ELO change and every push / Discord post. Now the loser's claim blocks on the
-// winner's row lock, re-reads the committed `rated = TRUE`, matches nothing, and
-// its deltas don't apply. Its `@claimed` is read back after COMMIT, in the same
-// batch (one connection, so the session variable carries).
+// deploy pointed at prod) would otherwise both rate the same day: each reads
+// the ratings, and a plain `SET rated = TRUE` lets both commit — doubling every
+// player's ELO change and every push / Discord post. With the claim, the loser
+// blocks on the winner's row lock, re-reads the committed `rated = TRUE`,
+// matches nothing, and its deltas don't apply. Its `@claimed` is read back
+// after COMMIT, in the same batch (one connection, so the session variable
+// carries).
 //
 // Deltas, applied relative to the stored row, rather than absolute ratings:
 // the participants were read before this transaction, so an absolute write
 // would silently undo another day's rating committed in between. (The delta
 // itself was computed off that slightly earlier rating — a negligible drift,
 // unlike a lost update.) And an UPDATE that can only touch EXISTING rows,
-// rather than the old `INSERT … ON DUPLICATE KEY UPDATE`: a player merged away
+// rather than an `INSERT … ON DUPLICATE KEY UPDATE`: a player merged away
 // or erased (deleteAccount rotates the id) between the read and this write
 // must not come back as a fresh row keyed by their old id — that id is the
 // person's credential. Still one statement however large the field.

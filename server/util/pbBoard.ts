@@ -18,9 +18,10 @@
 //      top do nothing. A `pb_top` marker (holder, message, time, tie count, post
 //      time) is the state that drives this.
 //
-// Both never throw — a notification/webhook hiccup must not fail the run — and the
-// caller AWAITs onPbBuild because this Deploy kills work left running past the
-// response.
+// Both never throw — a notification/webhook hiccup must not fail the run — and
+// the caller AWAITs onPbBuild because a Deno Deploy preview kills work left
+// running past the response (the EC2 instance doesn't, but callers stay
+// uniform).
 
 import { formatNotifDate } from "../../common/notifications.ts";
 import { formatSeconds } from "../../common/format.ts";

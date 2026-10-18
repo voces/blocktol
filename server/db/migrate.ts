@@ -112,10 +112,10 @@ const applyPending = async (holder: string) => {
 //
 // A caller that loses the election WAITS for the winner rather than returning:
 // its resolution is what opens the `ready` gate in index.ts, and returning at
-// once let a losing process serve requests against a schema its code predates
-// for as long as the winner's migration ran. It polls the recorded version and
-// re-tries the lease each round, so a winner that died mid-run (its lease
-// lapsing) is taken over rather than waited on until the cap.
+// once would let a losing process serve requests against a schema its code
+// predates for as long as the winner's migration runs. It polls the recorded
+// version and re-tries the lease each round, so a winner that died mid-run (its
+// lease lapsing) is taken over rather than waited on until the cap.
 //
 // Idempotent and cheap when nothing is pending — the common case is two indexed
 // reads and no lock contention.

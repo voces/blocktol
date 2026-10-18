@@ -172,7 +172,7 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
   };
 };
 
-// Built once per isolate on first request (not at import) so tests and other
+// Built once per process on first request (not at import) so tests and other
 // entrypoints don't hit the filesystem; a failed build isn't cached, so the
 // next request retries rather than being served the rejection.
 let cached: Promise<Assets> | undefined;

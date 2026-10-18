@@ -32,17 +32,15 @@ export const getBoard = method(getBoardBody, true)(
     // The gate (util/boardAccess.ts): a past day, or one whose ranked attempts
     // are spent, is open; the caller's own today or a later day is locked.
     //
-    // The locked answer is a plain { incomplete } (200), never an error. It used
-    // to 403 unless the caller opted into `soft`, and only boot ever did — so
-    // every other path that can legitimately land on an unfinished today
-    // (the regrade refetch, a notification tap, boot's own linked-day slice for a
-    // today permalink, a calendar pick while parked on a past day) turned a
-    // routine "not yet" into a 403. The client relays EVERY error response to
-    // reportClientError from inside the api proxy, before the caller can swallow
-    // it, so each one logged an error server-side even where the call site was
-    // written to ignore it. Nothing ever wanted the error: "not yet" is a state,
-    // not a fault, and it leaks nothing either way — the same answer for today
-    // and for a future day, layout-free.
+    // The locked answer is a plain { incomplete } (200), never an error. Many
+    // paths legitimately land on an unfinished today (the regrade refetch, a
+    // notification tap, boot's own linked-day slice for a today permalink, a
+    // calendar pick while parked on a past day), and the client relays EVERY
+    // error response to reportClientError from inside the api proxy, before the
+    // caller can swallow it — so a 403 would log a server-side error even where
+    // the call site ignores it. "Not yet" is a state, not a fault, and it leaks
+    // nothing either way — the same answer for today and for a future day,
+    // layout-free.
     if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
       return { incomplete: true as const };
     }

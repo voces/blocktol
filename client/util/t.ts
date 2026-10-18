@@ -1,9 +1,8 @@
 // The client's message accessor: `t(key, params)` renders in the active UI
 // locale. Wraps the pure common/i18n `t` with the `uiLocale` signal — reading it
 // during render subscribes the component, so switching language re-renders live
-// (no context provider). Until the language picker ships, `uiLocale` is undefined
-// (the viewer's own locale → English copy with the viewer's number/date
-// formatting), matching today's behaviour byte-for-byte.
+// (no context provider). `uiLocale` is set by `applyLanguage`
+// (hooks/useSettings.ts); undefined means the viewer's own locale.
 
 import { signal } from "@preact/signals";
 import type { VNode } from "preact";

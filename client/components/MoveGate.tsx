@@ -228,7 +228,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   };
 
   // Whether the merge actually happened. Only then may the device let go of
-  // its current id: adopting the link's id over a merge that failed overwrote
+  // its current id: adopting the link's id over a failed merge would overwrite
   // the ONLY local copy of the old credential, orphaning that profile. A
   // lost answer for a merge that did land is safe to retry — the server
   // then finds the secondary already folded in and succeeds as a no-op.

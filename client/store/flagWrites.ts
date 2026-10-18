@@ -20,7 +20,7 @@ type Entry = {
  * whole set at once — so:
  *   - only the LATEST write's failure rolls back, and to the last confirmed
  *     set, never to whatever the board showed when that write began (an older
- *     write failing used to roll back over a newer edit);
+ *     write failing must not roll back over a newer edit);
  *   - `saving` holds while ANY write is in flight, not until the first settles.
  * `send` resolves true when the server took the write.
  */

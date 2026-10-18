@@ -82,7 +82,7 @@ Deno.test("pathDuration", async (t) => {
             { x: 1, y: 1 },
           ],
           [],
-          0.28, // √2/5 = ~0.2828, rounded — no tick to round up to anymore
+          0.28, // √2/5 ≈ 0.2828, rounded (continuous, not tick-quantized)
         ),
     );
 

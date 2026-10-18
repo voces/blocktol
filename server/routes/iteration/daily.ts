@@ -56,7 +56,7 @@ export const getDailySummary = method(getDailySummaryBody, true)(
     const remaining = (created: string | undefined) =>
       Math.floor(60 - (Date.now() - new Date(created ?? 0).getTime()) / 1000);
 
-    // Note: the summary deliberately does NOT start a daily attempt. An attempt
+    // The summary deliberately does NOT start a daily attempt. An attempt
     // opens only on the client's explicit "Start attempt" action (which calls
     // `startRun` — still the one fetch-and-start endpoint), so a background boot
     // or refresh can't silently spend one. When attempts remain and nothing is

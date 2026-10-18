@@ -254,16 +254,17 @@ export const migrations: Migration[] = [
   {
     version: 10,
     name: "pb-announcement-announced-at",
-    // When the standing "top PB" post was created (util/pbBoard.ts). A same-holder
-    // improvement normally EDITS that post — collapsing a 60s burst of leading
-    // saves to one message — but if it lands more than PB_RECORD_RESET_MS later (a
-    // return visit, not a burst) it posts a fresh message instead. That gate needs
-    // the post's age, so record it: set to now on each (re)post, left untouched on
-    // an edit, so the window is anchored at the post. Appended rather than folded
-    // into v9 because v9 may already have run against the dev DB (the runner keys
-    // off version alone and never re-runs an applied migration). DEFAULT
-    // current_timestamp() backs any row v9 already wrote with a sane recent time.
-    // IF NOT EXISTS keeps it safe if added out of band. MariaDB dialect.
+    // When the standing "top PB" post was created (util/pbBoard.ts). A
+    // same-holder improvement normally EDITS that post — collapsing a 60s burst
+    // of leading saves to one message — but if it lands more than
+    // PB_EDIT_WINDOW_MS later (a return visit, not a burst) it posts a fresh
+    // message instead. That gate needs the post's age, so record it: set to now
+    // on each (re)post, left untouched on an edit, so the window is anchored at
+    // the post. Appended rather than folded into v9 because v9 may already have
+    // run against the dev DB (the runner keys off version alone and never
+    // re-runs an applied migration). DEFAULT current_timestamp() backs any row
+    // v9 already wrote with a sane recent time. IF NOT EXISTS keeps it safe if
+    // added out of band. MariaDB dialect.
     up:
       "ALTER TABLE `pb_announcement` ADD COLUMN IF NOT EXISTS `announced_at` timestamp NOT NULL DEFAULT current_timestamp();",
   },
@@ -326,8 +327,7 @@ export const migrations: Migration[] = [
     // `ensureDailyIterationId`, needed because Deno Deploy preview deployments
     // don't run the `ensure-iterations` Deno.cron) can now race across isolates
     // without ever creating two puzzles for one day — the loser's INSERT is
-    // rejected by the unique key and it re-reads the winner's row. This is why the
-    // per-isolate cold-start backfill could safely be reinstated.
+    // rejected by the unique key and it re-reads the winner's row.
     //
     // Narrowing to DATE first collapses any historical same-day timestamps onto
     // one value; the self-join then deletes all but the lowest id per date — the

@@ -10,10 +10,11 @@ export const nonVoidRunCount = (user: string) =>
   `.then((r) => Number(r[0]?.count ?? 0));
 
 // Fold `secondary` into `primary`: reassign all of the secondary's runs, then
-// delete the secondary user row. The primary keeps its identity wholesale — name,
-// colour (derived from its id), rating, plays, settings — because we never touch
-// its row; the mock's "the primary sets what you keep" falls out of leaving the
-// primary row untouched and only moving runs onto it. Nothing is recomputed.
+// delete the secondary user row. The primary keeps its identity wholesale —
+// name, colour (derived from its id), rating, plays, settings — because we
+// never touch its row: "the primary sets what you keep" falls out of leaving
+// the primary row untouched and only moving runs onto it. Nothing is
+// recomputed.
 //
 // The one correction is ranked-ness. A day both devices RANKED would leave the
 // merged player with up to six ranked attempts on it, and the counted result
@@ -23,15 +24,15 @@ export const nonVoidRunCount = (user: string) =>
 // where the PRIMARY already has a ranked attempt (void included — an abandoned
 // attempt is still spent), the secondary's runs there are demoted to plain
 // history (ranked = FALSE, daily = FALSE) before they move: the primary's three
-// stand, as "the primary sets what you keep" says, and the secondary's builds
+// stand, and the secondary's builds
 // survive as free-play-like rows. A day only the secondary ranked moves over
 // whole — it's still one player's three attempts. Demotion only ever clears
 // flags, never sets one: a ranked attempt is legitimate only on the user's own
 // local day, decided at creation, and a merge must never mint one.
 //
-// The earliest-daily pass after the move is the older guard for the same
-// invariant (one counted result per day). With the demotion above it can no
-// longer find two dailies on an iteration, but it's kept as the backstop: a run
+// The earliest-daily pass after the move is a second guard for the same
+// invariant (one counted result per day). With the demotion above it should
+// never find two dailies on an iteration, but it stays as the backstop: a run
 // is demoted iff an earlier-created daily sibling exists on the same iteration
 // (higher time breaks an exact-timestamp tie), so exactly one daily survives.
 //

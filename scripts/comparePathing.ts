@@ -1,13 +1,12 @@
 // Compare every stored run's persisted time against what the *current* pathing
 // code (common/pathing.ts) computes for the same placement. Its purpose is to
-// quantify the impact of a pathing change — e.g. switching Theta* for the exact
-// any-angle visibility-graph search — before it ships: how many runs shift, by
-// how much, and whether any run gets *slower* under the new code. On a
+// quantify the impact of a pathing change before it ships: how many runs shift,
+// by how much, and whether any run gets *slower* under the new code. On a
 // thunder-free maze that should essentially never happen (a shorter distance is
 // a shorter time); WITH thunders it legitimately can, because the solver
-// minimises distance, not time — the new shorter path can pass nearer a thunder and eat
-// more slow penalty. So only a regression on a maze with NO fixed or player
-// thunder is a red flag worth inspecting.
+// minimises distance, not time — the new shorter path can pass nearer a thunder
+// and eat more slow penalty. So only a regression on a maze with NO fixed or
+// player thunder is a red flag worth inspecting.
 //
 // Dry-run by default: it only reports. Pass --apply to write the recomputed
 // optimal times back — UPDATE-ing each run's `time` and each iteration's `min`
@@ -103,7 +102,7 @@ for (const b of blockRows) {
 
 // ---- Compare iteration baselines (`min`) ----------------------------------
 // The baseline is the empty-placement time, so validateRun(shape, []) recomputes
-// it with the current code exactly as newIteration originally did.
+// it with the current code, as `newIteration` does when it stores `min`.
 
 type MinDelta = {
   id: number;

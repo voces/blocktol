@@ -20,7 +20,8 @@ export const decoBlocks: (Point & {
   thunder?: boolean;
   active?: boolean;
 })[] = [
-  // opposite of what the WALKTHROUGH wants, which is why the two no longer share
+  // The pre-start overlay's backdrop (Game/Prestart.tsx): a dense, busy maze.
+  // That is the opposite of what the WALKTHROUGH wants, so the two don't share
   // a board — see INTRO_FIXED below.
   { x: 17, y: 5 },
   { x: 15, y: 12 },
@@ -55,11 +56,7 @@ export const decoBlocks: (Point & {
   { x: 16, y: 9, local: true },
   { x: 2, y: 11, local: true },
   { x: 11, y: 12, local: true },
-  // Top-left player blocks the refund/move demos act on: the walkthrough removes
-  // (2,6) to show a refund and slides (2,4) down a tile to show a move. (3,2) was
-  // dropped from the starting maze to clear room for them. The one block the
-  // "place" demo adds — (16,14) — is deliberately NOT here: the preloaded maze is
-  // the full board minus that single piece, so the walkthrough places exactly one.
+  // Player (local) blocks in the top-left corner of the backdrop.
   { x: 2, y: 2, local: true },
   { x: 2, y: 6, local: true },
   { x: 2, y: 4, local: true },
@@ -68,12 +65,12 @@ export const decoBlocks: (Point & {
 export const decoCheckpoint: Point = { x: 10.5, y: 4.5 };
 
 // The walkthrough's own maze, and it is chosen, not drawn by hand. The dense
-// board above was the tutorial's too, and solving it showed why that was a
-// problem: 33 path nodes, an out-and-back through the checkpoint (the runner
-// walks a segment, then walks it again backwards), and the right-hand corridor
-// travelled three times. A first-time viewer reads that as a runner wandering
-// at random — the exact opposite of the point, which is that it takes the
-// shortest route it can find and the player can only obstruct it.
+// backdrop above makes a bad tutorial board: its route is 33 path nodes, with
+// an out-and-back through the checkpoint (the runner walks a segment, then
+// walks it again backwards) and the right-hand corridor travelled three times.
+// A first-time viewer reads that as a runner wandering at random — the opposite
+// of the point, which is that it takes the shortest route it can find and the
+// player can only obstruct it.
 //
 // So this one was searched for. Its bare route is four nodes and no segment is
 // walked twice:
@@ -87,7 +84,7 @@ export const decoCheckpoint: Point = { x: 10.5, y: 4.5 };
 //
 // The search's OTHER objective was the drag (see BEATS): a maze where nudging a
 // placement one cell visibly changes everything. That is what picked this board
-// over the alternatives, now that the clock no longer shows per-block gains.
+// over the alternatives, since the clock doesn't show per-block gains.
 const INTRO_FIXED: Point[] = [
   { x: 16, y: 8 },
   { x: 10, y: 14 },
@@ -174,7 +171,7 @@ const MOVE_MS = 900;
 // longer gap between them. The two want opposite things. The lead-in only has
 // to let the new words land, and a long one is dead air with the reader already
 // looking at the board; the gaps between are what stop three blocks appearing
-// as one event, and they were too tight to read as three separate placements.
+// as one event, so they must be wide enough to read as separate placements.
 const LEAD_MS = 400;
 const STEP_MS = 700;
 // After the last beat lands, before the runner goes.
@@ -346,9 +343,9 @@ export const IntroBoard = (
     }
   >();
   // The runner is HELD rather than unmounted — for the spawn beat, and for the
-  // stop on the checkpoint. Unmounting was how the halt used to be built, and it
-  // read as the runner blinking out and reappearing somewhere else rather than
-  // stopping on the spot. (Runner handles a hidden tab as a pause of its own.)
+  // stop on the checkpoint. Unmounting reads as the runner blinking out and
+  // reappearing somewhere else rather than stopping on the spot. (Runner
+  // handles a hidden tab as a pause of its own.)
   const [paused, setPaused] = useState(true);
   // The last completed run's time. The clock holds it through the build, where
   // the runner isn't moving and so has nothing to say.
@@ -551,10 +548,11 @@ export const IntroBoard = (
 
   // The built run, released once the last beat has landed — the maze is locked
   // from that moment, which is the earliest it can honestly go, since a real
-  // build is finished before the runner runs. The drag is no longer that beat,
-  // so there is nothing left animating: the scheduler holds the re-place off
-  // until the block has finished sliding. There is no separate finale step and
-  // no dead wait: the run starts under the tip that was already up.
+  // build is finished before the runner runs. The last beat is the re-place,
+  // not the drag, so nothing is still animating: the scheduler holds the
+  // re-place off until the dragged block has finished sliding. There is no
+  // separate finale step and no dead wait: the run starts under the tip that
+  // was already up.
   useEffect(() => {
     if (beatsDone < LAST_BEAT) return;
     const timer = setTimeout(() => {
@@ -572,7 +570,7 @@ export const IntroBoard = (
 
   const onFinish = useCallback(() => {
     // Which run just ended is decided by the BEATS, not by the step: the opening
-    // tip now hands over the moment it is clicked, so the bare run routinely
+    // tip hands over the moment it is clicked, so the bare run routinely
     // finishes with the step already moved on — and keying off the step would
     // read that as the built run and close the tour early.
     // Either way the clock takes over from the live walk, which stops a frame
@@ -615,8 +613,7 @@ export const IntroBoard = (
   // leftward, which is what keeps a right-hand target's box on the board), and a
   // `top`/`bottom` does the same vertically, with `bottom` sitting the box ABOVE
   // its target. A block at cell (x, y) spans x/20 … (x+1)/20 across, so each tip
-  // below points at the exact piece it is talking about — re-derived for this
-  // maze, the way the originals were for theirs.
+  // below points at the exact piece it is talking about.
   const tips: [ComponentChildren, Record<string, unknown>][] = [
     // The checkpoint. It draws 0.9 wide at cp+0.55, so its centre is cp+1 —
     // (3.5,14.5) centres at 22.5% across, with its top edge at 75%.

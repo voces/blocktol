@@ -93,11 +93,11 @@ export const withKeepalive = <T>(fn: () => T): T => {
 //                   local id on success, so a blind retry would act on the stale
 //                   id. (The server op is itself an idempotent no-op on repeat.)
 //   - reportClientError — retrying error reports risks amplifying a bad loop.
-// setFlags IS retryable: it writes the whole flag set as an absolute value, so a
-// repeat lands the same rows.
-// commitRun IS retryable: free play's commit carries a per-attempt clientId and
-// the server INSERT is guarded on it (NOT EXISTS), so a repeat is a no-op. Old
-// clients' bare commit is an idempotent flip-to-non-void, also safe to repeat.
+// setFlags IS retryable: it writes the whole flag set as an absolute value, so
+// a repeat lands the same rows. commitRun IS retryable: free play's commit
+// carries a per-attempt clientId and the server INSERT is guarded on it (NOT
+// EXISTS), so a repeat is a no-op. A legacy client's bare commit is an
+// idempotent flip-to-non-void, also safe to repeat.
 const RETRYABLE = new Set<keyof BlocktolApi>([
   "list",
   "dayView",
@@ -194,7 +194,7 @@ export const prime = <Method extends keyof BlocktolApi>(
 // board-loader sends AND the standings the dock reacts with, off the one
 // request. If the source fails at transport (or comes back an auth error) the
 // primed promise rejects and the consumer falls through to its own real fetch —
-// a composite hiccup degrades to the old per-call path.
+// a composite hiccup degrades to the per-call path.
 export const primeFrom = <Method extends keyof BlocktolApi, Source>(
   method: Method,
   input: Parameters<BlocktolApi[Method]>[0],
@@ -228,7 +228,7 @@ export const primeFrom = <Method extends keyof BlocktolApi, Source>(
 //
 // If boot fails at transport (or returns a top-level auth error) each slice
 // rejects, and the consumer's existing fall-through fetches that one method for
-// real — a boot hiccup degrades to the old per-call path, not a broken boot.
+// real — a boot hiccup degrades to the per-call path, not a broken boot.
 export const primeBoot = (
   input: Parameters<BlocktolApi["boot"]>[0],
   listInputs: Parameters<BlocktolApi["list"]>[0][],
@@ -267,7 +267,7 @@ export const primeBoot = (
   // showBoard / the dock fire for that day, so it collapses onto this one boot
   // too. A slice that finds no linked day THROWS, so the consumer falls through
   // to its own real fetch (the deep-link handler already tolerates an
-  // unresolvable date) — a linked miss degrades to the old per-call path.
+  // unresolvable date) — a linked miss degrades to the per-call path.
   if (input.day) {
     const [ly, lm, ld] = input.day;
     const linkedSlice = (
@@ -313,12 +313,12 @@ export const primeBoot = (
 
 // Relay a failed request to the server's log. Through the shared report
 // throttle (util/reportGate.ts), keyed per method + status: every error
-// response used to fire its own report, so a polling or retrying caller hitting
-// the same fault sent one per attempt — the amplification the global handlers'
-// dedupe already prevented for crashes. And never a failed REPORT:
-// reportClientError rides this same proxy, so during an outage every failed
-// report would otherwise fire another — an unbounded loop hammering the server
-// exactly when it's least healthy. Fire-and-forget; its own failure is
+// response would otherwise fire its own report, so a polling or retrying caller
+// hitting the same fault would send one per attempt — the amplification the
+// global handlers' dedupe already prevents for crashes. And never a failed
+// REPORT: reportClientError rides this same proxy, so during an outage every
+// failed report would otherwise fire another — an unbounded loop hammering the
+// server exactly when it's least healthy. Fire-and-forget; its own failure is
 // swallowed so it can't surface as an unhandled rejection.
 const reportFailedRequest = (
   method: string,

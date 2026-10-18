@@ -68,7 +68,7 @@ const mirrorCredential = async (): Promise<void> => {
     await cache.put(CRED_URL, new Response(getId()));
   } catch {
     // No Cache Storage (blocked site data): the SW simply can't self-heal, and
-    // the next app open re-registers as before.
+    // the next app open re-registers.
   }
 };
 

@@ -12,8 +12,6 @@ const getRandomValues = crypto.getRandomValues.bind(crypto) ??
 // id isn't a real secret — it just rides the authorization header for
 // convenience — so only collision resistance matters, and 64 bits stays
 // collision-free well past any realistic user count (birthday bound ~2^32).
-// (The old scheme was 32 chars: two base36 chars per byte, where each pair used
-// only 256 of its 1296 values — ~23% wasted even before the entropy drop.)
 const ID_BYTES = 8;
 const ID_LENGTH = 13;
 
@@ -79,7 +77,7 @@ export const getPendingLink = () => {
   return link && storedId && link !== storedId ? link : null;
 };
 
-// A link on a device with no stored id yet — the clean-adopt confirm (1d). The
+// A link on a device with no stored id yet — the clean-adopt confirm. The
 // gate shows "Continue as <name>?" rather than silently signing in. Null when
 // there's no link or the device already has an id (that path forks or is normal).
 export const getCleanLink = () => {
@@ -91,7 +89,7 @@ export const getCleanLink = () => {
 // into the link) or confirming a clean adopt.
 export const adoptId = (id: string) => storage.setItem("id", id);
 
-// Start over as a brand-new profile (1d's "not you? start a new game").
+// Start over as a brand-new profile ("not you? start a new game").
 export const startFreshId = () => {
   const id = randomId();
   storage.setItem("id", id);

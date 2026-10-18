@@ -13,8 +13,8 @@ import { GameStateContext } from "./useGameState.ts";
 
 const ATTEMPTS = 3;
 
-// The daily "Start attempt" gate. A ranked attempt no longer opens on load —
-// the player starts it explicitly here, so a background boot or refresh can't
+// The daily "Start attempt" gate. A ranked attempt never opens on load — the
+// player starts it explicitly here, so a background boot or refresh can't
 // silently spend one. Covers the board with a blur mask (themed for light and
 // dark) over a decorative, blurred copy of the tutorial maze — a real-looking
 // backdrop that is deliberately NOT today's puzzle, so nothing leaks. The

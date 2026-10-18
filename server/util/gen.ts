@@ -96,16 +96,15 @@ const checkRatingLiveness = async () => {
 //
 // It is NOT the only writer, though — the per-request backfill
 // (util/newIteration.ts `ensureDailyIterationId`) generates a missing day on
-// demand, because Deno Deploy preview deployments don't run `Deno.cron` and so
-// never reach this. That on-demand path was once removed for racing this one
-// (two isolates both check-then-create a duplicate), but `iteration.created` is
-// now UNIQUE (migration v14), so the duplicate INSERT is rejected rather than
-// standing — the DB is the mutex, and the two writers coexist safely.
+// demand, because Deno Deploy preview deployments (the only thing Deploy hosts)
+// don't run `Deno.cron` and so never reach this. The two writers can race (two
+// processes both check-then-create), but `iteration.created` is UNIQUE
+// (migration v14), so the duplicate INSERT is rejected rather than standing —
+// the DB is the mutex, and the two writers coexist safely.
 //
 // DISABLE_CRONS gates registration so a second instance sharing this DB (a
-// staging box, or the EC2 cohost while Deno Deploy still runs the crons) doesn't
-// double-generate. The write path is already race-safe, but skipping the
-// duplicate work is cleaner.
+// staging box, say) doesn't double-generate. The write path is already
+// race-safe, but skipping the duplicate work is cleaner.
 //
 // Each run ends with the retention sweep (util/retention.ts): old notifications
 // and never-used profiles, in bounded batches.
