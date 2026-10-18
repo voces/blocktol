@@ -20,7 +20,8 @@ auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
 them live. The authoritative files are `/etc/systemd/system/blocktol.service`,
 `/etc/nginx/sites-enabled/blocktol.conf` and
 `/etc/nginx/conf.d/blocktol-ratelimit.conf`, copied from these; keep them in
-sync.
+sync. The same holds for the box-level backup and journald files described under
+[Backups](#backups).
 
 ## Box facts (this cohost)
 
@@ -135,6 +136,69 @@ With the service healthy and the apex cert pre-issued (step 6):
    then delete the Deno `_acme-challenge.blocktol.com` CNAME permanently.
 4. **Disconnect the Deno Deploy GitHub integration** (app.deno.com) so the two
    don't both deploy on push to `prod`.
+
+## Backups
+
+Two independent layers, both box-wide (they cover every database on the cohost,
+not just blocktol's):
+
+- **EBS snapshots** — a daily AWS-side snapshot policy (configured in the
+  console, not on the box) of both volumes: the root volume, which holds
+  MariaDB's datadir `/var/lib/mysql`, and the `/data` volume, which holds the
+  VictoriaLogs/VictoriaTraces data and the dumps below. A snapshot of the
+  running server is crash-consistent, which InnoDB recovers from cleanly here:
+  every user table is InnoDB, `innodb_flush_log_at_trx_commit=1` and the
+  doublewrite buffer is on. Restores the whole box.
+- **Nightly logical dump** — `mariadb-nightly-dump` (+ its `.service`/`.timer`)
+  runs `mariadb-dump --all-databases --single-transaction` at 09:15 UTC
+  (`Persistent=`, so a missed run fires at next boot) into
+  `/data/mariadb-backups/all-<UTC timestamp>.sql.gz` (root-only, `0600`),
+  keeping 14 days (`KEEP_DAYS`). It runs as root over the unix socket, so no
+  password is stored, and refuses to run unless `/data` is mounted (`/data` is
+  `nofail` in fstab; an unmounted `/data` would otherwise fill `/`). Restores
+  one database without rolling back the rest. The `/data` snapshots carry the
+  dumps off the box too, so the dumps need no separate off-site copy.
+
+Install (as root):
+
+```bash
+install -m 750 deploy/mariadb-nightly-dump /usr/local/sbin/mariadb-nightly-dump
+install -m 644 deploy/mariadb-nightly-dump.service deploy/mariadb-nightly-dump.timer \
+  /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now mariadb-nightly-dump.timer
+systemctl start mariadb-nightly-dump.service   # one run now
+journalctl -u mariadb-nightly-dump -n 5        # "wrote /data/mariadb-backups/…"
+```
+
+Restore (the dump carries its own `CREATE DATABASE`/`USE` statements):
+
+```bash
+# every database
+zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb
+# one database only — --one-database skips statements for any other
+zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb --one-database blocktol-prod
+```
+
+Restoring over a live database replaces its tables with the dump's; to inspect
+first, load it into a scratch MariaDB instance.
+
+**After restoring `blocktol-prod`, re-apply data deletions.** A backup still
+holds every player who used "Delete my data" after it was taken, and the privacy
+page promises that deletion sticks. `scripts/reapplyErasures.ts` finds them by
+the hashed id each `deleteAccount` request logged (logs are kept 30 days, longer
+than any backup here) and anonymizes them again; its header has the exact
+VictoriaLogs query and invocation. Run it before reopening the game.
+
+Retention is what keeps backups compatible with deletion: a dump lives 14 days,
+and a snapshot (default policy, 14 days at most) can carry a dump up to 14 more,
+so erased data is out of every backup within about 30 days. The privacy page
+states that bound; lengthening either retention means updating it.
+
+**journald** — `journald-size.conf` (installed as
+`/etc/systemd/journald.conf.d/size.conf`, then
+`systemctl restart systemd-journald`) caps the persistent journal at 500M. It
+had grown to ~1.1G uncapped on the root volume.
 
 ## Operating
 

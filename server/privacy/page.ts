@@ -34,7 +34,7 @@ import {
 // i18n/privacy/en.json that changes what the page SAYS — not for a typo or a
 // rewording, and never for a translation. The history link beside it is the
 // exact record of every change.
-export const UPDATED = "2026-10-17";
+export const UPDATED = "2026-10-18";
 
 // The public commit history of the English source — the file IS the page's text,
 // which is why it's a catalog of its own rather than keys in i18n/en.json.

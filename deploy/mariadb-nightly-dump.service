@@ -1,0 +1,15 @@
+# Reference template — nothing reads this file live. The authoritative copy is
+# /etc/systemd/system/mariadb-nightly-dump.service, copied from here.
+[Unit]
+Description=Nightly MariaDB dump to /data/mariadb-backups
+After=mariadb.service
+Requires=mariadb.service
+# /data is mounted nofail; never dump into the bare mountpoint on /.
+RequiresMountsFor=/data
+ConditionPathIsMountPoint=/data
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mariadb-nightly-dump
+Nice=10
+IOSchedulingClass=idle

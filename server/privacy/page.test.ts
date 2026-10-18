@@ -51,7 +51,7 @@ Deno.test("the English page carries its links and no translation notice", () => 
   assert(html.includes("<h3>Delete my data</h3>"));
   assert(html.includes("<strong>Profile → Account</strong>"));
   // The date is rendered, not left as a placeholder.
-  assert(html.includes("Last updated October 17, 2026"));
+  assert(html.includes("Last updated October 18, 2026"));
 });
 
 Deno.test("every catalog locale renders completely", () => {

@@ -1,0 +1,13 @@
+# Reference template — nothing reads this file live. The authoritative copy is
+# /etc/systemd/system/mariadb-nightly-dump.timer, copied from here.
+[Unit]
+Description=Run the nightly MariaDB dump
+
+[Timer]
+# 09:15 UTC: clear of the blocktol crons (:00 gen, :30 rating).
+OnCalendar=*-*-* 09:15:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

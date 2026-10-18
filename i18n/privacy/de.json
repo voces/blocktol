@@ -92,8 +92,8 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Dein Profil und deine Builds werden aufbewahrt, solange du spielst, damit deine Statistiken und dein Verlauf erhalten bleiben. Lösche deine Daten (oben), um sie früher zu entfernen. In-App-Benachrichtigungen werden nach 90 Tagen gelöscht, und ein Profil, das nie gespielt hat, wird nach 30 Tagen entfernt. Diagnosedaten werden nach etwa 30 Tagen gelöscht und Server-Zugriffsprotokolle nach 14 Tagen.",
-    "hash": "1ce92c394889c7035b034179252dff1bd05ef61e079ca118336428c39b3b495e"
+    "message": "Dein Profil und deine Builds werden aufbewahrt, solange du spielst, damit deine Statistiken und dein Verlauf erhalten bleiben. Lösche deine Daten (oben), um sie früher zu entfernen. In-App-Benachrichtigungen werden nach 90 Tagen gelöscht, und ein Profil, das nie gespielt hat, wird nach 30 Tagen entfernt. Diagnosedaten werden nach etwa 30 Tagen gelöscht und Server-Zugriffsprotokolle nach 14 Tagen. Backups, die nur zur Wiederherstellung nach einem Ausfall aufbewahrt werden, werden nach höchstens 30 Tagen gelöscht; sollten wir jemals eines wiederherstellen, löschen wir erneut alle Daten, deren Löschung du von uns verlangt hattest.",
+    "hash": "33ca7f7fda9baaad648b5f63708b1748d7a6c0d05269b4cb98c83e7c0481c440"
   },
   "privacy.retention.heading": {
     "message": "Wie lange wir es aufbewahren",

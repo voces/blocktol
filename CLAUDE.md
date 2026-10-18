@@ -1134,6 +1134,11 @@ Dry-run by default, `--apply` to write; run locally against an env with
 - `comparePathing.ts` — quantify a pathing change against all stored runs before
   shipping it (with `--apply`, writes recomputed optimal times).
 - `comparePathViz.ts`, `genVapidKeys.ts` — path visualization / VAPID keygen.
+- `reapplyErasures.ts` — after restoring a backup, re-anonymizes every player
+  who used "Delete my data" since it was taken, matched by the `userHash` their
+  `deleteAccount` request logged (stdin, one per line). Backups (nightly dump +
+  EBS snapshots, kept ≤30 days — the bound the privacy page states) are
+  described in `deploy/README.md` "Backups".
 - `symbolicate.ts` (`deno task symbolicate <clientSha> < stack.txt`) — maps a
   minified client stack (`client.error`) back to source. The client bundle is
   minified and its map is never served (browsers don't apply maps to
