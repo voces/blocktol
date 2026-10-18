@@ -1,8 +1,7 @@
-// GET a buildable board WITHOUT starting a run (free play). Free play stages
-// the board and only opens a run on the first placement. Which boards are
-// stageable is util/boardAccess.ts's call: every day before the player's local
-// today is open, as is one they have spent their three ranked attempts on; their
-// own today (before that) and anything later is locked.
+// Fetch a buildable board WITHOUT starting a run (free play stages the board
+// client-side). Access is util/boardAccess.ts's call: days before the player's
+// local today are open, as is today once their three ranked attempts are spent;
+// their own today before that, and anything later, is locked.
 
 import { z } from "zod";
 import { cachedSolver, pathDuration } from "../../../common/pathing.ts";
@@ -29,18 +28,11 @@ export const getBoard = method(getBoardBody, true)(
       return ensureDailyIterationId(year, month, day);
     })();
 
-    // The gate (util/boardAccess.ts): a past day, or one whose ranked attempts
-    // are spent, is open; the caller's own today or a later day is locked.
-    //
-    // The locked answer is a plain { incomplete } (200), never an error. Many
-    // paths legitimately land on an unfinished today (the regrade refetch, a
-    // notification tap, boot's own linked-day slice for a today permalink, a
-    // calendar pick while parked on a past day), and the client relays EVERY
-    // error response to reportClientError from inside the api proxy, before the
-    // caller can swallow it — so a 403 would log a server-side error even where
-    // the call site ignores it. "Not yet" is a state, not a fault, and it leaks
-    // nothing either way — the same answer for today and for a future day,
-    // layout-free.
+    // Locked answers { incomplete } (200), never an error: many paths
+    // legitimately land on an unfinished today (regrade refetch, notification
+    // tap, boot's linked-day slice), and the client relays EVERY error response
+    // to reportClientError before the caller can swallow it. The answer is the
+    // same for today and a future day and reveals no layout.
     if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
       return { incomplete: true as const };
     }
@@ -50,17 +42,15 @@ export const getBoard = method(getBoardBody, true)(
       getOwnBest(userId, iteration),
       getIterationOtherBest(iteration, userId),
       iterationAttempts(userId, iteration),
-      // The player's own flags on this board (the splits tape's manual
-      // checkpoints). They ride the board response because that is the one call
-      // every free-play staging path already makes — boot, dayView and the
-      // board loaders all compose it — so the tape needs no fetch of its own.
+      // The splits tape's manual checkpoints. They ride this response because
+      // every staging path (boot, dayView, board loaders) already makes the
+      // call.
       getFlags(userId, iteration),
     ]);
 
     let path: Point[] | undefined;
     try {
-      // The base board's path, from the shared per-iteration solver — after
-      // the first stage of a board this is a cached copy, not a search.
+      // The shared per-iteration solver caches this after the first stage.
       path = cachedSolver(data.blocks, data.checkpoint).solve([]);
     } catch (err) {
       log.error(req, "invalid base path", { error: errText(err) });

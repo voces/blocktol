@@ -14,9 +14,8 @@ export const Crown = () => (
   </svg>
 );
 
-// The dock's expand affordance: an up-caret on mobile (the sheet rises from the
-// bottom), rotated to point left on desktop where the sheet is a side drawer
-// (see .standings-dock__chevron in the desktop media query).
+// The dock's expand caret: up on mobile (bottom sheet), rotated to point left
+// on desktop (side drawer); see .standings-dock__chevron.
 export const Chevron = () => (
   <svg width="14" height="9" viewBox="0 0 14 9" aria-hidden="true">
     <path

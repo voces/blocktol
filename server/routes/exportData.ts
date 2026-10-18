@@ -5,8 +5,8 @@ import { deserializeFlags } from "../util/flags.ts";
 import { deserializeRun } from "../util/run.ts";
 import { method } from "./apiHelpers.ts";
 
-// A stored JSON column (notification payload), parsed defensively — a legacy or
-// malformed blob comes back as the raw string rather than throwing the export.
+// Parse a stored JSON column (notification payload); a malformed blob comes
+// back as the raw string rather than failing the export.
 const safeJson = (raw: string): unknown => {
   try {
     return JSON.parse(raw);
@@ -15,12 +15,10 @@ const safeJson = (raw: string): unknown => {
   }
 };
 
-// "Export my data" (GDPR access / portability): everything we hold about the
-// caller, as one JSON document the client offers as a download. Authed by the
-// header id. The maze blob is deserialized to pieces and the JSON columns are
-// parsed so the file is human-readable rather than opaque; push encryption keys
-// are omitted (crypto material, not meaningful personal data — the endpoint that
-// identifies the subscription is included).
+// "Export my data" (GDPR access / portability): everything held about the
+// caller, as one JSON document the client offers as a download. Mazes and JSON
+// columns are decoded so the file is readable. Push encryption keys are omitted
+// (crypto material); the subscription endpoint is included.
 export const exportData = method(z.object({}).optional(), true)(
   async ({ userId }) => {
     const [
@@ -68,8 +66,7 @@ export const exportData = method(z.object({}).optional(), true)(
         endpoint: s.endpoint,
         created: Number(s.created),
       })),
-      // The player's splits flags, per board (see common/splits.ts) —
-      // deserialized to cells like the maze above.
+      // Splits flags per board (see common/splits.ts), decoded to cells.
       flags: flags.map((f) => ({
         iteration: f.iteration,
         cells: deserializeFlags(f.data),

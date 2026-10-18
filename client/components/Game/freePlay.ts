@@ -1,15 +1,14 @@
-// Free play runs entirely on the client until it executes. There is no
-// startRun/updateRun round trip: the maze is built and the 60s window is enforced
-// locally, the in-progress state is mirrored to localStorage so a reload resumes,
-// and the server is touched exactly once — at commit — as a single idempotent
-// INSERT keyed by a per-attempt clientId (see server db/run.ts insertFreePlayRun).
-// This module owns that per-attempt id and the local-resume record.
+// Free play runs on the client until it executes: no startRun/updateRun. The
+// 60s window is enforced locally, the in-progress state is mirrored to
+// localStorage so a reload resumes, and the server is touched once, at commit,
+// by a single idempotent INSERT keyed by a per-attempt clientId (see
+// insertFreePlayRun in server/db/run.ts). This module owns that id, the
+// local-resume record and the commit outbox.
 //
-// Trusting the client here is deliberate and safe: free play never feeds the
-// ELO/ranked field, a board's own-today is locked until its three ranked
-// attempts are spent (util/boardAccess.ts), and the server still recomputes the
-// time from the submitted maze — only the 60s build budget is taken on trust,
-// which a determined player could evade offline anyway.
+// Trusting the client is safe: free play never feeds ELO, a player's own today
+// is locked until its three ranked attempts are spent (util/boardAccess.ts),
+// and the server recomputes the time from the submitted maze. Only the 60s
+// build budget is taken on trust.
 
 import { Point } from "../../../common/types.ts";
 import { api } from "../../api.ts";
@@ -19,8 +18,8 @@ import { getTimeZone } from "../../util/timeZone.ts";
 
 const KEY = "blocktol.freeplay";
 
-// A stored in-progress attempt: the day it's on, its idempotency id, the locally
-// enforced deadline (ms epoch), and the maze built so far.
+// A stored in-progress attempt: iteration, idempotency id, local deadline (ms
+// epoch) and the maze built so far.
 export type FreePlayState = {
   iteration: number;
   clientId: string;
@@ -28,8 +27,8 @@ export type FreePlayState = {
   blocks: (Point & { thunder?: boolean })[];
 };
 
-// The id the current attempt commits under. Held in module state (one active
-// game) and mirrored into every persist() so a resumed attempt keeps the same id.
+// The id the current attempt commits under (module state: one active game),
+// stored by persistFreePlay so a resumed attempt keeps it.
 let clientId: string | null = null;
 
 // Begin a free-play attempt (its first placement): mint the idempotency id.
@@ -37,13 +36,11 @@ export const beginFreePlay = () => {
   clientId = crypto.randomUUID();
 };
 
-// The id for the run now committing; mints one if somehow unset so the write
-// still lands.
+// The id for the run now committing; mints one if unset so the write lands.
 export const freePlayClientId = () => (clientId ??= crypto.randomUUID());
 
-// Mirror the in-progress attempt so a reload resumes it. Called on every edit —
-// cheap (a small JSON blob) and synchronous. Best-effort: a storage failure just
-// means no resume, never a broken build.
+// Mirror the in-progress attempt so a reload resumes it. Called on every edit.
+// Best-effort: a storage failure means no resume, never a broken build.
 export const persistFreePlay = (
   iteration: number,
   deadline: number,
@@ -66,43 +63,36 @@ export const persistFreePlay = (
   } catch { /* storage unavailable/full — resume is best-effort */ }
 };
 
-// The in-flight commit for the attempt that just executed. runFinish awaits
-// this before re-staging, so a slow commit — e.g. one retrying across a deploy
-// restart that dropped the connection — can't let the re-stage's getBoard fetch
-// a recents list that predates the run and drop it from the panel. Defaults
-// resolved (an empty attempt commits nothing).
+// The in-flight commit for the attempt that just executed. runFinish awaits it
+// before re-staging, so a slow (retrying) commit can't let getBoard return
+// recents that predate the run. Resolved by default (an empty attempt commits
+// nothing).
 let pendingCommit: Promise<unknown> = Promise.resolve();
 
 export const setPendingCommit = (p: Promise<unknown>) => {
-  // Swallow rejection here so awaiting it never throws; the caller reports the
-  // ultimate failure separately.
+  // Swallowed so awaiting never throws; the caller reports the failure.
   pendingCommit = p.catch(() => {});
 };
 
 export const awaitPendingCommit = () => pendingCommit;
 
-// The commit outbox. The in-progress record above is dropped the moment a run
-// executes (it must not resume), but the run isn't the server's until commitRun
-// LANDS — and a commit can fail outright: the api client's retries span a few
-// seconds, a deploy's restart or a dead connection can outlast them, and a
-// reload mid-animation abandons the request. Each executed maze is therefore
-// parked here, with its client id, BEFORE the commit is sent, and removed only
-// once the server has answered for it. What's left is re-sent at the next boot
-// and whenever the browser comes back online. Replaying is safe by
-// construction: the server's INSERT is idempotent on client id, so a commit that
-// did land but whose answer was lost is a no-op the second time.
+// The commit outbox. The in-progress record is dropped at execution, but the
+// run isn't the server's until commitRun LANDS, and a commit can fail outright
+// (a deploy restart outlasting the api client's retries, a reload
+// mid-animation). Each executed maze is parked here with its client id BEFORE
+// the send and removed only once the server has answered for it. What's left is
+// re-sent at the next boot and on `online`. Replay is safe: the INSERT is
+// idempotent on client id, so a commit that landed but lost its answer is a
+// no-op.
+//
+// At most ONE run per board per player: the best. Only the best can move the
+// PB field, the lost-top notice or the Discord top build, so a worse run isn't
+// worth re-sending. Every run is still SENT at execution; only the retry queue
+// is thinned. A tie keeps the earlier run.
+//
+// Entries older than OUTBOX_MAX_AGE_MS are dropped; OUTBOX_MAX is a storage
+// backstop.
 const OUTBOX_KEY = "blocktol.freeplay.outbox";
-//
-// It holds at most ONE run per board (per player): the best one. What a queued
-// run is for is the player's record on that board — the PB field, the lost-top
-// notice, the Discord top build — and only the best run can move any of those,
-// so a worse run that fails to land is not worth re-sending once a better one
-// is waiting (or has landed). Every run is still SENT at execution; only the
-// retry queue is thinned. A tie keeps the earlier run, which reached the time
-// first.
-//
-// Beyond that, a week-old run is not worth resurrecting, and OUTBOX_MAX is
-// only a storage backstop (one per board makes it unreachable in practice).
 const OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 const OUTBOX_MAX = 50;
 
@@ -110,19 +100,17 @@ type OutboxEntry = {
   iteration: number;
   clientId: string;
   blocks: (Point & { thunder?: boolean })[];
-  // The run's time as computed locally (the same engine the server recomputes
-  // it with), so the queue can keep only the best run per board.
+  // The run's local time, so the queue can keep only the best per board.
   time: number;
-  // The device id the run was built under. A queued run is only ever sent as
-  // its own player — after a move-device link swapped this device's id, the
-  // entry waits (and ages out) rather than landing on someone else's board.
+  // The device id the run was built under. A queued run is sent only as its
+  // own player: after a move-device link swapped the id, the entry waits (and
+  // ages out) rather than landing on another player's board.
   user: string;
   at: number;
-  // The zone the run was built in, for the server's board gate (a board is
-  // only committable before "today" in it, or once its ranked attempts are
-  // spent). Captured at execution rather than re-read at send, so a replay
-  // after travel is judged where the run was played. Absent on entries queued
-  // by an older bundle; the server reads that as the westernmost zone.
+  // The zone the run was built in, for the server's board gate. Captured at
+  // execution so a replay after travel is judged where it was played. Absent on
+  // entries from an older bundle; the server reads that as the westernmost
+  // zone.
   timeZone?: string;
 };
 
@@ -149,9 +137,9 @@ const sending = new Set<string>();
 
 type CommitResult = Awaited<ReturnType<typeof api.commitRun>>;
 
-// A server 5xx (`{ error, status: 500 }` — the commit's DB write failed) is
-// worth trying again later; any other error is a verdict on the maze (illegal,
-// unauthenticated) that a replay would only hear again.
+// A server 5xx (`{ error, status: 500 }`, the DB write failed) is worth
+// retrying; any other error is a verdict on the maze (illegal, unauthenticated)
+// that a replay would only hear again.
 const settled = (r: CommitResult) =>
   !("error" in r) || !("status" in r) || !(Number(r.status) >= 500);
 
@@ -178,10 +166,10 @@ const enqueue = (entry: OutboxEntry) => {
   writeOutbox([...queued.filter((e) => !sameBoard(e)), entry]);
 };
 
-// Commit the attempt that just executed: queue it in the outbox (if it's the
-// best run waiting for its board), then send it. Resolves/rejects like a plain
-// commitRun; an unanswered run that was queued stays for flushFreePlayOutbox. A
-// landed commit also drains any backlog, since the connection is evidently back.
+// Commit the attempt that just executed: queue it (if it's the best waiting for
+// its board), then send it. Resolves/rejects like commitRun; an unanswered
+// queued run stays for flushFreePlayOutbox. A landed commit also drains the
+// backlog.
 export const commitFreePlay = (
   iteration: number,
   blocks: (Point & { thunder?: boolean })[],
@@ -227,19 +215,18 @@ export const flushFreePlayOutbox = async () => {
   }
 };
 
-// Forget every queued commit (account erasure — they're the erased player's).
+// Forget every queued commit (account erasure: they are the erased player's).
 export const clearFreePlayOutbox = () => writeOutbox([]);
 
-// Boot wiring: drain what an earlier session left once the boot requests have
-// had the wire to themselves, and again whenever connectivity returns.
+// Boot wiring: drain earlier sessions' leftovers after the boot requests have
+// had the wire to themselves, and again on `online`.
 export const installFreePlayOutbox = () => {
   setTimeout(() => flushFreePlayOutbox(), 3_000);
   globalThis.addEventListener("online", () => flushFreePlayOutbox());
 };
 
-// Drop the local record and the id. Called at execution (the commit outbox
-// holds the run from there) and on re-stage/abandon (a fresh board must not
-// resume the old build).
+// Drop the local record and the id: at execution (the outbox holds the run from
+// there) and on re-stage/abandon.
 export const clearFreePlay = () => {
   clientId = null;
   try {
@@ -263,12 +250,10 @@ const readRecord = (): FreePlayState | null => {
   }
 };
 
-// A resumable attempt for `iteration`, or null: present, same day, its window
-// still open, and non-empty. Adopts the stored id so the resumed attempt commits
-// idempotently under it. A non-matching record is never resumed onto the wrong
-// board but is deliberately KEPT, not deleted: navigating away (another day, a
-// reviewed maze) doesn't abandon the build — its window keeps running, and
-// coming back within it resumes.
+// A resumable attempt for `iteration`, or null: same iteration, window still
+// open, non-empty. Adopts the stored id so the commit is idempotent under it. A
+// non-matching record is KEPT, not deleted: navigating away doesn't abandon the
+// build, and coming back within its window resumes.
 export const resumableFreePlay = (
   iteration: number,
   now: number,
@@ -285,10 +270,9 @@ export const resumableFreePlay = (
 };
 
 // The stored attempt for `iteration` REGARDLESS of its window (non-empty only).
-// The expiry hand-off — a build executing while its owner reviews another maze —
-// needs the record at exactly the moment the deadline check starts failing, so
-// this skips it. Adopts the stored id like a resume does, so the commit still
-// lands under the attempt's own idempotency key.
+// The expiry hand-off (a build executing while its owner reviews another maze)
+// needs the record just as the deadline check starts failing. Adopts the stored
+// id like a resume, so the commit lands under the attempt's own key.
 export const pendingFreePlay = (iteration: number): FreePlayState | null => {
   const state = readRecord();
   if (

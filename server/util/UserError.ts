@@ -10,8 +10,7 @@ export class UserError extends Error {
   }
 }
 
-// A request for something that doesn't exist (an unknown iteration id): the
-// caller's fault, like any UserError, but answered 404 rather than 400 (see
-// Router.route's catch) — and, like any UserError, never logged as a server
-// error.
+// A request for something that doesn't exist (an unknown iteration id). Like
+// any UserError it is the caller's fault and not logged as an error, but
+// Router.route answers 404 instead of 400.
 export class NotFoundError extends UserError {}

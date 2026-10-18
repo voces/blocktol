@@ -15,10 +15,9 @@ import {
 } from "./interaction.ts";
 import { Verdict } from "./verdict.ts";
 
-// The board's mode — one name for what the sentinels (time / staged / viewing
-// / run) encode in combination. Derived, not enforced: writers still set the
-// primitives, but consumers get a legal state by construction instead of
-// re-deriving the combination themselves.
+// The board's mode: one name for what the sentinels (time / staged / viewing /
+// run) encode together. Derived, not enforced; writers still set the
+// primitives.
 export type BoardPhase =
   | "loading" // nothing fetched yet (boot)
   | "prestart" // a daily attempt is ready but unstarted (Start attempt overlay)
@@ -40,13 +39,11 @@ export const GameStateContext = createContext<
 );
 
 export const useGameState = () => {
-  // The local block currently grabbed for a drag (repositioning), if any.
-  // `startX/startY` is the cell the pointer pressed in and `startClientX/Y` the
-  // raw press point in screen pixels; `dragged` sticks true only once the pointer
-  // both leaves the pressed cell AND travels past a small pixel slop — so a tap
-  // (or a jitter, or the shift the placing zoom slides under a held finger)
-  // doesn't nudge the block, and a return-to-origin release snaps back rather
-  // than deleting.
+  // The local block grabbed for a drag, if any. `startX/startY` is the pressed
+  // cell, `startClientX/Y` the press point in screen pixels. `dragged` sticks
+  // true only once the pointer leaves the cell AND travels past a small pixel
+  // slop, so a tap, jitter, or the placing zoom's shift under a held finger
+  // doesn't nudge the block.
   const dragRef = useRef<
     | {
       origin: Point & { local?: boolean; thunder?: boolean; active?: boolean };
@@ -58,21 +55,17 @@ export const useGameState = () => {
     }
     | null
   >(null);
-  // True while a fresh-block placement press is in progress (pressed an empty
-  // cell with bricks in hand, not grabbing an existing block). Lets the hover
-  // logic treat the moving preview over any block as an invalid spot (a red
-  // preview) rather than the tap-to-upgrade preview, which is meant for a bare
-  // hover over your own block. Cleared on release.
+  // True while a fresh-block placement press is in progress (an empty cell,
+  // not a grabbed block), so the hover logic shows the preview over any block
+  // as invalid (red) rather than as the tap-to-upgrade preview. Cleared on
+  // release.
   const placingRef = useRef(false);
   const [checkpoint, _setCheckpoint] = useState<Point>({ x: -2, y: -2 });
   const [blocks, _setBlocks] = useState<ReadonlyArray<BoardBlock>>([]);
-  // Mirrors of the board itself, for the same reason the budgets have them
-  // (below): `viewMaze`'s callers are not all synchronous with the render they
-  // were created in — the today-result chips and the profile's view-best stage
-  // another day first and overlay the maze in the response's `.then`, so the
-  // render-state board they closed over belongs to the day they left. Releasing
-  // the runner over a review needs the CURRENT board's fixed pieces and
-  // checkpoint, so it reads them here.
+  // Mirrors of the board, like the budgets' (below). `viewMaze` callers (the
+  // today-result chips, the profile's view-best) stage another day and overlay
+  // the maze in a `.then`, so the board in their closure is the day they left.
+  // `viewMaze` needs the CURRENT fixed pieces and checkpoint.
   const blocksRef = useRef<ReadonlyArray<BoardBlock>>(blocks);
   const checkpointRef = useRef(checkpoint);
   const setBlocks: typeof _setBlocks = (b) => {
@@ -85,27 +78,23 @@ export const useGameState = () => {
       : c;
     _setCheckpoint(c);
   };
-  // The local blocks the SERVER last accepted: seeded when a board loads
-  // (startRun / getBoard / summary resume) and advanced on each confirmed
-  // updateRun save. Edits stay optimistic; when a save comes back expired or
-  // rejected, the board snaps back to this maze — the one the run will
-  // actually execute (see the run-saver handlers wired in useInit).
+  // The local blocks the SERVER last accepted: seeded when a board loads and
+  // advanced on each confirmed updateRun save. An expired or rejected save
+  // snaps the board back to this maze (see the run-saver handlers in useInit).
   const savedBlocksRef = useRef<ReadonlyArray<BoardBlock>>([]);
-  // Transient implosion ghosts: where a reverted (never-persisted) block just
-  // vanished, a short puff-then-collapse plays so the removal reads as
-  // deliberate rather than a glitch. Each ghost self-clears ~0.4s after spawn.
+  // Transient implosion ghosts where a reverted (never-persisted) block
+  // vanished. Each self-clears ~0.4s after spawn.
   const [implosions, setImplosions] = useState<
     ReadonlyArray<Point & { id: number; thunder?: boolean }>
   >([]);
-  // The iteration's full brick/power budget, captured when the board loads (a
-  // resumed run adds back what it has already placed). -1 until a board has
-  // loaded, which is also how the two chips hide themselves. This is STATE; the
-  // remaining counts are not — see the derivation below.
+  // The iteration's full brick/power budget, set when the board loads (a
+  // resumed run adds back what it placed). -1 until a board has loaded, which
+  // also hides the two chips. These totals are STATE; the remaining counts are
+  // derived, below.
   const [bricksTotal, _setBricksTotal] = useState(-1);
   const [powerTotal, _setPowerTotal] = useState(-1);
-  // Mirrors of the two totals, readable without waiting for a re-render — the
-  // same trick `time` uses below. `budgetNow` reads them so a gesture is judged
-  // against the board on screen (see below).
+  // Mirrors of the totals readable before a re-render, like `timeRef`;
+  // `budgetNow` reads them.
   const bricksTotalRef = useRef(-1);
   const powerTotalRef = useRef(-1);
   const setBricksTotal: typeof _setBricksTotal = (n) => {
@@ -122,18 +111,14 @@ export const useGameState = () => {
   };
   /**
    * The remaining brick/power counts: the board's totals minus the maze on it.
-   * NOT state — there is nothing here a render can't see, and holding it as
-   * state is what let it be wrong.
+   * NOT state.
    *
-   * Do not step it per gesture (-1 on a placement, +1 on a delete): a gesture
-   * landing before Preact re-runs the input effects writes a stale board that
-   * puts a deleted block back after its refund already landed, so the HUD
-   * offers a brick the iteration's budget never had. Spending it builds a maze
-   * one piece over budget, which `validateRun` rejects at commit ("too many
-   * blocks") — free play's single round trip, so the run is lost. Derived, the
-   * board is the only witness: whatever a race writes back, the chips describe
-   * THAT maze, and every path that changes the maze (an edit, a resume, a
-   * revert, a review) is correct by construction.
+   * Do not step it per gesture (-1 on a placement, +1 on a delete): a stale
+   * board write can put a deleted block back after its refund landed, so the
+   * HUD offers a brick the budget never had. Spending it builds a maze one
+   * piece over, which `validateRun` rejects at commit ("too many blocks"),
+   * losing the free-play run. Derived from the board, the chips always
+   * describe THAT maze.
    *
    * The totals carry the -1 "no board loaded" sentinel, so `clear`/prestart
    * blank the chips by clearing the budget rather than the count.
@@ -147,10 +132,9 @@ export const useGameState = () => {
     [blocks, bricksTotal, powerTotal],
   );
   /**
-   * The same figure at POINTER time rather than at render time, for the input
-   * hooks: a gesture landing within a frame of the previous one is judged
-   * against the board as it stands, not as the render that registered the
-   * listener saw it. Same function, same inputs — only the instant differs.
+   * The same figure at POINTER time, for the input hooks: a gesture within a
+   * frame of the previous one is judged against the board as it stands, not as
+   * the render that registered the listener saw it.
    */
   const budgetNow = () =>
     mazeBudget(blocksRef.current.filter((b) => b.local), {
@@ -158,46 +142,41 @@ export const useGameState = () => {
       power: powerTotalRef.current,
     });
   const [time, _setTime] = useState(-2);
-  // Handlers registered once (the input hooks) read the clock through this
-  // mirror rather than putting `time` in their dependency arrays, which would
-  // re-register the global listeners on every tick.
+  // The input hooks read the clock through this mirror; `time` in their
+  // dependency arrays would re-register the global listeners every tick.
   const timeRef = useRef(time);
   const setTime: typeof _setTime = (t) => {
     timeRef.current = typeof t === "function" ? t(timeRef.current) : t;
     _setTime(t);
   };
-  // Wall-clock end of the build window (ms epoch), set when a run loads. The
-  // countdown derives from it (see useClock) instead of decrementing, so a
-  // background-tab-throttled interval can't leave the client "building" after
-  // the server's window closed. Null while no countdown should tick (staged
-  // free play before the opening placement's startRun response).
+  // Wall-clock end of the build window (ms epoch). The countdown derives from
+  // it (see useClock) rather than decrementing, so a throttled background-tab
+  // interval can't leave the client "building" past the window. Null while no
+  // countdown ticks (staged free play before the opening placement).
   const deadlineRef = useRef<number | null>(null);
   // The iteration currently loaded on the board (ranked or free-play).
   const [iteration, setIteration] = useState<number>();
   // Free play stages the board without a run: `staged` freezes the build clock
-  // (a placement, not the timer, opens the run); `freePlay` marks the whole
-  // attempt as unranked so it re-stages rather than starting a ranked run when
-  // it finishes.
+  // (a placement opens the run); `freePlay` marks the attempt unranked, so it
+  // re-stages instead of starting a ranked run when it finishes.
   const [staged, setStaged] = useState(false);
   const [freePlay, setFreePlay] = useState(false);
-  // A ranked daily attempt is ready to start but hasn't — the "Start attempt"
-  // overlay is up over an inert, empty board (the day's real pieces are NOT
-  // staged; starting is an explicit action). Drives the "prestart" phase.
+  // A daily attempt is ready but unstarted: the "Start attempt" overlay is up
+  // over an inert, empty board (the day's pieces are NOT staged). Drives the
+  // "prestart" phase.
   const [prestart, setPrestart] = useState(false);
-  // Field / personal bests and the iteration floor, captured when a board loads.
-  // Free play colours the live timer by the run's score in [min, best] and reads
-  // a finished run's milestone off these (see verdict.ts). NaN until a board with
-  // this data has loaded; ownBest is null when you've no prior run on it.
+  // Field / personal bests and the iteration floor, set when a board loads.
+  // Free play colours the live timer by the score in [min, best] and reads a
+  // finished run's milestone off these (see verdict.ts). NaN until loaded;
+  // ownBest is null with no prior run.
   const [min, setMin] = useState(NaN);
   const [best, setBest] = useState(NaN);
   const [ownBest, setOwnBest] = useState<number | null>(null);
   // The just-finished free-play run's milestone (personal best / record /
-  // supreme), held for a beat so the timer pill and floating badge can celebrate
-  // it before the board re-stages. Undefined the rest of the time.
+  // supreme), held until the board re-stages.
   const [verdict, setVerdict] = useState<Verdict>();
-  // True while reviewing a past maze (a static, non-playable view). The HUD
-  // surfaces a Play button in this state so there's an obvious way back to a
-  // live board.
+  // True while reviewing a past maze (static, non-playable); the HUD shows a
+  // Play button.
   const [viewing, setViewing] = useState(false);
   const grid = useRef(newGrid()).current;
   const [run, setRun] = useState<
@@ -208,16 +187,15 @@ export const useGameState = () => {
     }
   >();
   const [date, setDate] = useState(NaN);
-  // Mobile-only: the full-screen calendar picker's open state. Opened by the
-  // header calendar button, closed by picking a day or dismissing. Desktop shows
-  // the calendar inline and ignores this.
+  // Mobile-only: the full-screen calendar picker's open state (desktop shows
+  // the calendar inline).
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [attempts, setAttempts] = useState<
     MessageMap["getDailySummary"]["attempts"]
   >();
   const [attemptsRemaining, setAttemptsRemaining] = useState(-1);
-  // The completed attempts on the maze currently being viewed (feeds the
-  // attempts panel), independent of the `attempts` that trigger the result modal.
+  // The completed attempts on the board being viewed (the attempts panel),
+  // separate from the `attempts` that trigger the result modal.
   const [viewedAttempts, setViewedAttempts] = useState<
     MessageMap["getDailySummary"]["attempts"]
   >([]);
@@ -244,22 +222,19 @@ export const useGameState = () => {
     dragMoved.value = false;
   };
 
-  // Raise the daily "Start attempt" overlay: a clean, inert board with the run
-  // cleared and the clock parked. The day's real pieces are deliberately NOT
-  // laid out — starting is an explicit action (the Start button fires the
-  // fetch-and-start `startRun`), so nothing here can leak the puzzle or open a
-  // run. `time` leaves loading (-2) so the phase resolves to "prestart", and
-  // sits at -1 so the input hooks stay inert until Start opens the run.
+  // Raise the daily "Start attempt" overlay: a clean, inert board. The day's
+  // pieces are NOT laid out (the Start button fires `startRun`), so nothing
+  // here can leak the puzzle or open a run. `time` leaves loading (-2) so the
+  // phase resolves to "prestart", and sits at -1 so the input hooks stay inert.
   const enterPrestart = () => {
     setRun(undefined);
     setStaged(false);
     setFreePlay(false);
     setViewing(false);
     setVerdict(undefined);
-    // The overlay is always today's daily-in-waiting, so reset to today
-    // (iteration===undefined) — otherwise a prestart reached from another day
-    // strands the view there, leaking its standings behind the overlay and
-    // deep-linking a refresh back onto it.
+    // The overlay is always today's daily, so reset to today (undefined);
+    // otherwise a prestart from another day leaks that day's standings behind
+    // the overlay and deep-links a refresh back onto it.
     setIteration(undefined);
     setPrestart(true);
     setBlocks([]);
@@ -275,50 +250,37 @@ export const useGameState = () => {
     dragMoved.value = false;
   };
 
-  // Review a previously-built maze (a past attempt or your best) on the board:
-  // a non-playable view keeping the iteration's fixed pieces and checkpoint,
-  // with the reviewed maze as the local blocks. The runner is RELEASED over it
-  // (`replay`) — asking to see a maze means asking to see it run, and re-picking
-  // the same row runs it again. The one caller that doesn't want that is the
-  // review a just-finished free-play run lands in: it would replay the run you
-  // were already watching (see useInit).
+  // Review a previously-built maze (a past attempt or your best): a
+  // non-playable view keeping the iteration's fixed pieces and checkpoint, with
+  // the reviewed maze as the local blocks. `replay` RELEASES the runner over it
+  // (asking to see a maze means seeing it run). The one caller that opts out is
+  // the review a just-finished free-play run lands in (see useInit).
   const viewMaze = (
     maze: ReadonlyArray<Point & { thunder?: boolean }>,
     { replay = true }: { replay?: boolean } = {},
   ) => {
     setRun(undefined);
-    // Reviewing a past maze leaves the board inert (Play button); drop any
-    // lingering free-play verdict so it doesn't keep overriding the HUD.
+    // A lingering free-play verdict would override the HUD.
     setVerdict(undefined);
-    // A live free-play build's window does NOT pause while its owner reviews
-    // another maze, so its countdown stays on the clock — the HUD keeps showing
-    // it (with the reset button) and Play resumes the build with whatever is
-    // honestly left. Every other state parks the clock at -1 (inert board);
-    // the ticking clock alone can't make the board playable — the input hooks
-    // gate on `viewing`.
+    // A live free-play build's window does NOT pause during a review, so its
+    // countdown stays on the clock and Play resumes with what is left. Every
+    // other state parks the clock at -1. The ticking clock can't make the board
+    // editable: the input hooks gate on `viewing`.
     //
     // "A build is live" is the DEADLINE, not `staged`: a caller that staged a
-    // board moments ago and overlays a maze in the response's `.then` (the
-    // today-result chips, view-best, and the review the finished free-play run
-    // lands in) is running with the previous render's `staged` in its closure,
-    // while `timeRef` already reads the fresh board's full 60 — so the stale
-    // pair says "live build" and the review kept a ticking clock it never had.
-    // The deadline ref is written by the same handlers, synchronously: null on a
-    // staged board, set only once a run's window is actually open.
+    // board and overlays a maze in a `.then` has the previous render's `staged`
+    // in its closure while `timeRef` already reads the fresh board's 60, so the
+    // review kept a ticking clock it never had. The deadline ref is written
+    // synchronously: null on a staged board, set only once a window is open.
     if (!(freePlay && deadlineRef.current !== null && timeRef.current > 0)) {
       setTime(-1);
     }
     setStaged(false);
-    // Reviewing a maze (e.g. tapping a past attempt from the panel while the
-    // Start overlay is up) exits prestart so the review is actually visible.
+    // Exits prestart so the review is visible.
     setPrestart(false);
-    // The chips (what this run left unspent: every placed block cost a brick,
-    // every thunder an extra snowflake) need no writing here — laying the maze
-    // down below IS the write, since they derive from the board. That also
-    // settles the cross-day case for free: a caller that staged another day
-    // moments ago and overlays the maze in the response's `.then` (the
-    // today-result chips, view-best) would have had that day's budget in its
-    // closure, but the memo reads the board's own.
+    // The chips need no writing here: they derive from the board, so laying the
+    // maze down below sets them (also right for a cross-day caller whose
+    // closure holds another day's budget).
     clearTouchZoom();
     invalid.value = false;
     transitionBlock.value = undefined;
@@ -330,9 +292,9 @@ export const useGameState = () => {
       ...maze.map((b) => ({ ...b, local: true })),
     ];
     setBlocks(next);
-    // The same engine the build preview and the server run — so the replayed
-    // path IS the one that produced the stored time. An unsolvable maze (bad
-    // data) simply doesn't release the runner; the board stays static.
+    // Same engine as the build preview and the server, so the replayed path is
+    // the one behind the stored time. An unsolvable maze (bad data) leaves the
+    // board static.
     if (replay) setRun(localRun(next, checkpointRef.current));
   };
 
@@ -350,26 +312,21 @@ export const useGameState = () => {
     ? "building"
     : "idle";
 
-  // The board is showing an in-progress ranked daily attempt — the player is
-  // mid-run on TODAY's daily (loading / prestart / building / running), not free-
-  // playing or reviewing a past day. This, not `attemptsRemaining` alone, is what
-  // gates the "no wandering off / no spoiling the field mid-run" surfaces — the
-  // calendar and its button, the profile and notifications buttons, the runs-panel
-  // detail, the standings reveal. `attemptsRemaining` belongs to today's daily,
-  // but the board can be showing a PAST day (a /YYYYMMDD deep link, or a day left
-  // open across local midnight), and there those surfaces must stay available so
-  // the player can navigate. Free play is never a ranked attempt, and free play
-  // with ranked attempts still remaining can only be a past day (today's own daily
-  // can't be free-played until its three attempts are spent), so `!freePlay &&
-  // attemptsRemaining !== 0` captures exactly "on today's live ranked daily".
+  // The player is mid-run on TODAY's ranked daily (loading / prestart /
+  // building / running), not free-playing or reviewing a past day. This, not
+  // `attemptsRemaining` alone, gates the "no wandering off / no spoiling the
+  // field" surfaces (calendar, profile and notifications buttons, runs-panel
+  // detail, standings reveal): `attemptsRemaining` belongs to today's daily,
+  // but the board can show a PAST day (a /YYYYMMDD link, or a day left open
+  // across midnight), where those must stay available. Free play with ranked
+  // attempts remaining can only be a past day, so `!freePlay &&
+  // attemptsRemaining !== 0` is exactly "on today's live ranked daily".
   const dailyInProgress = !freePlay && attemptsRemaining !== 0;
 
   return {
     dailyInProgress,
     blocks,
-    // The live maze, for the input hooks: a gesture must edit the board as it
-    // stands at pointer time, not as the render that registered the listener
-    // saw it (see budgetNow).
+    // The live maze for the input hooks (see budgetNow).
     blocksRef,
     savedBlocksRef,
     implosions,

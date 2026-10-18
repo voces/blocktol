@@ -13,12 +13,10 @@ import { startRun } from "./run/start.ts";
 import { updateRun } from "./run/update.ts";
 
 // The board gate (util/boardAccess.ts) behind getBoard, a free-play start and a
-// commit: a locked board is a plain { incomplete } from getBoard rather than an
-// error (the client relays every error response to reportClientError, so a
-// routine "not yet" must not be one); a past day is always free-playable; a
-// future day is locked everywhere. Against the real (dev) database — the gate
-// reads run rows.
-// Skipped wholesale when SQL_PASSWORD isn't available.
+// commit: a locked board is a plain { incomplete } from getBoard, not an error;
+// a past day is always free-playable; a future day is locked everywhere. Runs
+// against the dev database (the gate reads run rows); skipped without
+// SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -41,18 +39,16 @@ Deno.test({
   fn: async () => {
     const user = await testUser();
     try {
-      // A fresh user has spent zero of today's three attempts, so free play is
-      // locked. UTC matches how the daily is created/looked up in these tests.
+      // A fresh user has spent no attempts, so free play is locked.
       const locked = await getBoard.handler(
         { timeZone: "UTC" },
         authed(user),
       );
-      // A plain, non-error "not yet" — nothing for the api proxy to report.
+      // Not an error: nothing for the client's api proxy to report.
       assert(!("error" in locked), "a locked board must not return an error");
       assertEquals(locked, { incomplete: true });
-      // And it stays that way when reached through the day-navigation composite
-      // — how a calendar pick asks for it, and how a `/YYYYMMDD`-for-today boot
-      // gets its linked slice. Neither may hand the client a 403 to relay.
+      // Same through dayView (a calendar pick; a `/YYYYMMDD`-for-today boot's
+      // linked slice).
       const { year, month, day } = dailyParts("UTC");
       const todayId = await ensureDailyIterationId(year, month, day);
       const viaDay = await dayView.handler(
@@ -74,11 +70,11 @@ Deno.test({
   fn: async () => {
     const user = await testUser();
     try {
-      // The oldest iteration is safely a past day — not today's daily.
+      // The oldest iteration is a past day.
       const [oldest] = await sql<{ id: number }[]>`
         SELECT id FROM iteration ORDER BY id ASC LIMIT 1;`;
-      // The user hasn't spent any of today's three attempts, yet a PAST day
-      // still stages: only today's OWN daily is gated.
+      // No attempts spent, yet a PAST day stages: only the caller's own today
+      // is gated.
       const board = await getBoard.handler(
         { iteration: oldest.id, timeZone: "UTC" },
         authed(user),
@@ -94,9 +90,8 @@ Deno.test({
   },
 });
 
-// The day after UTC today: its iteration already exists in prod (the gen cron
-// runs a day ahead); ensureDailyIterationId backfills it here if not. For a UTC
-// caller it is a future day.
+// The day after UTC today: a future day for a UTC caller. The gen cron runs a
+// day ahead in prod; ensureDailyIterationId backfills it here if missing.
 const tomorrowUtc = () => {
   const t = new Date(Date.now() + 86_400_000);
   return ensureDailyIterationId(
@@ -133,8 +128,8 @@ Deno.test({
       );
       assert("error" in committed, "a commit must not land on tomorrow");
 
-      // A save with no run behind it answers expired whatever the maze, so
-      // validateRun's reasons can't map the board cell by cell.
+      // A save with no run answers expired whatever the maze, so validateRun's
+      // reasons can't map the board.
       const probe = await updateRun.handler(
         { iteration: tomorrow, blocks: [{ x: 0, y: 0 }] },
         req,
@@ -157,9 +152,8 @@ Deno.test({
     const user = await testUser();
     const req = authed(user);
     try {
-      // UTC yesterday: past for a UTC caller, though often still current (and
-      // rankable) further west. Free play must open it without any ranked
-      // attempts — a past day is always replayable.
+      // UTC yesterday: past for a UTC caller though often still rankable
+      // further west. It opens with no ranked attempts.
       const t = new Date(Date.now() - 86_400_000);
       const yesterday = await ensureDailyIterationId(
         t.getUTCFullYear(),

@@ -26,29 +26,23 @@ import { GameStateContext } from "./useGameState.ts";
 
 type Item = DailyItem;
 
-// Show the previous month in full only when we're early in the current one —
-// otherwise the current month is tall enough on its own.
+// The previous month shows only early in the current one.
 const PREV_MONTH_UNTIL = 21;
 
-// Overall standing (best of ranked + free play) against the field's best
-// (anyone, ranked or free play) drives the cell colour — the same shared
-// `standing` the runs panel / today-result use, so the calendar's "best %"
-// matches the % shown when you open the day.
+// The player's best (ranked or free play) against the field's best, through the
+// shared `standing`, so it matches the % shown when the day is opened.
 const percentOf = (item: Item) =>
   typeof item.ownBest === "number" && typeof item.best === "number"
     ? standing(item.ownBest, item.min, item.best)
     : null;
 
-// The cell colour maps the day's best standing through the ramp (via
-// standingColor, which curves it so the top end spreads out) — the SAME mapping
-// the runs panel uses for that run's band, so a day's cell always matches the
-// colour of its top run when opened.
+// The cell colour is the day's standing through `standingColor`, the same
+// mapping the runs panel uses, so a cell matches its top run's band.
 const cellColor = (item: Item) => {
   if (item.supreme) return SUPREME_COLOR;
   const p = percentOf(item);
   if (p == null) return null;
-  // Tied for the field's top time without taking the record — peak green-yellow,
-  // a step below supreme gold (mirrors the runs/result treatment).
+  // Tied for the field's top without taking the record.
   if (p === 1) return PEAK_COLOR;
   return standingColor(p);
 };
@@ -69,22 +63,19 @@ export const Calendar = () => {
     setCalendarOpen,
     iteration,
   } = useContext(GameStateContext);
-  // The loaded board IS the selection — reading it off game state (rather
-  // than mirroring response events) can't drift when a superseded response
-  // is discarded by the board loader.
+  // The loaded board is the selection. Read from game state, it can't drift
+  // when the board loader discards a superseded response.
   const selected = iteration;
-  // Weekday initials + the month/day labels below follow the UI locale (reading
-  // .value re-renders on a language switch).
+  // Weekday initials and month/day labels follow the UI locale.
   const locale = intlLocale();
   const weekdays = narrowWeekdays(locale);
-  // How many whole months back from the default view we've paged (0 = default).
+  // Whole months paged back from the default view.
   const [page, setPage] = useState(0);
-  // The very first daily's month — the floor `canPrev` pages back to (from the
-  // server, so gaps in the user's own play don't stop paging short of history).
+  // The first daily's month, from the server: the floor `canPrev` pages to, so
+  // gaps in the player's own history don't stop paging.
   const oldestIdx = oldest ? oldest[0] * 12 + (oldest[1] - 1) : undefined;
 
-  // Mobile keeps it simple: always just the current month. The previous-month
-  // rule below is desktop only.
+  // Mobile shows the previous month only in the open picker (see `showPrev`).
   const mobile = useMediaQuery("(max-width: 1199.98px)");
 
   const now = new Date();
@@ -96,9 +87,8 @@ export const Calendar = () => {
   const todayNum = ty * 10000 + tm * 100 + td;
 
   const currentIdx = ty * 12 + tmonth0;
-  // Default view: current month, plus the previous month above it when early in
-  // the month (so a short current month isn't marooned). Desktop shows it inline;
-  // the mobile full-screen picker does too, to fill the sheet and give context.
+  // Default view: the current month, plus the previous one early in the month.
+  // Inline on desktop and in the mobile picker; not on the mobile board.
   const showPrev = (!mobile || calendarOpen) && td < PREV_MONTH_UNTIL;
   const earliestDefault = currentIdx - (showPrev ? 1 : 0);
 
@@ -120,21 +110,18 @@ export const Calendar = () => {
 
   const shownEarliest = page === 0 ? earliestDefault : earliestDefault - page;
 
-  // Load each rendered month — the store dedupes and retries (see
-  // store/dailyItems.ts), so this just declares what this render needs.
+  // The store dedupes and retries (store/dailyItems.ts).
   const ensureKey = segments.map((s) => s.idx).join(",");
   useEffect(() => {
     for (const s of segments) ensureMonth(s.idx);
   }, [ensureKey]);
 
-  // A brand-new user's current-month fetch can land before their first run is
-  // recorded — the server bounds the list to iterations they've played, so it
-  // comes back empty and gets cached. Once the daily is done (their runs now
-  // exist), refetch this month so the calendar fills in.
+  // A new player's current-month fetch can land before their first run exists:
+  // the server lists only played iterations, so it comes back empty and cached.
+  // Refetch once the daily is done.
   useEffect(() => {
     if (dailyInProgress) {
-      // The daily just (re)started — make sure a stale-open picker doesn't linger
-      // to reappear when it ends.
+      // Close a stale-open picker so it doesn't reappear when the daily ends.
       setCalendarOpen(false);
       return;
     }
@@ -145,13 +132,12 @@ export const Calendar = () => {
   const canPrev = oldestIdx === undefined || shownEarliest > oldestIdx;
   const canNext = page > 0;
 
-  // Hidden only while mid-run on today's ranked daily (even with an attempt or
-  // two spent) — no wandering off to other days mid-run. Shown once it's done,
-  // during free play, or on a past day (a deep link / a day held across midnight),
-  // where it's the in-app switch back to the daily (see dailyInProgress).
+  // Hidden only while the ranked daily is in progress (even with attempts
+  // spent). Shown otherwise, including on a past day, where it's the way back
+  // to the daily.
   if (dailyInProgress) return null;
-  // On mobile the calendar is only the full-screen picker (opened from the header
-  // button) — nothing inline. Desktop ignores calendarOpen and always shows it.
+  // Mobile shows only the picker (opened from the header); desktop ignores
+  // `calendarOpen`.
   if (mobile && !calendarOpen) return null;
   if (!items.size) return null;
 
@@ -159,15 +145,13 @@ export const Calendar = () => {
   for (const item of items.values()) byDate.set(item.daily.join("-"), item);
 
   const pick = (item: Item) => {
-    // Picking a day dismisses the (mobile) picker back to the board; a no-op on
-    // desktop where it's never open.
+    // Dismisses the mobile picker; a no-op on desktop.
     setCalendarOpen(false);
     if (item.iteration === selected) {
-      // Re-clicking the current board's date cancels an in-progress free-play
-      // build — re-stage a fresh board. Ranked attempts (and an untouched staged
-      // board) are left alone. Same contract as the HUD reset: the local record
-      // must go FIRST, or the re-stage would resume the very build being
-      // cancelled.
+      // Re-clicking the current date cancels an in-progress free-play build
+      // by re-staging. Ranked attempts and an untouched staged board are left
+      // alone. As in the HUD reset, clear the local record FIRST or the
+      // re-stage resumes the build being cancelled.
       if (freePlay && !staged) {
         clearFreePlay();
         showBoard(item.iteration);
@@ -184,8 +168,7 @@ export const Calendar = () => {
     if (key === todayKey) classes.push("calendar__cell--today");
 
     if (!item) {
-      // No daily to replay — future days (not yet run) read fainter than past
-      // days that simply weren't played.
+      // No daily to replay; future days read fainter than unplayed past ones.
       if (year * 10000 + (month0 + 1) * 100 + day > todayNum) {
         classes.push("calendar__cell--future");
       }
@@ -199,12 +182,12 @@ export const Calendar = () => {
     classes.push("calendar__cell--playable");
     if (item.iteration === selected) classes.push("calendar__cell--selected");
     const bg = cellColor(item);
-    // Real ranked percentile from the server (best daily vs others' best daily).
+    // The ranked percentile from the server.
     const dot = item.dailyPercentile;
     const percent = percentOf(item);
-    // The standing is the hero figure; the day shrinks into the top-left corner.
-    // formatPercentile keeps growing precision as it nears 100 (98% but 99.15%),
-    // so long near-100 strings step down a size to still fit the cell.
+    // The standing is the hero figure; the day sits in the corner.
+    // formatPercentile gains precision near 100 (99.15%), so long strings step
+    // down a size to fit.
     const pct = percent != null ? `${formatPercentile(percent)}%` : null;
     const pctClass = "calendar__pct" +
       (pct && pct.length >= 7
@@ -223,8 +206,8 @@ export const Calendar = () => {
             month: "long",
             day: "numeric",
           }),
-          // Cell is the overall best as a percentage of the way to the field's
-          // best — XX%; the dot is the ranked (daily) percentile — pXX.
+          // Cell colour/% is the overall standing; the dot is the ranked
+          // percentile (pXX).
           percent != null &&
           t("cal.bestPct", { pct: formatPercentile(percent) }),
           dot != null && t("cal.rankedP", { p: formatPercentile(dot) }),
@@ -248,10 +231,8 @@ export const Calendar = () => {
     );
   };
 
-  // Local midnight ticked over: a fresh daily is ready. Surface it at the top of
-  // the calendar (the switch — playNewDaily re-boots the day, no manual refresh).
-  // The new day isn't a normal cell (the calendar only lists days you've played),
-  // so this banner is how you get there.
+  // Local midnight passed: a fresh daily is ready. The calendar lists only
+  // played days, so this banner is the way there (`playNewDaily` re-boots).
   const newDaily = newDailyAvailable.value
     ? (
       <button
@@ -325,8 +306,7 @@ export const Calendar = () => {
     </>
   );
 
-  // Mobile: a full-screen picker over the board — one header row (title, pager,
-  // close), grids anchored to the top. Tap the backdrop or a day to dismiss.
+  // Mobile: a full-screen picker; the backdrop or a day dismisses it.
   if (mobile) {
     return (
       <div class="calendar-modal" onClick={() => setCalendarOpen(false)}>

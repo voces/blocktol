@@ -24,9 +24,9 @@ import { checkBoardAccess } from "../../../util/boardAccess.ts";
 const startRunBody = z.object({
   iteration: z.union([z.literal("daily"), z.number().min(1)]),
   timeZone: z.string(),
-  // The move that started the run (free play starts on the first placement, so
-  // its opening block rides along with the start to save a round-trip). Only a
-  // plain brick — the first action can't be a thunder/move/delete.
+  // Free play starts on its first placement; that block rides along to save a
+  // round trip. A plain brick only: the first action can't be a thunder, move
+  // or delete.
   block: pieceCoords.optional(),
 });
 
@@ -39,19 +39,17 @@ export const startRun = method(startRunBody, true)(
       iteration = await ensureDailyIterationId(year, month, day);
     } else {
       iteration = inputIteration;
-      // A numbered start is free play, and it hands back the board — so it
-      // answers to the same gate as getBoard (util/boardAccess.ts). The normal
-      // client only starts a board it was just shown, which passed this gate,
-      // so a locked answer here is someone asking for a board they can't see:
-      // an error, not getBoard's quiet { incomplete }, and nothing of the
-      // layout.
+      // Free play hands back the board, so it answers to getBoard's gate
+      // (util/boardAccess.ts). The normal client only starts a board it was
+      // shown, so a locked answer is a probe: a 403, not getBoard's quiet
+      // { incomplete }, and no layout.
       if (await checkBoardAccess(userId, iteration, timeZone) === "locked") {
         return { error: "board locked", status: 403 };
       }
     }
 
-    // Fetched before dbStartRun so the run about to be created isn't counted —
-    // these are the attempts already completed, for the client's attempts panel.
+    // Fetched before dbStartRun so the new run isn't counted among the
+    // completed attempts.
     const [data, ownBest, otherBest, attempts] = await Promise.all([
       getIteration(iteration),
       getOwnBest(userId, iteration),
@@ -59,13 +57,11 @@ export const startRun = method(startRunBody, true)(
       iterationAttempts(userId, iteration),
     ]);
 
-    // Validated up front so the opening block can be persisted below. A run
-    // always starts void: a free-play run (this is the only startRun that
-    // carries a block) stays void until it executes (commitRun).
+    // Validated up front so the opening block can be persisted below.
     const validation = block ? validateRun(data, [block]) : null;
 
-    // Awaited, never fire-and-forget: a Deno Deploy preview tears the isolate
-    // down after the response, killing a still-pending write.
+    // Awaited: a Deno Deploy preview kills a write still pending after the
+    // response.
     try {
       await dbStartRun(iteration, userId, data.min, year, month, day);
     } catch (err) {
@@ -75,10 +71,9 @@ export const startRun = method(startRunBody, true)(
 
     const best = Math.max(otherBest ?? 0, ownBest ?? 0, data.min);
 
-    // The run opened with a placement (free play): persist it now so the first
-    // brick doesn't need a second request, and return the board already holding
-    // it. updateCurrentRun derives that this run isn't a ranked attempt, so it
-    // stays void until it executes.
+    // Free play opened with a placement: persist it now and return the board
+    // holding it. updateCurrentRun sees the run isn't ranked, so it stays void
+    // until it executes.
     if (block && validation?.ok) {
       const player = { ...block, player: true };
       try {
@@ -89,8 +84,7 @@ export const startRun = method(startRunBody, true)(
           iteration,
         );
       } catch (err) {
-        // The run is started regardless; the client re-sends the maze on its
-        // next placement, so a lost opening block self-heals.
+        // The client re-sends the maze on its next placement, healing this.
         log.error(req, "failed to persist opening block", {
           error: errText(err),
         });
@@ -111,8 +105,7 @@ export const startRun = method(startRunBody, true)(
 
     let path: Point[] | undefined;
     try {
-      // The base board's path, from the shared per-iteration solver — after
-      // the first start on a board this is a cached copy, not a search.
+      // The shared per-iteration solver caches this after the first start.
       path = cachedSolver(data.blocks, data.checkpoint).solve([]);
     } catch (err) {
       log.error(req, "invalid base path", { error: errText(err) });

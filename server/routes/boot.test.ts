@@ -5,11 +5,9 @@ import { extractUserId } from "../middleware/userid.ts";
 import { dailyParts } from "../util/dailyParts.ts";
 import { boot } from "./boot.ts";
 
-// The boot endpoint composes existing handlers in parallel; this checks the
-// bundle carries every slice and that boot does NOT start a daily attempt —
-// getDailySummary leaves it unstarted (the client raises an explicit "Start
-// attempt" overlay), so a background boot can't silently spend one. Hits the
-// dev DB like the run-lifecycle tests; self-skips without SQL_PASSWORD.
+// Checks boot's bundle carries every slice and that boot does NOT start a daily
+// attempt, so a background boot can't spend one. Hits the dev DB; self-skips
+// without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -43,10 +41,8 @@ Deno.test({
         ],
       );
 
-      // A brand-new user: the composed getDailySummary started NOTHING (no
-      // ranked attempt, no open run — the client raises the "Start attempt"
-      // overlay), free play is still locked (board incomplete), and nothing is
-      // in the notifications feed yet.
+      // A new user: no ranked attempt or open run started, free play locked
+      // (board incomplete), no notifications.
       assert(!("error" in r.summary), "summary should succeed");
       assertEquals(r.summary.ranked.length, 0, "boot does not start the daily");
       assertEquals(r.summary.currentRun, null, "no run opened on boot");
@@ -76,8 +72,7 @@ Deno.test({
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
     await createOrUpdateUser(id);
     try {
-      // Today's iteration exists (the ensure-iterations cron generates it);
-      // point the day-link at it and confirm boot resolves + bundles it.
+      // Today's iteration exists (ensure-iterations); link to it.
       const { year, month, day } = dailyParts("UTC");
       const r = await boot.handler(
         { timeZone: "UTC", day: [year, month, day] },
@@ -95,16 +90,14 @@ Deno.test({
         "number",
         "linked carries the resolved iteration",
       );
-      // The linked standings is that day's — the client keys its by-date and
-      // by-iteration primes off it.
+      // The client keys its by-date and by-iteration primes off this.
       assert(
         r.linked.standings && "iteration" in r.linked.standings &&
           r.linked.standings.iteration === r.linked.iteration,
         "linked standings is the resolved day",
       );
 
-      // A never-generated far-past date resolves to nothing → linked: null, and
-      // the client falls through to its own fetch.
+      // A never-generated far-past date gives linked: null.
       const none = await boot.handler(
         { timeZone: "UTC", day: [2000, 1, 1] },
         authed(id),

@@ -1,4 +1,4 @@
-// The viewer's resolved BCP-47 locale (e.g. "en-US", "de-DE"), from the same
-// Intl resolution getTimeZone uses. Sent with a push subscription so the server
-// can store it (on the user) and render their push copy in it (see user.locale).
+// The viewer's resolved BCP-47 locale (e.g. "en-US"). Sent with a push
+// subscription so the server can store it (`user.locale`) and render push copy
+// in it.
 export const getLocale = () => Intl.DateTimeFormat().resolvedOptions().locale;

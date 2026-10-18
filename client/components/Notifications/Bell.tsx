@@ -10,18 +10,15 @@ import { t } from "../../util/t.ts";
 import { Bell as BellIcon } from "./icons.tsx";
 import { NotificationsPanel } from "./Panel.tsx";
 
-// The header bell, to the left of the profile. Shows a count badge while unread
-// (capped "9+"); tapping opens the panel. Warms the list on intent so the panel
-// opens on data, not an empty shell.
+// The header bell: unread badge (capped "9+"); tapping opens the panel. Warms
+// the list on intent so the panel opens on data.
 export const NotificationsBell = () => {
   const { dailyInProgress } = useContext(GameStateContext);
   const [open, setOpen] = useState(false);
   const count = unreadCount.value;
 
-  // A quick, silent visual swing when the unread count rises while the app is
-  // open (a notification just arrived). Guarded by a ref so re-mounting the bell
-  // — e.g. after a daily finishes — doesn't replay it, and so the initial load
-  // never swings.
+  // Swing when the unread count rises while the app is open. The ref keeps a
+  // remount (e.g. after a daily finishes) and the initial load from swinging.
   const nudge = bellNudge.value;
   const seen = useRef(nudge);
   const [swing, setSwing] = useState(false);
@@ -35,9 +32,8 @@ export const NotificationsBell = () => {
     seen.current = nudge;
   }, [nudge]);
 
-  // Hidden only while mid-run on today's ranked daily — mirrors the calendar /
-  // profile buttons, and keeps a notification tap from navigating the board away
-  // mid-run. On a past day (deep link / held across midnight) it stays available.
+  // Hidden only mid-run on today's ranked daily, so a notification tap can't
+  // navigate the board away; mirrors the calendar / profile buttons.
   if (dailyInProgress) return null;
 
   return (

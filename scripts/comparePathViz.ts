@@ -1,19 +1,18 @@
-// Render an SVG that overlays the OLD path (loaded from a git ref) and the
-// NEW path (current working tree) for the same board, so the difference a
-// pathing change makes is visible at a glance. New is drawn as a thick solid
-// blue line; the old path is drawn dashed red *on top* so it stays visible even
-// where the two coincide (the blue shows through the gaps).
+// Render an SVG overlaying the OLD path (from a git ref) and the NEW path
+// (working tree) for the same board, to show what a pathing change does. New is
+// a thick solid blue line; old is dashed red drawn on top, so it stays visible
+// where they coincide.
 //
 // Obstacles are coloured by who placed them and whether they slow: preplaced
-// blocks green, thunders pink, player-placed pieces outlined amber. Every one of
-// them still obstructs the runner and shapes both paths — the colour is only a
-// legend. The two times are full simulated run times (thunder slows included),
-// so the old one can be cross-checked against the run's stored DB time.
+// blocks green, thunders pink, player-placed pieces outlined amber. All of them
+// obstruct the runner; the colour is only a legend. Times are full simulated
+// run times (thunder slows included), so the old one can be checked against the
+// run's stored DB time.
 //
-// The baseline's sibling modules (BinaryHeap/constants/MMap/types) are kept
-// around precisely so an old pathing.ts body can be dropped next to them and
-// imported directly; the baseline solves via findPathFromData when it has one
-// (pre-PathSolver refs) and PathSolver otherwise.
+// The baseline's sibling modules (BinaryHeap/constants/MMap/types) stay in
+// common/ so an old pathing.ts can be dropped next to them and imported. The
+// baseline solves via findPathFromData when it has one (pre-PathSolver refs),
+// else PathSolver.
 //
 // Board source (pick one):
 //   --seed=N        generate a deterministic random board (no DB needed)
@@ -73,8 +72,8 @@ if (
   Deno.exit(1);
 }
 
-// Drop it beside its (unchanged) siblings so relative imports resolve, then
-// import it. Cleaned up in the finally below.
+// Drop it beside its siblings so relative imports resolve, then import it.
+// Removed in the finally below.
 const baselinePath =
   new URL("../common/_baselinePathing.tmp.ts", import.meta.url)
     .pathname;
@@ -143,19 +142,17 @@ try {
     return { path, seconds: mod.pathDuration(path, thunders)[0] };
   };
 
-  // The stretches of a path the runner covers while slowed, as sub-polylines.
-  // Derived from the current engine's slows: each trigger slows the runner
-  // from its instant until six seconds later or the next trigger's reset,
-  // whichever comes first, and positions follow the same piecewise-linear
-  // motion (SPEED, halved while slowed). Viz-grade: slow times are the
-  // two-decimal ones pathDuration reports.
+  // The stretches of a path the runner covers while slowed, as sub-polylines,
+  // derived from the current engine's slows: each trigger slows the runner for
+  // 6 seconds or until the next trigger resets it. Approximate: slow times are
+  // the two-decimal ones pathDuration reports.
   const SPEED = current.SPEED;
   const slowedSpans = (path: Point[], thunders: Point[]): Point[][] => {
     if (path.length < 2 || !thunders.length) return [];
     const [, slows] = current.pathDuration(path, thunders);
     if (!slows.length) return [];
 
-    // Slowed wall-clock windows: a re-trigger resets, never stacks.
+    // Slowed time windows: a re-trigger resets, never stacks.
     const windows: [number, number][] = [];
     for (const { time } of slows) {
       const previous = windows[windows.length - 1];
@@ -205,8 +202,7 @@ try {
   let board: Board;
 
   if (arg("iteration") !== undefined) {
-    // Pull a real board from the DB. Imported lazily so the seed/search paths
-    // don't require net/env permissions.
+    // Imported lazily so the seed/search paths need no net/env permissions.
     const { sql } = await import("../server/db/query.ts");
     const id = Number(arg("iteration"));
     const [[iter], iterBlocks] = await sql<
@@ -222,7 +218,7 @@ try {
       console.error(`Iteration ${id} not found.`);
       Deno.exit(1);
     }
-    // Preplaced (iteration-fixed) pieces: green blocks + pink thunders.
+    // Preplaced (iteration-fixed) pieces.
     const preplaced: Cell[] = iterBlocks.map((b) => ({
       x: b.x,
       y: b.y,
@@ -236,12 +232,11 @@ try {
       board = { label: `iteration ${id}`, checkpoint, blocks: preplaced };
     } else {
       const { deserializeRun } = await import("../server/util/run.ts");
-      // A user can have several non-void runs on one iteration, and they differ:
-      // scripts/comparePathing.ts scores every one, so picking a single "best by
-      // time" here would silently show a different run than the diff you were
-      // looking at. Evaluate them all, print the roster, and default to the one
-      // the pathing change moves most (largest old→new gap) — pin another with
-      // --created=<timestamp prefix>.
+      // A user can have several non-void runs on one iteration, and
+      // scripts/comparePathing.ts scores every one, so picking a "best by time"
+      // here could show a different run than the diff you were looking at.
+      // Evaluate all, print the roster, and default to the one the pathing
+      // change moves most; --created=<timestamp prefix> pins another.
       const runs = await sql<{ data: string; time: number; created: string }[]>`
         SELECT data, time, created FROM run
         WHERE iteration = ${id} AND user = ${runUser} AND void = FALSE
@@ -318,8 +313,8 @@ try {
       }s)`,
     );
   } else if (arg("demo") !== undefined) {
-    // A no-DB board exercising all four piece kinds so the legend/colours can be
-    // eyeballed: preplaced vs player, block vs thunder.
+    // A no-DB board with all four piece kinds (preplaced/player x
+    // block/thunder) to eyeball the legend.
     board = {
       label: "demo · all piece types + slow",
       checkpoint: { x: 9.5, y: 3.5 },
@@ -349,9 +344,7 @@ try {
 
   const grid = current.newGrid();
   grid[board.checkpoint.y + 0.5][board.checkpoint.x + 0.5] = true;
-  // Per-cell owner/kind so obstacles can be coloured: preplaced vs player, and
-  // block vs thunder. All of them still obstruct the runner (they shape both
-  // paths); the colour only says who placed it and whether it also slows.
+  // Per-cell owner/kind, for colouring only.
   const meta: (Cell | undefined)[][] = Array.from(
     { length: 20 },
     () => Array<Cell | undefined>(20).fill(undefined),
@@ -388,7 +381,7 @@ try {
         fill = WALL;
       } else if (grid[y][x]) {
         const m = meta[y][x];
-        if (m) { // a placed piece (the checkpoint cell has no meta → stays empty)
+        if (m) { // a placed piece (the checkpoint cell has no meta)
           fill = m.thunder ? THUNDER : BLOCK;
           if (m.player) stroke = PLAYER, sw = 0.1;
         }
@@ -405,8 +398,7 @@ try {
   const hasThunder = board.blocks.some((b) => b.thunder);
   const hasPlayer = board.blocks.some((b) => b.player);
 
-  // Where each route runs slowed. Drawn as a translucent halo beneath the path
-  // lines so a thunder's effect on either route is visible.
+  // Where each route runs slowed: a translucent halo beneath the path lines.
   const thunders = board.blocks.filter((b) => b.thunder);
   const slowSpans = [
     ...slowedSpans(neu.path, thunders),
@@ -439,9 +431,8 @@ try {
       (old.seconds - neu.seconds).toFixed(2)
     }s sooner${identical ? "  ·  paths identical on this board" : ""}</text>`,
   ];
-  // Fill and outline are independent: fill = piece type (block/thunder), amber
-  // outline = who placed it (player vs preplaced). Spell out both dimensions so
-  // the four combinations (e.g. a player-placed thunder) can't be misread.
+  // Fill is the piece type, amber outline who placed it; the legend spells out
+  // both so e.g. a player-placed thunder isn't misread.
   if (hasPlayer || hasThunder) {
     legend.push(
       `<rect x="0" y="24.05" width="0.5" height="0.5" fill="${BLOCK}" rx="0.1"/>`,

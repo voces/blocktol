@@ -43,11 +43,10 @@ const ShieldIcon = () => (
 );
 
 /**
- * The "move to another device" sheet: a QR of the sign-in link plus the link
- * itself to copy. Scanning it (or opening the link) signs the other device in as
- * this user — see signInLink() and getId(). It replaces the profile dialog
- * (not stacked over it): back (‹) returns to the profile, close (× / backdrop)
- * dismisses to the board.
+ * The "move to another device" sheet: a QR of the sign-in link plus the link to
+ * copy. Opening it signs the other device in as this user (see signInLink()).
+ * Replaces the profile dialog rather than stacking: back (‹) returns to the
+ * profile, close (× / backdrop) dismisses to the board.
  */
 export const MoveDevice = (
   { name, onBack, onClose }: {
@@ -61,8 +60,8 @@ export const MoveDevice = (
   const [copied, setCopied] = useState(false);
   const copiedTimeout = useRef(-1);
 
-  // "Copied" only once the clipboard took it — a refused or missing clipboard
-  // must not claim the player's sign-in link is saved.
+  // "Copied" only once the clipboard took it; a refused clipboard must not
+  // claim the sign-in link is saved.
   const copy = () => {
     Promise.resolve()
       .then(() => navigator.clipboard.writeText(url))

@@ -2,12 +2,10 @@ import { h } from "preact";
 import { useRef, useState } from "preact/compat";
 
 // Drag-down-to-close for mobile bottom sheets. Spread `handlers` onto the
-// sheet's grab areas (the notch, a header) — they need `touch-action: none`
-// so the browser doesn't claim the gesture — and translate the sheet element
-// by `offset` while a drag is live. Releasing past the threshold closes;
-// under it, the sheet snaps back. Mouse pointers are ignored: the desktop
-// presentations of these dialogs aren't sheets, and mouse-drag-to-close would
-// fight text selection.
+// sheet's grab areas (the notch, a header), which need `touch-action: none`,
+// and translate the sheet by `offset` while a drag is live. Releasing past the
+// threshold closes; under it, the sheet snaps back. Mouse pointers are ignored:
+// desktop dialogs aren't sheets, and mouse-drag would fight text selection.
 export const useDragToClose = (onClose: () => void, threshold = 90) => {
   const startY = useRef<number | null>(null);
   // Mirrors `offset` so the release handler reads the final value without

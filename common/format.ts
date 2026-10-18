@@ -1,20 +1,17 @@
-// Locale-aware number formatting, shared by the server (push copy) and the
-// client so a value reads identically everywhere. Locale mirrors how
-// formatNotifDate already handles dates: the client passes `undefined` and gets
-// its chosen UI language (setDefaultLocale, below), while server-rendered push text passes the
-// recipient's stored locale (the user.locale column) — falling back to the
-// runtime's locale when there's none.
+// Locale-aware number formatting shared by the server (push copy) and the
+// client. As with formatNotifDate, the client passes `undefined` and gets its
+// UI language (`setDefaultLocale`), while server push text passes the
+// recipient's stored `user.locale`, falling back to the runtime locale.
 
-// Constructing an Intl.NumberFormat isn't free and the board renders a whole
-// column of times, so cache by (locale, options). A malformed stored locale
-// would make the constructor throw, so fall back to the runtime default rather
-// than let one bad value break push rendering.
+// Intl.NumberFormat construction is costly and the board renders a column of
+// times, so cache by (locale, options). A malformed stored locale makes the
+// constructor throw; fall back to the runtime default so one bad value can't
+// break push rendering.
 const cache = new Map<string, Intl.NumberFormat>();
 
-// The client's chosen UI language (set by applyLanguage), used when a call
-// names no locale — so a time reads "35,10" under a German UI on an English
-// browser, as the `t` copy around it does. The server never sets it: push copy
-// passes the recipient's locale explicitly.
+// The client's UI language (set by `applyLanguage`), used when a call names no
+// locale, so a time reads "35,10" under a German UI on an English browser. The
+// server never sets it.
 let defaultLocale: string | undefined;
 export const setDefaultLocale = (locale: string | undefined) => {
   defaultLocale = locale;
@@ -39,17 +36,16 @@ const formatter = (
 };
 
 export type FormatOptions = {
-  // Fraction-digit bounds, kept per-call rather than baked in: the board and
-  // notifications show two decimals, share/inline text a variable count.
+  // Fraction-digit bounds are per call: the board and notifications show two
+  // decimals, share/inline text a variable count.
   min?: number;
   max?: number;
-  // A specific locale for server-rendered copy; omit on the client so the
-  // viewer's own locale is used.
+  // For server-rendered copy; omit on the client.
   locale?: string;
 };
 
-// A general ungrouped decimal — the zoom multiplier, the rank's "~1.9k"
-// approximation. min 0 / max 2 by default, so trailing zeros drop.
+// A general ungrouped decimal (zoom multiplier, "~1.9k" rank). Defaults to
+// min 0 / max 2, so trailing zeros drop.
 export const formatDecimal = (
   value: number,
   { min = 0, max = 2, locale }: FormatOptions = {},
@@ -60,18 +56,16 @@ export const formatDecimal = (
     useGrouping: false,
   }).format(value);
 
-// A seconds value as a fixed-precision, locale-decimal string WITHOUT a unit
-// ("35.10" / "35,10") — the "s" stays in the caller's markup so the board keeps
-// it a separately styled span. Grouping is off: times sit in mono-aligned
-// columns a thousands separator would break (and never reach thousands anyway).
-// Two decimals by default (the board and notifications); share/inline text
-// passes { min: 0 } to keep its variable-precision look.
+// Seconds as a locale-decimal string WITHOUT a unit ("35.10" / "35,10"); the
+// "s" stays in the caller's markup so the board can style it. Ungrouped, since
+// times sit in mono-aligned columns. Two decimals by default; share/inline text
+// passes { min: 0 }.
 export const formatSeconds = (
   value: number,
   options: FormatOptions = {},
 ): string => formatDecimal(value, { min: 2, max: 2, ...options });
 
-// A whole-number count (field sizes, "N between") WITH locale grouping —
-// "1,900" / "1.900". Used off the mono columns, where grouping reads well.
+// A whole-number count (field sizes, "N between") WITH locale grouping:
+// "1,900" / "1.900". For use outside the mono columns.
 export const formatCount = (value: number, locale?: string): string =>
   formatter(locale, { maximumFractionDigits: 0 }).format(value);

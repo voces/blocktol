@@ -6,10 +6,9 @@ import { mergeUsers } from "./merge.ts";
 import { sql } from "./query.ts";
 import { createOrUpdateUser } from "./user.ts";
 
-// mergeUsers / anonymizeUser against the real (dev) database — the semantics
-// are multi-statement SQL. Rows are seeded directly (the merge doesn't care how
-// a run was made) on the two oldest iterations, safely closed days. Skipped
-// wholesale when SQL_PASSWORD isn't available.
+// mergeUsers / anonymizeUser against the real (dev) database, since their
+// semantics are multi-statement SQL. Rows are seeded directly on the two oldest
+// iterations (safely closed days). Skipped without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const testUser = async () => {

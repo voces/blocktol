@@ -2,34 +2,28 @@
 <html>
 
 <head>
-  <!-- viewport-fit=cover: draw edge-to-edge into the status-bar/cutout insets so
-       the app's themed background paints that top strip (otherwise it's an
-       unpainted black band). It also makes env(safe-area-inset-*) report real
-       values, which the CSS already relies on for its top padding. -->
+  <!-- viewport-fit=cover: paint the themed background under the status bar
+       (else it is a black band). Also makes env(safe-area-inset-*) report real
+       values, which the CSS uses for top padding. -->
   <meta
     name="viewport"
     content="width=device-width, user-scalable=no, viewport-fit=cover"
   />
-  <!-- Status/URL/PWA bar colour, matched to the app background (the --background
-       light-dark() token's two ends). A SINGLE meta, kept in sync with the
-       resolved theme by applyTheme (client/hooks/useSettings.ts) — deliberately
-       NOT keyed to the OS via prefers-color-scheme media, because the theme is a
-       user setting that can diverge from the OS (a dark app on a light phone
-       would otherwise get a light bar). Default is the dark brand background; JS
-       corrects it on boot, including following the OS live in "system" mode. -->
+  <!-- Status/URL/PWA bar colour, matching the --background light-dark() token.
+       A SINGLE meta that applyTheme (client/hooks/useSettings.ts) keeps in sync
+       with the resolved theme. Not keyed to prefers-color-scheme: the theme is
+       a user setting that can differ from the OS. Defaults to the dark
+       background until JS corrects it on boot. -->
   <meta name="theme-color" content="#0c0c11" id="theme-color" />
   <title>Blocktol</title>
   <meta
     name="description"
     content="A daily maze puzzle — place blocks to build the longest path and outlast the runner. Three ranked attempts a day, then free play."
   />
-  <!-- Open Graph / Twitter Card: these drive the link preview on Reddit, search,
-       and social. We WANT a card there (the launch storefront). Chat apps are
-       silenced instead at the crawler level — public/robots.txt disallows
-       Discordbot/Slackbot, which build embeds server-side and honor robots.txt —
-       so a shared link posts as a plain link in chat while a Reddit post still
-       gets a full card. og:image is an absolute URL (scrapers don't resolve
-       relative refs). -->
+  <!-- Open Graph / Twitter Card: the link preview on Reddit, search and social.
+       Chat embeds are suppressed in public/robots.txt (Discordbot/Slackbot
+       honor it), so chat gets a plain link. og:image must be absolute:
+       scrapers don't resolve relative refs. -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Blocktol" />
   <meta property="og:title" content="Blocktol" />
@@ -51,8 +45,8 @@
   <meta name="twitter:image" content="https://blocktol.com/og.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <!-- iOS ignores SVG favicons and manifest icons for home-screen installs;
-       it uses this PNG (and falls back to a page screenshot without it). -->
+  <!-- iOS ignores SVG favicons and manifest icons for home-screen installs and
+       screenshots the page without this PNG. -->
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <!-- Self-hosted fonts (public/fonts/) — no request to Google. -->
   <link rel="stylesheet" href="/fonts/fonts.css" />

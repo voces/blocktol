@@ -1,16 +1,14 @@
-// GET the standings: the podium plus the viewer's neighbourhood, with their own
-// rank and the field size — the data behind the standings dock and its expanded
-// sheet. Resolves "today" from the caller's timezone exactly like
-// getDailySummary; the { iteration } variant serves a specific (past) day.
+// The standings: the podium plus the viewer's neighbourhood, their own rank and
+// the field size (the standings dock and its sheet). "Today" resolves from the
+// caller's timezone like getDailySummary; { iteration } serves a specific day.
 //
-// One request, one cached field, two boards of the SAME day's runs — returned
-// together so the client toggles instantly without a second round trip:
-//   - "daily" ranks the players with a ranked daily run by that time (rows
-//     carry their best build that day as the secondary line);
-//   - "pb" ranks EVERYONE with a non-void run by their best build that day
-//     (rows carry their ranked daily time, or null if they only free-played).
-// Each board is fully ranked/windowed server-side (ids never reach the wire);
-// the client just renders whichever the dock/sheet has active.
+// One request returns two boards over the SAME day's runs, so the client can
+// toggle without a round trip:
+//   - "daily" ranks players with a ranked daily run by that time (secondary:
+//     their best build that day);
+//   - "pb" ranks EVERYONE with a non-void run by best build that day
+//     (secondary: ranked daily time, or null if they only free-played).
+// Each board is ranked and windowed server-side; ids never reach the wire.
 
 import { z } from "zod";
 import { avatarHue } from "../../../common/avatar.ts";
@@ -26,9 +24,8 @@ import { LRUMap } from "../../util/LRUMap.ts";
 import { buildStandings, FieldEntry } from "../../util/standings.ts";
 import { method } from "../apiHelpers.ts";
 
-// "today" (resolved from the caller's timezone), a specific iteration, or a
-// calendar day (the `/YYYYMMDD` permalink / notification deep-link, which knows
-// the date but not the id). No sort — the response carries both boards.
+// "today" (from the caller's timezone), an iteration, or a calendar day (a
+// `/YYYYMMDD` permalink or notification deep-link knows the date, not the id).
 const standingsBody = z.union([
   z.object({ timeZone: z.string() }),
   z.object({ iteration: z.number().min(1) }),
@@ -39,26 +36,21 @@ const standingsBody = z.union([
   }),
 ]);
 
-// How long a cached day's field is served before a refetch. Applies to every
-// day, not just live ones: the field counts free play (the PB sort), and a
-// closed day's PB can still move when someone replays that old board — so no
-// day is truly frozen, and none is cached indefinitely.
+// How long a cached field is served. Applies to every day: free play counts
+// toward the PB board, so even a closed day's field can still move.
 const FRESH_MS = 15_000;
 
-// 37h after a daily's day starts, every timezone's play window has closed
-// (UTC-12 leaves the day at +36h) and the rating cron picks it up — the
-// "until ranked" countdown target. Kept in step with
-// getUnratedClosedIterations' close-plus-pad.
+// 37h after a day starts every timezone's window has closed (UTC-12 leaves it
+// at +36h) and the rating cron picks it up: the "until ranked" countdown
+// target. Keep in step with getUnratedClosedIterations' close-plus-pad.
 const CLOSE_MS = 37 * 3_600_000;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// One player on the day, carrying both boards' values and when each was set:
-// their best build that day counting any non-void run (`pb`/`pbAt`, the PB
-// sort's value + timestamp / the daily board's secondary) and their best
-// RANKED daily run (`daily`/`dailyAt`, the daily sort's value + timestamp /
-// the PB board's secondary — null/0 if they only free-played that day). The
-// route projects this into a FieldEntry per sort, each with its own timestamp.
+// One player on the day, with both boards' values and when each was set: their
+// best non-void build (`pb`/`pbAt`) and best RANKED daily run
+// (`daily`/`dailyAt`; null/0 if they only free-played). `project` turns this
+// into a FieldEntry per board.
 export type Player = {
   user: string;
   name: string;
@@ -77,11 +69,9 @@ type Field = {
   players: Player[]; // everyone with a non-void run on the day
 };
 
-// The day's field: everyone with a non-void run that day (getIterationBests),
-// each carrying their best-that-day (pb) and, where they made ranked attempts,
-// their best ranked time + when (getDailyStandings). Both queries scope to this
-// iteration, so a day the viewer only free-played still populates the PB board
-// even though the ranked daily field is empty.
+// The day's field: everyone with a non-void run (getIterationBests), plus their
+// best ranked time where they made ranked attempts (getDailyStandings). A day
+// only free-played still populates the PB board with an empty daily field.
 const loadField = async (iteration: number): Promise<Field> => {
   const [meta, dailyRows, bests] = await Promise.all([
     getStandingsMeta(iteration),
@@ -96,8 +86,8 @@ const loadField = async (iteration: number): Promise<Field> => {
     day: [meta.y, meta.m, meta.d],
     closesAt: Number(meta.dayStart) + CLOSE_MS,
     min: Number(meta.min) || 0,
-    // The id stays server-side — buildStandings uses it only to find the viewer
-    // and to attach secondaries; rows ship name + hue instead.
+    // The id stays server-side: buildStandings uses it to find the viewer and
+    // attach secondaries; rows ship name + hue.
     players: bests.map((b) => {
       const d = daily.get(b.user);
       return {
@@ -113,11 +103,9 @@ const loadField = async (iteration: number): Promise<Field> => {
   };
 };
 
-// Each day's field is identical for every viewer, so it's fetched once per
-// freshness window and each request slices its own view. Every day expires
-// after FRESH_MS (a closed day's PB can still change via replays); the LRU
-// bounds how many sit in memory. A failed fetch frees the entry so the next
-// request retries rather than being served the rejection.
+// A day's field is identical for every viewer: fetch once per FRESH_MS and let
+// each request slice its own view. The LRU bounds memory. A failed fetch frees
+// its entry so the next request retries instead of being served the rejection.
 const cache = new LRUMap<
   number,
   { at: number; promise: Promise<Field> }
@@ -135,17 +123,13 @@ const cachedField = (iteration: number) => {
   return promise;
 };
 
-// Project the day's players into a ranked field for one sort, best first.
-// Daily ranks only those with a ranked run (`daily` non-null) by that time; PB
-// ranks EVERYONE with a non-void run by their best build that day. Each row's
-// `time` is the sort's value, `at` its timestamp (when that build/run was set),
-// and `secondary` the OTHER board's value (null on the PB board for someone who
-// only free-played — rendered "—").
+// Project the players into a ranked field for one board, best first. Daily
+// keeps only players with a ranked run; PB keeps everyone. A row's `time` and
+// `at` are that board's value and when it was set; `secondary` is the OTHER
+// board's value (null on PB for someone who only free-played).
 //
-// Ties on the ranked value break by who reached it FIRST (`at` ascending) — the
-// PB board on `pbAt`, the daily board on `dailyAt` — then by name as a stable
-// final fallback. Both timestamps are the earliest run at that best (the SQL's
-// MIN(created)), so "first to the time" is honoured on both boards.
+// Ties break by who reached the time FIRST (`at` ascending: `pbAt` / `dailyAt`,
+// each the earliest run at that best, the SQL's MIN(created)), then by name.
 export const project = (
   players: Player[],
   sort: "daily" | "pb",
@@ -196,11 +180,10 @@ export const standings = method(standingsBody, true)(
     const daily = buildStandings(dailyField, userId);
     const pb = buildStandings(pbField, userId);
 
-    // The viewer's standing on a board — their best time's position in
-    // [min, fieldBest], the same metric (and colour) the runs panel shows for a
-    // run. The dock colours the PB rank by this (a great build reads green even
-    // at #2 in a small field), while the daily rank stays on its ranked
-    // percentile. Attached to both `me`s; null when the viewer isn't on it.
+    // The viewer's `standing` on a board: their time's position in
+    // [min, fieldBest], the metric the runs panel shows. The dock colours the
+    // PB rank by it; the daily rank stays on its ranked percentile. Null when
+    // the viewer isn't on the board.
     const withPercent = (
       me: typeof daily.me,
       top: number | undefined,
@@ -209,14 +192,12 @@ export const standings = method(standingsBody, true)(
         ? me
         : { ...me, percent: standing(me.time, field.min, top ?? me.time) };
 
-    // The "until ranked" countdown is a daily-board concept — it tracks when
-    // the ranked field freezes, locking once the day is rated (or its close has
-    // passed). It's a top-level fact of the day; the PB board counts free play,
-    // which never "ranks", so it never shows a countdown regardless.
+    // The "until ranked" countdown tracks when the ranked field freezes; it is
+    // a fact of the day, not of the PB board (free play never ranks).
     const final = field.rated || field.closesAt <= Date.now();
 
-    // rowUsers/meUser (the parallel id arrays) are deliberately dropped — the
-    // raw id is the bearer credential and must never reach the wire.
+    // Drop rowUsers/meUser (parallel id arrays): the raw id is the bearer
+    // credential and must never reach the wire.
     return {
       iteration,
       day: field.day,

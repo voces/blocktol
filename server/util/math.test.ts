@@ -88,7 +88,8 @@ Deno.test("reverseTween", async (t) => {
   });
 
   await t.step("value is between two mid values", () => {
-    // (prevIndex + (value - prevValue) / (nextValue - prevValue) + 1) / length => (1+(3-2)/(4-2)+1)/4
+    // (prevIndex + (value - prevValue) / (nextValue - prevValue) + 1) / length
+    //   => (1+(3-2)/(4-2)+1)/4
     assertEquals(reverseTween([1, 2, 4, 4], 3, 1), 0.625);
   });
   await t.step("value is equal to multiple highests", () => {

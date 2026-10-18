@@ -3,8 +3,8 @@ import { drain } from "../util/retention.ts";
 import { sql } from "./query.ts";
 import { pruneUnusedUsers } from "./retention.ts";
 
-// pruneUnusedUsers against the real (dev) database. It sweeps the whole table,
-// exactly as the cron would there. Skipped without SQL_PASSWORD.
+// pruneUnusedUsers against the real (dev) database; it sweeps the whole table,
+// as the cron does. Skipped without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const seedUser = async (name: string | null, ageDays: number) => {

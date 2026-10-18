@@ -1,9 +1,7 @@
-// ELO-style rating math, recovered from the old (removed) WebSocket
-// implementation (commit 7b808cd "feat: percent + percentile + elo rework").
-//
-// Instead of win/loss, a player is scored on where their best daily time ranks
-// against the field (a percentile in [0, 1]). Their rating implies an
-// *expected* percentile; beating it raises the rating, falling short lowers it.
+// ELO-style rating math. A player is scored on where their best daily time
+// ranks in the field (a percentile in [0, 1]), not on win/loss. Their rating
+// implies an *expected* percentile: beating it raises the rating, falling short
+// lowers it.
 
 export const K = 64;
 
@@ -12,9 +10,9 @@ export const K = 64;
 export const expectedPercentile = (rating: number) =>
   1 - 0.5 ** (rating / 1000);
 
-// The rating delta for one daily. `plays` is the player's count of previously
-// rated dailies; the K-factor decays with experience (`K / log2(plays + 2)`) so
-// new players' ratings move fast and settle as they play more.
+// The rating delta for one daily. `plays` is the count of previously rated
+// dailies; the K-factor `K / log2(plays + 2)` decays with it, so new players
+// move fast and settle.
 export const computeRatingChange = (
   rating: number,
   plays: number,

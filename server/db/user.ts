@@ -9,16 +9,14 @@ import { deserializeRun } from "../util/run.ts";
 import { streaks } from "../util/streak.ts";
 import { format, raw, sql } from "./query.ts";
 
-// The most runs the attempts panel loads for one player on one iteration. High
-// enough that no real player is ever truncated (a heavy free-play replayer sits
-// in the low hundreds), but a hard ceiling so a runaway client can't ask us to
-// serialize an unbounded maze list. Hitting it means the panel drops
-// that player's NEWEST runs (the read keeps the oldest RUN_CAP, see
-// allRunsByIteration) — a human-actionable oddity, so alert once (see
-// below).
+// The most runs the attempts panel loads for one player on one iteration: above
+// any real player (a heavy free-play replayer sits in the low hundreds), but a
+// hard ceiling on the maze list a client can make us serialize. At the cap the
+// panel drops the player's NEWEST runs (allRunsByIteration keeps the oldest
+// RUN_CAP), which warrants an operator alert.
 const RUN_CAP = 10_000;
-// Dedup the cap alert to once per (user, iteration) per process — the read
-// fires on every board load, and we want one ping, not one per refresh.
+// Dedupes the cap alert to once per (user, iteration) per process; the read
+// runs on every board load.
 const capAlerted = new Set<string>();
 
 type User = {
@@ -46,8 +44,8 @@ const createOrUpdateUserWithName = (id: string, name: string) =>
 
 export const createOrUpdateUser = (id: string, name?: string) =>
   name === undefined
-    // Seed a random display name on first insert, and backfill it onto any
-    // existing user still lacking one (COALESCE keeps a chosen name untouched).
+    // Seeds a random name on first insert and backfills one onto an existing
+    // user lacking it; COALESCE keeps a chosen name.
     ? sql<[unknown, User[]]>`
     INSERT INTO user (id, name) VALUES (${id}, ${randomName()})
       ON DUPLICATE KEY UPDATE name = COALESCE(name, VALUES(name));
@@ -67,51 +65,45 @@ export const getUserSettings = (id: string) =>
     SELECT settings FROM user WHERE id = ${id};
   `.then((r) => parseSettings(r[0]?.settings ?? null));
 
-// Upsert so it never no-ops for a user whose row hasn't been seeded yet (a later
-// createOrUpdateUser backfills the name via COALESCE).
+// Upsert, so it works for a user whose row isn't seeded yet (a later
+// createOrUpdateUser backfills the name).
 export const updateUserSettings = (id: string, settings: string) =>
   sql`
     INSERT INTO user (id, settings) VALUES (${id}, ${settings})
     ON DUPLICATE KEY UPDATE settings = ${settings};`;
 
-// The user's BCP-47 locale, captured passively (a subscribing device reports it)
-// so server-rendered push copy can match it. Upsert like updateUserSettings; the
-// caller only passes a canonicalised, non-null tag, so this never clobbers a
-// known locale with a bad one.
+// The user's BCP-47 locale, reported by a subscribing device so push copy can
+// match it. Upsert like updateUserSettings; the caller passes only a
+// canonicalised non-null tag, so a known locale is never clobbered by a bad
+// one.
 export const updateUserLocale = (id: string, locale: string) =>
   sql`
     INSERT INTO user (id, locale) VALUES (${id}, ${locale})
     ON DUPLICATE KEY UPDATE locale = ${locale};`;
 
-// The profile's stats, in one round trip. Every figure is derived from the runs
-// already stored — nothing here needs a new column:
-//   1. the user's own row (display name, rating, join date, settings);
-//   2. RANKED, over closed (rated) days with a field: the days they took the top
-//      time alone or shared, and how many such days there were (the win rate's
-//      denominator). A day nobody else played is skipped — there is no field to
-//      win — the same rule the calendar's per-day ranking uses;
+// The profile's stats in one round trip, all derived from stored runs:
+//   1. the user's own row (name, rating, join date, settings);
+//   2. RANKED, over closed (rated) days with a field: days they took the top
+//      time alone or shared, and how many such days there were. A day nobody
+//      else played is skipped (no field to win), as in the calendar's ranking;
 //   3. SOLVES: days where a ranked attempt equalled the best build anyone has
-//      made on that board, and the subset where the FIRST attempt did. The bar
-//      is the board's current best, free play included, so a solve is lost again
-//      if someone later builds longer — it means "nobody has ever done better",
-//      not "best on the day";
-//   4. FREE PLAY: boards where their best build is the board's top, alone
-//      (supreme) or shared (record), boards played, and how many boards exist;
-//   5. the dates they made ranked attempts on, for the streak (computed in
-//      server/util/streak.ts);
-//   6. HEAD-TO-HEAD per rival, on both boards: ranked days both played, and
-//      boards both built on. Rows ship `name` + `hue`, never the rival's id —
-//      the raw id is the bearer credential (see common/avatar.ts).
-// Each half of a comparison is a per-iteration MAX over the same `time` column,
-// so equality is exact: the two sides read the identical stored value.
+//      made on the board, and the subset where the FIRST attempt did. The bar
+//      is the board's CURRENT best, free play included, so a solve is lost
+//      again if someone later builds longer;
+//   4. FREE PLAY: boards where their best build is the top, alone (supreme) or
+//      shared (record), boards played, and how many boards exist;
+//   5. the dates of their ranked attempts, for the streak (util/streak.ts);
+//   6. HEAD-TO-HEAD per rival on both boards. Rows ship `name` + `hue`, never
+//      the rival's id: the raw id is the bearer credential (common/avatar.ts).
+// Both sides of a comparison are a per-iteration MAX over the same `time`
+// column, so equality is exact.
 //
-// Cost scales with the PLAYER, not the table: every field-side read is reached
-// through the iterations the player has runs on (`playedIterations`, a seek on
-// run's (user, …) indexes), then joins that iteration's runs through the
-// (iteration, …) index. Nothing groups over the whole run table (a whole-table
-// "others" side would grow with every run anyone makes). Those joins are
-// STRAIGHT_JOINs: left to choose, MariaDB scanned all of `run` and probed the
-// player's iterations instead (EXPLAIN on prod) — the very cost this avoids.
+// Cost follows the PLAYER, not the table: every field-side read starts from
+// the iterations the player has runs on (`playedIterations`) and joins those
+// iterations' runs through the (iteration, …) index; nothing groups over the
+// whole run table. The joins are STRAIGHT_JOINs because left to choose,
+// MariaDB scanned all of `run` and probed the player's iterations (EXPLAIN on
+// prod).
 export const getUserStats = async (user: string) => {
   const [userRows, ranked, solves, boards, total, days, daily, pb] = await sql<[
     {
@@ -231,19 +223,17 @@ type RivalRow = {
 };
 
 // The iterations `user` has a non-void run on (`filter` narrows it, e.g. to
-// ranked), as a derived table to drive the field-side joins in getUserStats.
-// DISTINCT over the user's own index range — cheap, and small.
+// ranked), as a derived table driving getUserStats's field-side joins.
 const playedIterations = (user: string, filter: string) =>
   format`
     SELECT DISTINCT iteration FROM run
     WHERE user = ${user} AND void = FALSE ${raw(filter)}`;
 
 // A rival's record on one board: the viewer's best time per iteration against
-// every other player's, over the iterations they both ran. `rankedOnly` narrows
-// both sides to ranked attempts (the daily board); empty counts every non-void
-// run (the PB board). Written as SQL text so the two boards are one query each
-// with no duplicated shape. The field side is reached through the viewer's own
-// iterations (`m`), so the cost follows their history, not the table's.
+// each other player's, over the iterations both ran. `rankedOnly` narrows both
+// sides to ranked attempts (the daily board); empty counts every non-void run
+// (the PB board). SQL text so both boards share one shape. The field side
+// starts from the viewer's own iterations (`m`).
 const rivals = (user: string, rankedOnly: string) =>
   format`
     SELECT o.user user, u.name name, COUNT(*) met,
@@ -266,24 +256,19 @@ const rivals = (user: string, rankedOnly: string) =>
     ORDER BY met DESC
     LIMIT ${RIVAL_CAP}`;
 
-// A pair needs this many meetings on a board before that board's record
-// appears: a 1–0 from a single shared day is noise, not a rivalry.
+// Meetings a pair needs on a board before that board's record appears.
 const RIVAL_MINIMUM = 5;
-// Rows sent for the profile's own list, most-met first, with a way into the
-// rest. Five is what the desktop dialog's two-column layout fits beside the
-// settings column; stacked, the client shows one fewer (see Profile.tsx) — it
-// slices rather than the CSS hiding a row, so a player with exactly five rivals
-// still gets a "see all" into the fifth.
+// Rows sent for the profile's own list, most-met first. Five fits the desktop
+// dialog's two-column layout; stacked, the client shows one fewer (Profile.tsx)
+// by slicing, so a player with exactly five rivals still gets a "see all".
 const RIVAL_PREVIEW = 5;
-// Ceiling on one query's rows. Comfortably past any real heat today, and the
-// list is one grouped pass over the viewer's own runs either way — the point is
-// that a runaway field can't make the profile response unbounded.
+// Ceiling on one query's rows, so a runaway field can't make the response
+// unbounded.
 const RIVAL_CAP = 500;
 
-// One row per rival carrying both boards, with the id hashed to its avatar hue
-// on the way out. A rival appears if EITHER board has enough meetings; the
-// board that doesn't reach the minimum comes back null and the client shows a
-// dash for it.
+// One row per rival carrying both boards, with the id reduced to its avatar
+// hue. A rival appears if EITHER board has enough meetings; a board below the
+// minimum is null.
 export const mergeRivals = (daily: RivalRow[], pb: RivalRow[]) => {
   const record = (r: RivalRow | undefined) =>
     r && Number(r.met) >= RIVAL_MINIMUM
@@ -313,10 +298,9 @@ export const mergeRivals = (daily: RivalRow[], pb: RivalRow[]) => {
     );
 };
 
-// Every rival with a record on either board, for the head-to-head sheet the
-// profile's short list opens. Same shape and same rules as the profile's rows
-// (see mergeRivals); it is a separate call so the full list is fetched when a
-// player asks for it rather than riding on every boot.
+// Every rival with a record on either board, for the head-to-head sheet. Same
+// rows and rules as getUserStats's (mergeRivals), fetched on demand rather than
+// on every boot.
 export const getUserRivals = async (user: string) => {
   const [daily, pb] = await sql<[RivalRow[], RivalRow[]]>`
     ${raw(rivals(user, "AND r.ranked = TRUE"))};
@@ -326,10 +310,9 @@ export const getUserRivals = async (user: string) => {
   return mergeRivals(daily, pb);
 };
 
-// The ranked daily attempts (at most three, by construction of the `ranked`
-// flag — see db/run.ts startRun), oldest first, with the maze each run built
-// (result modal, attempts-remaining). Void included — an abandoned attempt
-// still spends a slot.
+// The ranked daily attempts (at most three, by construction of `ranked` in
+// db/run.ts startRun), oldest first, with each run's maze. Void included: an
+// abandoned attempt still spends a slot.
 export const attemptRunsByIteration = (user: string, iteration: number) =>
   sql<{ time: number; data: string; created: string }[]>`
     SELECT time, data, created
@@ -347,16 +330,13 @@ export const attemptRunsByIteration = (user: string, iteration: number) =>
     }))
   );
 
-// The user's own runs on an iteration (their ranked attempts plus any free
-// play), oldest first, with each run's maze, creation time, and whether it was a
-// ranked daily attempt — read straight off the `ranked` flag recorded at start
-// time (see db/run.ts startRun), the only moment the timezone-aware daily check
-// can be made.
+// The user's own runs on an iteration (ranked attempts plus free play), oldest
+// first, with each run's maze, creation time, and the `ranked` flag recorded
+// by db/run.ts startRun.
 //
-// Non-void runs are always returned, plus voided runs that are ranked attempts
-// (a daily attempt started but never built still counts as spent). Voided free
-// play — abandoned, incl. a never-run build — stays hidden so the panel isn't
-// padded with empty rows.
+// Non-void runs are returned, plus void ranked attempts (started but never
+// built, still spent). Void free-play rows, which only the legacy commitRun
+// path leaves, stay hidden so the panel has no empty rows.
 export const allRunsByIteration = (user: string, iteration: number) =>
   sql<
     {
@@ -375,24 +355,23 @@ export const allRunsByIteration = (user: string, iteration: number) =>
     ORDER BY created ASC
     LIMIT ${RUN_CAP};
   `.then(async (r) => {
-    // At the cap the panel is truncating this player's runs (the query returns
-    // their OLDEST RUN_CAP, so newer ones silently drop). Warn an operator once.
+    // At the cap the newer runs silently drop. Warn an operator once.
     if (r.length >= RUN_CAP) {
       const key = `${user}:${iteration}`;
       if (!capAlerted.has(key)) {
         capAlerted.add(key);
-        // The log flows to VictoriaLogs, so it gets the hashed id (hashUserId).
-        // The Discord alert deliberately keeps the RAW id: it's a low-volume,
-        // access-controlled operator channel, and the raw id is what lets an
-        // operator look the player up in the DB (there is no hash column to join
-        // on). If that channel's trust boundary ever changes, hash this too.
+        // The log goes to VictoriaLogs, so it gets the hashed id. The Discord
+        // alert keeps the RAW id: the channel is low-volume and
+        // access-controlled, and the raw id is what lets an operator find the
+        // player in the DB. Hash it too if that channel's trust boundary
+        // changes.
         log.warn("attempts cap hit", {
           userHash: await hashUserId(user),
           iteration,
         });
         alertAdmin(
-          // discordCode: the id is the caller's own authorization header —
-          // attacker-chosen text, which must not close the code span.
+          // discordCode: the id is the caller's authorization header, so
+          // attacker-chosen text that must not close the code span.
           `Player ${
             discordCode(user)
           } hit the ${RUN_CAP}-run cap on iteration ` +
@@ -421,9 +400,8 @@ export const listDailies = async (
     limit?: number;
   } = {},
 ) => {
-  // Default window: the current (UTC) month — a daily's date is its UTC creation
-  // date, so this is the natural "recent" slice for load/refresh. Callers page
-  // further back by passing explicit start/end day ranges.
+  // Default window: the current UTC month, since a daily's date is its UTC
+  // creation date. Callers page back with explicit start/end.
   let { start, end } = opts;
   if (!start && !end) {
     const now = new Date();
@@ -432,8 +410,7 @@ export const listDailies = async (
     start = [y, m + 1, 1];
     end = m === 11 ? [y + 1, 1, 1] : [y, m + 2, 1];
   }
-  // Safety cap on a single request (a month is ~31 rows); the range does the
-  // real bounding.
+  // Safety cap; the range does the real bounding (a month is ~31 rows).
   const limit = opts.limit ?? 400;
 
   const bounds = [
@@ -441,10 +418,9 @@ export const listDailies = async (
     end ? format`AND iteration.created < ${dateStr(end)}` : "",
   ].join(" ");
 
-  // The page of iterations both statements below cover: the user's played days
-  // within the window. Built once and inlined into each so the whole list is a
-  // single round trip. Wrapped in a derived table because MySQL won't accept a
-  // LIMIT directly inside an IN (...) subquery.
+  // The user's played days within the window, inlined into both statements
+  // below. The derived table is needed because MySQL rejects a LIMIT directly
+  // inside an IN (...) subquery.
   const page = raw(format`(
     SELECT id FROM (
       SELECT id
@@ -456,11 +432,10 @@ export const listDailies = async (
     ) page
   )`);
 
-  // Two statements, one round trip: the per-day aggregates, then the pieces of
-  // each day's ranked-daily percentile — the user's best daily attempt against
-  // every other player's best daily attempt, each player first reduced to their
-  // single best. The percentile needs the whole field's distribution, so it
-  // can't fold into the GROUP BY above.
+  // Three statements, one round trip: per-day aggregates; the pieces of each
+  // day's ranked-daily percentile (the user's best daily attempt against each
+  // other player's best), which needs the whole field so can't fold into the
+  // GROUP BY; and the first iteration's date.
   const [rows, ranks, firstRows] = await sql<[
     {
       iteration: number;
@@ -523,9 +498,8 @@ export const listDailies = async (
 
   const rankByIter = new Map(ranks.map((r) => [r.iteration, r]));
 
-  // The very first daily's date — the floor the calendar can page back to,
-  // independent of which months the user actually played (so gaps don't stop
-  // paging short of real history).
+  // The first daily's date: the calendar's paging floor, independent of which
+  // months the user played.
   const firstCreated = firstRows[0]?.created;
   const oldest: [number, number, number] | null = firstCreated == null
     ? null
@@ -546,9 +520,9 @@ export const listDailies = async (
     dailyBest: number | null;
     min: number;
     supreme: boolean;
-    // 0..1 percentile of the user's best daily attempt vs other players' best
-    // daily attempts; p100 (1) means they equalled or bettered everyone. null
-    // when there's no ranking to make (no daily attempt, or no other players).
+    // 0..1 percentile of the user's best daily attempt vs other players' best;
+    // 1 means they equalled or bettered everyone. null with no daily attempt or
+    // no other players.
     dailyPercentile: number | null;
   } => {
     const rank = rankByIter.get(r.iteration);
@@ -580,9 +554,8 @@ export const listDailies = async (
   return { items, oldest };
 };
 
-// The user's own best build on an iteration, void (abandoned) runs excluded —
-// consistent with every board/standings query, so an abandoned free-play maze
-// doesn't count as your best or inflate the board target.
+// The user's own best build on an iteration. Void runs are excluded, as in
+// every board/standings query: a void row is not a build.
 export const getOwnBest = (user: string, iteration: number) =>
   sql<{ ownBest: number }[] | null>`
     SELECT max(time) ownBest
@@ -609,21 +582,17 @@ export const getOwnBestMaze = (user: string, iteration: number) =>
 export const updateRating = (user: string, rating: number) =>
   sql`UPDATE user SET rating = ${rating} WHERE id = ${user};`;
 
-// The `user.plays` column is the rating system's experience counter — NOT the
-// profile's "Played" statistic (getUserStats), which is a deliberately different
-// and broader number. `plays` counts only the dailies a player has been *rated*
-// on: incremented once per rated iteration for each ranked participant (see
-// rateDailies / applyRatings), i.e. days where they completed a ranked run
-// (void = FALSE) AND were ranked against at least one other player, on a daily
-// that has since closed and been rated. Today's daily and solo-player days don't
-// count. It exists solely to decay the ELO K-factor, `K / log2(plays + 2)`
-// (rating.ts) — nothing reads it for display. The profile "Played" figure, by
-// contrast, is COUNT(DISTINCT daily iteration) with no void/rated/opponent
-// gating, so it reflects every daily the player attempted, current day included.
+// `user.plays` is the rating system's experience counter, NOT the profile's
+// "Played" statistic (getUserStats). It counts only dailies the player was
+// *rated* on: +1 per rated iteration (rateDailies / applyRatings) for days they
+// completed a ranked run (void = FALSE) and were ranked against at least one
+// other player. Today's daily and solo days don't count. It only decays the ELO
+// K-factor, `K / log2(plays + 2)` (rating.ts); nothing displays it. The
+// profile's "Played" is COUNT(DISTINCT daily iteration) with no void, rated or
+// opponent gating.
 //
 // Each completer of an iteration's daily, with their best time and current
-// rating/plays. Abandoners (no completed run) are excluded — they already lose
-// an attempt; they aren't rated.
+// rating/plays. Abandoners (no completed run) are not rated.
 export const getRatingParticipants = (iteration: number) =>
   sql<{ user: string; time: number; rating: number; plays: number }[]>`
     SELECT r.user, MAX(r.time) time,
@@ -637,13 +606,11 @@ export const getRatingParticipants = (iteration: number) =>
   `;
 
 // The UPDATE applyRatings runs: each listed player's delta, picked by a CASE on
-// their id, gated on the claim. Matching the literals straight against
-// `user.id` (rather than JOINing a derived table of them) keeps the comparison
-// the same column-vs-literal one every other query makes, with no collation
-// mix to trip over; the IN list makes it a primary-key lookup. `+ 0e0` makes
-// each delta a DOUBLE, so a mix of DECIMAL literals of different scales (or one
-// in exponent form) can't be truncated to a common type. GREATEST(0, …) because
-// the column is unsigned and the drift described below could in principle dip a
+// their id, gated on the claim. Literals are matched against `user.id` directly
+// (not a JOINed derived table) to avoid a collation mix; the IN list makes it a
+// primary-key lookup. `+ 0e0` makes each delta a DOUBLE so DECIMAL literals of
+// different scales can't truncate to a common type. GREATEST(0, …) because the
+// column is unsigned and the drift described at applyRatings could dip a
 // near-zero rating under it. Non-empty input only.
 export const ratingDeltaUpdate = (deltas: { user: string; delta: number }[]) =>
   `UPDATE user
@@ -653,33 +620,29 @@ export const ratingDeltaUpdate = (deltas: { user: string; delta: number }[]) =>
       plays = plays + 1
     WHERE @claimed > 0 AND id IN (${format`${deltas.map((d) => d.user)}`});`;
 
-// Claim the iteration for rating and apply its rating deltas, in one
-// transaction. Resolves whether THIS call made the claim — the caller sends the
+// Claims the iteration for rating and applies its rating deltas in one
+// transaction. Resolves whether THIS call made the claim; the caller sends the
 // day's notifications and Discord posts only then.
 //
-// The claim is `rated = FALSE -> TRUE`, and every delta is gated on it having
-// landed. Two writers on one DB (a second instance missing DISABLE_CRONS, a dev
-// deploy pointed at prod) would otherwise both rate the same day: each reads
-// the ratings, and a plain `SET rated = TRUE` lets both commit — doubling every
-// player's ELO change and every push / Discord post. With the claim, the loser
-// blocks on the winner's row lock, re-reads the committed `rated = TRUE`,
-// matches nothing, and its deltas don't apply. Its `@claimed` is read back
-// after COMMIT, in the same batch (one connection, so the session variable
+// The claim is `rated = FALSE -> TRUE`, and every delta is gated on it. Without
+// it, two writers on one DB (a second instance missing DISABLE_CRONS, a dev
+// deploy pointed at prod) would both rate the day and double every ELO change
+// and post. With it, the loser blocks on the winner's row lock, re-reads
+// `rated = TRUE`, matches nothing, and applies nothing. `@claimed` is read
+// after COMMIT in the same batch (one connection, so the session variable
 // carries).
 //
-// Deltas, applied relative to the stored row, rather than absolute ratings:
-// the participants were read before this transaction, so an absolute write
-// would silently undo another day's rating committed in between. (The delta
-// itself was computed off that slightly earlier rating — a negligible drift,
-// unlike a lost update.) And an UPDATE that can only touch EXISTING rows,
-// rather than an `INSERT … ON DUPLICATE KEY UPDATE`: a player merged away
-// or erased (deleteAccount rotates the id) between the read and this write
-// must not come back as a fresh row keyed by their old id — that id is the
-// person's credential. Still one statement however large the field.
+// Deltas are relative to the stored row, not absolute ratings: participants
+// are read before this transaction, so an absolute write would undo another
+// day's rating committed in between. (The delta itself is computed off that
+// slightly earlier rating, a negligible drift unlike a lost update.) It is an
+// UPDATE of EXISTING rows, not `INSERT … ON DUPLICATE KEY UPDATE`: a player
+// merged away or erased (deleteAccount rotates the id) between read and write
+// must not reappear under their old id, which is their credential.
 //
-// Retry-safe (`sql`): a retry after a lost response finds the day already
-// claimed and changes nothing — the cost is that it reports "not claimed", so
-// that rare day's notifications are skipped rather than ever sent twice.
+// Retry-safe (`sql`): a retry after a lost response finds the day claimed and
+// changes nothing, so it reports "not claimed" and that day's notifications are
+// skipped rather than sent twice.
 export const applyRatings = async (
   iteration: number,
   deltas: { user: string; delta: number }[],

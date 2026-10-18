@@ -28,27 +28,21 @@ import { GameStateContext } from "./useGameState.ts";
 // Open/closed sticks across visits, like the runs sort and the standings sort.
 const OPEN_KEY = "splitsOpen";
 
-// "Tap" or "Click" in the armed footer: a pointer-type question, asked once —
-// the copy names the gesture the player actually has.
+// Picks "Tap" or "Click" for the armed footer copy.
 const COARSE = typeof matchMedia === "function" &&
   matchMedia("(pointer: coarse)").matches;
 
-// The same caret the standings dock uses, in the same weight and colour, so the
-// rail reads as one system — but pointed differently, because the two controls
-// do different things: the dock's opens a sheet (up on mobile, left into a side
-// drawer on desktop), while this one is a disclosure that expands in place, so
-// it points right when closed and down when open. Matching the glyph and
-// diverging on direction is the honest pairing; making them identical would
-// promise the same behaviour.
+// The standings dock's caret, so the rail reads as one system, but pointed by
+// behaviour: the dock opens a sheet (up or left); this expands in place (right,
+// rotating down when open).
 const Caret = ({ open }: { open: boolean }) => (
   <span class={"splits__chevron" + (open ? " splits__chevron--open" : "")}>
     <Chevron />
   </span>
 );
 
-// The three mark glyphs, each drawn in the board's own token for that piece so
-// a row reads as the thing it points at: a thunder (the player's green or the
-// day's magenta), the checkpoint's blue, a flag's orange.
+// Mark glyphs, in the board's own colour tokens for each piece: thunder (the
+// player's or the day's), checkpoint, flag.
 export const FlagGlyph = ({ size = 11 }: { size?: number }) => (
   <svg
     width={size}
@@ -123,20 +117,15 @@ const Glyph = ({ split }: { split: Split }) =>
     ? <CheckpointGlyph />
     : <FlagGlyph />;
 
-// Higher is better in Blocktol, so a positive delta is a GAIN — the sign is
-// spelled out because the tape is read at a glance and an unsigned "0.62" would
-// invert on a loss.
+// Higher is better, so a positive delta is a GAIN. The sign is always shown so
+// an unsigned "0.62" can't be misread at a glance.
 const formatDelta = (delta: number) =>
   (delta > 0 ? "+" : "") + formatSeconds(delta);
 
-// Dead level is its own state, not a gain: matching the reference exactly gets
-// the warn amber rather than the win green (and not the faint grey either —
-// that one already means "no counterpart in the best run", see --none).
-// A tape ROW's comparison state, as a modifier that sets --split-tone: the
-// delta wears it outright and the absolute time a dimmed mix of it, so the
-// whole line says "ahead" or "behind" at a glance while the delta stays the
-// headline. Nothing to compare against (your best run, or a mark the reference
-// never crossed) leaves the default faint tone.
+// A row's comparison state, as a modifier that sets --split-tone (the delta
+// wears it, the absolute time a dimmed mix). Dead level is its own amber state,
+// not a gain. Nothing to compare against (your best run, or a mark the
+// reference never crossed) keeps the faint default; `--none` marks the latter.
 const rowTone = (delta: number | undefined, isBest: boolean) =>
   isBest || delta === undefined
     ? ""
@@ -154,9 +143,8 @@ const deltaClass = (delta: number | undefined) =>
     : "splits__delta " +
       (delta > 0 ? "splits__delta--gain" : "splits__delta--loss");
 
-// The board rectangle a hovered row rings: a thunder is a 2x2 piece anchored at
-// its cell, a flag one cell, and the checkpoint the cell its half-offset anchor
-// sits in (see Board.tsx, which draws it the same way).
+// The board rectangle a hovered row rings: thunder 2x2, flag 1x1, checkpoint
+// the cell its half-offset anchor sits in (as Board.tsx draws it).
 const markRect = (split: Split) =>
   split.kind === "slow"
     ? { x: split.at.x, y: split.at.y, size: 2 }
@@ -176,12 +164,11 @@ const splitLabel = (split: Split) =>
  * crosses — each thunder trigger, the checkpoint, and the player's own flags —
  * read against their best run on the same board.
  *
- * It sits above the runs list and only appears while REVIEWING a run in free
- * play: mid-daily it would spoil the attempt you're building (and there's no
- * settled best to compare against yet), and on a live board there is no run to
- * describe. Everything is computed locally with the same engine the server
- * times with (`localRun` -> `computeSplits`), so the tape needs no round trip
- * and can never disagree with the time on the row.
+ * It sits above the runs list and appears only for a free-play run being
+ * reviewed or animating: mid-daily it would spoil the attempt being built, and
+ * a live board has no run to describe. It is computed locally with the
+ * server's engine (`localRun` -> `computeSplits`), so it can't disagree with
+ * the time on the row.
  */
 export const Splits = () => {
   const {
@@ -199,9 +186,8 @@ export const Splits = () => {
 
   const local = blocks.filter((b) => b.local);
   const fixed = blocks.filter((b) => !b.local);
-  // Everything below is keyed off the maze on the board and the reference maze,
-  // not the arrays themselves — reviewing re-creates the block objects, and the
-  // solve behind this (though memoized in the shared solver) is not free.
+  // Keyed off the mazes, not the arrays: reviewing re-creates the block
+  // objects, and the solve isn't free even memoized in the shared solver.
   const key = mazeKey(local);
   const best = useMemo(
     () =>
@@ -224,11 +210,9 @@ export const Splits = () => {
       checkpoint,
       flags,
     });
-    // The reference is always the player's best run on this board — never a
-    // per-split best pooled across runs: different builds route the runner
-    // differently, so segments only compare within one route. Re-solved the
-    // same way the viewed maze is (the shared solver has both mazes cached
-    // after the first pass).
+    // The reference is the player's best run on this board, never a per-split
+    // best pooled across runs: different builds route differently, so
+    // segments only compare within one route.
     if (isBest || !best) return { splits, run, deltas: undefined };
     const bestBlocks = [
       ...fixed,
@@ -254,49 +238,35 @@ export const Splits = () => {
   const rows: (Split & { delta?: number })[] = tape?.deltas ?? tape?.splits ??
     [];
 
-  // While the runner is animating, the mark it is running TOWARD is lit — on
-  // the collapsed line and in the expanded table alike — so the tape keeps
-  // pace with the board instead of being a column of numbers you match up
-  // afterwards. The split in progress, the way a speedrun timer reads: the lit
-  // mark is the one about to be scored, and it moves on the instant the runner
-  // reaches it. (Lighting the mark just PASSED instead leaves the tape dark
-  // for the opening leg and lit on a mark the runner has already left.) Past
-  // the last mark nothing is lit — there is no next one — and nothing is while
-  // no runner is on the board (`runnerTime` is undefined then).
+  // While the runner animates, the mark it is running TOWARD is lit (the split
+  // in progress, as a speedrun timer reads). Lighting the mark just passed
+  // would leave the opening leg dark. Nothing is lit past the last mark or
+  // with no runner (`runnerTime` undefined).
   //
-  // Read through a computed, not straight in render: `runnerTime` is written
-  // every frame, and a component that reads it re-renders at that rate. This
-  // collapses it to a time that moves a handful of times per run, and signals
-  // only notify on a CHANGED value, so the tape re-renders when the lit mark
-  // moves and not otherwise. `rows` rides in on a ref because the computed is
-  // created once — it is recomputed on every frame anyway, so it never reads a
-  // stale board.
+  // Read through a computed: `runnerTime` is written every frame, and signals
+  // notify only on a changed value, so the tape re-renders only when the lit
+  // mark moves. `rows` rides in on a ref because the computed is created once;
+  // it reruns every frame, so it never reads stale rows.
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const currentAt = useComputed(() => {
     const at = runnerTime.value;
     if (at === undefined) return undefined;
-    // Marks are in crossing order (computeSplits sorts them), so the first one
-    // the runner hasn't reached is the one it's heading for. Matched by TIME,
-    // not by key, so marks that share an instant light together — a flag
-    // dropped on the checkpoint is one moment of the run, not two.
+    // Marks are in crossing order (`computeSplits` sorts them), so the first
+    // unreached one is the target. Matched by time, not key, so marks sharing
+    // an instant (a flag on the checkpoint) light together.
     return rowsRef.current.find((row) => row.time > at)?.time;
   }).value;
 
-  // Tell the board which flags this run actually crosses; the rest draw as
-  // dashed outlines — speculative marks waiting for a build that routes past
-  // them. This is also what puts the flags on the board at all: unset, the
-  // board draws none (see `splitsShowing`), so the marks and the tape that
-  // reads them appear and go together.
+  // Tells the board which flags this run crosses; the rest draw dashed. Unset,
+  // the board draws no flags (see `splitsShowing`), so flags and tape appear
+  // together.
   const crossed = rows.filter((r) => r.kind === "flag").map((r) =>
     flagKey(r.at)
   ).join(" ");
 
-  // The tape describes the run the board is showing — a review, or the run
-  // currently ANIMATING: a free-play run is committed and in the panel the
-  // moment it executes, so its splits are readable while you watch it rather
-  // than only once the runner stops. The board's blocks don't change during the
-  // animation, so this is the same maze the review will settle on.
+  // The tape covers a review or the run animating: a free-play run is in the
+  // panel from execution, and its maze is the one the review settles on.
   const showing = viewing || phase === "running";
   const visible = showing && !dailyInProgress && iteration !== undefined &&
     rows.length > 0;
@@ -307,18 +277,16 @@ export const Splits = () => {
       : undefined;
   }, [crossed, visible]);
 
-  // Going away entirely is the one case the effect above can't cover: it only
-  // rewrites `liveFlags` while this panel is mounted, and that signal is what
-  // tells the board a tape is up — so an unmount would strand the flags on a
-  // board with nothing left to read them against. Its own effect, deliberately:
-  // folding it into the arming cleanup below would have it fire on every
-  // visibility change too, racing the write that effect just made.
+  // The effect above writes `liveFlags` only while mounted, so an unmount
+  // would strand flags on a board with no tape. Separate from the cleanup
+  // below, which would also fire on every visibility change and race the
+  // write above.
   useEffect(() => () => {
     liveFlags.value = undefined;
   }, []);
 
-  // Arming is a property of this panel being up: leaving the review (Play, a
-  // day change, the daily) must not leave the board waiting for a flag tap.
+  // Arming lasts only while the panel is up, so leaving the review can't leave
+  // the board waiting for a flag tap.
   useEffect(() => {
     if (!visible) flagsArmed.value = false;
     return () => {
@@ -327,10 +295,8 @@ export const Splits = () => {
     };
   }, [visible]);
 
-  // The tape comes and goes as you review a run and go back to playing, and the
-  // runs list below must not hop when it does — so when it isn't up (but could
-  // be: this is a free-play board), an empty panel of the collapsed height holds
-  // the space. Mid-daily there is no tape to reserve for, and nothing renders.
+  // On a free-play board without a tape, an empty panel of the collapsed
+  // height holds the space so the runs list doesn't hop. Mid-daily: nothing.
   if (!visible) {
     return dailyInProgress || iteration === undefined
       ? null
@@ -339,8 +305,7 @@ export const Splits = () => {
 
   const toggle = () => {
     storage.setItem(OPEN_KEY, open ? "0" : "1");
-    // Collapsing takes the Done button off screen, so it has to disarm too —
-    // otherwise the board sits waiting for a flag tap with no way to stop it.
+    // Collapsing hides Done, so disarm too.
     if (open) flagsArmed.value = false;
     setOpen(!open);
   };
@@ -357,9 +322,8 @@ export const Splits = () => {
       >
         <Caret open={open} />
         {open ? <span class="splits__title">{t("splits.title")}</span> : (
-          // Collapsed, the whole tape is the header: every mark on one
-          // wrapping line — the delta against your best, or the absolute time
-          // when the run on the board IS your best (nothing to compare to).
+          // Collapsed: every mark on one wrapping line, as delta against your
+          // best or absolute time when this IS your best.
           <span class="splits__marks">
             {rows.map((split) => (
               <span
@@ -384,10 +348,8 @@ export const Splits = () => {
           </span>
         )}
         {
-          /* What the numbers mean: absolute times when this IS the best run
-            (nothing to compare against), otherwise which run the deltas are
-            measured from. No reference at all — a maze with no run on record —
-            says nothing rather than claiming to be the best. */
+          /* What the numbers mean: absolute times, or the run the deltas are
+            measured from. No reference run: no note. */
         }
         {best && (
           <span class="splits__note">
@@ -400,10 +362,9 @@ export const Splits = () => {
         )}
       </button>
       {
-        /* Always rendered, so opening and closing can SLIDE (a 0fr -> 1fr grid
-          row, clipped by the inner wrapper) instead of snapping. Collapsed it
-          is also `visibility: hidden`, which takes it out of the tab order and
-          off the accessibility tree once the animation has run. */
+        /* Always rendered so it can slide (a 0fr -> 1fr grid row). Collapsed
+          it is `visibility: hidden`, out of the tab order once the animation
+          has run. */
       }
       <div class="splits__body">
         <div class="splits__body-inner">
@@ -425,9 +386,8 @@ export const Splits = () => {
                 {splitLabel(split)}
                 {!!split.wasted && (
                   // A re-strike resets the shared 6s slow instead of extending
-                  // it, so whatever was left of the running one never lands.
-                  // Shown in FINISH seconds — half the slow lost, because the
-                  // runner covers slowed ground at half speed.
+                  // it, so the rest of the running one never lands. In finish
+                  // seconds: half the slow lost (slowed ground is half speed).
                   <span
                     class="splits__waste"
                     title={t("splits.wasteTitle", {
@@ -440,8 +400,7 @@ export const Splits = () => {
                 )}
               </span>
               {!isBest && (
-                // Coloured by the row's tone, not its own class — the time
-                // beside it takes the same tone, dimmed.
+                // Coloured by the row's tone, not its own class.
                 <span class="splits__delta">
                   {split.delta === undefined ? "—" : formatDelta(split.delta)}
                 </span>
@@ -455,10 +414,8 @@ export const Splits = () => {
                 <>
                   <FlagGlyph />
                   {
-                    /* No saved count while armed: the desktop rail is 288px and
-                      the prompt, the count and Done don't fit on one line
-                      there. The count is back the moment Done is tapped, and
-                      the flags themselves are on the board meanwhile. */
+                    /* No saved count while armed: the 288px desktop rail
+                      can't fit prompt, count and Done on one line. */
                   }
                   <span class="splits__arm-label">
                     {COARSE ? t("splits.armedTap") : t("splits.armedClick")}
@@ -481,8 +438,7 @@ export const Splits = () => {
                   >
                     <FlagGlyph />
                     {
-                      /* Same control either way; the word just says whether
-                        you're starting a set or changing one that exists. */
+                      /* The label says whether this starts or edits a set. */
                     }
                     <span>
                       {flags.length

@@ -9,8 +9,7 @@ export class BinaryHeap<T> extends Array<T> {
   override push(element: T): number {
     this.bubbleUp(super.push(element) - 1);
 
-    // Always returns 0, not Array#push's new length or the element's final
-    // index; callers must not rely on the result.
+    // Always returns 0, not Array#push's length: callers must not use it.
     return 0;
   }
 

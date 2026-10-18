@@ -30,8 +30,7 @@ import { Hud } from "./Hud.tsx";
 import { StandingsDock } from "../Standings/Dock.tsx";
 
 // The board and everything pointer-driven, isolated so signal writes at
-// mousemove speed re-render only this subtree — the HUD and panels above it
-// don't see a thing. (IntroBoard keeps driving Board with plain props.)
+// mousemove speed re-render only this subtree.
 const BoardArea = (
   { svgRef, onSlow }: {
     svgRef: RefObject<SVGSVGElement>;
@@ -50,13 +49,9 @@ const BoardArea = (
     implosions,
     iteration,
   } = useContext(GameStateContext);
-  // Flags come and go WITH the splits tape, because they are its marks: they
-  // only mean something read off a row, so a board with no tape up has nothing
-  // to show them for. That means a run you're reviewing or the one animating —
-  // never a board you're building on, ranked or free play, where they'd be
-  // clutter over the cells you're placing into. `splitsShowing` is the panel
-  // itself saying the tape is up (Splits.tsx owns the condition; the board just
-  // follows), so the two can't drift apart.
+  // Flags show only with the splits tape (a review or the animating run), never
+  // on a board being built, where they'd clutter the cells. `splitsShowing` is
+  // Splits.tsx saying the tape is up, so the two can't drift.
   const flagged = splitsShowing.value && iteration !== undefined;
   return (
     <Board
@@ -104,19 +99,16 @@ export const Game = () => {
           <Prestart />
         </div>
         {
-          /* One wrapper so mobile can scroll these as a unit below the board;
-            on desktop it's `display: contents`, letting the three panels drop
-            straight into the grid (today/cal left, attempts right). */
+          /* One wrapper so mobile scrolls the panels as a unit below the board;
+            on desktop it's `display: contents`, so they join the grid. */
         }
         <div class="game__panel">
           <TodayResult />
           {
-            /* The dock and the runs are one rail: on desktop they share a
-              single grid area spanning both rows, so the runs start right
-              under the dock instead of at the row line the (taller) left
-              column sets — which left a wide dead gap above them. On mobile
-              the rail is just a passthrough (the dock is pinned to the
-              viewport there). */
+            /* The dock and the runs are one rail: on desktop a single grid
+              area spanning both rows, so the runs sit right under the dock
+              instead of at the taller left column's row line. On mobile it's
+              a passthrough (the dock is viewport-pinned). */
           }
           <div class="game__rail">
             <StandingsDock />

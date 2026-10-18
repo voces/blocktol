@@ -18,14 +18,14 @@ export const newGrid = () => {
   return grid;
 };
 
-// Grazing tolerance: rounding a corner or sliding along a wall touches an
-// obstacle boundary and must read as clear, so obstacle rectangles are tested
-// shrunk by this much. Only a genuine interior crossing then blocks.
+// Grazing tolerance: touching an obstacle boundary (rounding a corner, sliding
+// along a wall) must read as clear, so obstacle boxes are tested shrunk by this
+// much. Only a genuine interior crossing blocks.
 const EPS = 1e-9;
 
-// Liang–Barsky segment/box clip. Returns whether the segment (ax,ay)->(bx,by)
-// crosses the *interior* of the axis-aligned box with positive length — i.e. it
-// truly passes through, not merely touching an edge or corner.
+// Liang–Barsky segment/box clip: does the segment (ax,ay)->(bx,by) cross the
+// *interior* of the axis-aligned box over a positive length? Touching an edge
+// or corner does not count.
 const segmentCrossesBox = (
   ax: number,
   ay: number,
@@ -61,21 +61,20 @@ const segmentCrossesBox = (
 };
 
 // Exact swept-square visibility for the 1x1 runner. Its centre travels from
-// `from` to `to` (cell node (x,y) => centre (x+0.5, y+0.5)); the move is clear
-// iff the swept square never enters a blocked cell's interior. In configuration
-// space that is: the centre segment must not cross the interior of any blocked
-// cell grown by half the runner on every side (`x-0.5 .. x+1.5`). Grazing a
-// boundary is allowed, which both lets the path round corners and — since two
-// diagonally-touching blocks leave only a zero-width gap — forbids squeezing the
-// unit runner between them.
+// `from` to `to` (node (x,y) => centre (x+0.5, y+0.5)); the move is clear iff
+// the swept square never enters a blocked cell's interior. Equivalently, the
+// centre segment must not cross any blocked cell grown by half the runner on
+// every side (`x-0.5 .. x+1.5`). Grazing is allowed, so paths round corners,
+// but two diagonally-touching blocks leave a zero-width gap the runner can't
+// squeeze through.
 export const lineOfSight = (from: Point, to: Point, grid: boolean[][]) => {
   const ax = from.x + 0.5;
   const ay = from.y + 0.5;
   const bx = to.x + 0.5;
   const by = to.y + 0.5;
 
-  // A cell's grown rectangle reaches 0.5 past the cell, so a cell can only
-  // matter if it lies within one of the segment's cell-space bounds.
+  // A grown cell reaches 0.5 past itself, so only cells within one cell of the
+  // segment's bounding box can matter.
   const xLo = Math.floor(Math.min(from.x, to.x)) - 1;
   const xHi = Math.ceil(Math.max(from.x, to.x)) + 1;
   const yLo = Math.floor(Math.min(from.y, to.y)) - 1;
@@ -105,17 +104,16 @@ export const lineOfSight = (from: Point, to: Point, grid: boolean[][]) => {
 const euclideanDistance = (s: Point, e: Point) =>
   ((e.x - s.x) ** 2 + (e.y - s.y) ** 2) ** .5;
 
-// Canonical identity of a set of placed pieces: sorted, geometry + thunder
-// flag. Shared by PathSolver's result memo and cachedSolver's solver keys.
+// Canonical identity of a set of pieces: sorted geometry + thunder flag. Keys
+// PathSolver's result memo and cachedSolver's solvers.
 const placementKey = (
   pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
 ) => pieces.map((b) => `${b.thunder ? "t" : ""}${b.x},${b.y}`).sort().join(";");
 
-// Does this cell-node path cross a 2x2 piece's inflated footprint? The exact
-// feasibility question for "does adding this piece invalidate the path": the
-// piece's four cells form one rectangle, grown by the half-runner and
-// EPS-shrunk exactly like lineOfSight's per-cell boxes, so a path this returns
-// false for grazes at most the piece's boundary — still legal travel.
+// Does this node path cross a 2x2 piece's inflated footprint, i.e. would adding
+// the piece invalidate the path? The piece is one rectangle, grown by the
+// half-runner and EPS-shrunk like lineOfSight's per-cell boxes, so a path that
+// returns false here at most grazes it.
 const pathTouchesPiece = (path: ReadonlyArray<Point>, piece: Point) => {
   const xMin = piece.x - 0.5 + EPS;
   const yMin = piece.y - 0.5 + EPS;
@@ -138,24 +136,19 @@ const pathTouchesPiece = (path: ReadonlyArray<Point>, piece: Point) => {
   return false;
 };
 
-// Blocked (or out of bounds). Deliberately the exact negation of the walkable
-// test inside `lineOfSight` (`grid[y]?.[x] !== false`) so corner detection and
-// segment visibility can never disagree about what a cell is.
+// Blocked or out of bounds. Unlike this, `lineOfSight` ignores off-grid cells;
+// all nodes are on-board, so the two agree where it matters.
 const isBlocked = (grid: boolean[][], x: number, y: number) =>
   grid[y]?.[x] !== false;
 
 const diagonals = [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const;
 
-// Is this free cell a convex corner the taut path can bend around? The runner
-// is a 1x1 square (see `lineOfSight`, a swept-square test), so in
-// configuration space every obstacle is inflated by half the runner on each
-// side and the taut path only ever bends around the resulting convex corners.
-// Such a corner shows up as a free cell diagonally touching a blocked cell
-// whose two shared-edge neighbours are both free (the runner's centre can
-// round it). A blocked orthogonal neighbour makes it a concave notch the
-// runner can't round, so those are excluded — and a segment that would clip
-// through a diagonal gap is rejected later by `lineOfSight`, keeping the "no
-// corner cutting" rule the game already enforces.
+// Is this free cell a convex corner the taut path can bend around? Obstacles
+// are inflated by half the runner (see `lineOfSight`), and the taut path only
+// bends at the resulting convex corners: a free cell diagonally touching a
+// blocked cell whose two shared-edge neighbours are both free. A blocked
+// orthogonal neighbour makes a concave notch the runner can't round. A segment
+// squeezing through a diagonal gap is rejected later by `lineOfSight`.
 const isCornerCell = (grid: boolean[][], x: number, y: number) => {
   for (const [dx, dy] of diagonals) {
     if (
@@ -180,51 +173,44 @@ const cornerNodes = (grid: boolean[][]): Point[] => {
   return corners;
 };
 
-// THE pathing engine: an exact any-angle shortest-path solver via a
-// visibility graph over obstacle corners — deliberately not Theta*, which
-// relaxes against a single ancestor and can settle for a slightly longer
-// route no post-smoothing recovers. Optimality is test-asserted against a
-// brute-force visibility graph over EVERY free cell, sharing the same
+// THE pathing engine: an exact any-angle shortest-path solver over a visibility
+// graph of obstacle corners. Not Theta*: it relaxes against a single ancestor
+// and can settle for a slightly longer route. Optimality is test-asserted
+// against a brute-force visibility graph over EVERY free cell, using the same
 // `lineOfSight` oracle.
 //
-// Built for surfaces that repeatedly solve placements on the SAME base board
-// (an iteration's fixed pieces): the base board's structure is precomputed
-// once, then each `solve` only pays for what the player's pieces change,
-// four ways:
+// Built for repeated solves on the SAME base board (an iteration's fixed
+// pieces). The base is precomputed once; each `solve` pays only for what the
+// player's pieces change:
 //
 // - Base-pair visibility is precomputed. Adding blocks never *creates*
-//   visibility, so a base node pair invisible on the base board stays
-//   invisible, and a visible one only needs "does the segment cross a player
-//   piece" — a few bbox-filtered box clips instead of a grid sweep.
+//   visibility, so an invisible base pair stays invisible and a visible one
+//   only needs a bbox-filtered check against the player pieces.
 // - New corner nodes can only appear in the one-cell ring around a player
-//   piece: any other cell's blocked diagonal, own cell and both orthogonal
-//   neighbours are untouched by the pieces, so if it's a corner now it already
-//   was one on the base board.
+//   piece; any other cell's neighbourhood is untouched, so it was a corner on
+//   the base board already.
 // - Both legs share the checkpoint and the graph is undirected, so ONE
-//   Dijkstra rooted at the checkpoint settles start and end together instead
-//   of two independent searches rebuilding the same graph.
-// - A build session's save stream is the same maze ± one piece each time, so
-//   recent results are memoized and a one-piece addition often needs no
-//   search at all (see `solve` for the exact rules and their determinism
-//   contract).
+//   Dijkstra rooted at the checkpoint settles start and end together.
+// - A save stream is the same maze ± one piece each time, so recent results
+//   are memoized and a one-piece addition often needs no search (rules and
+//   determinism contract: see `solve`).
 //
-// Any change that can shift equal-length tie-breaking (and with thunders,
-// duration depends on geometry, not just length) or timing itself requires a
-// scripts/comparePathing.ts audit/retime before it ships (see that file's
-// header).
+// Any change that can shift equal-length tie-breaking (with thunders, duration
+// depends on geometry, not just length) or timing requires a
+// scripts/comparePathing.ts audit/retime before it ships.
 export class PathSolver {
   private grid: boolean[][];
   private checkpointCell: Point;
   // Node order: 0 = start, 1 = end, 2 = checkpoint cell, then base corners.
   private baseNodes: Point[];
   private baseLOS: Uint8Array;
-  // Whether the base board carries a thunder — gates the reuse shortcut in
-  // `solve` (see there): with a thunder anywhere, duration depends on which
+  // Whether the base board carries a thunder. Gates the reuse shortcut
+  // (`oneAddedShortcut`): with a thunder, duration depends on which
   // equal-length path comes back, so only a fresh search is duration-exact.
   private baseHasThunder: boolean;
 
   // Throws "invalid data" when a base block is out of bounds or overlaps
-  // another (or the checkpoint cell) — bad data must never path.
+  // another block or the checkpoint cell.
   constructor(
     baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
     checkpoint: Point,
@@ -244,8 +230,7 @@ export class PathSolver {
         })
       ) throw new Error("invalid data");
     }
-    // The checkpoint cell blocks placements (it holds the checkpoint) but not
-    // the runner: the search sees it free.
+    // The checkpoint cell blocks placements but not the runner.
     grid[checkpointCell.y][checkpointCell.x] = false;
 
     this.grid = grid;
@@ -271,57 +256,50 @@ export class PathSolver {
     }
   }
 
-  // The empty placement's result — the base board itself — asked for by every
-  // board stage/view, so it's searched once and copied out thereafter.
+  // The empty placement's result (the base board), asked for by every board
+  // stage/view: searched once, copied out thereafter.
   private baseResult?: { path: Point[] | undefined };
 
-  // Recent placements' results, keyed by sorted piece coordinates (placement
-  // order is irrelevant, matching the engine's own order-independence) PLUS
-  // thunder flags. The flags don't move blocks — but they must be in the key:
-  // the reuse shortcut can store a not-cold-identical (equal-length) path for
-  // a thunder-free state, and a block→thunder upgrade re-asking for the same
-  // geometry must NOT be served that path, because with a thunder the
-  // geometry becomes duration-visible. Flagged keys mean thunder-carrying
-  // states only ever hit entries that were searched cold. This is what makes
-  // a build session cheap: a save stream is the same maze ± one piece each
-  // time, so re-saves, undo/redo toggles and commit-time revalidation all
-  // land here, and daily's resume view returns byte-identical results to the
-  // save that produced them. Bounded LRU; entries are never mutated, copies
-  // go out.
+  // Recent placements' results, keyed by sorted piece coordinates (order is
+  // irrelevant, as in the engine) PLUS thunder flags. The flags must be in the
+  // key: the reuse shortcut can store a non-cold (equal-length) path for a
+  // thunder-free state, and a block->thunder upgrade of the same geometry must
+  // not be served it, since with a thunder the geometry is duration-visible.
+  // Thunder-carrying states therefore only hit entries searched cold. Re-saves,
+  // undo/redo and commit-time revalidation land here, and the resume view
+  // returns byte-identical results to the save that produced them. Bounded LRU;
+  // entries are never mutated, copies go out.
   private results = new Map<string, { path: Point[] | undefined }>();
 
   private remember(key: string, path: Point[] | undefined) {
     this.results.set(key, { path });
-    // Sized for hover: pointer-move validity probes flow through solve() too
-    // (a candidate piece per hovered cell), and they must not evict the save
-    // stream's recent states that the one-added shortcut keys off.
+    // Sized for hover: pointer-move validity probes go through solve() too, and
+    // must not evict the save stream states `oneAddedShortcut` keys off.
     if (this.results.size > 128) {
       this.results.delete(this.results.keys().next().value!);
     }
   }
 
-  // Solve one player placement against the precomputed base: throws "invalid
-  // data" on an out-of-bounds/overlapping piece, returns undefined when no
-  // route exists, otherwise the exact shortest start -> checkpoint -> end
-  // path.
+  // Solve one player placement against the precomputed base. Throws "invalid
+  // data" on an out-of-bounds or overlapping piece, returns undefined when no
+  // route exists, otherwise the shortest start -> checkpoint -> end path.
   //
-  // Determinism contract: the returned DURATION (via pathDuration) is always
-  // exactly what a cold solver would produce for this state, so an audit
-  // recompute reproduces every persisted time. The returned GEOMETRY is
-  // cold-identical too, except via the thunder-free reuse shortcut below,
-  // which may return a different equally-short optimal path — cosmetic there,
-  // because without thunders duration is a function of length alone.
+  // Determinism contract: the DURATION (via pathDuration) always equals what a
+  // cold solver produces, so an audit recompute reproduces every persisted
+  // time. The GEOMETRY is cold-identical too, except via the thunder-free
+  // `oneAddedShortcut`, which may return a different equally-short path
+  // (cosmetic: without thunders duration depends on length alone).
   solve(
     pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
   ): Point[] | undefined {
     if (pieces.length === 0) {
-      // No pieces to place or restore — the grid already IS the base board.
+      // The grid already is the base board.
       this.baseResult ??= { path: this.search(pieces) };
       return this.baseResult.path?.map((p) => ({ ...p }));
     }
 
-    // Exact hit: this placement was solved before (a key only exists for a
-    // placement that validated, so skipping the overlap checks is sound).
+    // A key only exists for a placement that validated, so a hit can skip the
+    // overlap checks.
     const key = placementKey(pieces);
     const hit = this.results.get(key);
     if (hit) {
@@ -333,9 +311,9 @@ export class PathSolver {
 
     const { grid, checkpointCell } = this;
 
-    // Place the pieces: the checkpoint cell counts as occupied for overlap,
-    // then is freed for the search. The base grid is shared across solves, so `placed` tracks every
-    // cell to restore — exactly, even when a piece throws half-placed.
+    // The checkpoint cell counts as occupied for overlap, then is freed for the
+    // search. The base grid is shared across solves, so `placed` records every
+    // cell to restore, even when a piece throws half-placed.
     grid[checkpointCell.y][checkpointCell.x] = true;
     const placed: Point[] = [];
     try {
@@ -362,16 +340,13 @@ export class PathSolver {
   }
 
   // The edit-stream shortcut: when this placement is a solved one plus exactly
-  // one piece, monotonicity often answers without a search. Blocks only ever
+  // one piece, monotonicity often answers without a search. Blocks only
   // lengthen or sever the route, so an unsolvable predecessor stays unsolvable
-  // — always, thunders or not. And a predecessor's optimal path that the new
-  // piece doesn't touch is still feasible at its old (optimal) length, so it
-  // remains optimal — but a fresh search could return a DIFFERENT equal-length
-  // path, and near thunders duration depends on geometry, so that reuse is
-  // only duration-exact on a thunder-free board (both gated here). Measured on
-  // real build streams: ~27% of placements skip the search entirely, with the
-  // no-thunder gate carving that down only on boards that have one.
-  // Returns null when no shortcut applies (search normally).
+  // (thunders or not). A predecessor's optimal path the new piece doesn't touch
+  // is still optimal, but a fresh search could return a different equal-length
+  // path, and near thunders duration depends on geometry, so that reuse is only
+  // duration-exact on a thunder-free board. On real build streams ~27% of
+  // placements skip the search. Returns null when no shortcut applies.
   private oneAddedShortcut(
     pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
   ): { path: Point[] | undefined } | null {
@@ -387,16 +362,16 @@ export class PathSolver {
     return null;
   }
 
-  // The augmented-board search. Assumes `solve` already placed the pieces on
-  // the grid and validated them.
+  // The augmented-board search. `solve` has already placed and validated the
+  // pieces on the grid.
   private search(
     pieces: ReadonlyArray<Readonly<Point>>,
   ): Point[] | undefined {
     const { grid, baseNodes, baseLOS } = this;
     const nBase = baseNodes.length;
 
-    // Live nodes: base nodes not covered by a piece, then any corners the
-    // pieces created (only possible in the one-cell ring around a piece).
+    // Live nodes: base nodes not covered by a piece, then corners the pieces
+    // created.
     const nodes: Point[] = [];
     const baseIdx: number[] = [];
     const seen = new Set<number>();
@@ -407,20 +382,17 @@ export class PathSolver {
       nodes.push(p);
       baseIdx.push(i);
     }
-    // Collected then sorted into row-major order before joining the node list:
-    // Dijkstra breaks equal-length ties by node/expansion order, so the order
-    // pieces arrive in (a save's placement order, a preview's array order) must
-    // never influence which optimal path comes back — the result has to be a
-    // function of the board's geometry alone, or the same maze built in two
+    // Sorted row-major before joining the node list: Dijkstra breaks
+    // equal-length ties by node order, so piece arrival order must not
+    // influence which optimal path comes back, or the same maze built in two
     // orders could time differently near thunders.
     const ringCorners: number[] = [];
     for (const { x, y } of pieces) {
       for (let ry = y - 1; ry <= y + 2; ry++) {
         for (let rx = x - 1; rx <= x + 2; rx++) {
-          // Ring only — the interior is the piece itself.
+          // Ring only; the interior is the piece.
           if (rx > x - 1 && rx < x + 2 && ry > y - 1 && ry < y + 2) continue;
-          // Off-board ring cells read as blocked and fall out here, so the
-          // y*20+x key below only ever sees on-board coordinates.
+          // Off-board cells read as blocked, so the key below is on-board.
           if (isBlocked(grid, rx, ry)) continue;
           const key = ry * 20 + rx;
           if (seen.has(key)) continue;
@@ -436,9 +408,7 @@ export class PathSolver {
       baseIdx.push(-1);
     }
 
-    // A piece's four cells form one 2x2 rectangle (see `offsets`), so its
-    // half-runner-inflated footprint is a single box, EPS-shrunk exactly like
-    // lineOfSight's per-cell boxes.
+    // A piece's inflated footprint is a single box (see `pathTouchesPiece`).
     const boxes: number[] = [];
     for (const { x, y } of pieces) {
       boxes.push(x - 0.5 + EPS, y - 0.5 + EPS, x + 2.5 - EPS, y + 2.5 - EPS);
@@ -447,8 +417,7 @@ export class PathSolver {
     const visible = (i: number, j: number) => {
       const bi = baseIdx[i];
       const bj = baseIdx[j];
-      // A pair involving a piece-created corner has no precomputed answer;
-      // fall back to the oracle on the augmented grid.
+      // Piece-created corners have no precomputed answer: ask the oracle.
       if (bi < 0 || bj < 0) return lineOfSight(nodes[i], nodes[j], grid);
       if (!baseLOS[bi * nBase + bj]) return false;
       const ax = nodes[i].x + 0.5;
@@ -471,13 +440,12 @@ export class PathSolver {
       return true;
     };
 
-    // Base node order is preserved, so start/end/checkpoint — when alive —
-    // are still findable by their base index.
+    // Base node order is preserved, so start/end/checkpoint keep their indices.
     const startIdx = baseIdx.indexOf(0);
     const endIdx = baseIdx.indexOf(1);
     const checkpointIdx = baseIdx.indexOf(2);
-    // A piece covering start or end (the checkpoint cell can't be covered —
-    // overlap throws) leaves the runner nowhere to go: no path.
+    // A piece covering start or end means no path (the checkpoint can't be
+    // covered: overlap throws).
     if (startIdx < 0 || endIdx < 0 || checkpointIdx < 0) return undefined;
 
     const n = nodes.length;
@@ -487,8 +455,8 @@ export class PathSolver {
     gScore[checkpointIdx] = 0;
 
     // Lazy-deletion heap: a relaxation pushes a fresh (node, g) snapshot and
-    // stale entries are skipped on pop via `closed`, instead of paying
-    // BinaryHeap.remove's linear scan. Snapshots keep heap keys immutable.
+    // stale entries are skipped on pop via `closed`, avoiding
+    // BinaryHeap.remove's linear scan.
     const open = new BinaryHeap((e: { node: number; g: number }) => e.g);
     open.push({ node: checkpointIdx, g: 0 });
     let settled = 0;
@@ -518,9 +486,9 @@ export class PathSolver {
 
     if (!closed[startIdx] || !closed[endIdx]) return undefined;
 
-    // The tree is rooted at the checkpoint, so the parent walk from start IS
-    // start -> checkpoint, and the walk from end is checkpoint -> end
-    // reversed. Fresh points so callers can't alias the shared base nodes.
+    // The tree is rooted at the checkpoint, so the parent walk from start is
+    // start -> checkpoint and the walk from end is checkpoint -> end reversed.
+    // Points are copied so callers can't alias the shared base nodes.
     const path: Point[] = [];
     for (let i = startIdx; i !== -1; i = parent[i]) {
       path.push({ x: nodes[i].x, y: nodes[i].y });
@@ -534,14 +502,11 @@ export class PathSolver {
   }
 }
 
-// One PathSolver per base board, content-addressed and LRU-bounded, so every
-// surface that solves against the same iteration — server validation, board
-// staging, the client's live preview — shares a single precompute AND a single
-// tie-breaking: two surfaces asking about the same placement get the same
-// geometry, which is what keeps previewed and persisted times equal on thunder
-// mazes. Keyed by geometry only (a thunder is a block that also slows; the
-// flag doesn't move it). A constructor throw (bad base data) is never cached
-// and propagates to the caller.
+// One PathSolver per base board, content-addressed and LRU-bounded, so server
+// validation, board staging and the client preview share one precompute AND one
+// tie-breaking: the same placement gets the same geometry, which keeps
+// previewed and persisted times equal on thunder mazes. A constructor throw
+// (bad base data) is not cached and propagates.
 const solverCache = new Map<string, PathSolver>();
 const MAX_CACHED_SOLVERS = 32;
 
@@ -549,9 +514,8 @@ export const cachedSolver = (
   baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
   checkpoint: Point,
 ): PathSolver => {
-  // Thunder flags ride along in the key: the solver's reuse shortcut is gated
-  // on the base board carrying a thunder, so two bases that differ only in a
-  // flag must not share an instance.
+  // Thunder flags are in the key: `baseHasThunder` gates the reuse shortcut, so
+  // bases differing only in a flag must not share an instance.
   const key = `${checkpoint.x},${checkpoint.y}|` + placementKey(baseBlocks);
   const cached = solverCache.get(key);
   if (cached) {
@@ -570,15 +534,12 @@ export const cachedSolver = (
 
 export const SPEED = 5;
 
-// Thunder mechanics, in seconds/units. The retired tick engine expressed these
-// as step counts (6*SPEED of slow, 32*SPEED of cooldown at 0.02s a step); the
-// wall-clock values are unchanged.
+// Thunder mechanics, in seconds and cell units.
 const THUNDER_RADIUS = 4;
-// Seconds of half speed per trigger. A re-trigger RESETS this timer — slows
-// never stack, so overlapping triggers waste the interrupted slow's tail.
+// Seconds of half speed per trigger. A re-trigger RESETS this timer (slows
+// never stack), wasting the interrupted slow's tail.
 const SLOW_DURATION = 6;
-// Minimum seconds between one thunder's triggers, so a runner passing in a
-// straight line isn't hit twice by the same thunder.
+// Minimum seconds between one thunder's triggers.
 const TRIGGER_COOLDOWN = 3.2;
 
 export type Slow = {
@@ -586,34 +547,30 @@ export type Slow = {
   thunder: Point;
 };
 
-// A slow as the timeline records it: the trigger, plus the seconds of slow the
-// trigger DESTROYED. A re-strike landing while the runner is already slowed
-// resets the shared 6s window instead of extending it, so whatever was left of
-// the previous window never lands; the tail still owed when the runner finishes
-// is wasted the same way and is folded into the last trigger. Seconds of SLOW —
-// at half speed each one is worth half that in finish time, which is the figure
-// the splits tape shows.
+// A slow as the timeline records it: the trigger, plus the seconds of slow it
+// DESTROYED. A re-strike while already slowed resets the shared 6s window, so
+// what was left of the previous window never lands; the tail still owed at the
+// finish is wasted the same way and folded into the last trigger. Counted in
+// seconds of SLOW; at half speed each is worth half that in finish time (see
+// `common/splits.ts`).
 export type TimelineSlow = Slow & { wasted: number };
 
 // The full result of walking a path: everything `pathDuration` reports, plus
-// the machinery the splits tape needs — the cumulative distance of each node
-// and a closed-form distance -> time map, so a mark anywhere along the path
-// (the checkpoint, a flag) can be timed without re-walking the schedule.
+// each node's cumulative distance and a closed-form distance -> time map, so
+// any mark on the path (checkpoint, flag) is timed without re-walking.
 export type PathTimeline = {
-  // Unrounded, unlike pathDuration's — callers round at the display boundary.
+  // Unrounded, unlike pathDuration's.
   duration: number;
   slows: TimelineSlow[];
   cum: number[];
   timeAt: (distance: number) => number;
 };
 
-// Where a path enters and leaves a circle, as [start, end] intervals in
-// DISTANCE along the path — the geometry half of both a thunder's trigger
-// windows and a flag's pass detection. Intervals are merged where the polyline
-// leaves one segment inside the circle and enters the next (the same crossing
-// point, up to float noise). A tangent graze has no interior crossing and is
-// dropped, so "in range" is strict — mirroring lineOfSight's treatment of
-// boundaries.
+// Where a path is inside a circle, as [start, end] intervals in DISTANCE along
+// the path: the geometry behind both a thunder's trigger windows and a flag's
+// pass detection. Intervals that meet at a segment joint (up to float noise)
+// are merged. A tangent graze is dropped, so "in range" is strict, as with
+// lineOfSight's boundaries.
 export const circleWindows = (
   path: ReadonlyArray<Readonly<Point>>,
   cum: ReadonlyArray<number>,
@@ -648,8 +605,7 @@ export const circleWindows = (
   return list;
 };
 
-// Cumulative distance along the path, node by node (cum[0] = 0). Callers get it
-// back on the timeline rather than recomputing it.
+// Cumulative distance along the path, node by node (cum[0] = 0).
 const pathDistances = (path: ReadonlyArray<Readonly<Point>>) => {
   const cum: number[] = [0];
   for (let i = 1; i < path.length; i++) {
@@ -658,29 +614,23 @@ const pathDistances = (path: ReadonlyArray<Readonly<Point>>) => {
   return cum;
 };
 
-// The runner's travel along `path`, exactly and continuously — an event-driven
+// The runner's travel along `path`, exact and continuous: an event-driven
 // computation, not a stepped simulation, so duration is a smooth function of
-// the maze rather than being quantized to 0.1-distance ticks (which displayed
-// genuinely different mazes as the same time whenever their optimal lengths
-// fell in one tick bucket).
+// the maze and distinct mazes never collapse into one quantized time.
 //
 // Model: the runner moves at SPEED, halved while slowed. A thunder triggers
-// when the runner is strictly within THUNDER_RADIUS of its centre (the anchor
-// cell + 0.5, in the path's raw node coordinates — the frame the tick engine
-// used) and its own TRIGGER_COOLDOWN has passed; triggers happen at the
-// earliest such instant (range entry, or cooldown expiry while still inside).
-// Every trigger resets the shared slow to SLOW_DURATION. Thunders whose
-// earliest instants coincide exactly all fire together — one shared slow, all
-// cooldowns consumed, all recorded (the tick engine instead swallowed the
-// runners-up's triggers entirely).
+// when the runner is strictly within THUNDER_RADIUS of its centre (anchor cell
+// + 0.5, in the path's node coordinates) and its own TRIGGER_COOLDOWN has
+// passed, at the earliest such instant (range entry, or cooldown expiry while
+// still inside). Every trigger resets the shared slow to SLOW_DURATION.
+// Thunders whose earliest instants coincide exactly all fire together: one
+// shared slow, all cooldowns consumed, all recorded.
 //
-// Where the runner is in range is pure geometry: per thunder, a short list of
-// intervals in DISTANCE along the path (circleWindows). Only the mapping
-// distance<->time depends on the slow schedule, and between events it is
-// linear, so the walk below advances event to event in closed form. That is
-// also what makes `timeAt` cheap and exact afterwards: the walk records its
-// state at every event, so any distance resolves from the last event before it
-// with the same two-piece formula.
+// Range is pure geometry (per thunder, `circleWindows` intervals in distance).
+// Only the distance<->time mapping depends on the slow schedule, and between
+// events it is linear, so the walk advances event to event in closed form. It
+// records its state at every event, so `timeAt` resolves any distance from the
+// last event before it with the same two-piece formula.
 export const pathTimeline = (
   path: ReadonlyArray<Readonly<Point>> = [],
   thunders: ReadonlyArray<Readonly<Point>> = [],
@@ -701,15 +651,14 @@ export const pathTimeline = (
   let slowEnd = -Infinity;
   const lastFire = thunders.map(() => -Infinity);
   const slows: TimelineSlow[] = [];
-  // The walk's state at each event boundary, in increasing distance: the seed
-  // (the start) plus one entry per trigger instant. `timeAt` resolves any
-  // distance from the last entry at or before it.
+  // The walk's state at the start plus each trigger instant, in increasing
+  // distance. `timeAt` resolves from the last entry at or before its distance.
   const states: { t: number; d: number; slowEnd: number }[] = [
     { t: 0, d: 0, slowEnd: -Infinity },
   ];
 
-  // When the runner reaches `target` distance, from the state (t, d, slowEnd).
-  // Two linear pieces at most: half speed until the slow expires, full after.
+  // When the runner reaches `target` distance from `state`: at most two linear
+  // pieces, half speed until the slow expires, full after.
   const reach = (
     state: { t: number; d: number; slowEnd: number },
     target: number,
@@ -726,13 +675,12 @@ export const pathTimeline = (
   const timeToReach = (target: number) => reach({ t, d, slowEnd }, target);
 
   while (true) {
-    // The earliest feasible trigger across all thunders. A trigger in a
-    // window fires at max(window entry, cooldown ready) and must land
-    // STRICTLY before the runner exits the window — firing at the exit point
-    // itself is a graze, not a hit. Windows behind the runner are spent, but
-    // a window that is merely cooldown-infeasible now must be reconsidered
-    // later: another thunder's slow can dilate time enough to make it
-    // reachable again, so nothing ahead of the runner is ever discarded.
+    // The earliest feasible trigger across all thunders. A trigger in a window
+    // fires at max(window entry, cooldown ready) and must land STRICTLY before
+    // the runner exits it (firing at the exit is a graze). Windows behind the
+    // runner are spent, but one that is merely cooldown-infeasible now is
+    // reconsidered later: another thunder's slow can dilate time enough to make
+    // it reachable.
     let best = Infinity;
     let firing: number[] = [];
     for (let i = 0; i < thunders.length; i++) {
@@ -750,8 +698,7 @@ export const pathTimeline = (
     }
     if (best === Infinity) break;
 
-    // Advance the runner to the trigger instant, then fire everything due at
-    // exactly that instant: one shared slow reset, every cooldown consumed.
+    // Advance to the trigger instant, then fire everything due at it.
     if (t < slowEnd) {
       const boundary = Math.min(slowEnd, best);
       d += (boundary - t) * (SPEED / 2);
@@ -761,9 +708,8 @@ export const pathTimeline = (
       d += (best - t) * SPEED;
       t = best;
     }
-    // What the reset throws away: whatever was left of the running slow at this
-    // instant. Charged to the FIRST trigger of a simultaneous batch — they share
-    // one reset, so the loss is one event's, not one per thunder.
+    // What the reset throws away: the running slow's remainder. Charged to the
+    // FIRST trigger of a simultaneous batch, which shares one reset.
     const wasted = Math.max(0, slowEnd - t);
     slowEnd = t + SLOW_DURATION;
     for (const [n, i] of firing.entries()) {
@@ -778,8 +724,7 @@ export const pathTimeline = (
   }
 
   const duration = timeToReach(total);
-  // Slow still owed when the runner crosses the line is wasted just the same;
-  // fold it into the trigger that was running.
+  // Slow still owed at the finish is wasted too; fold it into the last trigger.
   const last = slows[slows.length - 1];
   if (last) last.wasted += Math.max(0, slowEnd - duration);
 
@@ -799,9 +744,9 @@ export const pathTimeline = (
 };
 
 // The runner's travel time along `path` and the slows it triggered, rounded to
-// the two decimals the game stores and displays. The whole computation lives in
-// `pathTimeline` — this is the shape every timing surface (validation, board
-// staging, the client preview) consumes.
+// the two decimals the game stores and displays. The computation is
+// `pathTimeline`; this is the shape validation, staging and the client preview
+// consume.
 export const pathDuration = (
   path: ReadonlyArray<Readonly<Point>> = [],
   thunders: ReadonlyArray<Readonly<Point>> = [],

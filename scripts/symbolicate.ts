@@ -4,10 +4,10 @@
 //   deno task symbolicate <clientSha> < stack.txt
 //
 // The SHA is the request's `clientSha` (logged on its "request start" line,
-// same trace_id as the error). The map comes from sourcemaps/<SHA>/ (written
-// by every build); failing that, the commit is rebuilt in a temporary
-// worktree — the minified bundle is deterministic and an external map doesn't
-// change its bytes, so the rebuild matches as long as Deno's version does.
+// same trace_id as the error). The map comes from sourcemaps/<SHA>/ (written by
+// every build); failing that, the commit is rebuilt in a temporary worktree.
+// The bundle is deterministic, so the rebuild matches given the same Deno
+// version.
 import { decodeMappings, originalPosition, SourceMap } from "./sourcemap.ts";
 
 const [sha] = Deno.args;

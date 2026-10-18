@@ -1,19 +1,16 @@
-// Client-side Web Push: turn a browser PushSubscription into a server-stored
-// subscription, and tear it down again. All of it is feature-detected and
-// best-effort — a browser without push, a denied permission, or a missing VAPID
-// key just leaves notifications in-app only.
+// Client-side Web Push: register a browser PushSubscription with the server and
+// tear it down again. Everything is feature-detected and best-effort; without
+// push support, permission or a VAPID key, notifications stay in-app only.
 
 import { signal } from "@preact/signals";
 import { api } from "../api.ts";
 import { getId } from "./id.ts";
 import { getLocale } from "./locale.ts";
 
-// What this device can ACTUALLY do about push, as opposed to what the player's
-// preference toggles say. The two were never connected: the toggles are stored
-// settings that gate the SERVER's send decision, so they read "on" just the same
-// when the browser blocked permission, when the subscription died, or when push
-// isn't configured at all — the "toggled on but nothing arrives" report. Profile
-// reads this to say which it is.
+// What this device can ACTUALLY do about push, separate from the player's
+// preference toggles, which only gate the SERVER's send decision and read "on"
+// even when permission is blocked, the subscription died, or push isn't
+// configured. Profile reads this to say why nothing arrives.
 export type PushStatus =
   | "unknown" // not probed yet
   | "ok" // subscribed and registered with the server
@@ -31,8 +28,8 @@ export const pushSupported = (): boolean =>
 export const pushPermission = (): NotificationPermission =>
   pushSupported() ? Notification.permission : "denied";
 
-// The server's VAPID public key, fetched once (it's public). null when push
-// isn't configured server-side.
+// The server's VAPID public key, fetched once. null when push isn't configured
+// server-side.
 let publicKeyPromise: Promise<string | null> | null = null;
 const getPublicKey = (): Promise<string | null> => {
   if (!publicKeyPromise) {
@@ -53,12 +50,10 @@ const urlBase64ToUint8Array = (base64: string): Uint8Array<ArrayBuffer> => {
   return out;
 };
 
-// Cache Storage is the only same-origin store a service worker can read without
-// a page (localStorage isn't reachable from a worker at all), and the SW needs
-// the device credential to re-register a rotated subscription while no tab is
-// open — see the `pushsubscriptionchange` handler in public/sw.js. This mirrors
-// the id that already lives in localStorage between two same-origin stores; it
-// crosses no boundary and never leaves the device.
+// The service worker needs the device credential to re-register a rotated
+// subscription while no tab is open (the `pushsubscriptionchange` handler in
+// public/sw.js). localStorage isn't reachable from a worker, so the id is
+// mirrored into Cache Storage. It never leaves the device.
 const CRED_CACHE = "blocktol-cred";
 const CRED_URL = "/__push-credential";
 
@@ -67,21 +62,19 @@ const mirrorCredential = async (): Promise<void> => {
     const cache = await caches.open(CRED_CACHE);
     await cache.put(CRED_URL, new Response(getId()));
   } catch {
-    // No Cache Storage (blocked site data): the SW simply can't self-heal, and
-    // the next app open re-registers.
+    // No Cache Storage (blocked site data): the SW can't self-heal; the next
+    // app open re-registers.
   }
 };
 
 // Does an existing subscription's applicationServerKey match the server's
 // CURRENT VAPID key? A subscription minted under a retired key is permanently
-// undeliverable — the push service rejects the send with 403, which is not the
-// 404/410 the fan-out prunes on, so the row survives forever and this client
-// happily re-registers the same dead endpoint on every boot. That is the failure
-// this comparison exists to break.
+// undeliverable: the push service answers 403, not the 404/410 the fan-out
+// prunes on, so the row survives and this client would re-register the same
+// dead endpoint every boot.
 //
-// `applicationServerKey` is only readable where the browser exposes it; when it
-// isn't, return true (treat as matching) rather than churning a subscription
-// that may well be fine.
+// `applicationServerKey` is readable only where the browser exposes it; when it
+// isn't, treat it as matching rather than churn a possibly good subscription.
 export const keyMatches = (
   applied: ArrayBuffer | null | undefined,
   key: string,
@@ -92,11 +85,10 @@ export const keyMatches = (
   return have.length === want.length && have.every((b, i) => b === want[i]);
 };
 
-// Subscribe this client and register it with the server. Assumes permission is
-// already granted (see requestPushPermission). Returns true on success. Reuses
-// an existing browser subscription when one's present (re-registering it is
-// harmless — the server upserts by endpoint), unless it was minted under a
-// different VAPID key, in which case it's replaced.
+// Subscribe this client and register it with the server; true on success.
+// Assumes permission is granted (see requestPushPermission). Reuses an existing
+// browser subscription (the server upserts by endpoint) unless it was minted
+// under a different VAPID key, in which case it's replaced.
 export const subscribePush = async (): Promise<boolean> => {
   if (!pushSupported()) {
     pushState.value = "unavailable";
@@ -117,8 +109,8 @@ export const subscribePush = async (): Promise<boolean> => {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
 
-    // A stale-key subscription is dead weight: drop it here AND server-side
-    // (nothing else would — 403 doesn't prune), then mint a fresh one.
+    // Drop a stale-key subscription here AND server-side (a 403 never prunes
+    // it), then mint a fresh one.
     if (sub && !keyMatches(sub.options?.applicationServerKey, key)) {
       const stale = sub.endpoint;
       await sub.unsubscribe().catch(() => {});
@@ -138,7 +130,7 @@ export const subscribePush = async (): Promise<boolean> => {
     const r = await api.subscribePush({
       endpoint: json.endpoint,
       keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-      // Passively captured so server-rendered push copy matches this device.
+      // So server-rendered push copy matches this device.
       locale: getLocale(),
     });
     const ok = !!r && !("error" in r);
@@ -184,8 +176,8 @@ export const unsubscribePush = async (): Promise<void> => {
     const endpoint = sub.endpoint;
     await sub.unsubscribe().catch(() => {});
     await api.unsubscribePush({ endpoint }).catch(() => {});
-    // Drop the SW's copy of the credential too — with no subscription there's
-    // nothing for it to re-register, and the mirror shouldn't outlive the need.
+    // With no subscription the SW has nothing to re-register, so drop its
+    // credential copy too.
     await caches.delete(CRED_CACHE).catch(() => {});
     pushState.value = "prompt";
   } catch {
@@ -193,12 +185,10 @@ export const unsubscribePush = async (): Promise<void> => {
   }
 };
 
-// On boot: if permission is already granted, make sure the current browser
-// subscription is registered with the server (endpoints can rotate) and still
-// matches the server's VAPID key. No prompt — this only ever runs silently for
-// users who already opted in. When permission ISN'T granted we still record the
-// state, so Profile can say why nothing is arriving instead of showing a toggle
-// that reads "on" and means nothing.
+// On boot: if permission is already granted, make sure the browser subscription
+// is registered with the server (endpoints can rotate) and matches the server's
+// VAPID key. Never prompts. When permission ISN'T granted it still records the
+// state, for Profile.
 export const syncPushSubscription = (): void => {
   if (!pushSupported()) {
     pushState.value = "unavailable";

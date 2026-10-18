@@ -23,8 +23,8 @@ Deno.test("originalPosition maps to the nearest mapping at or before", () => {
 
 Deno.test("source index and name deltas carry across segments", () => {
   // "ICCAA": col +4, source +1 (b.ts), line +1, col +0, name +0 (go). The
-  // source column is still 8 from "QAAQ" — only the generated column resets
-  // per line.
+  // source column stays 8 from "QAAQ"; only the generated column resets per
+  // line.
   assertEquals(originalPosition(map, decoded, 2, 5), {
     source: "b.ts",
     line: 3,

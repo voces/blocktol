@@ -1,15 +1,12 @@
-// Localized weekday initials from `Intl.DateTimeFormat`, so the calendar's
-// header row is never a hardcoded English array. Follows the passed locale (the
-// client's `uiLocale`, undefined = the viewer's own) and is cached per locale —
-// the board's calendar rebuilds this on every render and Intl constructors
-// aren't free. English (`undefined`) yields "S M T W T F S". (Month/day labels
-// use `toLocaleDateString` directly so the locale controls word order; only the
-// weekday initials need this loop.)
+// Localized weekday initials from `Intl.DateTimeFormat` for the calendar's
+// header row. Follows the passed locale (the client's `uiLocale`; undefined =
+// the viewer's own) and is cached per locale, since the calendar rebuilds this
+// every render and Intl constructors aren't free.
 
 const weekdayCache = new Map<string, readonly string[]>();
 
 // Narrow weekday initials, Sunday-first (the calendar grid starts on Sunday).
-// 2023-01-01 is a Sunday, so seven consecutive days from it span Sun…Sat.
+// 2023-01-01 is a Sunday.
 export const narrowWeekdays = (locale?: string): readonly string[] => {
   const key = locale ?? "";
   let v = weekdayCache.get(key);

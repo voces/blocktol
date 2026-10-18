@@ -5,10 +5,8 @@ import { extractUserId } from "../middleware/userid.ts";
 import { boot } from "./boot.ts";
 import { dayView } from "./dayView.ts";
 
-// dayView composes getBoard + standings for one chosen day; this
-// checks the bundle carries both slices and that the composed standings is the
-// requested iteration's. Hits the dev DB like the run-lifecycle tests;
-// self-skips without SQL_PASSWORD.
+// Checks dayView's bundle carries both slices and that its standings is the
+// requested iteration's. Hits the dev DB; self-skips without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -26,8 +24,7 @@ Deno.test({
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
     await createOrUpdateUser(id);
     try {
-      // Today's iteration id comes off standings (the ensure-iterations cron
-      // generates the day), which dayView then targets by id.
+      // Today's iteration id comes off boot's standings; dayView targets it.
       const b = await boot.handler({ timeZone: "UTC" }, authed(id));
       if ("error" in b) throw new Error("boot returned an auth error");
       if ("error" in b.standings) throw new Error("standings auth error");
@@ -40,10 +37,8 @@ Deno.test({
       if ("error" in r) throw new Error("dayView returned an auth error");
 
       assertEquals(Object.keys(r).sort(), ["board", "standings"]);
-      // A brand-new user hasn't spent the day's three attempts, so the board is
-      // still gated — as a plain { incomplete }, never an error (the client
-      // relays any error response to reportClientError). The composition still
-      // bundles it, which is what this asserts.
+      // A new user hasn't spent three attempts, so the board is gated: a plain
+      // { incomplete }, never an error. The bundle still carries it.
       assert(!("error" in r.board), "a gated board is not an error");
       assertEquals(r.board, { incomplete: true });
       assert("daily" in r.standings && "pb" in r.standings);

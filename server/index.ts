@@ -7,33 +7,26 @@ import { router } from "./router.ts";
 import { alertAdmin } from "./util/adminAlert.ts";
 import { errText, log } from "./util/logging.ts";
 
-// Bind the port FIRST, then migrate — so a redeploy's fresh process starts
-// accepting connections immediately. The cohost fronts a single upstream
-// (nginx → 127.0.0.1:3040), so any window where the port is unbound is a hard
-// 502; binding before the migration DB round-trip cuts that window to the bare
-// process spin-up. Correctness is preserved by the `ready` gate below: a request
-// that arrives before migrations finish AWAITS them rather than being served
-// against a schema the code predates. Most deploys carry no pending migration,
-// so `ready` resolves almost at once; a migration deploy briefly HOLDS requests
-// (a small latency blip) instead of dropping them.
+// Bind the port FIRST, then migrate. The cohost fronts a single upstream
+// (nginx → 127.0.0.1:3040), so any window with the port unbound is a hard 502.
+// The `ready` gate keeps this safe: a request that arrives mid-migration awaits
+// it rather than running against a schema the code predates. With no pending
+// migration `ready` resolves at once; otherwise requests are held, not dropped.
 //
-// A lease lock elects a single migrator across processes (see migrate.ts); the
-// rest wait (capped) until the winner has recorded the target version, so their
-// gates don't open onto a half-migrated schema either. Caught rather than
-// fatal: a failure here shouldn't crash-loop the process — it's logged, and the
-// next boot retries once the lease expires. The gate resolves either way, so a
-// migration hiccup degrades to serving rather than wedging the process.
+// A lease lock elects one migrator across processes (see migrate.ts); the rest
+// wait (capped) for it to record the target version. A failure is caught, not
+// fatal, so the process never crash-loops: it is logged, the gate resolves
+// anyway, and the next boot retries once the lease expires.
 const ready = migrate().catch((err) => {
   log.error("startup migration failed", { error: errText(err) });
-  // The gate resolves anyway, so this process keeps serving — against a schema
-  // the code may predate. Rare and operator-actionable (the next boot retries
-  // once the lease expires), so surface it rather than leaving it to the
-  // localhost-only log UI. No-op without the webhook.
+  // This process keeps serving, possibly against a schema the code predates.
+  // Operator-actionable, so alert rather than rely on the localhost-only log
+  // UI.
   alertAdmin(`startup migration failed: ${errText(err)}`);
 });
 
 // `PORT` is set locally and on the cohost (nginx's upstream, see deploy/); a
-// Deno Deploy preview leaves it unset and the platform manages its port.
+// Deno Deploy preview leaves it unset and the platform picks the port.
 const port = Number(Deno.env.get("PORT")) || undefined;
 
 Deno.serve({

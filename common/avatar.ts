@@ -1,19 +1,15 @@
-// Avatar colours vary ONLY by hue; lightness and chroma are held constant in
-// OKLCH — a perceptually-uniform space — so every colour reads with the same
-// vividness and the same white-text contrast. (Fixed *HSL* wouldn't: a yellow
-// at 50% lightness looks far lighter than a blue at 50%, and the contrast with
-// the white initial would swing hue to hue.) The hue is chosen deterministically
-// from the user id, so a player's colour is identical on every device without
-// persisting anything.
+// Avatar colours vary ONLY by hue; lightness and chroma are constant in OKLCH,
+// which is perceptually uniform, so every colour has the same vividness and
+// white-text contrast (fixed HSL lightness would not). The hue derives from the
+// user id, so a player's colour is the same on every device with nothing
+// persisted.
 //
-// Shared (common/) because the server derives hues too: standings must ship
-// other players' avatar colours WITHOUT shipping their user ids — the raw id
-// is the bearer credential (the authorization header and /login/:id links) —
-// so the server hashes id → hue and the client renders from the hue alone.
+// Shared because the server derives hues too: standings ship other players'
+// hues WITHOUT their user ids, which are bearer credentials, and the client
+// renders from the hue alone.
 
-// Held constant across all avatars. L 0.58 keeps the white initial comfortably
-// readable (~3.5:1, AA for the large glyph) on every hue; C 0.15 stays in sRGB
-// gamut all the way round the wheel (CSS gamut-maps any hue that doesn't).
+// L 0.58 keeps the white initial readable (~3.5:1, AA for the large glyph) on
+// every hue; C 0.15 stays in sRGB gamut around the whole wheel.
 const AVATAR_LIGHTNESS = 0.58;
 const AVATAR_CHROMA = 0.15;
 

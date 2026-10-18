@@ -3,17 +3,16 @@ import { nonVoidRunCount } from "../db/merge.ts";
 import { sql } from "../db/query.ts";
 import { method } from "./apiHelpers.ts";
 
-// Summarize one or two profiles by id — display name, join date, and data size
-// (non-void run count). Drives the move/merge gate when a sign-in link opens on a
-// device that already has a profile: the client looks up its own id and the
-// link's id to decide between a silent merge, the fork, or a clean adopt. `runs`
-// is the figure the fork/confirm screens show and the number the silent-merge
-// threshold compares.
+// Summarize one or two profiles by id: name, join date, rating and `runs`
+// (non-void count). Drives the move/merge gate when a sign-in link opens on a
+// device that already has a profile: the client looks up both ids to choose
+// between a silent merge, the fork, or a clean adopt. `runs` is what the
+// confirm screens show and the silent-merge threshold compares.
 //
-// Unauthed by design: a clean device opening a link has no id to auth as yet, and
-// the lookup exposes nothing new — you must already hold an id to query it, and
-// holding it already grants full sign-in as that user (ids are not secrets; see
-// client/util/id.ts). Results are returned in input order, null for unknown ids.
+// Unauthed by design: a clean device opening a link has no id yet, and holding
+// an id already grants full sign-in as that user (see client/util/id.ts), so
+// the lookup exposes nothing new. Results are in input order, null for unknown
+// ids.
 const moveInfoBody = z.object({
   ids: z.array(z.string().trim().min(1).max(36)).min(1).max(2),
 });

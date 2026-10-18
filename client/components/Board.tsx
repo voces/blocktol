@@ -48,8 +48,8 @@ export const Board = (
     >;
     checkpoint: Point;
     invalid: boolean;
-    // Holds the runner where it stands (the intro tour's spawn beat and its stop
-    // on the checkpoint). Undefined everywhere else, so a live run never pauses.
+    // Holds the runner in place (the intro tour's spawn beat and checkpoint
+    // stop). Undefined elsewhere, so a live run never pauses.
     paused?: boolean;
     run: {
       path: Point[];
@@ -60,41 +60,37 @@ export const Board = (
     grid: boolean[][];
     onSlow: (thunder: Point & { local?: boolean }) => void;
     date: number;
-    // Optional: the intro board never reverts, so it has no ghosts to show.
+    // Optional: the intro board never reverts, so it has no ghosts.
     implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
     // Optional: the player's splits flags, and whether placing one is armed.
-    // Passed only while the splits tape is up — a run being reviewed or the one
-    // animating — since a flag is one of that tape's marks and means nothing
-    // without it. Absent on the intro board, on a board being built, and
-    // throughout a ranked daily. See FlagLayer.
+    // Passed only while the splits tape is up (a run being reviewed or
+    // animating); absent on the intro board, while building, and in a ranked
+    // daily. See FlagLayer.
     flags?: ReadonlyArray<Point>;
     flagsArmed?: boolean;
     onFlagsChange?: (flags: Point[]) => void;
   },
 ) => {
-  // Board magnification while placing (touch). A 1× setting disables it — the
-  // board never scales — so it behaves as if the zoom feature isn't there.
+  // Board magnification while placing (touch); 1× disables it.
   const { settings } = useSettings();
   const zoom = settings.zoom;
   // The placing zoom also serves flag placement, which happens on a REVIEWED
-  // board (time < 0) — the finger covers the cell it's aiming at just the same.
+  // board (time < 0).
   const zooming = touching && (time > 0 || !!flagsArmed) && zoom > 1;
-  // Only pan the camera (animate transform-origin) once we're already zoomed
-  // in, i.e. dragging the block a step. On the initial tap-to-zoom the origin
-  // jumps instantly so it zooms straight into the tapped point instead of
-  // panning across the board.
+  // Animate transform-origin (pan) only once already zoomed in; the initial
+  // tap-to-zoom jumps the origin so it zooms straight into the tapped point.
   const wasZooming = useRef(false);
   const panCamera = zooming && wasZooming.current;
   useEffect(() => {
     wasZooming.current = zooming;
   });
 
-  // A grabbed block being dragged: its origin is hidden and the block itself
-  // (not a faded placement ghost) follows the pointer at `placingBlock`.
+  // A grabbed block is being dragged: its origin is hidden and the block itself
+  // follows the pointer at `placingBlock`.
   const dragging = !!transitionBlock && placingBlock.placing;
 
-  // Static graph-paper grid. Memoized to a stable vnode so Preact doesn't
-  // rebuild these 18 lines on every re-render of the board.
+  // Static graph-paper grid, memoized so Preact doesn't rebuild its lines on
+  // every board re-render.
   const gridLines = useMemo(
     () => (
       <g stroke="var(--maze-grid)" stroke-width={0.03}>
@@ -108,9 +104,8 @@ export const Board = (
           );
         })}
         {
-          /* The entrance/exit notches (x 9–11) break the wall band; carry the
-            centre grid line (x=10) up and down through them so the graph paper
-            continues into the openings rather than stopping at the playfield. */
+          /* The entrance/exit notches (x 9–11) break the wall band; extend the
+            centre grid line (x=10) through them. */
         }
         <line x1={10} y1={0} x2={10} y2={1} />
         <line x1={10} y1={19} x2={10} y2={20} />
@@ -123,12 +118,9 @@ export const Board = (
     <div class="board-frame">
       <svg
         style={{
-          // Static styling (rounding, font, touch-action) lives in
-          // `.board-frame > svg`; only the zoom transform is dynamic.
-          // Animate the scale, and the origin too while dragging so the camera
-          // pans in step with the block (avoids the block gliding while the
-          // camera snaps). On the initial zoom the origin isn't animated (see
-          // panCamera) so it zooms straight into the tapped point.
+          // Static styling lives in `.board-frame > svg`; only the zoom
+          // transform is dynamic. The origin animates only while panning (see
+          // panCamera), so the camera moves in step with a dragged block.
           transition: panCamera
             ? "transform 100ms, transform-origin 100ms"
             : "transform 100ms",
@@ -171,11 +163,10 @@ export const Board = (
             />
           )}
         {
-          /* A hovered thunder's radius. Skipped when it's the same piece
-            `transitionBlock` is already drawing a circle for (a mid-build hover
-            over your own thunder), so the translucent fill isn't stacked twice
-            — reviewing a maze has no transitionBlock, so both the day's
-            thunders and the reviewed maze's draw here. */
+          /* A hovered thunder's radius. Skipped when it's the piece
+            `transitionBlock` already draws a circle for, so the translucent
+            fill isn't stacked. A reviewed maze has no transitionBlock, so the
+            day's thunders and the maze's both draw here. */
         }
         {thunderHover && thunderHover !== transitionBlock &&
           (
@@ -205,10 +196,9 @@ export const Board = (
         )}
 
         {blocks.map((block) => {
-          // The grabbed block is drawn invisibly (not removed) while dragging:
-          // the real block follows the pointer via `placingBlock`, but keeping
-          // this node in the DOM preserves the touch's target so touchmove /
-          // touchend keep firing on mobile (they're anchored to the start node).
+          // The grabbed block stays in the DOM, invisible, while dragging:
+          // touch events stay anchored to the start node, so removing it would
+          // stop touchmove / touchend on mobile.
           const hidden = dragging && block === transitionBlock;
           return (
             <>
@@ -262,8 +252,7 @@ export const Board = (
         )}
         {
           /* Ghosts of reverted (never-persisted) blocks: a brief puff-then-
-          collapse where each one stood, so the rollback reads as deliberate.
-          Visual only — no pointer interaction; they self-clear from state. */
+          collapse where each stood. Visual only; they self-clear from state. */
         }
         {implosions?.map((g) => (
           <g key={g.id} class="board-implode">

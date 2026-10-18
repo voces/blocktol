@@ -1,28 +1,24 @@
 export type Migration = { version: number; name: string; up: string };
 
-// Ordered schema migrations. Each runs exactly once per database, in version
-// order, recorded in `schema_migration` (see migrate.ts).
+// Ordered schema migrations. Each runs once per database, in version order,
+// recorded in `schema_migration` (see migrate.ts).
 //
-// ⚠️ These run on boot, and every push deploys: pushing a branch that adds a
-// migration applies it to the shared DEV database straight away (the Deno
-// Deploy preview), and merging to prod applies it to PRODUCTION. Nothing is run
-// by hand. Read server/db/CLAUDE.md before adding one.
+// ⚠️ These run on boot, and every push deploys: pushing a branch applies its
+// migrations to the shared DEV database at once (the Deno Deploy preview), and
+// merging to prod applies them to PRODUCTION. Nothing is run by hand. Read
+// server/db/CLAUDE.md before adding one.
 //
-// v1 is the baseline — the schema as it exists today. It is written to be
-// idempotent (`CREATE TABLE IF NOT EXISTS`) so that adopting the framework on
-// the already-provisioned production database is a safe no-op that simply
-// records the baseline, while a fresh environment (local, a new Deploy) is
-// provisioned identically. Because every later migration is guarded by the
-// version table and runs exactly once, v2+ need not be idempotent.
+// v1 is the baseline, written with `CREATE TABLE IF NOT EXISTS` so it is a
+// no-op on the already-provisioned production database and provisions a fresh
+// one identically. Later migrations run once, so they need not be idempotent.
 export const migrations: Migration[] = [
   {
     version: 1,
     name: "baseline",
-    // The production schema verbatim (SHOW CREATE TABLE), made idempotent with
-    // IF NOT EXISTS and with the runtime AUTO_INCREMENT counter dropped. Tables
-    // are ordered so foreign keys reference tables that already exist (user and
-    // iteration before block and run). MariaDB dialect (`current_timestamp()`,
-    // tinyint(1) booleans) to match the live database.
+    // The production schema (SHOW CREATE TABLE) with IF NOT EXISTS and the
+    // runtime AUTO_INCREMENT counter dropped. Tables are ordered so foreign
+    // keys reference existing tables. MariaDB dialect, matching the live
+    // database.
     up: `
       CREATE TABLE IF NOT EXISTS \`user\` (
         \`id\` char(36) NOT NULL,
@@ -74,33 +70,29 @@ export const migrations: Migration[] = [
   {
     version: 2,
     name: "user-settings",
-    // Per-user preferences (theme, board zoom) as a JSON blob — see
-    // common/settings.ts. IF NOT EXISTS (MariaDB) keeps it safe if a column was
-    // ever added out of band.
+    // Per-user preferences (theme, board zoom) as a JSON blob; see
+    // common/settings.ts.
     up:
       "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `settings` text DEFAULT NULL;",
   },
   {
     version: 3,
     name: "run-ranked",
-    // Record at start time whether a run is a *ranked* daily attempt: among the
-    // user's first three runs on the iteration, AND the iteration was the daily
-    // for the user's claimed local day (see db/run.ts startRun). Ranked-ness was
-    // previously inferred from DATE(run.created) = DATE(iteration.created) in
-    // server time, which is wrong at the edges: a daily's legal window spans
-    // ~50 hours of server time — UTC+14 reaches day D at D-1 10:00 UTC and
-    // UTC-12 leaves it at D+1 12:00 UTC (the same window rateDailies' 37h close
-    // waits out) — so offset players' attempts land on a neighbouring server
-    // date. Only the start request, which carries the player's timezone, can
-    // decide correctly, so the flag is written then and read everywhere else.
+    // Records at start time whether a run is a *ranked* daily attempt: among
+    // the user's first three runs on the iteration, on the iteration that is
+    // the daily for the user's claimed local day (db/run.ts startRun).
+    // Inferring it from DATE(run.created) = DATE(iteration.created) in server
+    // time fails at the edges: a daily's legal window spans ~50h of server time
+    // (UTC+14 reaches day D at D-1 10:00 UTC, UTC-12 leaves it at D+1 12:00
+    // UTC), so offset players' attempts land on a neighbouring date. Only the
+    // start request carries the timezone.
     //
-    // The backfill approximates history with that full legal window (historic
-    // starts didn't record the claimed timezone): the first three runs per
-    // (user, iteration) created inside it. Runs join back on
-    // (user, iteration, created) — the table has no primary key — so
-    // equal-timestamp ties may mark an extra run, matching the old read
-    // predicate's tie behaviour. IF NOT EXISTS plus a re-runnable UPDATE keep
-    // the migration retry-safe if the batch dies before the version row lands.
+    // The backfill has no claimed timezone to use, so it approximates with that
+    // full window: the first three runs per (user, iteration) created inside
+    // it. The self-join is on (user, iteration, created) because the table has
+    // no primary key, so equal-timestamp ties may mark an extra run. IF NOT
+    // EXISTS and a re-runnable UPDATE make it retry-safe if the batch dies
+    // before the version row lands.
     up: `
       ALTER TABLE \`run\` ADD COLUMN IF NOT EXISTS \`ranked\` tinyint(1) NOT NULL DEFAULT 0;
 
@@ -119,12 +111,10 @@ export const migrations: Migration[] = [
   {
     version: 4,
     name: "run-user-void-time-index",
-    // Covering index for a player's all-time best build — `MAX(time) WHERE
-    // user = ? AND void = FALSE` (the profile's bestBuild, getUserStats): the
-    // leftmost `user` seeks, `void` filters, and `time` is read for the MAX, so
-    // it's a single index range. (The standings PB sort is scoped per
-    // iteration and rides iteration_daily_void_time_idx instead.) IF NOT EXISTS
-    // keeps it safe if the index was ever added out of band. MariaDB dialect.
+    // Covering index for a player's all-time best build, `MAX(time) WHERE user
+    // = ? AND void = FALSE` (the profile's bestBuild, getUserStats): a single
+    // index range. The standings PB sort is per iteration and rides
+    // iteration_daily_void_time_idx instead.
     up:
       "ALTER TABLE `run` ADD INDEX IF NOT EXISTS `user_void_time_idx` (`user`, `void`, `time`);",
   },
@@ -133,21 +123,18 @@ export const migrations: Migration[] = [
     name: "notifications",
     // In-app + push notifications. Two tables:
     //
-    //  `notification` — one row per delivered notification, its payload fully
-    //   denormalized as JSON at write time (see common/notifications.ts) so a
-    //   later change to the field never rewrites history. `read_at` NULL means
-    //   unread. The UNIQUE (user, iteration, kind) is the dedupe key: at most one
-    //   notification per player per day per kind — a re-pass on the same day
-    //   upserts the existing "lost top" row (bumping it back to unread) rather
-    //   than stacking, and a re-run of the rating cron can't double a
-    //   "daily final". A player can still hold BOTH kinds for one day (different
-    //   kind). FKs cascade so deleting a user/iteration clears their notifications.
+    //  `notification` — one row per delivered notification, its payload
+    //   denormalized as JSON at write time (common/notifications.ts) so later
+    //   changes never rewrite history. `read_at` NULL means unread. UNIQUE
+    //   (user, iteration, kind) is the dedupe key: a re-pass on the same day
+    //   upserts the existing "lost top" row (back to unread) instead of
+    //   stacking, and a re-run of the rating cron can't double a "daily final".
+    //   Different kinds on one day coexist. FKs cascade.
     //
     //  `push_subscription` — a Web Push endpoint per installed client. The
-    //   endpoint is globally unique but too long to index directly, so its
-    //   SHA-256 hex is the primary key; a device that moves accounts re-upserts
-    //   the same endpoint onto its new user. p256dh/auth are the RFC 8291
-    //   encryption keys (base64url).
+    //   endpoint is unique but too long to index, so its SHA-256 hex is the
+    //   primary key; a device that moves accounts re-upserts the endpoint onto
+    //   its new user. p256dh/auth are the RFC 8291 keys (base64url).
     up: `
       CREATE TABLE IF NOT EXISTS \`notification\` (
         \`id\` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -180,48 +167,38 @@ export const migrations: Migration[] = [
   {
     version: 6,
     name: "user-locale",
-    // Server-rendered copy (push text, built in the rating cron / notifier) has
-    // no viewer to key formatting off. Record each user's BCP-47 locale —
-    // captured passively when a device subscribes to push — so a push renders
-    // its numbers/date in the user's locale instead of the server's, and so any
-    // later server-rendered surface can reuse it. It's a property of the user,
-    // not a device, so it lives here rather than on push_subscription. NULL
-    // until we've seen a locale for the user; the push path falls back to the
-    // runtime locale then. Short varchar: a canonicalised tag is well under 35.
+    // Server-rendered copy (push text built in the rating cron / notifier) has
+    // no viewer to key formatting off, so each user's BCP-47 locale is
+    // recorded, captured when a device subscribes to push. It belongs to the
+    // user, not the device, so it is not on push_subscription. NULL until a
+    // locale is seen; the push path then falls back to the runtime locale. A
+    // canonical tag is well under 35 chars.
     up: "ALTER TABLE `user` ADD COLUMN `locale` varchar(35) NULL DEFAULT NULL;",
   },
   {
     version: 7,
     name: "run-pinned",
-    // Player-pinned runs. A pinned run floats to the top of the player's OWN
-    // runs panel (the Attempts list), ahead of the best/recent sort — it's a
-    // per-player bookmark of their runs, not a leaderboard concept. A single
-    // boolean per run row, default 0 (unpinned).
+    // Player-pinned runs: a pinned run floats to the top of the player's OWN
+    // Attempts panel. A per-player bookmark, not a leaderboard concept.
     //
     // The panel merges runs that built the identical maze into one ×N row, so a
-    // pin toggles every run in that maze-group together (see db/run.ts
-    // setRunPinned) — the flag stays consistent across the group however the
-    // merge later picks its representative. IF NOT EXISTS keeps it safe if the
-    // column was ever added out of band. MariaDB dialect.
+    // pin toggles the whole maze-group (db/run.ts setRunPinned), keeping the
+    // flag consistent however the merge picks its representative.
     up:
       "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `pinned` tinyint(1) NOT NULL DEFAULT 0;",
   },
   {
     version: 8,
     name: "run-client-id",
-    // Free play now commits in a single INSERT. It no longer calls startRun /
-    // updateRun — the client builds and times the 60s window locally and only
-    // touches the server once, at execution (see db/run.ts insertFreePlayRun and
-    // the client run loop). With no prior row to flip non-void, a lost-response
-    // retry of that commit could duplicate the run, so the commit carries a
-    // client-generated per-attempt id and the INSERT is guarded on it
-    // (NOT EXISTS) — making a retried free-play commit idempotent, the same
-    // safety startRun/updateRun get from their own dedupes.
+    // Free play commits in a single INSERT (db/run.ts insertFreePlayRun); the
+    // client builds and times the 60s window locally. With no prior row to flip
+    // non-void, a lost-response retry could duplicate the run, so the commit
+    // carries a client-generated per-attempt id and the INSERT is guarded on it
+    // (NOT EXISTS), which makes the retry idempotent.
     //
-    // NULL for every legacy row, for ranked runs (which still commit on build),
-    // and for free-play runs written by old cached clients through the legacy
-    // flip-void path. IF NOT EXISTS keeps it safe if added out of band. A UUID is
-    // 36 chars; 64 leaves room. MariaDB dialect.
+    // NULL for legacy rows, ranked runs, and free-play runs written by old
+    // cached clients through the flip-void path. A UUID is 36 chars; 64 leaves
+    // room.
     up:
       "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `client_id` varchar(64) NULL DEFAULT NULL;",
   },
@@ -229,17 +206,13 @@ export const migrations: Migration[] = [
     version: 9,
     name: "pb-announcement",
     // Backs the Discord "top PB" post (util/pbBoard.ts): one row per iteration
-    // holding the message we posted for the day's current best-build record, so a
-    // later build can PATCH that same message when players match the top rather
-    // than posting anew. `top_time` is DECIMAL (not the run table's float) so it
-    // reads back as the exact two-decimal value the game stores — a float would
-    // drift and break the equality test that detects a tie of the current top.
-    // `top_user` is the record holder's id: a strictly higher top by a NEW holder
-    // posts a fresh message (a lead change), while the same holder improving their
-    // own top edits the standing one — so one player's climb doesn't spam. Holders
-    // is the count of players at that top, diffed to skip a redundant edit.
-    // Cascades on the iteration FK like every other per-iteration table.
-    // IF NOT EXISTS keeps it safe if the table was ever created out of band.
+    // holding the message posted for the day's best-build record, so a later
+    // build can PATCH it when players match the top. `top_time` is DECIMAL, not
+    // the run table's float, so it reads back as the exact two-decimal value
+    // and the tie-equality test doesn't drift. `top_user` is the record holder:
+    // a higher top by a NEW holder posts fresh, the same holder improving edits
+    // the standing message. `holders` is the count of players at the top,
+    // diffed to skip a redundant edit.
     up: `
       CREATE TABLE IF NOT EXISTS \`pb_announcement\` (
         \`iteration\` int(10) unsigned NOT NULL,
@@ -255,29 +228,21 @@ export const migrations: Migration[] = [
     version: 10,
     name: "pb-announcement-announced-at",
     // When the standing "top PB" post was created (util/pbBoard.ts). A
-    // same-holder improvement normally EDITS that post — collapsing a 60s burst
-    // of leading saves to one message — but if it lands more than
-    // PB_EDIT_WINDOW_MS later (a return visit, not a burst) it posts a fresh
-    // message instead. That gate needs the post's age, so record it: set to now
-    // on each (re)post, left untouched on an edit, so the window is anchored at
-    // the post. Appended rather than folded into v9 because v9 may already have
-    // run against the dev DB (the runner keys off version alone and never
-    // re-runs an applied migration). DEFAULT current_timestamp() backs any row
-    // v9 already wrote with a sane recent time. IF NOT EXISTS keeps it safe if
-    // added out of band. MariaDB dialect.
+    // same-holder improvement EDITS the post unless it lands more than
+    // PB_EDIT_WINDOW_MS later, when it posts fresh, so the gate needs the
+    // post's age: set on each (re)post, untouched on an edit. The DEFAULT backs
+    // rows v9 already wrote.
     up:
       "ALTER TABLE `pb_announcement` ADD COLUMN IF NOT EXISTS `announced_at` timestamp NOT NULL DEFAULT current_timestamp();",
   },
   {
     version: 11,
     name: "pb-top-marker",
-    // Replace pb_announcement (message id + editable post state for the old
-    // post/edit Discord mechanism) with pb_top: a minimal dedup marker recording
-    // who currently holds the announced top of an iteration's PB board (see
-    // util/pbBoard.ts). The Discord post now fires on a change of top HOLDER — a
-    // record-break, or the day's first PB — and never edits, so the message id,
-    // tie count, and stale window are all gone. Appended (v9/v10 reached prod, so
-    // they can't be edited in place). DROP/CREATE guarded so a re-run is a no-op.
+    // Replaces pb_announcement with pb_top, a minimal dedup marker of who holds
+    // the announced top of an iteration's PB board (util/pbBoard.ts). The post
+    // fires on a change of top HOLDER (a record-break, or the day's first PB)
+    // and never edits, so message id, tie count and edit window are dropped
+    // (v12 and v13 later restore them).
     up: `
       DROP TABLE IF EXISTS \`pb_announcement\`;
 
@@ -291,14 +256,11 @@ export const migrations: Migration[] = [
   {
     version: 12,
     name: "pb-top-edit-window",
-    // Restore same-holder editing on the top-PB post: a player improving their own
-    // lead EDITS the standing message within a 12h window, and posts a fresh one
-    // past it (see util/pbBoard.ts). That needs the announced message + time + the
-    // window anchor back on the pb_top marker (v11 kept only top_user). Nullable:
-    // rows v11 already wrote have only top_user, and a null message just falls back
-    // to a fresh post. `top_time` is DECIMAL so it reads back as the exact
-    // two-decimal value (a float MAX would drift). MariaDB dialect; IF NOT EXISTS
-    // keeps it safe if a column was added out of band.
+    // Restores same-holder editing on the top-PB post: a player improving their
+    // own lead EDITS the standing message within a 12h window, else posts fresh
+    // (util/pbBoard.ts). Needs the message id, top time and window anchor on
+    // pb_top. Nullable because v11 rows hold only top_user; a null message
+    // falls back to a fresh post. `top_time` is DECIMAL so it reads back exact.
     up: `
       ALTER TABLE \`pb_top\`
         ADD COLUMN IF NOT EXISTS \`message_id\` varchar(32) NULL DEFAULT NULL,
@@ -308,34 +270,30 @@ export const migrations: Migration[] = [
   {
     version: 13,
     name: "pb-top-holders",
-    // Restore tie tracking on the top-PB post: someone matching the announced top
-    // EDITS the message with the tie count, and the holder later breaking that tie
-    // (improving past a shared record) posts a FRESH message rather than editing
-    // (see util/pbBoard.ts's decidePbAction). Both need the count of players at the
-    // announced top. DEFAULT 1 backs existing rows (a sole holder). MariaDB dialect.
+    // Restores tie tracking on the top-PB post: a build matching the announced
+    // top EDITS the message with the tie count, and the holder later breaking
+    // that tie posts FRESH (decidePbAction in util/pbBoard.ts). Both need the
+    // count of players at the top. DEFAULT 1 backs existing rows (a sole
+    // holder).
     up:
       "ALTER TABLE `pb_top` ADD COLUMN IF NOT EXISTS `holders` int(10) unsigned NOT NULL DEFAULT 1;",
   },
   {
     version: 14,
     name: "iteration-date-unique",
-    // A puzzle belongs to a calendar DATE, not an instant — `created` was a
-    // timestamp only by inheritance from the table template, and every read
-    // already keys off DATE()/YEAR()/MONTH()/DAY() of it (never its time). Narrow
-    // it to DATE and make it UNIQUE. That turns the database itself into the mutex
-    // for daily generation: the on-demand backfill (util/newIteration.ts
-    // `ensureDailyIterationId`, needed because Deno Deploy preview deployments
-    // don't run the `ensure-iterations` Deno.cron) can now race across isolates
-    // without ever creating two puzzles for one day — the loser's INSERT is
-    // rejected by the unique key and it re-reads the winner's row.
+    // A puzzle belongs to a calendar DATE, and every read already keys off
+    // DATE()/YEAR()/MONTH()/DAY() of `created`. Narrowing it to DATE and making
+    // it UNIQUE makes the database the mutex for daily generation: the
+    // on-demand backfill (`ensureDailyIterationId` in util/newIteration.ts,
+    // needed because Deno Deploy previews don't run the `ensure-iterations`
+    // cron) can race across isolates, and the loser's INSERT is rejected and
+    // re-reads the winner's row.
     //
-    // Narrowing to DATE first collapses any historical same-day timestamps onto
-    // one value; the self-join then deletes all but the lowest id per date — the
-    // id every read already resolved to via `ORDER BY id LIMIT 1`, so the later
-    // duplicates (unreachable as a daily, their runs invisible) are cleared
-    // (block/run/notification/pb_top cascade on the iteration FK) before UNIQUE is
-    // added. A no-op on a single-writer database. The old plain KEY `created` is
-    // dropped and re-added UNIQUE under the same name in one ALTER.
+    // The DATE narrowing collapses historical same-day timestamps; the
+    // self-join then deletes all but the lowest id per date (the id reads
+    // already resolved to via `ORDER BY id LIMIT 1`), cascading to
+    // block/run/notification/pb_top. Then the plain KEY `created` is replaced
+    // by a UNIQUE one of the same name in one ALTER.
     up: `
       ALTER TABLE \`iteration\` MODIFY COLUMN \`created\` date NOT NULL;
 
@@ -347,17 +305,14 @@ export const migrations: Migration[] = [
   {
     version: 15,
     name: "flag",
-    // Player-placed flags: the manual checkpoints of the splits tape (see
-    // common/splits.ts). A flag belongs to the BOARD, not to a run — it marks a
-    // spot on the day's maze and every build of that maze is timed against it —
-    // so the key is (user, iteration) and the whole set lives in one column, the
-    // way a run's maze does (util/flags.ts). Reads and writes are always the
-    // whole set, so a row per flag would buy nothing.
+    // Player-placed flags: the manual checkpoints of the splits tape
+    // (common/splits.ts). A flag belongs to the BOARD, not a run, so the key is
+    // (user, iteration) and the whole set lives in one column, as a run's maze
+    // does (util/flags.ts). Reads and writes are always the whole set.
     //
-    // Both FKs cascade on UPDATE as well as DELETE: `user.id` is ROTATED by the
-    // GDPR erasure path (db/deleteAccount.ts), and every table keyed by it has to
-    // follow — though erasure deletes a player's flags outright, since nothing
-    // but that player depends on them. MariaDB dialect.
+    // Both FKs cascade on UPDATE as well as DELETE: erasure
+    // (db/deleteAccount.ts) ROTATES `user.id`, and every table keyed by it must
+    // follow.
     up: `
       CREATE TABLE IF NOT EXISTS \`flag\` (
         \`user\` char(36) NOT NULL,
@@ -372,15 +327,12 @@ export const migrations: Migration[] = [
   {
     version: 16,
     name: "user-name-utf8mb4",
-    // `user.name` was the one column still on utf8mb3 (inherited from the
-    // original schema — see v1), which can't hold a 4-byte character: an emoji
-    // display name failed the rename under strict mode. Convert it to the
-    // table's utf8mb4 / utf8mb4_unicode_ci, keeping its type, length,
-    // nullability and default exactly. varchar(32) counts characters in either
-    // charset, so no stored name can be truncated, and the `name` index stays
-    // well under InnoDB's key limit at 4 bytes a character. Every other text
-    // column (settings, locale, notification/flag data) already took the
-    // table's utf8mb4 default. Re-running it is a no-op.
+    // `user.name` was the one column still on utf8mb3 (from v1), which can't
+    // hold a 4-byte character, so an emoji display name failed the rename.
+    // Converts it to utf8mb4 / utf8mb4_unicode_ci with type, length,
+    // nullability and default unchanged. varchar(32) counts characters in
+    // either charset, so no name is truncated, and the `name` index stays under
+    // InnoDB's key limit.
     up:
       "ALTER TABLE `user` MODIFY COLUMN `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;",
   },
@@ -389,27 +341,23 @@ export const migrations: Migration[] = [
 // ── Editing an already-applied migration (read before you change one above) ──
 //
 // The runner keys off `version` alone: once a version is recorded in
-// `schema_migration` it NEVER runs again, even if you edit its `up`. So editing
-// a migration only reaches databases that haven't applied it yet — a database
-// that already ran the OLD `up` keeps the old schema and never picks up the new,
-// an awkward split. (This bit us once: v6 first added `push_subscription.locale`,
-// was rewritten to `user.locale`, and the dev DB — which had already applied the
-// original — ended up with the stray column and none of the new one.)
+// `schema_migration` it NEVER runs again, even if its `up` is edited. An edit
+// reaches only databases that haven't applied it; one that ran the OLD `up`
+// keeps the old schema. (v6 first added `push_subscription.locale`, was
+// rewritten to `user.locale`, and dev, which had applied the original, ended up
+// with the stray column and none of the new one.)
 //
-// The strictly-correct rule is APPEND-ONLY: never modify a shipped migration,
-// only add a later one that fixes it forward. Every database stays convergent —
-// at the cost of leaving pre-merge scratch work (an add, then a drop) in the
-// permanent history.
+// The rule is APPEND-ONLY: never modify a shipped migration, add a later one
+// that fixes it forward. Every database stays convergent, at the cost of
+// pre-merge scratch work (an add, then a drop) in the permanent history.
 //
-// Pragmatic exception, while a migration has only ever reached DEV (not merged
-// to prod): edit it in place and directly restore dev to match — hand-run the
-// drop/add DDL against the dev DB and realign its `schema_migration` name — so a
-// fresh migrate and dev agree with no scratch work. Once a migration has shipped
-// to PROD, it's set in stone: append only.
+// Exception, while a migration has only ever reached DEV: edit it in place and
+// restore dev by hand (run the drop/add DDL, realign its `schema_migration`
+// name) so a fresh migrate and dev agree. Once a migration has reached PROD,
+// append only.
 
-// Fails fast on an ill-formed migration list: versions must be unique and form a
-// contiguous run starting at 1, so "apply everything above the current version"
-// can never silently skip a gap.
+// Throws unless versions are unique and contiguous from 1, so "apply everything
+// above the current version" can't skip a gap.
 export const validateMigrations = (all: Migration[] = migrations) => {
   const sorted = [...all].sort((a, b) => a.version - b.version);
   sorted.forEach((m, i) => {

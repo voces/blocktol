@@ -9,9 +9,9 @@ import { refreshStandings, todayIteration } from "./standings.ts";
 export type NotificationsData = MessageMap["getNotifications"];
 export type NotificationItem = NotificationsData["items"][number];
 
-// The panel's view preferences, persisted like the standings sort so a choice
-// sticks across visits. `notifFilter` scopes the list to one kind; `all` shows
-// both. `hideReclaimed` drops superseded "lost top" cards from view.
+// The panel's view preferences, persisted like the standings sort.
+// `notifFilter` scopes the list to one kind; `hideReclaimed` drops superseded
+// "lost top" cards.
 export type NotifFilter = "all" | NotificationKind;
 const FILTER_KEY = "notifFilter";
 const HIDE_KEY = "notifHideReclaimed";
@@ -32,31 +32,27 @@ export const setHideReclaimed = (v: boolean) => {
   hideReclaimed.value = v;
 };
 
-// The signed-in user's notifications and unread count, behind the header bell.
-// Warmed on boot and refreshed when the panel opens; components reading these
-// signals re-render as they land.
+// The user's notifications and unread count, behind the header bell. Warmed on
+// boot and refreshed when the panel opens.
 export const notifications = signal<NotificationItem[]>([]);
 export const unreadCount = signal<number>(0);
 
-// Bumped whenever the unread count RISES after the first load — a notification
-// just arrived while the app was open (via the focused-push channel below or the
-// poll). The bell watches it to give a quick swing; the initial load doesn't
-// bump, so opening the app to existing unread doesn't swing.
+// Bumped when the unread count RISES after the first load, i.e. a notification
+// arrived while the app was open (focused-push channel or poll). The bell
+// swings on it; the initial load doesn't bump.
 export const bellNudge = signal<number>(0);
 
-// The iterations a just-arrived notification touched, with a monotonic nonce so
-// the open board can regrade its runs (a lost-top / finalized daily moved the
-// field, so the % / hue ramp needs recomputing). The calendar and standings are
-// refreshed here directly; the runs live in game state, so a component watches
-// this signal.
+// The iterations a just-arrived notification touched, with a monotonic nonce,
+// so the open board can regrade its runs (the field moved, so the % / hue ramp
+// needs recomputing). The calendar and standings refresh here directly; runs
+// live in game state, so a component watches this signal.
 export const regradedIterations = signal<
   { nonce: number; iterations: number[] }
 >({ nonce: 0, iterations: [] });
 
 let loaded = false;
-// Last-seen createdAt per notification id — so a re-surfaced one is detected,
-// not just a brand-new id (a lost-top re-pass upserts the SAME row, bumping
-// createdAt + clearing read).
+// Last-seen createdAt per notification id, to detect a re-surfaced one: a
+// lost-top re-pass upserts the SAME row, bumping createdAt and clearing read.
 const seenAt = new Map<number, number>();
 
 const monthIdxOf = (day: readonly [number, number, number]) =>
@@ -67,16 +63,15 @@ const apply = (data: NotificationsData) => {
   notifications.value = data.items;
   unreadCount.value = data.unread;
 
-  // A notification "arrived" if it's new OR re-surfaced (createdAt bumped).
-  // Keying off createdAt (not just the id) catches a lost-top re-pass too, so
-  // the calendar / standings / runs refresh whenever the bell does.
+  // "Arrived" means new OR re-surfaced (createdAt bumped), so the calendar,
+  // standings and runs refresh whenever the bell does.
   const arrived = data.items.filter((n) =>
     (seenAt.get(n.id) ?? 0) < n.createdAt
   );
   for (const n of data.items) seenAt.set(n.id, n.createdAt);
 
   if (!loaded) {
-    // Baseline the first load — existing notifications don't swing or regrade.
+    // The first load is the baseline: it doesn't swing or regrade.
     loaded = true;
     return;
   }
@@ -84,9 +79,8 @@ const apply = (data: NotificationsData) => {
   if (data.unread > prevUnread) bellNudge.value++;
   if (arrived.length === 0) return;
 
-  // Each arrival moved its day's field, so refresh everything that shows it: the
-  // calendar month, that day's standings, and — via the signal — the open
-  // board's runs.
+  // Each arrival moved its day's field: refresh the calendar month, that day's
+  // standings, and (via the signal) the open board's runs.
   for (const n of arrived) refreshMonth(monthIdxOf(n.day));
   const affected = [...new Set(arrived.map((n) => n.iteration))];
   for (const it of affected) {
@@ -99,8 +93,7 @@ const apply = (data: NotificationsData) => {
   };
 };
 
-// Coalesce concurrent asks onto one request per freshness window; a failed fetch
-// frees the window so the next ask retries.
+// One request per freshness window; a failed fetch frees the window.
 const fetchOnce = keyedQuery(async () => {
   const r = await api.getNotifications({});
   if (!r || "error" in r) throw new Error("failed to fetch notifications");
@@ -108,12 +101,12 @@ const fetchOnce = keyedQuery(async () => {
   return r;
 }, { staleMs: 20_000 });
 
-// Fetch (or serve the fresh cache). Errors are swallowed — callers keep showing
-// whatever was cached.
+// Fetch, or serve the fresh cache. Errors are swallowed; callers keep what they
+// have.
 export const fetchNotifications = (): Promise<NotificationsData | undefined> =>
   fetchOnce(undefined).catch(() => undefined);
 
-// Force a refetch (opening the panel onto possibly-stale data).
+// Force a refetch, for opening the panel onto possibly-stale data.
 export const refreshNotifications = (): Promise<
   NotificationsData | undefined
 > => {
@@ -121,8 +114,8 @@ export const refreshNotifications = (): Promise<
   return fetchNotifications();
 };
 
-// Mark specific notifications read (opening them) or all when `ids` is omitted.
-// Optimistic: flip locally right away, reconcile the count from the response.
+// Mark specific notifications read, or all when `ids` is omitted. Optimistic;
+// the count reconciles from the response.
 export const markRead = async (ids?: number[]) => {
   const idSet = ids ? new Set(ids) : null;
   notifications.value = notifications.value.map((n) =>
@@ -138,9 +131,9 @@ export const markRead = async (ids?: number[]) => {
   }
 };
 
-// Mark a day's notification of a kind read — tapping its push deep-link counts
-// as reading it, but the link carries the day + board, not the id, so the server
-// resolves the match. Optimistic locally; reconcile the count from the response.
+// Mark a day's notification of a kind read. A push deep-link carries the day
+// and board, not the id, so the server resolves the match. Optimistic; the
+// count reconciles from the response.
 export const markReadForDay = async (
   iteration: number,
   kind: NotificationItem["kind"],
@@ -160,9 +153,9 @@ export const markReadForDay = async (
   }
 };
 
-// A daily's ranks lock ~37h after it starts and free-play passes happen live, so
-// the bell can go stale on a long-open tab. A quiet poll keeps the badge honest
-// without any push. Paused while the tab is hidden.
+// Free-play passes happen live and ranks finalize while a tab is open, so the
+// bell can go stale. A quiet poll, paused while the tab is hidden, keeps the
+// badge honest without a push.
 const POLL_MS = 90_000;
 let timer = -1;
 const tick = () => {
@@ -174,10 +167,9 @@ export const startNotificationsPolling = () => {
   document.addEventListener("visibilitychange", tick);
 };
 
-// When a push arrives while the app is on screen, the service worker forwards it
-// here (see sw.js) instead of showing a redundant system banner. Refresh the
-// bell right away — the rising unread count nudges its ring — rather than
-// waiting on the poll.
+// A push arriving while the app is on screen is forwarded here by the service
+// worker (see sw.js) instead of showing a system banner. Refresh the bell now
+// rather than waiting on the poll.
 export const initPushChannel = () => {
   if (!("serviceWorker" in navigator)) return;
   navigator.serviceWorker.addEventListener("message", (e) => {

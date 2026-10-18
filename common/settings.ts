@@ -1,8 +1,7 @@
-// User preferences, persisted server-side as a JSON blob in `user.settings` and
-// mirrored to localStorage on the client for instant (flash-free) apply. Kept
-// dependency-free (no zod) so the client bundle stays small — the server route
-// does its own zod validation of incoming patches; this module is the tolerant
-// reader shared by both sides.
+// User preferences: a JSON blob in `user.settings`, mirrored to localStorage on
+// the client for flash-free apply. Dependency-free (no zod) to keep the client
+// bundle small; the server route validates incoming patches itself, and this
+// module is the tolerant reader both sides share.
 
 export const themes = ["system", "light", "dark"] as const;
 export type Theme = (typeof themes)[number];
@@ -13,25 +12,22 @@ export const ZOOM_MAX = 2.5;
 export const ZOOM_DEFAULT = 2;
 
 // Delay (ms) before the placing zoom kicks in on a touch. The default lets a
-// quick tap-to-place finish before the board magnifies, so a plain tap never
-// triggers the (disorienting) zoom-in/zoom-out; 0 zooms the instant a finger
-// lands.
+// quick tap-to-place finish first, so a plain tap never zooms; 0 zooms as soon
+// as a finger lands.
 export const ZOOM_DELAY_MIN = 0;
 export const ZOOM_DELAY_MAX = 500;
 export const ZOOM_DELAY_DEFAULT = 175;
 
 // The user-toggleable PUSH notification kinds (see common/notifications.ts).
-// These gate PUSH delivery ONLY — in-app notifications are always generated
-// regardless. Each is opted OUT by default (explicit opt-in), since turning one
-// on prompts the browser for notification permission. The server reads them
-// before sending a push, never before writing the in-app row.
+// They gate PUSH delivery ONLY; in-app notifications are always written. Each
+// defaults off, since turning one on prompts for browser notification
+// permission.
 export type NotificationPrefs = { lostTop: boolean; dailyFinal: boolean };
 
-// UI language. "system" follows the device/browser language (falling back to
-// English for an unsupported one); any other value is a BCP-47 tag the catalog
-// resolves (exact → language-prefix → en, see common/i18n resolveCatalog). Kept
-// as a plain string — the picker only offers supported locales, and the runtime
-// tolerates anything, so no locale enum has to be imported here.
+// UI language. "system" follows the device language (English if unsupported);
+// any other value is a BCP-47 tag resolved by `resolveCatalog` in
+// common/i18n.ts (exact → language prefix → en). A plain string, so no locale
+// enum is imported.
 export type Language = "system" | string;
 
 export type Settings = {
@@ -64,8 +60,8 @@ export const defaultSettings = (): Settings => ({
   notifications: defaultNotificationPrefs(),
 });
 
-// A boolean field, tolerant of a legacy/absent/garbage value: only a real
-// `false` turns a default-on preference off.
+// A boolean field, tolerant of a legacy, absent or garbage value: anything but
+// a real boolean falls back to the default.
 const bool = (v: unknown, fallback: boolean) =>
   typeof v === "boolean" ? v : fallback;
 
@@ -82,9 +78,8 @@ const parseNotifications = (raw: unknown): NotificationPrefs => {
 };
 
 /**
- * Parse a stored settings blob (a JSON string, an object, or null) into full
- * Settings, filling any missing or invalid field with its default rather than
- * throwing — so legacy rows, a schema change, or a corrupt blob are always safe.
+ * Parse a stored settings blob (JSON string, object or null) into full
+ * Settings, defaulting any missing or invalid field instead of throwing.
  */
 export const parseSettings = (raw: unknown): Settings => {
   let obj: unknown = raw;
@@ -105,8 +100,7 @@ export const parseSettings = (raw: unknown): Settings => {
       : "system",
     zoom: clampZoom(Number(src.zoom)),
     zoomDelay: clampZoomDelay(Number(src.zoomDelay)),
-    // Tolerant: any string rides through (the catalog resolves an unsupported
-    // tag to English); anything else is the follow-the-device default.
+    // Any string passes; the catalog resolves an unsupported tag to English.
     language: typeof src.language === "string" ? src.language : "system",
     notifications: parseNotifications(src.notifications),
   };

@@ -6,9 +6,8 @@ import {
   setDefaultLocale,
 } from "./format.ts";
 
-// An explicit locale is passed so the assertions don't depend on the host's
-// default locale; the `undefined` (viewer/runtime) path is exercised by the
-// separator-agnostic shape checks below.
+// Explicit locales keep assertions independent of the host; the `undefined`
+// (runtime locale) path gets separator-agnostic shape checks below.
 
 Deno.test("formatSeconds pins two decimals by default", () => {
   assertEquals(formatSeconds(35.1, { locale: "en-US" }), "35.10");
@@ -49,7 +48,7 @@ Deno.test("formatCount groups thousands by locale", () => {
 });
 
 Deno.test("a malformed locale falls back to the runtime default", () => {
-  // Must not throw — a bad stored locale can't break push rendering.
+  // Must not throw: a bad stored locale can't break push rendering.
   const out = formatSeconds(35.1, { locale: "not a locale!!" });
   assertEquals(typeof out, "string");
   assertEquals(out.length > 0, true);

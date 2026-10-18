@@ -1,7 +1,6 @@
 import { h } from "preact";
 
-// The bell in the header. `filled` (there are unread) gets a solid clapper cue;
-// the badge itself is drawn in CSS.
+// The header bell. `filled` (unread) adds a solid clapper; the badge is CSS.
 export const Bell = ({ filled }: { filled?: boolean }) => (
   <svg
     width={20}
@@ -22,15 +21,15 @@ export const Bell = ({ filled }: { filled?: boolean }) => (
   </svg>
 );
 
-// The crown that fronts a "lost top spot" card (gold, per the record iconography
-// elsewhere). Filled via currentColor so the tile controls the hue.
+// The crown on a "lost top spot" card (gold). currentColor lets the tile set
+// the hue.
 export const Crown = () => (
   <svg width={20} height={20} viewBox="0 0 16 16" aria-hidden="true">
     <path d="M2 5l3 3 3-5 3 5 3-3-1 8H3z" fill="currentColor" />
   </svg>
 );
 
-// The check on a "Reclaimed" tag — a superseded lost-top the viewer took back.
+// The check on a "Reclaimed" tag: a lost top spot the viewer took back.
 export const Check = () => (
   <svg
     width={12}

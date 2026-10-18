@@ -24,8 +24,7 @@ const BADGE_KEY = {
 
 type Attempt = MessageMap["getDailySummary"]["attempts"][number];
 
-// A filled (pinned) or outline (unpinned) pushpin — the per-row pin toggle. The
-// same glyph both states so only its fill changes, reading as one control.
+// Per-row pin toggle: filled pushpin when pinned, outline when not.
 const PinIcon = ({ filled }: { filled: boolean }) => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -40,20 +39,18 @@ const PinIcon = ({ filled }: { filled: boolean }) => (
 
 type Sort = "best" | "recent";
 
-// Persist the runs sort across visits. Defaults to best for anything unset or
-// unrecognized. `reversed` flips whichever sort is active — tapping the active
-// tab again inverts it, so Best can show shortest-first and Recent oldest-first;
-// it applies to the CURRENT sort, so switching tabs resets to that sort's
-// default direction.
+// The runs sort persists across visits; unset or unrecognized means best.
+// `reversed` flips the ACTIVE sort only (Best shortest-first, Recent
+// oldest-first); switching tabs resets to that sort's default direction.
 const SORT_KEY = "runsSort";
 const DIR_KEY = "runsSortReversed";
 const storedSort = (): Sort =>
   storage.getItem(SORT_KEY) === "recent" ? "recent" : "best";
 const storedReversed = (): boolean => storage.getItem(DIR_KEY) === "1";
 
-// When a run happened, from the viewer's clock: relative (Xs/Xm/Xh ago) if it's
-// today OR within the last 8 hours — so an 11pm run still reads "3h ago" at 2am —
-// otherwise the date.
+// When a run happened, on the viewer's clock: relative (Xs/Xm/Xh ago) if it's
+// today or within 8 hours (an 11pm run still reads "3h ago" at 2am), else the
+// date.
 const formatWhen = (created: number) => {
   const diff = Date.now() - created;
   const when = new Date(created);
@@ -71,11 +68,10 @@ const formatWhen = (created: number) => {
   return when.toLocaleDateString(intlLocale(), { dateStyle: "medium" });
 };
 
-// Every run on the viewed maze (ranked and free play, fed by startRun / getBoard
-// / getDailySummary via `viewedAttempts`), each tinted to its own percentile
-// band. Runs that built the identical maze are merged into one row (×N), best
-// first, labelled by when they last ran. The best run carries the BEST — or
-// SUPREME, when it tops the field — badge. Clicking a row re-renders that maze.
+// Every run on the viewed board (`viewedAttempts`, ranked and free play), each
+// tinted to its percentile band. Runs of the identical maze merge into one ×N
+// row labelled by its latest run. The best row carries the BEST badge, or
+// SUPREME when it tops the field. Clicking a row reviews that maze.
 export const Attempts = () => {
   const {
     viewedAttempts,
@@ -87,14 +83,12 @@ export const Attempts = () => {
     phase,
     iteration,
   } = useContext(GameStateContext);
-  // Local-only ordering, remembered across visits. Defaults to best (longest)
-  // first; "recent" orders by when each maze last ran. Sorting only — the merged
-  // rows are the same. Tapping the active tab flips its direction (`reversed`).
+  // Display order only, remembered across visits: "best" (longest first) or
+  // "recent" (by each maze's latest run). Re-tapping the active tab reverses.
   const [sort, setSort] = useState<Sort>(storedSort);
   const [reversed, setReversed] = useState<boolean>(storedReversed);
   const pickSort = (mode: Sort) => {
-    // Re-tapping the active sort inverts it; picking a different sort starts
-    // from that sort's default direction.
+    // A different sort starts from its default direction.
     const nextReversed = mode === sort ? !reversed : false;
     storage.setItem(SORT_KEY, mode);
     storage.setItem(DIR_KEY, nextReversed ? "1" : "0");
@@ -103,41 +97,35 @@ export const Attempts = () => {
   };
   const attempts = viewedAttempts ?? [];
 
-  // Mid-daily the list shows in a simplified form — time, when, and which is
-  // your best — but WITHOUT the field-relative info (percentile colour, %,
-  // SUPREME) that would anchor how players approach their remaining attempts. It
-  // fills in fully once you're off the live daily (dailyInProgress false): the
-  // daily's done, or the board is a settled past day whose runs belong in full.
-  // Nothing to show on a fresh daily with no runs yet.
+  // Mid-daily the list is simplified: time, when, and which is your best, but
+  // none of the field-relative info (percentile colour, %, SUPREME), which
+  // would anchor how players approach their remaining attempts. It is full once
+  // `dailyInProgress` is false.
   const simplified = dailyInProgress;
   if (simplified && attempts.length === 0) return null;
 
-  // Merge runs with identical maze data (anywhere in the list, not just
-  // consecutive), keeping the count and the most recent run.
+  // Merge runs of the identical maze, keeping the count and the latest run.
   const byMaze = new Map<
     string,
     {
-      // Stable per-group identity (the maze key) used as the render key, so a
-      // row keeps its DOM node when the list re-sorts — a pin toggle floats its
-      // row to the top without focus staying pinned to the old array index.
+      // The maze key; the render key, so a row keeps its DOM node when the
+      // list re-sorts (a pin toggle floats it to the top).
       id: string;
       attempt: Attempt;
       count: number;
       latest: number;
       supreme: boolean;
       ranked: boolean;
-      // Pinned if ANY run in the maze-group is pinned; `createds` collects every
-      // member's run time so a toggle flips them together (keeping the group's
-      // pinned state consistent however the merge later picks its representative).
+      // Pinned if ANY member is pinned; `createds` holds every member's run
+      // time so a toggle flips them together.
       pinned: boolean;
       createds: number[];
     }
   >();
   for (const attempt of attempts) {
-    // Order-INDEPENDENT key (same helper the "viewing" match uses): two runs
-    // that built the identical maze can store their blocks in a different order,
-    // and a raw JSON.stringify would split them into two rows that both flag
-    // "viewing". mazeKey sorts the blocks first, so they merge into one ×N row.
+    // Order-independent (also the "viewing" match): identical mazes can store
+    // their blocks in different orders, which a raw JSON.stringify would split
+    // into two rows.
     const key = mazeKey(attempt.maze);
     const group = byMaze.get(key);
     if (group) {
@@ -164,35 +152,27 @@ export const Attempts = () => {
     }
   }
 
-  // Best (longest) first identifies the BEST/SUPREME row regardless of the
-  // chosen order; "recent" instead orders by each maze's latest run.
+  // Longest first, whatever the chosen order, to find the BEST row.
   const byDuration = [...byMaze.values()].sort((a, b) =>
     b.attempt.duration - a.attempt.duration
   );
-  // The best time itself, so EVERY row that ties it is badged BEST — not just
-  // the first one (these rows are distinct mazes that happen to share a time).
-  // Derived off the always-descending byDuration, so the BEST badge is unaffected
-  // by the chosen direction.
+  // Compared by time so every row tying the best is badged BEST. Taken from
+  // `byDuration`, so the chosen direction doesn't move it.
   const bestDuration = byDuration[0]?.attempt.duration;
-  // Apply the chosen sort, then flip the whole order when reversed — Best goes
-  // shortest-first, Recent oldest-first.
+  // The chosen sort; `dir` flips it when reversed.
   const dir = reversed ? -1 : 1;
   const ordered = [...byMaze.values()].sort((a, b) =>
     sort === "recent"
       ? dir * (b.latest - a.latest)
       : dir * (b.attempt.duration - a.attempt.duration)
   );
-  // Pinned runs float to the top as the primary sort, keeping the chosen
-  // best/recent order within each partition (Array.sort is stable). Only when
-  // the full field is shown — mid-daily (simplified) the panel is inert and
-  // pinning is hidden, so nothing reorders under an in-progress run.
+  // Pinned rows float to the top, keeping the chosen order within each half
+  // (Array.sort is stable). Not when simplified: the panel is inert then.
   const groups = simplified
     ? ordered
     : [...ordered].sort((a, b) => Number(b.pinned) - Number(a.pinned));
 
-  // Toggle a maze-group's pin: optimistically flip every member locally (so the
-  // row jumps to/from the top at once), then persist. On failure, flip back.
-  // The panel's `iteration` is always set once runs are shown; guard anyway.
+  // Flips every member locally at once, then persists; flips back on failure.
   const togglePin = (createds: number[], next: boolean) => {
     if (iteration === undefined) return;
     const inGroup = new Set(createds);
@@ -208,10 +188,8 @@ export const Attempts = () => {
       .catch(() => flip(!next));
   };
 
-  // The maze the board is showing: a review (viewMaze made it the local blocks)
-  // or, in free play, the run currently animating — its row is marked from the
-  // moment it executes, not once the runner stops. Never mid-daily, where the
-  // running attempt has no row yet and the panel is inert anyway.
+  // The maze on the board: a review (`viewMaze`) or, in free play, the run
+  // animating, so its row is marked from execution. Never mid-daily.
   const viewingKey = viewing || (!dailyInProgress && phase === "running")
     ? mazeKey(
       blocks.filter((b) => b.local).map((b) => ({
@@ -225,17 +203,14 @@ export const Attempts = () => {
   return (
     <div class="attempts">
       {
-        /* The splits tape for the run being reviewed — free play only, and only
-          while reviewing (see Splits.tsx). It sits above the list, inside the
-          same scroll column, so the tape and the run it describes read as one
-          panel. */
+        /* The splits tape (free play only, see Splits.tsx). Inside this scroll
+          column so it scrolls with the list it describes. */
       }
       <Splits />
       <div class="attempts__head">
         <div class="section-title">
           {
-            /* The count is the runs themselves, not the merged rows: two runs
-              of one maze are still two runs. */
+            /* Counts runs, not merged rows. */
           }
           {attempts.length
             ? t("attempts.titleCount", { count: attempts.length })
@@ -249,13 +224,8 @@ export const Attempts = () => {
           >
             {(["recent", "best"] as const).map((mode) => {
               const active = sort === mode;
-              // Each tab IS its direction: the word alone says what's on top and
-              // by which measure (newest/oldest = recency, longest/shortest =
-              // duration), so no arrow or "Best ·" prefix is needed. Recent shows
-              // relative "Xh ago" times where a ↓/↑ would be ambiguous anyway. The
-              // active tab reflects the live reversed state and flips on re-tap;
-              // an inactive tab shows its default (reversal only rides the active
-              // sort), so tapping it starts fresh from that default.
+              // The label names its direction, so no arrow is needed. An
+              // inactive tab shows its default; reversal rides the active sort.
               const rev = active && reversed;
               const label = mode === "recent"
                 ? (rev ? t("attempts.sortOldest") : t("attempts.sortNewest"))
@@ -284,11 +254,9 @@ export const Attempts = () => {
           <div class="attempts__list">
             {groups.map((group) => {
               const { attempt } = group;
-              // Full: continuous ramp colour, with two standings lifted off it —
-              // supreme gold (took the record) and, one step below, peak green-
-              // yellow (tied the field's top but didn't take it outright).
-              // Simplified: a neutral band so the time reads without signalling
-              // standing.
+              // Full: the ramp colour, except supreme gold (took the record)
+              // and peak green-yellow (tied the field's top without taking it).
+              // Simplified: neutral, so the band doesn't signal standing.
               const supreme = !simplified && group.supreme;
               const peak = !simplified && !group.supreme &&
                 attempt.percent === 1;
@@ -302,10 +270,8 @@ export const Attempts = () => {
               const isBest = attempt.duration === bestDuration;
               const isViewing = viewingKey != null &&
                 mazeKey(attempt.maze) === viewingKey;
-              // Mid-daily (simplified) the rows are inert: reviewing a past
-              // maze would replace the live attempt's board, and even the
-              // affordance (pointer, hover, title) would invite wandering off
-              // mid-run — matching how the calendar and profile hide entirely.
+              // Inert mid-daily: reviewing would replace the live attempt's
+              // board, and the affordance alone would invite it.
               const clickable = !simplified;
               return (
                 <div
@@ -320,16 +286,13 @@ export const Attempts = () => {
                   onClick={clickable
                     ? () => {
                       viewMaze(attempt.maze);
-                      // Mobile scrolls the board out of view under the runs
-                      // list; snap back up to it (instant) so the reviewed
-                      // maze is seen.
+                      // On mobile the board is scrolled out of view; snap back.
                       document.querySelector(".game")?.scrollTo({ top: 0 });
                     }
                     : undefined}
                 >
                   {
-                    /* Always two decimals: the times sit in a mono column and
-                      a "17.5" between "17.54"s reads misaligned. */
+                    /* Always two decimals, so the mono column stays aligned. */
                   }
                   <span class="attempts__time mono">
                     {formatSeconds(attempt.duration)}s
@@ -359,12 +322,9 @@ export const Attempts = () => {
                       <div class="attempts__sub">
                         <span>{formatPercentile(attempt.percent)}%</span>
                         {group.ranked && attempt.percentile != null && (
-                          // Coloured by the percentile ITSELF — the row's band
-                          // is the standing (% of the field's range), a
-                          // different metric, and inheriting it could paint a
-                          // p100 red. The two record states still sit above
-                          // the ramp: a supreme p100 is gold, a record-tying
-                          // one peak chartreuse.
+                          // Coloured by the percentile itself, not the row's
+                          // band (a different metric: it could paint a p100
+                          // red). Record states still override the ramp.
                           <span
                             class="attempts__pct"
                             style={{
@@ -399,8 +359,7 @@ export const Attempts = () => {
                         ? t("attempts.unpin")
                         : t("attempts.pinToTop")}
                       onClick={(e) => {
-                        // Don't let the pin toggle also trigger the row's
-                        // view-this-maze click.
+                        // Keep the row's view-maze click from firing too.
                         e.stopPropagation();
                         togglePin(group.createds, !group.pinned);
                       }}

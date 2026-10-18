@@ -2,9 +2,8 @@ import { assertEquals } from "@std/assert";
 import { format, raw, sql } from "./query.ts";
 import { getUserRivals, getUserStats, mergeRivals } from "./user.ts";
 
-// getUserStats' queries were rewritten to reach the field through the player's
-// own iterations instead of grouping over the whole run table. This checks the
-// rewrite against the ORIGINAL whole-table SQL (kept verbatim below) for a
+// Checks getUserStats, which reaches the field through the player's own
+// iterations, against whole-table reference SQL (kept verbatim below) for a
 // sample of real players on the dev database. Skipped without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 

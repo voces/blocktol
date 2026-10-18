@@ -1,17 +1,14 @@
-// A dependency-free Web Push sender built on WebCrypto: VAPID request
-// authorization (RFC 8292) plus "aes128gcm" payload encryption (RFC 8291 over
-// RFC 8188). The npm `web-push` package works under Deno but its transitive deps
-// read arbitrary env vars at load (ECE_KEYLOG, DEBUG, …), which trips this app's
-// deliberately-scoped `--allow-env`; a native implementation reads only the
-// first-party VAPID_* vars and keeps the permission surface tight. The
-// encryption pipeline is verified against RFC 8291 §5's published test vector
-// (see webpush.test.ts).
+// A dependency-free Web Push sender on WebCrypto: VAPID request authorization
+// (RFC 8292) plus "aes128gcm" payload encryption (RFC 8291 over RFC 8188). The
+// npm `web-push` package's transitive deps read arbitrary env vars at load
+// (ECE_KEYLOG, DEBUG, …), which trips the scoped `--allow-env`; this reads
+// only the VAPID_* vars. The encryption is verified against RFC 8291 §5's test
+// vector (webpush.test.ts).
 
 import { errText, log } from "./logging.ts";
 
-// An ArrayBuffer-backed byte array — the shape WebCrypto's BufferSource params
-// require under the strict typed-array generics (a bare `Uint8Array` defaults to
-// `ArrayBufferLike`, which the crypto overloads reject).
+// An ArrayBuffer-backed byte array: WebCrypto's BufferSource params reject a
+// bare `Uint8Array` (`ArrayBufferLike`).
 type Bytes = Uint8Array<ArrayBuffer>;
 
 // ---- base64url ----
@@ -33,9 +30,8 @@ const fromB64URL = (s: string): Bytes => {
 
 const utf8 = (s: string): Bytes => new TextEncoder().encode(s);
 
-// SHA-256 hex of a string — the storage key for a push endpoint (endpoints are
-// globally unique but too long to index directly). Shared by the subscribe route
-// and the send path's dead-subscription pruning.
+// SHA-256 hex of a string: the storage key for a push endpoint (unique but too
+// long to index). Shared by the subscribe route and dead-subscription pruning.
 export const sha256hex = async (s: string): Promise<string> => {
   const buf = await crypto.subtle.digest("SHA-256", utf8(s));
   return Array.from(new Uint8Array(buf))
@@ -77,9 +73,8 @@ const hkdf = async (
 
 export type VapidKeys = { publicKey: string; privateKey: string };
 
-// Build a JWK from the raw VAPID key material so WebCrypto can import it: the
-// public key is a 65-byte uncompressed point (0x04 ‖ X ‖ Y); the private key is
-// the 32-byte scalar d.
+// A JWK from the raw VAPID keys: the public key is a 65-byte uncompressed point
+// (0x04 ‖ X ‖ Y), the private key the 32-byte scalar d.
 const vapidJwk = (publicKey: string, privateKey: string): JsonWebKey => {
   const pub = fromB64URL(publicKey);
   return {
@@ -92,8 +87,9 @@ const vapidJwk = (publicKey: string, privateKey: string): JsonWebKey => {
   };
 };
 
-// Sign a VAPID JWT (ES256). `aud` is the push endpoint's origin; `exp` is capped
-// at 24h out per RFC 8292. WebCrypto's ECDSA output is already the JOSE raw r‖s.
+// Sign a VAPID JWT (ES256). `aud` is the push endpoint's origin; `exp` is 12h
+// out (RFC 8292 caps it at 24h). WebCrypto's ECDSA output is already JOSE
+// r‖s.
 const signVapidJwt = async (
   keys: VapidKeys,
   aud: string,
@@ -129,10 +125,10 @@ const signVapidJwt = async (
 const RECORD_SIZE = 4096;
 
 // Everything after the ECDH: mix the auth secret and salt into the CEK+nonce
-// (RFC 8291 §3.4 then RFC 8188), then frame one AES-128-GCM record. Split out so
-// it can be verified against RFC 8291 §5's vector using the RFC's published
-// `ecdhSecret` — Deno's WebCrypto can't deriveBits from an imported private key,
-// so a fixed server key can't be injected, but the raw shared secret can.
+// (RFC 8291 §3.4, RFC 8188), then frame one AES-128-GCM record. Split out so
+// the RFC 8291 §5 vector can feed in its published `ecdhSecret`: Deno's
+// WebCrypto can't deriveBits from an imported private key, so a fixed server
+// key can't be injected.
 const sealRecord = async (
   ecdhSecret: Bytes,
   uaPublic: Bytes,
@@ -141,15 +137,15 @@ const sealRecord = async (
   salt: Bytes,
   payload: Bytes,
 ): Promise<Bytes> => {
-  // RFC 8291 §3.4: mix the auth secret in to get the input keying material.
+  // RFC 8291 §3.4: input keying material.
   const keyInfo = concat(utf8("WebPush: info\0"), uaPublic, asPublic);
   const ikm = await hkdf(authSecret, ecdhSecret, keyInfo, 32);
 
-  // RFC 8188: derive the content-encryption key and nonce from the salt.
+  // RFC 8188: content-encryption key and nonce.
   const cek = await hkdf(salt, ikm, utf8("Content-Encoding: aes128gcm\0"), 16);
   const nonce = await hkdf(salt, ikm, utf8("Content-Encoding: nonce\0"), 12);
 
-  // One record: plaintext ‖ 0x02 (the last-record delimiter), then AES-128-GCM.
+  // One record: plaintext ‖ 0x02 (last-record delimiter).
   const record = concat(payload, new Uint8Array([0x02]));
   const aesKey = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, [
     "encrypt",
@@ -163,7 +159,7 @@ const sealRecord = async (
   );
 
   // RFC 8188 §2.1 header: salt(16) ‖ rs(4, big-endian) ‖ idlen(1) ‖ keyid.
-  // The keyid is the server public key so the client can complete the ECDH.
+  // The keyid is the server public key, which the client needs for the ECDH.
   const header = new Uint8Array(16 + 4 + 1 + asPublic.length);
   header.set(salt, 0);
   new DataView(header.buffer).setUint32(16, RECORD_SIZE, false);
@@ -177,8 +173,8 @@ const sealRecord = async (
 export const _sealRecordForTest = sealRecord;
 
 // Encrypt `payload` for a subscription's client key (`uaPublic`, 65-byte point)
-// and `authSecret` (16 bytes). A fresh ephemeral server keypair and random salt
-// are generated per message (never reused, per RFC 8291).
+// and `authSecret` (16 bytes). The ephemeral server keypair and salt are fresh
+// per message (RFC 8291).
 export const encryptPayload = async (
   payload: Bytes,
   uaPublic: Bytes,
@@ -194,7 +190,7 @@ export const encryptPayload = async (
   );
   const salt = crypto.getRandomValues(new Uint8Array(16));
 
-  // ECDH shared secret between the server ephemeral key and the client key.
+  // ECDH between the ephemeral server key and the client key.
   const uaKey = await crypto.subtle.importKey(
     "raw",
     uaPublic,
@@ -215,9 +211,9 @@ export const encryptPayload = async (
 
 // ---- config from the environment ----
 
-// Tolerant read: returns undefined for an absent OR unpermitted var rather than
-// throwing, so importing this module under a scoped --allow-env (e.g. the test
-// task, which doesn't grant VAPID_*) is safe — push just reads as unconfigured.
+// Returns undefined for an absent OR unpermitted var instead of throwing, so
+// importing this module under a scoped --allow-env (the test task grants no
+// VAPID_*) reads as push unconfigured.
 const readEnv = (name: string): string | undefined => {
   try {
     return Deno.env.get(name);
@@ -226,36 +222,31 @@ const readEnv = (name: string): string | undefined => {
   }
 };
 
-// Read once; a missing key means push is not configured, so sends are skipped
-// (in-app notifications still work regardless).
+// Read once. Without both keys sends are skipped; in-app notifications still
+// work.
 const vapidPublic = readEnv("VAPID_PUBLIC_KEY");
 const vapidPrivate = readEnv("VAPID_PRIVATE_KEY");
 const vapidSubject = readEnv("VAPID_SUBJECT") ?? "mailto:admin@blocktol.com";
 
 export const pushConfigured = (): boolean => !!(vapidPublic && vapidPrivate);
 
-// The client needs the public key to subscribe (applicationServerKey); it's
-// public by definition. null when push isn't configured.
+// The client needs the public key to subscribe (applicationServerKey). null
+// when push isn't configured.
 export const getVapidPublicKey = (): string | null => vapidPublic ?? null;
 
 // ---- which endpoints we'll POST to ----
 
-// A subscription's endpoint is client-supplied and the server POSTs to it, so an
-// open `url()` made us an SSRF gadget (localhost, the SQL proxy, the box's
-// loopback-only VictoriaLogs) and a request amplifier. Only the browser push
-// services are legitimate targets — every mainstream browser routes Web Push
-// through its vendor's service:
-//   - Chrome / Chromium Android, Opera, Samsung Internet, Brave, Vivaldi: FCM
-//     (`fcm.googleapis.com`; long-lived subscriptions from the GCM era still
-//     carry `android.googleapis.com`, and some Chrome builds hand out
-//     `jmt17.google.com`).
-//   - Firefox (and forks): Mozilla autopush, `updates.push.services.mozilla.com`
-//     (suffix-matched, for its regional/legacy hosts).
+// An endpoint is client-supplied and the server POSTs to it, so accepting any
+// URL would be an SSRF gadget (localhost, the SQL proxy, loopback-only
+// VictoriaLogs) and a request amplifier. Only browser vendors' push services
+// are allowed:
+//   - Chrome-family browsers: FCM (`fcm.googleapis.com`; GCM-era subscriptions
+//     carry `android.googleapis.com`, some Chrome builds `jmt17.google.com`).
+//   - Firefox: Mozilla autopush, suffix-matched for regional/legacy hosts.
 //   - Edge: WNS, `<region>.notify.windows.com`.
-//   - Safari (macOS 13+, iOS 16.4+ home-screen apps): `web.push.apple.com`
-//     (suffix-matched on push.apple.com).
-// What's left out is self-hosted push (UnifiedPush on de-Googled Android): its
-// endpoint is any host at all, which is exactly what this closes.
+//   - Safari (macOS 13+, iOS 16.4+ home-screen apps): `web.push.apple.com`,
+//     suffix-matched on push.apple.com.
+// Self-hosted push (UnifiedPush) is excluded: its endpoint can be any host.
 const PUSH_HOSTS = new Set([
   "fcm.googleapis.com",
   "android.googleapis.com",
@@ -282,14 +273,14 @@ export const isPushEndpoint = (endpoint: string): boolean => {
     PUSH_HOST_SUFFIXES.some((s) => host.endsWith(s));
 };
 
-// Hosts already reported as refused, so a pre-allowlist row (stored before the
-// subscribe route checked) logs once per process rather than on every send.
+// Hosts already reported as refused, so a row stored before the subscribe
+// allowlist logs once per process, not on every send.
 const refusedHosts = new Set<string>();
 
-// A hung push service must not hang the caller: a lost-top push runs inside a
-// player's save (commit/update → onPbBuild), and the daily-final fan-out inside
-// the rate-dailies cron, which never overlaps itself — so one stuck socket would
-// stall every later rating. Push services answer in well under a second.
+// A hung push service must not hang the caller: lost-top pushes run inside a
+// player's save (onPbBuild) and the daily-final fan-out inside the rate-dailies
+// cron, which never overlaps itself, so one stuck socket would stall every
+// later rating.
 const PUSH_TIMEOUT_MS = 10_000;
 
 export type WebPushSubscription = {
@@ -298,13 +289,12 @@ export type WebPushSubscription = {
   auth: string; // client auth secret, base64url (16 bytes)
 };
 
-// The result of a send: `gone` marks a subscription the push service rejected as
-// expired/invalid (404/410), so the caller can prune it. `ok` is any 2xx.
+// `gone` marks a subscription the push service rejected as expired (404/410),
+// for the caller to prune. `ok` is any 2xx.
 export type SendResult = { ok: boolean; gone: boolean; status?: number };
 
-// Send one push. `now` is injectable for testing the JWT exp. Never throws —
-// transport/crypto failures resolve to { ok:false }, so a dead endpoint can't
-// break notification creation.
+// Send one push. `now` is injectable to test the JWT exp. Never throws:
+// transport/crypto failures resolve to { ok: false }.
 export const sendPush = async (
   sub: WebPushSubscription,
   payload: string,
@@ -313,9 +303,9 @@ export const sendPush = async (
 ): Promise<SendResult> => {
   if (!vapidPublic || !vapidPrivate) return { ok: false, gone: false };
   if (!isPushEndpoint(sub.endpoint)) {
-    // A row stored before subscribe enforced the allowlist: skip it rather
-    // than migrate. Not pruned — a real browser endpoint this list misses
-    // should stay recoverable by widening the list, not be deleted by it.
+    // A row stored before subscribe enforced the allowlist. Skipped, not
+    // pruned: a real endpoint the list misses should be recoverable by widening
+    // the list.
     let host = "invalid";
     try {
       host = new URL(sub.endpoint).host;
@@ -359,15 +349,12 @@ export const sendPush = async (
     await res.arrayBuffer().catch(() => {});
     const gone = res.status === 404 || res.status === 410;
     if (!res.ok && !gone) {
-      // A 403 is specifically "this subscription wasn't minted under the VAPID
-      // key signing this request" — i.e. the keys were rotated out from under
-      // it, and the endpoint is permanently undeliverable. Deliberately NOT
-      // pruned: unlike a 410 (the push service disowning one endpoint), a 403
-      // is equally consistent with a misconfigured key pair, and pruning on it
-      // would delete every subscription in a single sweep. The client detects
-      // the mismatch against /api/pushConfig and re-subscribes on its next boot
-      // (client/util/push.ts `keyMatches`); this log is how the rotation shows
-      // up in the meantime.
+      // A 403 means the subscription wasn't minted under the VAPID key signing
+      // this request (keys rotated), so it is permanently undeliverable. NOT
+      // pruned: a 403 is equally consistent with a misconfigured key pair, and
+      // pruning would delete every subscription in one sweep. The client
+      // re-subscribes on its next boot (client/util/push.ts `keyMatches`); this
+      // log is the only trace until then.
       log.error(
         res.status === 403
           ? "push send rejected (vapid key)"

@@ -1,18 +1,16 @@
 import { Point } from "../../../common/types.ts";
 import { api, MessageMap, withKeepalive } from "../../api.ts";
 
-// Serialized persistence for the in-progress build. Every save carries the
-// FULL local maze, so only the newest state matters: at most one updateRun is
-// in flight, and anything newer coalesces into `latest` (a trailing-edge queue
-// of depth 1). That serialization is what makes saves safe — two in-flight
-// requests could arrive out of order and persist a stale maze — and it makes a
-// double-enqueue from the same edit harmless.
+// Serialized persistence for a ranked build. Every save carries the FULL local
+// maze, so only the newest matters: at most one updateRun is in flight and
+// newer saves coalesce into `latest` (a trailing-edge queue of depth 1). Two
+// in-flight requests could arrive out of order and persist a stale maze.
 //
-// Network failures retry the latest maze with backoff, silently: the board
+// Network failures retry the latest maze with backoff, silently; the board
 // stays optimistic, and if the run starts before a save confirms,
 // `flushRunSaver` comes back expired and `onExpired` snaps back to the accepted
-// maze (see useInit). Server verdicts don't retry — an expired save can never
-// land (the window is closed), and a rejected one would be rejected again.
+// maze (see useInit). Server verdicts don't retry: an expired save can never
+// land and a rejected one would be rejected again.
 
 type LocalBlock = Point & { local?: boolean; thunder?: boolean };
 type Save = { iteration: number; blocks: LocalBlock[] };
@@ -44,16 +42,13 @@ let latest: Save | null = null;
 let inFlight = false;
 let attempt = 0;
 let retryTimer = -1;
-// Trailing-debounce timer: a burst of placements collapses to one save instead
-// of one-per-placement. Only ranked builds use this saver (free play persists
-// locally). The delay is passed per-save by the caller (useInputEnd, `saveDebounce`),
-// which shrinks it toward 0 as the clock runs out so a last-second edit still
-// lands before the window closes. DEBOUNCE_MS is the ceiling (and the default
-// when no delay is given).
+// Trailing-debounce timer: a burst of placements collapses to one save. The
+// delay is passed per save (`saveDebounce` in useInputEnd) and shrinks to 0 as
+// the clock runs out. DEBOUNCE_MS is the ceiling and the default.
 let debounceTimer = -1;
 export const DEBOUNCE_MS = 2_000;
-// Bumped by `resetRunSaver`; an in-flight response from a previous generation
-// is ignored so a late verdict can't mutate a board it no longer describes.
+// Bumped by `resetRunSaver`; a response from an older generation is ignored so
+// a late verdict can't mutate a board it no longer describes.
 let gen = 0;
 
 const BACKOFF_MS = [500, 1_000, 2_000, 4_000, 4_000, 4_000, 4_000, 4_000];
@@ -68,8 +63,8 @@ const flush = () => {
       if (g !== gen) return;
       inFlight = false;
       if ("error" in r) {
-        // Only revert if nothing newer is queued — a newer save supersedes
-        // this verdict and will settle the board itself.
+        // Revert only if nothing newer is queued; a newer save supersedes this
+        // verdict.
         if (latest === save) {
           latest = null;
           handlers.onRejected();
@@ -88,10 +83,9 @@ const flush = () => {
   ).catch(() => {
     if (g !== gen) return;
     inFlight = false;
-    // Network failure: retry the latest maze with backoff. After the schedule
-    // runs dry, give up — the board stays optimistic and the run-start flush
-    // reconciles it (the visible "blocks reverted"). Report the abandonment:
-    // it is the only signal for the block-revert incident.
+    // Network failure: retry the latest maze with backoff. When the schedule
+    // runs dry, give up; the run-start flush reconciles the board. Report the
+    // abandonment: it is the only signal for the block-revert incident.
     const delay = BACKOFF_MS[attempt++];
     if (delay === undefined) {
       api.reportClientError({
@@ -108,12 +102,8 @@ const flush = () => {
   });
 };
 
-// Queue the build's current maze for persistence (replacing any older
-// unconfirmed save). A fresh user action also supersedes a pending retry
-// backoff. `debounceMs` collapses a burst of placements into one save; the
-// caller shrinks it as the clock runs out (0 = send now), so the maze the run
-// will execute is server-confirmed before the 60s window closes — the debounce
-// never widens the existing window-edge race.
+// Queue the build's current maze (replacing any older unconfirmed save); it
+// also supersedes a pending retry backoff. `debounceMs` of 0 sends now.
 export const saveRun = (save: Save, debounceMs = DEBOUNCE_MS) => {
   latest = save;
   clearTimeout(retryTimer);
@@ -123,9 +113,9 @@ export const saveRun = (save: Save, debounceMs = DEBOUNCE_MS) => {
   else debounceTimer = setTimeout(flush, debounceMs);
 };
 
-// Drop all pending work and ignore any in-flight response. For board changes
-// (re-stage, run finished) where old saves must not touch the new board — a
-// lingering retry would otherwise write a stale maze onto the next run.
+// Drop all pending work and ignore any in-flight response, on board changes
+// (re-stage, run finished): a lingering retry would write a stale maze onto the
+// next run.
 export const resetRunSaver = () => {
   gen++;
   latest = null;
@@ -135,14 +125,12 @@ export const resetRunSaver = () => {
   clearTimeout(debounceTimer);
 };
 
-// The run is starting: send the pending maze immediately (bypassing the
-// debounce) so the server's row matches what is about to execute. It does NOT
-// cancel — canceling would drop a debounced edit the player hasn't waited out
-// (tapping "Ready?" mid-build), snapping the board back to the last confirmed
-// maze. The in-flight generation is deliberately kept: the flush's response
-// still reconciles the revert target, or — if the 60s window has already closed
-// — comes back expired so the caller's onExpired snaps the board to the last
-// accepted maze. resetRunSaver at runFinish then abandons anything still pending.
+// The run is starting: send the pending maze now, bypassing the debounce, so
+// the server's row matches what executes. Do NOT cancel instead: that drops a
+// debounced edit (tapping "Ready?" mid-build) and snaps the board back. The
+// generation is kept so the response still lands: it updates the revert target,
+// or comes back expired if the window already closed and onExpired snaps the
+// board back. resetRunSaver at runFinish abandons anything still pending.
 export const flushRunSaver = () => {
   clearTimeout(debounceTimer);
   clearTimeout(retryTimer);
@@ -151,15 +139,12 @@ export const flushRunSaver = () => {
 };
 
 // The page is being hidden (app switched, tab backgrounded, closed): send the
-// pending maze NOW rather than leaving it in the debounce. A hidden page's
-// timers are throttled or frozen outright (and a closed one's never fire), so
-// an edit still waiting out its 2s would otherwise reach the server only when
-// the player comes back — if the 60s window hasn't closed by then, which for a
-// phone pocketed mid-attempt it usually has. keepalive lets the request finish
-// even as the page goes. An in-flight save is left to chain the newer maze on
-// its answer as usual: firing a second concurrently could land out of order.
-// (pagehide too: Safari can fire it before — or without — the visibility
-// change.)
+// pending maze NOW. A hidden page's timers are throttled or frozen, so a
+// debounced edit would otherwise arrive only when the player returns, usually
+// after the window closed. keepalive lets the request finish as the page goes.
+// An in-flight save chains the newer maze on its answer as usual; a concurrent
+// second could land out of order. (pagehide too: Safari can fire it before, or
+// without, the visibility change.)
 const flushOnHide = () => {
   if (!latest || inFlight) return;
   clearTimeout(debounceTimer);

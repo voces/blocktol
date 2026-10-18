@@ -15,12 +15,11 @@ export type BoardBlocks = ReadonlyArray<
 >;
 
 /**
- * Whether the maze formed by `blocks` (plus an optional candidate block at
- * (x, y)) still leaves the runner a route. Existence-only — hover and drag
- * validity — on the same shared solver the preview and the server run, whose
- * memo and one-added shortcut make a pointer sweep cheap. A throw (overlap the
- * caller's pre-checks missed, the boot board's off-board checkpoint sentinel)
- * reads as unsolvable.
+ * Whether the maze formed by `blocks` (plus an optional candidate at (x, y))
+ * still leaves the runner a route. Existence only (hover and drag validity), on
+ * the shared solver, whose memo makes a pointer sweep cheap. A throw (an
+ * overlap the caller's pre-checks missed, the boot board's off-board checkpoint
+ * sentinel) reads as unsolvable.
  */
 export const solvable = (
   blocks: BoardBlocks,
@@ -38,16 +37,13 @@ export const solvable = (
 };
 
 /**
- * Compute the runner's path and time client-side with the same engine — the
- * shared `cachedSolver`/`PathSolver` — the server validates and times with, so
- * the preview equals exactly what the server would accept, down to how
- * equal-length ties break (which matters near thunders, where duration depends
- * on geometry). This is what lets a build update the board with no round trip:
- * free play never contacts the server mid-build at all, and a ranked build
- * shows its path instantly while its save is debounced. `blocks` is the whole
- * board — the iteration's fixed pieces plus the player's, `local` marking the
- * player's, thunders flagged. Returns undefined for a momentarily path-less
- * state (mid-drag illegal placement); the caller keeps the prior run then.
+ * Compute the runner's path and time client-side on the same shared
+ * `cachedSolver`/`PathSolver` the server validates with, so the preview matches
+ * the server's time, down to how equal-length ties break (which matters near
+ * thunders, where duration depends on geometry). `blocks` is the whole board:
+ * fixed pieces plus the player's, `local` marking the player's. Returns
+ * undefined for a momentarily path-less state (mid-drag illegal placement); the
+ * caller keeps the prior run then.
  */
 export const localRun = (
   blocks: BoardBlocks,
@@ -69,10 +65,10 @@ export const localRun = (
 };
 
 /**
- * Order-independent key for a maze, so two lists that hold the same pieces in a
- * different order (a stored run vs. what's on the board) compare equal. Used to
- * merge the runs panel's rows, to flag the row currently being reviewed, and by
- * the splits panel to tell whether the maze on the board IS the reference best.
+ * Order-independent key for a maze, so a stored run and the board compare equal
+ * regardless of piece order. Used to merge the runs panel's rows, flag the row
+ * being reviewed, and tell the splits panel whether the board IS the reference
+ * best.
  */
 export const mazeKey = (
   maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean }>,
@@ -91,10 +87,9 @@ export const randomColor = () =>
   `hsl(${Math.random() * 360} 100% var(--brightness))`;
 
 /**
- * Whether a client point falls on the board's border/wall band (the outer
- * one-unit ring of the 20x20 viewBox) rather than the interior play area.
- * Touches there should not trigger board interaction (placing blocks, zoom),
- * leaving the HUD controls drawn on the border free to handle their own taps.
+ * Whether a client point falls on the border band (the outer one-unit ring of
+ * the 20x20 viewBox). Touches there must not place or zoom, so the HUD controls
+ * drawn on the border get their own taps.
  */
 export const isBorderPoint = (
   svg: SVGSVGElement | null,
@@ -110,7 +105,7 @@ export const isBorderPoint = (
 
 /**
  * Rebuild the pathing grid in place from `blocks` (walls + checkpoint + each
- * block's cells). Mirrors the grid maintenance the place/remove paths perform.
+ * block's cells).
  */
 export const rebuildGrid = (
   grid: boolean[][],
@@ -126,10 +121,9 @@ export const rebuildGrid = (
 
 /**
  * Whether dropping the block `origin` at (x, y) is not allowed: adjacent to the
- * checkpoint, overlapping another block, or blocking the only path. The grid
- * (with `origin` temporarily vacated) answers the overlap question, so a block
- * can be dragged over/through where it currently sits; the shared solver
- * answers reachability for the maze with `origin` relocated.
+ * checkpoint, overlapping another block, or blocking the only path. `origin` is
+ * temporarily vacated from the grid for the overlap test, so a block can move
+ * over where it sits; the solver answers reachability with `origin` relocated.
  */
 export const isInvalidMove = (
   grid: boolean[][],
@@ -150,15 +144,12 @@ export const isInvalidMove = (
 
 /**
  * The brick/power chips for a maze: the board's full budget minus what the
- * maze holds. The counts are DERIVED from this, never stepped and never
- * stored (see `useGameState`), so they cannot drift out of step with the
- * board — whatever the maze is, that is what the chips describe. Stepping
- * them (`bricks - 1` here, `bricks + 1` there) is what let a refund land for
- * a removal that a stale write then put back, handing the player a brick the
- * iteration's budget never had — which the server rejected at commit ("too
- * many blocks"), so the run vanished instead of scoring.
+ * maze holds. Derive the counts from this, never step or store them (see
+ * `useGameState`): a stepped refund can survive a removal that a stale write
+ * put back, handing out a brick the budget never had, which the server rejects
+ * at commit ("too many blocks"), losing the run.
  *
- * A total of -1 means no board budget is loaded, and the chip stays hidden.
+ * A total of -1 means no budget is loaded, and the chip stays hidden.
  */
 export const mazeBudget = (
   maze: ReadonlyArray<{ thunder?: boolean }>,

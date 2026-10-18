@@ -7,53 +7,39 @@ import { initSettings } from "./hooks/useSettings.ts";
 import { installErrorReporting } from "./util/errorReport.ts";
 import { getCleanLink, getPendingLink } from "./util/id.ts";
 
-// Catch uncaught errors / rejections app-wide and forward them to the server
-// (via the reportClientError endpoint → VictoriaLogs). Installed first so a
-// crash during boot is still reported.
+// Forward uncaught errors and rejections to the server (`reportClientError`).
+// Installed first so a crash during boot is still reported.
 installErrorReporting();
 
-// Apply the cached theme before first paint (the server value reconciles later).
+// Apply the cached theme before first paint (the server value reconciles
+// later).
 initSettings();
 
-// Head start on the boot round trips: fire them during module evaluation,
-// before the first render; App's calls consume these primed responses (see
-// api.prime). Skipped mid-onboarding (the app defers its fetch then anyway)
-// and while a sign-in link is pending (the gate must resolve identity first —
-// priming would bake in the wrong user).
-//
-// One request feeds the whole cold load (see primeSession / api.primeBoot): boot
-// bundles getDailySummary, getProfile, standings, getBoard,
-// getNotifications, and the calendar's two mount months, and — on a `/YYYYMMDD`
-// permalink — that day's linked board + standings too. The client primes each
-// slice content-keyed by the input its consumer sends, so every call site
-// consumes off this single fetch.
-//
-// Skipped mid-onboarding: the tutorial outlasts a prime's lifetime
-// (PRIME_TTL_MS), so a first-time user primes instead the moment they finish
-// (App's onDone → primeSession). This runs only for an already-onboarded user.
+// Fire the boot round trips during module evaluation, before the first render;
+// App's calls consume the primed responses (see primeSession / api.primeBoot).
+// Skipped while a sign-in link is pending, since priming would bake in the
+// wrong user, and mid-onboarding, since the tutorial outlasts a prime's
+// lifetime (PRIME_TTL_MS); a first-time user primes on finishing (App's onDone
+// calls primeSession).
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
   primeSession();
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);
 
-// Re-send any free-play commit an earlier session couldn't land (see the
-// commit outbox in Game/freePlay.ts) — after boot, and whenever we're back
-// online.
+// Re-send free-play commits an earlier session couldn't land (commit outbox in
+// Game/freePlay.ts), after boot and whenever we're back online.
 installFreePlayOutbox();
 
 globalThis.addEventListener("contextmenu", (e) => e.preventDefault());
 
-// Suppress iOS's selection magnifier (the loupe) that appears on tap-and-hold
-// and double-tap over the board. Nothing on the page is selectable, but CSS
-// user-select/touch-callout: none doesn't fully stop it on SVG, and the
-// gameplay touchstart listener is registered passive so its preventDefault is
-// ignored. Cancel the browser's default gesture for touches that land on the
-// board SVG. Scoped to SVGs *inside the board frame* — not just any SVGElement:
-// icon SVGs live inside buttons (calendar, profile, logo), and cancelling the
-// touch default there also cancels the synthesized click, so onClick would
-// never fire on touch. Our own touch listeners still run (this only cancels the
-// browser default, not our handlers).
+// Suppress iOS's selection magnifier (the loupe) on tap-and-hold and double-tap
+// over the board. CSS user-select/touch-callout: none doesn't fully stop it on
+// SVG, and the gameplay touchstart listener is passive, so its preventDefault
+// is ignored. Scoped to SVGs inside the board frame, not any SVGElement: icon
+// SVGs live inside buttons, and cancelling the touch default there also cancels
+// the synthesized click, so onClick would never fire. Our own touch listeners
+// still run.
 const suppressBoardGesture = (e: TouchEvent) => {
   if (e.target instanceof SVGElement && e.target.closest(".board-frame")) {
     e.preventDefault();
@@ -64,13 +50,9 @@ for (const type of ["touchstart", "touchend", "touchcancel"] as const) {
 }
 
 if ("serviceWorker" in navigator) {
-  // Registration can reject in environments where the browser blocks service
-  // workers — cookies/site-data disabled, some private-browsing modes, or an
-  // extension/enterprise policy. Chrome rejects with a bare "Rejected"
-  // DOMException. That's benign (the app runs fine without the SW — identity is
-  // localStorage, not the SW; we only lose PWA install / offline shell / push)
-  // and not actionable, so swallow it rather than letting it surface as an
-  // unhandled rejection in reportClientError noise.
+  // Registration rejects where the browser blocks service workers (site data
+  // disabled, some private modes, enterprise policy). That's benign: identity
+  // is localStorage, so the app only loses PWA install, offline shell and push.
   navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
 }
 

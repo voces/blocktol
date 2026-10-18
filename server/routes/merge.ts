@@ -4,14 +4,11 @@ import { mergeUsers } from "../db/merge.ts";
 import { method } from "./apiHelpers.ts";
 
 // Fold two profiles into one. The caller is authed as one id (the header) and
-// supplies the other id it possesses (its local id, or the id from the sign-in
-// link it just opened). `primary` names which of the two survives — "self" keeps
-// the authed id, "other" keeps the supplied one. The loser's runs move to the
-// winner and the loser's user row is deleted.
+// supplies the other (its local id, or the id from a sign-in link). `primary`
+// picks the survivor: "self" keeps the authed id, "other" the supplied one. The
+// loser's runs move to the winner and its user row is deleted.
 //
-// Possession of both ids is the authorization: ids ride the auth header and are
-// not secrets (see client/util/id.ts), and the only way to hold the other id is
-// to be the device that owns it or to have opened its link.
+// Possession of both ids is the authorization (see client/util/id.ts).
 const mergeBody = z.object({
   other: z.string().trim().min(1).max(36),
   primary: z.enum(["self", "other"]),
@@ -26,11 +23,9 @@ export const merge = method(mergeBody, true)(
     const primary = which === "self" ? userId : other;
     const secondary = which === "self" ? other : userId;
 
-    // The secondary must exist to merge; if it doesn't, treat it as an
-    // already-clean no-op rather than an error (e.g. a link to a never-seeded id).
-    // The primary, though, must exist: every moved run would point at a missing
-    // user row, so the batch would die on the run FK and surface as a 500. It's a
-    // bad request (a mistyped or stale link id), not a server fault.
+    // A missing secondary is a no-op (e.g. a link to a never-seeded id). A
+    // missing primary is a 400 (mistyped or stale link id): moved runs would
+    // point at no user row and die on the run FK as a 500.
     const [primaryRow, secondaryRow] = await Promise.all([
       getUser(primary),
       getUser(secondary),

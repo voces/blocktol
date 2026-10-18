@@ -135,23 +135,21 @@ Deno.test("pathDuration", async (t) => {
           { x: 100, y: 0 },
         ],
         [
-          // Note this isn't valid, as the runner walks through a thunder,
-          // but easier math
+          // Invalid in play (the runner walks through the thunder), but easier
+          // math.
           { x: 4.5, y: -0.5 },
         ],
         23, // slowed for six seconds by half: 100/5 + 6/2
-        // Centre (5,0), radius 4: range entry at distance 1 exactly = 0.2s.
-        // No re-trigger: the cooldown expires (3.4s) at the very instant the
-        // slowed runner reaches the range EXIT (distance 9) — a graze, and
-        // "in range" is strict.
+        // Centre (5,0), radius 4: range entry at distance 1 = 0.2s. No
+        // re-trigger: the cooldown expires (3.4s) just as the slowed runner
+        // reaches the range EXIT (distance 9), a graze ("in range" is strict).
         [{ thunder: { x: 4.5, y: -0.5 }, time: 0.2 }],
       ));
 
     await t.step("simultaneous triggers share one slow", () => {
-      // Two thunders mirrored across the path: identical in-range windows, so
-      // both fire at the exact same instant. Both are recorded and both
-      // cooldowns burn, but the slow is shared — the duration is identical to
-      // the single-thunder run.
+      // Two thunders mirrored across the path have identical windows and fire
+      // at the same instant. Both are recorded, but the slow is shared, so the
+      // duration equals the single-thunder run's.
       const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
       const pair = [{ x: 4.5, y: 2.5 }, { x: 4.5, y: -3.5 }]; // centres (5,±3)
       const entry = (5 - Math.sqrt(7)) / 5; // |x-5| < √(16-9) from x=0, at SPEED
@@ -165,10 +163,10 @@ Deno.test("pathDuration", async (t) => {
     });
 
     await t.step("a re-trigger resets the slow, never stacks", () => {
-      // Second thunder 10 units downstream: the slowed runner (2.5/s) reaches
-      // its window 4s after the first trigger, mid-slow. The slow RESETS to
-      // 6s there, so total slowed wall-time is 4 + 6 = 10s — the first slow's
-      // last 2s are wasted, not banked: 100/5 + 10/2 = 25.
+      // The second thunder is 10 units downstream: the slowed runner (2.5/s)
+      // reaches its window 4s after the first trigger, mid-slow. The slow
+      // RESETS to 6s, so slowed time is 4 + 6 = 10s and the first slow's last
+      // 2s are wasted: 100/5 + 10/2 = 25.
       const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
       const thunders = [{ x: 4.5, y: 2.5 }, { x: 14.5, y: 2.5 }];
       const t1 = (5 - Math.sqrt(7)) / 5;
@@ -179,9 +177,8 @@ Deno.test("pathDuration", async (t) => {
     });
 
     await t.step("a window thinner than the old tick still triggers", () => {
-      // Centre 3.9997 off the path: in-range for only ~0.05 distance — the
-      // retired tick engine sampled every 0.1 and could step clean over it;
-      // the continuous engine cannot. Intentional behaviour change.
+      // Centre 3.9997 off the path: in range for only ~0.05 distance, which a
+      // 0.1-step simulation could skip. The continuous walk cannot.
       const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
       const thunder = { x: 4.5, y: 3.4997 };
       const [duration, slows] = pathDuration(path, [thunder]);
@@ -200,10 +197,9 @@ const length = (path: ReadonlyArray<Point>) => {
   return total;
 };
 
-// Independent optimum: a visibility graph over *every* free cell (a superset
-// of the corner nodes PathSolver uses), sharing the exact same `lineOfSight`
-// oracle. If the solver's corner-restricted search were ever suboptimal, this
-// denser graph would find something strictly shorter.
+// Independent optimum: a visibility graph over *every* free cell (a superset of
+// PathSolver's corner nodes) using the same `lineOfSight` oracle. If the
+// corner-restricted search were suboptimal, this would find something shorter.
 const bruteOptimalLength = (
   start: Point,
   end: Point,
@@ -256,8 +252,8 @@ Deno.test("PathSolver — any-angle optimality", async (t) => {
   await t.step(
     "refuses to squeeze a unit runner through a diagonal gap",
     () => {
-      // Two blocks touching only at a corner leave a zero-width gap the 1x1
-      // runner cannot pass — the straight diagonal must not be line-of-sight.
+      // Two blocks touching only at a corner leave a zero-width gap: the
+      // diagonal must not be line-of-sight.
       const grid = newGrid();
       for (const [xd, yd] of offsets) {
         grid[8 + yd][8 + xd] = true; // block at (8,8): cells (8..9, 8..9)
@@ -268,7 +264,7 @@ Deno.test("PathSolver — any-angle optimality", async (t) => {
   );
 
   await t.step("matches a full-cell visibility-graph optimum", () => {
-    // Deterministic LCG so the property check is reproducible across runs.
+    // Deterministic LCG, so runs are reproducible.
     let s = 424242 >>> 0;
     const rng = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
 
@@ -290,9 +286,9 @@ Deno.test("PathSolver — any-angle optimality", async (t) => {
         anchors.push({ x, y });
       }
 
-      // Split the anchors between the precomputed base and solve-time pieces
-      // so the brute check also covers the augmented-board machinery (base
-      // visibility invalidation, ring corners), not just base solves.
+      // Split anchors between the base and solve-time pieces so this also
+      // covers the augmented-board machinery (ring corners), not just base
+      // solves.
       const split = Math.floor(rng() * (anchors.length + 1));
       const path = new PathSolver(anchors.slice(0, split), checkpoint)
         .solve(anchors.slice(split));
@@ -316,10 +312,9 @@ Deno.test("PathSolver — any-angle optimality", async (t) => {
 });
 
 Deno.test("PathSolver throws for an off-board checkpoint", () => {
-  // On page load the board holds the off-board sentinel checkpoint {-2,-2},
-  // whose fractional grid row was never allocated. Construction throws (there
-  // is nothing to precompute); the client's localRun/solvable helpers catch it
-  // and read the board as path-less rather than crashing a hover.
+  // On page load the board holds the off-board sentinel checkpoint {-2,-2}.
+  // Construction throws; the client's localRun/solvable helpers catch it and
+  // read the board as path-less rather than crashing a hover.
   let threw = false;
   try {
     new PathSolver([], { x: -2, y: -2 });
@@ -330,8 +325,7 @@ Deno.test("PathSolver throws for an off-board checkpoint", () => {
 });
 
 Deno.test("PathSolver rejects overlapping placements", () => {
-  // Two blocks sharing a cell is invalid data and must throw, not path —
-  // whether they collide in the base board or at solve time.
+  // Blocks sharing a cell must throw, in the base board or at solve time.
   let threw = false;
   try {
     new PathSolver([{ x: 5, y: 5 }, { x: 6, y: 5 }], { x: 9.5, y: 9.5 });
@@ -342,15 +336,13 @@ Deno.test("PathSolver rejects overlapping placements", () => {
 });
 
 Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
-  // The optimality test above anchors correctness against the brute oracle;
-  // these steps pin the SHARED-INSTANCE behaviours — grid restoration between
-  // solves, the result memo, the one-added shortcut — to a cold solver.
-  // Deterministic LCG so failures are reproducible.
+  // The optimality test above checks correctness against the brute oracle;
+  // these steps pin SHARED-INSTANCE behaviour (grid restoration, the result
+  // memo, `oneAddedShortcut`) to a cold solver. Deterministic LCG.
   let s = 24681357 >>> 0;
   const rng = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
 
-  // Attempt random non-overlapping 2x2 anchors on `grid`, mutating it, and
-  // return the ones that fit — the same shape newIteration/players produce.
+  // Try random 2x2 anchors on `grid`, mutating it, and return those that fit.
   const placeRandom = (grid: boolean[][], count: number) => {
     const anchors: Point[] = [];
     for (let i = 0; i < count; i++) {
@@ -372,8 +364,7 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
           x: 1.5 + Math.floor(rng() * 17),
           y: 1.5 + Math.floor(rng() * 17),
         };
-        // Scratch grid only to generate non-overlapping placements; the
-        // engines under test rebuild their own boards from the anchor lists.
+        // Scratch grid only to generate non-overlapping placements.
         const scratch = newGrid();
         scratch[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
         const base = placeRandom(scratch, 2 + Math.floor(rng() * 7));
@@ -418,10 +409,9 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
       const good = solver.solve([{ x: 12, y: 12 }])!;
       assert(good);
 
-      // Overlapping the base block, the checkpoint cell, and a second piece that
-      // overlaps the first: all must throw — and the last
-      // one only after the first piece was already placed, exercising the
-      // mid-throw grid restore.
+      // Overlapping the base block, the checkpoint cell, and an earlier piece
+      // must all throw. The last throws after the first piece is already
+      // placed, exercising the mid-throw grid restore.
       for (
         const bad of [
           [{ x: 5, y: 5 }],
@@ -438,18 +428,15 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
         assert(threw, `expected throw for ${JSON.stringify(bad)}`);
       }
 
-      // The shared grid must be back to base: the original solve still returns
-      // the identical path.
+      // The grid is back to base: the original solve returns the same path.
       assertEquals(solver.solve([{ x: 12, y: 12 }]), good);
     },
   );
 
   await t.step("piece order never changes the returned path", () => {
-    // Dijkstra tie-breaks by node order, and piece-created corner nodes are
-    // sorted into row-major order before joining the graph — so the same maze
-    // handed over in save-placement order and in reversed order must return
-    // the IDENTICAL path (not merely an equal-length one). Duration exactness
-    // near thunders depends on this.
+    // The same maze in save order and reversed order must return the IDENTICAL
+    // path, not merely an equal-length one: duration near thunders depends on
+    // it (ring corners are sorted row-major for this reason).
     for (let seed = 0; seed < 40; seed++) {
       const checkpoint = {
         x: 1.5 + Math.floor(rng() * 17),
@@ -459,8 +446,8 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
       scratch[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
       const base = placeRandom(scratch, 2 + Math.floor(rng() * 6));
       const pieces = placeRandom(scratch, 4 + Math.floor(rng() * 14));
-      // Fresh solvers on purpose: a shared one would trivially agree through
-      // its result memo; this asserts the ENGINE is order-independent.
+      // Fresh solvers: a shared one would agree through its memo; this tests
+      // the ENGINE.
       const a = new PathSolver(base, checkpoint).solve(pieces);
       const b = new PathSolver(base, checkpoint)
         .solve([...pieces].reverse());
@@ -469,12 +456,11 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
   });
 
   await t.step("an edit stream stays exactly equal to cold solves", () => {
-    // Replays what a build session does to one long-lived solver — add a
-    // block, remove one, upgrade one to a thunder — and asserts after every
-    // edit that the warm solver (memo + reuse shortcut) matches a cold
-    // solver exactly where it counts: same solvability, same length, and the
-    // same duration to the digit, thunders included. This is the audit
-    // invariant: a cold recompute must reproduce every persisted time.
+    // Replays a build session on one long-lived solver (add a block, remove
+    // one, upgrade one to a thunder) and asserts after every edit that the warm
+    // solver (memo + shortcut) matches a cold one: same solvability, length and
+    // duration, thunders included. This is the audit invariant: a cold
+    // recompute reproduces every persisted time.
     for (let seed = 0; seed < 25; seed++) {
       const checkpoint = {
         x: 1.5 + Math.floor(rng() * 17),
@@ -532,12 +518,12 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
   await t.step("cachedSolver shares one solver per base board", () => {
     const checkpoint = { x: 9.5, y: 9.5 };
     const a = cachedSolver([{ x: 5, y: 5 }, { x: 12, y: 3 }], checkpoint);
-    // Same content, different order — the key is content-addressed.
+    // Same content, different order: the key is content-addressed.
     const b = cachedSolver([{ x: 12, y: 3 }, { x: 5, y: 5 }], checkpoint);
     assert(a === b);
 
-    // The memoized base result returns equal paths but fresh arrays, so a
-    // caller mutating its copy can't poison the cache.
+    // The memoized base result comes back as fresh copies, so a caller can't
+    // poison the cache.
     const p1 = a.solve([])!;
     const p2 = a.solve([])!;
     assertEquals(p1, p2);
@@ -548,7 +534,7 @@ Deno.test("PathSolver reuse and edit-stream layer", async (t) => {
   await t.step("covering an endpoint yields no path, not a crash", () => {
     const checkpoint = { x: 9.5, y: 9.5 };
     const solver = new PathSolver([], checkpoint);
-    // (9,18) covers the start cell (9,19); the runner has nowhere to stand.
+    // (9,18) covers the start cell (9,19).
     assertEquals(solver.solve([{ x: 9, y: 18 }]), undefined);
   });
 });

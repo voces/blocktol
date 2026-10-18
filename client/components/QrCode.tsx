@@ -4,10 +4,9 @@ import qrcode from "qrcode-generator";
 import { t } from "../util/t.ts";
 
 /**
- * `value` as a crisp SVG QR — dark modules on a white field, drawn as unit-tall
- * rects with consecutive dark cells in a row coalesced into one rect (far fewer
- * nodes). Error-correction "H" (~30%) so a logo can safely overlay the centre.
- * `quiet` is the surrounding margin, in modules.
+ * `value` as an SVG QR: dark modules on white, with consecutive dark cells in
+ * a row coalesced into one rect. Error-correction "H" (~30%) so a logo can
+ * overlay the centre. `quiet` is the margin, in modules.
  */
 export const QrCode = (
   { value, quiet = 2 }: { value: string; quiet?: number },

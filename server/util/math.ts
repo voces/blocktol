@@ -2,11 +2,12 @@ const reverseInterpolate = (left: number, right: number, value: number) =>
   (value - left) / (right - left);
 
 /**
- * Calulcates the percentile of a value through an array of numbers.
- * - If no data, return 1 if greater than or equal to min; otherwise return 0
- * - If value < data[0], interpolate from min to data[0] / length
- * - If value >= data[length], return 1
- * - If value = data[n], return (n + 0.5) / length (i.e., we're "split" on n)
+ * The percentile of `value` in ascending `data`, interpolating between
+ * neighbours. `min` is the practical floor: anything below it scores 0.
+ * - No data: 1 if `value >= min`, else 0.
+ * - `value < data[0]`: interpolate from `min` up to `data[0]`, over `length`.
+ * - `value >= ` the last element: 1.
+ * - Matching a run of duplicates: the middle of that run, split evenly.
  */
 export const reverseTween = (
   data: number[],
@@ -41,7 +42,7 @@ export const reverseTween = (
     return (left + right + 1) / 2 / data.length;
   }
 
-  // No match + did worse than not doing anything by shifted away from a thunder
+  // Between two entries but at or below the unobstructed time `min`.
   if (value <= min) return 0;
 
   const leftValue = data[middle];
@@ -52,12 +53,10 @@ export const reverseTween = (
 };
 
 /**
- * Given a field of `{ time, count }` ascending by time, returns a map from each
- * time to the percentile a player *at* that time gets with their own run
- * excluded. This is the batch equivalent of calling `percentileFromTimeCounts`
- * once per player (self excluded), computed in one O(field) pass instead of
- * O(players × field). A time is omitted only when it's the field's sole run
- * (nothing left to rank against once self is removed).
+ * From a field of `{ time, count }` ascending by time, a map from each time to
+ * the percentile a player *at* that time gets with their own run excluded: the
+ * batch form of `percentileFromTimeCounts` per player, in one O(field) pass.
+ * Empty when the field has a single run (nothing left to rank against).
  */
 export const selfExcludedPercentiles = (
   field: { time: number; count: number }[],
@@ -80,9 +79,8 @@ export const selfExcludedPercentiles = (
 };
 
 /**
- * Field distribution quartiles (the times at the 25th/50th/75th percentile) from
- * an ascending `{ time, count }` field. Returns null when the field is too small
- * for the quartiles to mean anything.
+ * The times at the 25th/50th/75th percentile of an ascending `{ time, count }`
+ * field, or null when it has fewer than 4 runs.
  */
 export const fieldQuantiles = (
   timeCounts: { time: number; count: number }[],
@@ -103,6 +101,9 @@ export const fieldQuantiles = (
   return { p25: at(0.25), median: at(0.5), p75: at(0.75) };
 };
 
+// The share of the field `duration` beats, ties counting half. `timeCounts` is
+// the OTHER runs (callers exclude the player's own). Undefined when the field
+// is empty; 1 when nothing is longer.
 export const percentileFromTimeCounts = (
   timeCounts: { time: number; count: number }[],
   duration: number,
@@ -118,7 +119,7 @@ export const percentileFromTimeCounts = (
 
   const denominator = less + equal + more;
 
-  // No other runs to compare against yet (e.g. first player of the daily)
+  // Nobody to compare against yet.
   if (denominator === 0) return;
 
   if (more === 0) return 1;

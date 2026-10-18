@@ -1,14 +1,13 @@
 import { sql } from "./query.ts";
 
-// The Discord "top PB" marker: the currently-announced top of an iteration's PB
-// (best-build) board — one row per iteration (see util/pbBoard.ts). It records who
-// holds it (`top_user`), the announced time and message so a same-holder
-// improvement (or a match) can PATCH that same message, how many players share the
-// announced top (`holders`, so a match edits the tie count and the holder later
-// breaking it re-posts), and when the post went up (`announced_at`, the window
-// anchor — set on a post, left as-is by an edit). `message_id`/`top_time`/
-// `announced_at` are nullable for rows written before those columns existed (a null
-// message falls back to a fresh post); `holders` defaults to 1.
+// The Discord "top PB" marker: the announced top of an iteration's PB
+// (best-build) board, one row per iteration (util/pbBoard.ts). It records the
+// holder (`top_user`), the announced time and message (so a same-holder
+// improvement or a match can PATCH that message), the players sharing the top
+// (`holders`), and when the post went up (`announced_at`, the edit-window
+// anchor: set on a post, unchanged by an edit). `message_id`/`top_time`/
+// `announced_at` are nullable for rows predating those columns (a null message
+// falls back to a fresh post); `holders` defaults to 1.
 export type PbTop = {
   messageId: string | null;
   topUser: string;
@@ -45,10 +44,9 @@ export const getPbTop = (iteration: number): Promise<PbTop | null> =>
       : null
   );
 
-// Record a freshly POSTED message, stamping `announced_at` to now (the anchor for
-// the same-holder edit window). Overwrites any prior row for the iteration (a lead
-// change, or a post past the window / past a match). Idempotent absolute-value
-// write keyed by iteration → `sql` (retry-once) is safe.
+// Records a freshly POSTED message, stamping `announced_at` to now. Overwrites
+// any prior row for the iteration (a lead change, or a post past the window or
+// past a match). An absolute-value write, so `sql`'s retry is safe.
 export const upsertPbTop = (
   iteration: number,
   messageId: string,
@@ -67,10 +65,9 @@ export const upsertPbTop = (
       announced_at = current_timestamp();
   `;
 
-// Advance the announced time / tie count after an EDIT (a same-holder improvement
-// within the window, or a new match), leaving `message_id`/`top_user`/
-// `announced_at` (the window anchor) untouched so a burst of edits can't defer the
-// past-window re-post.
+// Advances the announced time / tie count after an EDIT (a same-holder
+// improvement within the window, or a new match). `message_id`, `top_user` and
+// `announced_at` stay, so a burst of edits can't defer the past-window re-post.
 export const editPbTop = (
   iteration: number,
   topTime: number,

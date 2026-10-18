@@ -1,11 +1,9 @@
-// `deno task i18n:check` — the CI gate that makes "never deploy untranslated"
-// structural, not a matter of discipline. Fails when, for any configured target
-// locale, a key is MISSING, STALE (stored hash ≠ current hash of the English
-// message), or ORPHANED (present in the target but gone from en.json), or when a
-// translation fails validation (ICU parses, argument parity with the source,
-// CLDR plural-category coverage). Pure and network-free — safe on every PR,
-// including forks where no API key is exposed. The i18n:translate auto-fixer
-// heals every failure this reports.
+// `deno task i18n:check` — the CI gate against deploying untranslated copy.
+// Fails when, for any configured target locale, a key is MISSING, STALE (stored
+// hash ≠ hash of the current English message) or ORPHANED (gone from en.json),
+// or a translation fails validation (ICU parses, argument parity with the
+// source, CLDR plural-category coverage). Network-free, so safe on forks with
+// no API key. i18n:translate heals every failure this reports.
 
 import {
   CATALOGS,
@@ -23,15 +21,13 @@ const { targets } = await loadConfig();
 const errors: string[] = [];
 let keyCount = 0;
 
-// Every catalog is held to the same bar. Errors name the catalog's directory
-// (`privacy/de/privacy.intro`) so a failure in one is easy to place.
+// Errors name the catalog's directory (`privacy/de/privacy.intro`).
 for (const { dir } of CATALOGS) {
   const en = await readJson<SourceCatalog>(`${dir}en.json`);
   const enKeys = Object.keys(en);
   keyCount += enKeys.length;
 
-  // The source must itself be valid ICU (a bad en.json message would break every
-  // downstream translation).
+  // The source must itself be valid ICU.
   for (const key of enKeys) {
     try {
       parseMessage(en[key].message);
@@ -66,7 +62,7 @@ for (const { dir } of CATALOGS) {
         continue;
       }
       // Validated under the bare locale (it drives the CLDR plural check); the
-      // directory is prefixed onto the messages afterwards.
+      // directory is prefixed afterwards.
       errors.push(
         ...validateTranslation(locale, key, entry.message, en[key].message)
           .map((e) => `${dir}${e}`),

@@ -5,10 +5,9 @@ import { storage } from "../util/storage.ts";
 
 const KEY = "blocktol.discordOnline";
 
-// Seed the "N online" figure from the last value we stored, so the Community
-// card renders it immediately on open instead of growing a line once the live
-// count lands. null means "no value yet" — the card reserves the row's space
-// and shows a muted placeholder until the first fetch resolves.
+// Seed the "N online" figure from the last stored value so the Community card
+// renders it on open. null means no value yet: the card reserves the row and
+// shows a placeholder until the first fetch resolves.
 const stored = (): number | null => {
   try {
     const raw = storage.getItem(KEY);
@@ -20,15 +19,12 @@ const stored = (): number | null => {
   }
 };
 
-// Warmed on profile-button intent (hover/focus) and refreshed on open, so the
-// count is usually present before the dialog renders; components reading
-// `discordOnline.value` re-render when it updates.
+// Warmed on profile-button intent (hover/focus) and refreshed on open.
 export const discordOnline = signal<number | null>(stored());
 
-// At most one request per freshness window however many times intent fires; a
-// failed fetch frees the window so the next intent retries. A null server
-// result (its own lookup failed) is left to fall through without clobbering the
-// last-known value on screen.
+// At most one request per freshness window; a failed fetch frees the window. A
+// null `online` (the server's own lookup failed) doesn't clobber the last-known
+// value.
 const fetchOnce = keyedQuery(async () => {
   const r = await api.discordInfo({});
   if (!r || "error" in r) throw new Error("failed to fetch discord info");
@@ -41,7 +37,7 @@ const fetchOnce = keyedQuery(async () => {
   return r.online;
 }, { staleMs: 30_000 });
 
-// Fetch (or serve the fresh cache). Errors are swallowed — the card keeps
-// showing whatever was last known.
+// Fetch, or serve the fresh cache. Errors are swallowed; the card keeps the
+// last-known value.
 export const fetchDiscordOnline = (): Promise<number | null> =>
   fetchOnce(undefined).catch(() => discordOnline.peek());

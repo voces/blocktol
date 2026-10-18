@@ -8,13 +8,10 @@ import {
 import { method } from "../apiHelpers.ts";
 
 // Mark notifications read: specific `ids` (opening one in the panel), a day's
-// notification of a `kind` (tapping its push deep-link, which knows the day but
-// not the id), or all when nothing is given ("Mark all read"). Returns the fresh
-// unread count so the badge updates without a refetch.
+// notification of a `kind` (a push deep-link knows the day, not the id), or all
+// when nothing is given. Returns the fresh unread count for the badge.
 const body = z.object({
-  // Bounded so an unauthenticated-equivalent caller can't hand the IN (…) an
-  // arbitrarily large id list; a user never has anywhere near this many unread
-  // notifications, so the panel never sends more.
+  // Bounds the IN (…) list; a user never has this many unread.
   ids: z.array(z.number()).max(1000).optional(),
   iteration: z.number().optional(),
   kind: z.enum(["lost_top", "daily_final"]).optional(),

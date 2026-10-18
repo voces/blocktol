@@ -1,6 +1,6 @@
-// The design's percentile ramp (the --pct-0..4 tokens in index.html):
-// red → magenta → blue → teal → green, low percentile to high (the long way
-// round the wheel so it skips yellow/olive and stays vivid; green = best).
+// The percentile ramp (the --pct-0..4 tokens in index.html), low to high:
+// red → magenta → blue → teal → green (best). It goes the long way round the
+// wheel to skip yellow/olive and stay vivid.
 const STOPS = ["#dc4a2f", "#d13d94", "#3f6be0", "#29b3a6", "#46b95a"];
 
 // sRGB gamma <-> linear-light.
@@ -9,10 +9,9 @@ const toLinear = (c: number) =>
 const toGamma = (c: number) =>
   c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
 
-// linear sRGB <-> OKLab (Björn Ottosson's matrices). OKLab is perceptually
-// uniform, so interpolating there (in polar OKLCh form below) keeps the ramp's
-// midpoints as vivid and evenly-lit as its stops (a raw-sRGB lerp dips through
-// duller, darker in-between colours).
+// linear sRGB <-> OKLab (Björn Ottosson's matrices). Interpolating in OKLab
+// (polar OKLCh below) keeps midpoints as vivid and evenly lit as the stops; a
+// raw-sRGB lerp dips through duller, darker colours.
 const linToLab = (
   r: number,
   g: number,
@@ -42,7 +41,7 @@ const labToLin = (
   ];
 };
 
-// Each stop as OKLCh (lightness, chroma, hue-radians) — precomputed once.
+// Each stop as OKLCh (lightness, chroma, hue in radians).
 const stopsLCh = STOPS.map((hex): [number, number, number] => {
   const [L, a, b] = linToLab(
     toLinear(parseInt(hex.slice(1, 3), 16) / 255),
@@ -53,28 +52,24 @@ const stopsLCh = STOPS.map((hex): [number, number, number] => {
 });
 
 /**
- * Supreme (record) sits above the ramp — gold, not the ramp's top (purple). A
- * fixed hex (the design's rating gold) so it pairs with readableInk; the theme-
- * aware sibling is the --gold token used in the result dialog.
+ * Supreme (record) sits above the ramp: gold, not the ramp's green top. A fixed
+ * hex so it pairs with readableInk; the theme-aware sibling is the --gold token
+ * in the result dialog.
  */
 export const SUPREME_COLOR = "#f0c442";
 
 /**
- * Peak — a non-supreme best: a run that ties the field's top time without taking
- * the record outright (someone else holds/ties it). Sits one step above the
- * ramp's green but below the reserved supreme gold — a green-yellow. Fixed hex so
- * it pairs with readableInk (calendar cell); the --peak token mirrors it for the
- * panels, exactly as SUPREME_COLOR pairs with --gold.
+ * Peak: a non-supreme best, a run that ties the field's top time without
+ * holding the record. A green-yellow between the ramp's green and supreme gold.
+ * Fixed hex so it pairs with readableInk (calendar cell); the --peak token
+ * mirrors it for the panels, as SUPREME_COLOR does --gold.
  */
 export const PEAK_COLOR = "#9ed54a";
 
 /**
- * Banded colour for a percentile in [0, 1] — the nearest stop on the SAME ramp
- * the calendar uses, so both share one scale; only the calendar tweens between
- * stops (generalized UI stays banded). Gold is reserved for supreme (the record)
- * and is passed in by callers, NOT returned here (so a merely-100% run doesn't
- * masquerade as the record). Used by today-result, attempts, and the result
- * modal.
+ * Banded colour for a percentile in [0, 1]: the nearest stop on the same ramp
+ * the calendar tweens across. Never returns gold; callers pass SUPREME_COLOR
+ * for the record so a merely-100% run doesn't masquerade as it.
  */
 export const percentileBand = (fraction: number | null): string => {
   if (fraction == null) return "var(--text-mute)";
@@ -109,26 +104,22 @@ export const percentileColor = (percent: number): string => {
   return `#${channel(r)}${channel(g)}${channel(b)}`;
 };
 
-// Exponent applied to a run's standing before the colour ramp (see
-// standingColor). Higher pushes colour further toward the top; tune here.
+// Exponent applied to a standing before the ramp (see `standingColor`).
 export const STANDING_GAMMA = 4;
 
 /**
- * Colour for a run's *standing* — its position in [min, fieldBest] (how close to
- * the field's best). Raised to STANDING_GAMMA before the ramp so the top end gets
- * far more colour resolution: players grind toward the best, so 95% → 99% is a
- * much bigger deal than 80% → 84%, and the curve spreads those top runs across a
- * wide slice of the ramp instead of a thin green sliver. A standing of exactly 1
- * stays 1 (still the ramp's top). Ranked percentiles are uniform by construction,
- * so those are coloured linearly via percentileColor directly — NOT through this.
+ * Colour for a run's *standing* (see `standing`). Raised to STANDING_GAMMA so
+ * the top end gets far more colour resolution: 95% → 99% matters more than
+ * 80% → 84%, and the curve spreads those runs across the ramp instead of a
+ * thin green sliver. Ranked percentiles are uniform by construction, so colour
+ * them linearly via `percentileColor`, NOT through this.
  */
 export const standingColor = (standing: number): string =>
   percentileColor(standing ** STANDING_GAMMA);
 
 /**
- * Banded (discrete-token) sibling of standingColor — the same curve, for the
- * panels that colour a standing off the `--pct-N` tokens rather than the
- * continuous ramp. Ranked percentiles still go through percentileBand directly.
+ * Banded sibling of `standingColor`: the same curve, onto the `--pct-N` tokens.
+ * Ranked percentiles go through `percentileBand` directly.
  */
 export const standingBand = (standing: number | null): string =>
   percentileBand(standing == null ? null : standing ** STANDING_GAMMA);

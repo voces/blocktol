@@ -1,7 +1,7 @@
 // Build step: move the client bundle's source map out of public/ (so it's never
-// served) into sourcemaps/<SHA>/, keyed by the build SHA every request logs as
-// `clientSha`, and keep only the newest KEEP builds. `deno task symbolicate`
-// reads it from there. See CLAUDE.md "Build SHA / stale-client reload".
+// served) into sourcemaps/<SHA>/, keyed by the `clientSha` every request logs,
+// and keep the newest KEEP builds. `deno task symbolicate` reads it from there.
+// See server/CLAUDE.md "Build SHA / stale-client reload".
 import { SHA } from "../common/version.ts";
 
 const KEEP = 20;

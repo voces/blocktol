@@ -22,21 +22,18 @@ const TrashIcon = () => (
   </svg>
 );
 
-// The word the confirm input must match (trimmed, case-insensitive). A
-// deliberate friction step so an account isn't wiped on a stray tap — the
-// button stays disabled until it's typed.
+// The word the confirm input must match (trimmed, case-insensitive); the button
+// stays disabled until it's typed, so a stray tap can't wipe an account.
 const CONFIRM_WORD = "DELETE";
 
 /**
- * "Delete my data" confirmation sheet. Replaces the profile dialog (not stacked):
- * back (‹) returns to the profile, close (× / backdrop) dismisses to the board.
+ * "Delete my data" confirmation sheet. Replaces the profile dialog rather than
+ * stacking: back (‹) returns to the profile, close (× / backdrop) dismisses.
  *
- * The delete is destructive and irreversible from the player's side — the server
- * severs their runs from their id and rotates it to an anonymous value they can
- * never reach again (see routes/deleteAccount.ts). So the confirm is gated behind
- * typing the word DELETE, and on success we reset this device to a brand-new
- * player (fresh local id + cleared free-play draft) and reload so every store
- * re-boots clean rather than trying to surgically unwind the old identity.
+ * Irreversible: the server rotates the player's id to one they can never reach
+ * again (see routes/deleteAccount.ts), so confirming requires typing DELETE. On
+ * success this device becomes a brand-new player (fresh local id, cleared
+ * free-play state) and reloads, so every store re-boots clean.
  */
 export const DeleteAccount = (
   { onBack, onClose }: { onBack: () => void; onClose: () => void },
@@ -57,9 +54,8 @@ export const DeleteAccount = (
         setFailed(true);
         return;
       }
-      // The old id now points at an anonymized orphan; start over as a new player
-      // and hard-reload so the app boots fresh against the new identity.
-      // Unsent free-play runs belong to the erased player too.
+      // The old id is now anonymized. Unsent free-play runs belong to the
+      // erased player too.
       clearFreePlay();
       clearFreePlayOutbox();
       startFreshId();

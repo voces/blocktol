@@ -8,12 +8,10 @@ const openStack: object[] = [];
 
 /**
  * A dismissible overlay: a bottom sheet on mobile, a centered card on desktop
- * (purely CSS, see `.modal`). Tapping the backdrop closes it; the sheet stops
- * propagation so taps inside don't. On mobile a grab notch sits at the top —
- * tap or drag down to close, matching the standings sheet — while desktop
- * keeps each dialog's × (the notch hides; see `.modal__handle`). Children own
- * their own padding — pass a `class` for per-use tweaks (e.g.
- * `profile-sheet`).
+ * (CSS only, see `.modal`). Backdrop taps close it; the sheet stops them.
+ * On mobile a grab notch closes on tap or drag down, like the standings sheet;
+ * on desktop it hides (`.modal__handle`) and each dialog keeps its ×. Children
+ * own their padding; `class` adds per-use tweaks (e.g. `profile-sheet`).
  */
 export const Modal = (
   { onClose, class: cls, children }: {
@@ -27,18 +25,17 @@ export const Modal = (
   const close = useRef(onClose);
   close.current = onClose;
 
-  // A dialog for assistive tech and the keyboard: focus moves into the sheet
-  // when it opens (and back to whatever had it when it closes), and Escape
-  // closes it — only the TOPMOST one, since a sheet can open over another
-  // (Profile → delete account) and one keypress shouldn't dismiss both.
+  // Focus moves into the sheet on open and back on close; Escape closes only
+  // the TOPMOST modal, since a sheet can open over another (Profile → delete
+  // account).
   useEffect(() => {
     const token = {};
     openStack.push(token);
     const before = document.activeElement;
     sheet.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
-      // defaultPrevented: something inside (an open dropdown) already used
-      // this Escape to close itself.
+      // defaultPrevented: something inside (an open dropdown) already used this
+      // Escape.
       if (
         e.key !== "Escape" || e.defaultPrevented ||
         openStack[openStack.length - 1] !== token

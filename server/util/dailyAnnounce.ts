@@ -1,31 +1,21 @@
-// The Discord "daily final" post, sent once a day is rated (util/rateDailies.ts).
-// Renders the winners of the ranked daily board — everyone tied for the top time
-// — up to 10 by name; past 10 it states the count only. Gold for a sole winner,
-// chartreuse for a shared top (a record), matching the in-app palette. One-shot:
-// a rated day is frozen, so there's nothing to edit later. Never throws — a
-// webhook hiccup must not disturb the rating sweep.
+// The Discord "daily final" post, sent once a day is rated (rateDailies.ts):
+// the ranked winners (everyone tied for the top time), named up to MAX_NAMES,
+// then only the count. Gold for a sole winner, chartreuse for a shared top. A
+// rated day is frozen, so the post is never edited. Never throws, so a webhook
+// failure can't disturb the rating sweep.
 //
-// The same sweep sends a SECOND, separate message: the day's TOP BUILD — the
-// top of the best-build board and everyone holding it. Live "top PB" posts are
-// held back while the daily is open (they'd hand everyone still holding
-// attempts the shape of the ceiling); util/pbBoard.ts holds that post until the
-// day is rated, and this is where the day's own record surfaces instead, after
-// the field is frozen.
+// The sweep then sends a SECOND message: the day's TOP BUILD, the top of the
+// best-build board and everyone holding it. util/pbBoard.ts holds live "top PB"
+// posts until the day is rated; this is where the record surfaces. It is the
+// same post pbBoard keeps for the rest of the day (same embed, same `pb_top`
+// marker), and writing the marker is what lets a later free-play record
+// SUPERSEDE it instead of standing beside it.
 //
-// It is literally the same post pbBoard keeps for the rest of the day — same
-// embed, same `pb_top` marker — because it is the same fact. That matters:
-// writing the marker is what makes a later free-play record SUPERSEDE this
-// message (greying it) instead of standing a second lit record post beside it.
+// The subject is the best build of the day, NOT who beat the ranked winner: the
+// winner can hold the top build via free play and is not excluded for winning.
 //
-// The subject is "what is the best build of the day", NOT "who beat the ranked
-// winner": the ranked winning time is not the bar the best-build board is
-// measured against, and the daily's winner can hold the top build via free
-// play, so they must not be excluded for being a winner.
-//
-// It stays a separate MESSAGE rather than an addendum inside the summary (or a
-// second embed on the same post) so the two can be moderated independently: the
-// record post carries its own message id, so deleting or editing it away leaves
-// the daily's own result standing untouched.
+// It is a separate MESSAGE, not an addendum or second embed, so it can be
+// moderated independently: deleting it leaves the daily result standing.
 
 import { formatNotifDate } from "../../common/notifications.ts";
 import { formatSeconds } from "../../common/format.ts";
@@ -53,17 +43,14 @@ type Day = [number, number, number];
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// The day's top build: its time, whoever got there first (the holder the post
-// credits) and everyone who matched them, earliest-first — the same ordering
-// util/pbBoard.ts credits a live record by, so the sweep's post and the live one
-// read identically.
+// The day's top build: its time, whoever got there first (credited) and the
+// matchers, earliest-first, as util/pbBoard.ts orders a live record.
 //
-// Null when the best-build board has nothing the daily summary didn't already
-// say: the ranked winners ARE the top build, and nobody joined them. A ranked run
-// is a build like any other (getIterationBests takes the max over every non-void
-// run), so whenever the two tops are EQUAL every winner is necessarily a holder —
-// which is what makes "same time, same number of people" the whole of the
-// duplicate case, with no set comparison needed.
+// Null when the daily summary already said it: the ranked winners ARE the top
+// build and nobody joined them. A ranked run is a build like any other
+// (getIterationBests maxes over every non-void run), so when the two tops are
+// equal every winner is a holder, and an equal COUNT is the whole duplicate
+// case.
 export type TopBuild = {
   user: string;
   name: string;
@@ -145,19 +132,15 @@ export const announceDailyResult = async (iteration: number) => {
       day,
     ));
 
-    // The day's record post, sent after the summary and awaited in turn rather
-    // than raced with it, so the two land in the channel in that order.
-    // postResult never throws and reports its own failures, so a dropped summary
-    // doesn't cost us this one — the record post reads on its own.
+    // Awaited after the summary, not raced, so they land in that order.
+    // postResult never throws, so a dropped summary doesn't cost this one.
     const record = dayTopBuild(bests, new Set(winners.map((r) => r.user)), top);
     if (!record) return;
     const count = record.matchers.length + 1;
 
-    // Rating flips `rated` before this runs, which is also what unblocks
-    // pbBoard's live posts — so a build landing in between can already have
-    // stood a record message up. Grey it exactly as a fresh post there would, so
-    // the channel never shows two lit records for one day. Normally there is no
-    // marker at all and this is a single read.
+    // Rating flips `rated` before this runs, which also unblocks pbBoard's live
+    // posts, so a build landing in between may already have posted a record.
+    // Grey it as pbBoard would, so the channel never shows two lit records.
     const marker = await getPbTop(iteration);
     if (marker?.messageId && marker.topTime != null) {
       await editResult(marker.messageId, {
@@ -171,9 +154,7 @@ export const announceDailyResult = async (iteration: number) => {
       });
     }
 
-    // Claim the marker on success: from here the live path treats this message
-    // as the standing record and edits or supersedes it, rather than opening a
-    // second one.
+    // On success the marker makes the live path edit or supersede this message.
     const messageId = await postResult(
       pbEmbed(record.name, record.time, count, day, record.matchers),
     );

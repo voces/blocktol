@@ -67,16 +67,15 @@ export type BlocktolApi = {
   >;
 };
 
-// The largest body a legitimate client sends is a commitRun/updateRun carrying a
-// full 400-piece maze (the zod cap): ~13 KB of JSON. 64 KiB leaves ample room
-// (a client error report's stack included) while refusing a multi-MB body before
-// it is buffered, parsed, or handed to zod. Asserted against a real 400-piece
-// body in api.test.ts.
+// The largest legitimate body is a commitRun/updateRun with a full 400-piece
+// maze (the zod cap), ~13 KB of JSON. 64 KiB also fits a client error report's
+// stack, and refuses a multi-MB body before it is buffered or parsed. Asserted
+// against a real 400-piece body in api.test.ts.
 export const MAX_BODY_BYTES = 64 * 1024;
 
-// Read the body as text, refusing (null) once it passes `limit` bytes. The
-// declared content-length short-circuits the common case; the counted stream
-// read covers a chunked or lying one, and cancels rather than drains the rest.
+// Read the body as text; null once it passes `limit` bytes. The declared
+// content-length short-circuits the common case; the counted stream read covers
+// a chunked or lying one, and cancels rather than drains the rest.
 export const readBodyLimited = async (
   req: Request,
   limit: number,
@@ -110,8 +109,7 @@ const isStatusObj = is.object({ status: is.number });
 const isErrorObj = is.object({ error: is.unknown });
 
 export const api: Handler<"method"> = async (req, { method }) => {
-  // Own keys only: `in` walks the prototype, so `/api/constructor` (or
-  // `toString`, `__proto__`) "found" a method and then 500'd calling it.
+  // Own keys only: `in` would match `constructor`, `toString`, `__proto__`.
   if (!Object.hasOwn(handlers, method)) {
     return Response.json({ error: "unknown method" }, { status: 404 });
   }
@@ -133,11 +131,9 @@ export const api: Handler<"method"> = async (req, { method }) => {
   const output = await handler.handler(result.data as any, req);
   let status = 200;
   if (isStatusObj(output)) status = output.status;
-  // A handler that returns a 5xx (e.g. a DB write that failed) surfaces a real
-  // server fault without throwing — the Router catch never sees it — so log it
-  // here. Deno's OTel ships this to VictoriaLogs, and the 500 response already
-  // marks the request span errored in VictoriaTraces. 4xxs are expected client
-  // faults (bad input, auth, expired window) and stay unlogged.
+  // A handler that returns a 5xx without throwing (e.g. a failed DB write)
+  // never reaches the Router's catch, so log it here. 4xxs are expected client
+  // faults and stay unlogged.
   if (status >= 500) {
     log.error(req, `handler ${method} failed`, {
       status,

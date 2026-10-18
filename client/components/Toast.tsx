@@ -2,10 +2,9 @@ import { ComponentChildren, h } from "preact";
 import { t } from "../util/t.ts";
 
 // A status toast, bottom-centered over the board. Used after a silent profile
-// adopt (the move/merge gate stashes it in sessionStorage; App renders it on the
-// next boot — see MoveGate.reloadAs and App) and for the storage-blocked heads-up
-// (StorageNotice). The default icon is a success check; pass `icon` to override
-// it (e.g. an info glyph for a non-success message).
+// adopt (`MoveGate.reloadAs` stashes it in sessionStorage; App renders it at
+// the next boot) and by StorageNotice. Default icon is a success check; `icon`
+// overrides it.
 const CheckCircle = () => (
   <svg width={20} height={20} viewBox="0 0 20 20" aria-hidden="true">
     <circle cx={10} cy={10} r={9} fill="var(--win)" />

@@ -14,20 +14,18 @@ export const newIteration = async (date: Date) => {
   log.info("new iteration", { date: date.toDateString() });
 
   // Interior cells are 1..18 (0 and 19 are the border ring). The checkpoint is a
-  // single cell at coord + 0.5, so 0.5..17.5 spans the full interior and can sit
-  // flush against any edge. (An earlier 1.5 start left cell 1 unused, so the
-  // checkpoint could hug the bottom/right walls but never the top/left.)
+  // single cell at coord + 0.5, so 0.5..17.5 spans the interior and can sit
+  // flush against any edge.
   const checkpoint = {
     x: 0.5 + Math.floor(Math.random() * 18),
     y: 0.5 + Math.floor(Math.random() * 18),
   };
 
-  // The grid is overlap bookkeeping only; the solver owns reachability. One
-  // solver on the empty board validates every incremental placement — the
-  // same maze plus one piece per probe, exactly the edit-stream shape its
-  // memo and one-added shortcut are built for. Existence answers are exact
-  // whatever the thunder flags, so probes go in unflagged; the final timing
-  // solve below is a separate cold construction.
+  // The grid only tracks overlap; the solver owns reachability. One solver on
+  // the empty board validates each placement as the same maze plus one piece,
+  // the edit-stream shape its memo and one-added shortcut are built for.
+  // Whether a path exists doesn't depend on thunder flags, so probes go in
+  // unflagged; the timing solve below is a separate cold construction.
   const grid = newGrid();
   grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
   const solver = new PathSolver([], checkpoint);
@@ -62,11 +60,10 @@ export const newIteration = async (date: Date) => {
   const bricks = power +
     Math.floor((1 - Math.random() ** 0.7) ** 0.9 * 20) + 3;
 
-  // The stored `min` must be exactly what validateRun recomputes for the empty
-  // placement later (audits compare them), so time the final board on a COLD
-  // solver with the thunder flags in place — never a probe solver's
-  // reuse-derived path, whose equal-length geometry could time differently
-  // near a thunder.
+  // The stored `min` must equal what validateRun recomputes for the empty
+  // placement (audits compare them), so time the final board on a COLD solver
+  // with thunder flags, not the probe solver's reuse-derived path, whose
+  // equal-length geometry could time differently near a thunder.
   const path = new PathSolver(
     [...blocks, ...thunders.map((t) => ({ ...t, thunder: true }))],
     checkpoint,
@@ -84,27 +81,20 @@ export const newIteration = async (date: Date) => {
   );
 };
 
-// Resolve a day's daily iteration id, generating it on demand when it's missing.
+// Resolve a day's daily iteration id, generating it on demand when missing.
 //
-// The `ensure-iterations` cron (util/gen.ts) is the bulk generator, but it only
-// runs on a deployment that executes `Deno.cron` — and Deno Deploy PREVIEW
-// deployments (what dev is usually served by) don't. So a dev/gappy environment
-// routinely asks for a daily nothing ever produced ("no daily available for
-// that date yet").
+// The `ensure-iterations` cron (util/gen.ts) is the bulk generator, but Deno
+// Deploy PREVIEW deployments (what dev is served by) don't run `Deno.cron`, so
+// a dev env routinely asks for a daily nothing produced.
 //
-// The per-request backfill is safe by DB structure, not app coordination:
-// `iteration.created` is UNIQUE (migration v14), so two processes racing to
-// create the same day can't duplicate it. Both may run the (idempotent)
-// generation, but only one INSERT lands; the loser's is rejected by the unique
-// key, and it re-reads the winner's row. That's why this needs no lock — the
-// database IS the mutex.
+// Racing processes are safe by DB structure: `iteration.created` is UNIQUE
+// (migration v14), so only one INSERT lands; the loser's is rejected and it
+// re-reads the winner's row. No lock: the database IS the mutex.
 //
-// Bounded on both sides (see backfillWindow): no later than tomorrow UTC, so a
-// far-future deep link can't leak a puzzle, and no earlier than the first day
-// the game has an iteration for, so a script walking dates back to year 1000
-// can't make us generate (and then rate) thousands of boards. A missing day
-// inside that window is a real gap and is backfilled. The cron (util/gen.ts)
-// calls newIteration directly, so neither bound ever applies to it.
+// Bounded by backfillWindow: no later than tomorrow UTC (a far-future deep link
+// can't leak a puzzle) and no earlier than the first existing day (a script
+// walking back to year 1000 can't make us generate thousands of boards). The
+// cron calls newIteration directly, so neither bound applies to it.
 export const ensureDailyIterationId = async (
   year: number,
   month: number,
@@ -113,9 +103,8 @@ export const ensureDailyIterationId = async (
   const existing = await getDailyIterationId(year, month, day);
   if (existing !== undefined) return existing;
 
-  // Every refusal is the same client-visible 400 the old
-  // requireDailyIterationId threw. Checked only after the lookup misses, so a
-  // stale floor can never refuse a day that exists.
+  // Every refusal is the same client-visible 400. Checked only after the lookup
+  // misses, so a stale floor can never refuse a day that exists.
   const now = new Date();
   const todayUtc = Date.UTC(
     now.getUTCFullYear(),
@@ -131,14 +120,12 @@ export const ensureDailyIterationId = async (
   }
 
   try {
-    // Local-midnight Date whose local Y/M/D are exactly year/month/day, matching
-    // how createIteration derives the stored day and how getDailyIterationId
-    // looks it up (the server runs UTC, so local == UTC there).
+    // A local-midnight Date for year/month/day, as createIteration and
+    // getDailyIterationId expect (the server runs UTC, so local == UTC).
     await newIteration(new Date(year, month - 1, day));
   } catch (err) {
-    // A concurrent isolate may have won the race: its INSERT landed and ours was
-    // rejected by UNIQUE(created). If the row now exists the race was harmless;
-    // otherwise the failure is real and propagates.
+    // A concurrent isolate may have won: ours was rejected by UNIQUE(created).
+    // If the row exists the race was harmless; otherwise the failure is real.
     const raced = await getDailyIterationId(year, month, day);
     if (raced !== undefined) return raced;
     throw err;
@@ -146,19 +133,17 @@ export const ensureDailyIterationId = async (
 
   const id = await getDailyIterationId(year, month, day);
   if (id === undefined) {
-    // Should not happen — we just created it — but never return undefined into
-    // getIteration, which would 500. Surface the same clean 400 instead.
+    // Unreachable in practice; returning undefined into getIteration would 500.
     throw new UserError("no daily available for that date yet");
   }
   return id;
 };
 
-// The floor, cached in-process: it's MIN(created), and the only thing that can
-// move it earlier is a backfill below it — which is exactly what it forbids —
-// so a cached value is stale only on a fresh DB the cron is still seeding
-// (it generates 31 days back). An hourly refresh bounds that, and keeps a
-// refused-date loop to one cheap indexed MIN per isolate per hour. An empty
-// table isn't cached: the very next generation gives it a floor.
+// The floor (MIN(created)), cached in-process. Only a backfill below it could
+// move it earlier, which it forbids, so it is stale only on a fresh DB the cron
+// is still seeding (31 days back). The hourly TTL bounds that and keeps a
+// refused-date loop to one indexed MIN per isolate per hour. An empty table
+// isn't cached: the next generation gives it a floor.
 const FLOOR_TTL = 1_000 * 60 * 60;
 let floorCache: { day: number; read: number } | undefined;
 const earliestDay = async () => {

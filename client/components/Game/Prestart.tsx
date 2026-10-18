@@ -13,13 +13,11 @@ import { GameStateContext } from "./useGameState.ts";
 
 const ATTEMPTS = 3;
 
-// The daily "Start attempt" gate. A ranked attempt never opens on load — the
-// player starts it explicitly here, so a background boot or refresh can't
-// silently spend one. Covers the board with a blur mask (themed for light and
-// dark) over a decorative, blurred copy of the tutorial maze — a real-looking
-// backdrop that is deliberately NOT today's puzzle, so nothing leaks. The
-// button fires `startDailyRun` (the one fetch-and-start call), which
-// stages the live board and drops us out of this phase.
+// The daily "Start attempt" gate. A ranked attempt opens only from this
+// explicit start, so a boot or refresh can't spend one. It blurs a decorative
+// copy of the tutorial maze (NOT today's puzzle, so nothing leaks) over the
+// board. The button fires `startDailyRun`, which stages the live board and
+// leaves this phase.
 export const Prestart = () => {
   const { phase, attemptsRemaining, viewedAttempts } = useContext(
     GameStateContext,
@@ -27,29 +25,25 @@ export const Prestart = () => {
   const [starting, setStarting] = useState(false);
   const decoRef = useRef<SVGSVGElement>(null);
 
-  // The component stays mounted (rendering null) between attempts, so a
-  // `starting` left true by the previous Start click would stick and wedge the
-  // button on "Starting…". Clear it whenever we're not showing the overlay, so
-  // the next attempt's overlay opens with a live button.
+  // Stays mounted (rendering null) between attempts, so reset `starting` or
+  // the next overlay opens wedged on "Starting…".
   useEffect(() => {
     if (phase !== "prestart") setStarting(false);
   }, [phase]);
 
   if (phase !== "prestart") return null;
 
-  // attemptsRemaining counts the attempt about to be played, so the number is
-  // ATTEMPTS - remaining + 1 (clamped for safety). completed = number of
-  // attempts already spent.
+  // `attemptsRemaining` includes the attempt about to start, hence the +1.
+  // `completed` is the attempts already spent.
   const attemptNo = Math.min(
     ATTEMPTS,
     Math.max(1, ATTEMPTS - attemptsRemaining + 1),
   );
   const completed = attemptNo - 1;
 
-  // The attempts spent so far (the panel list carries the finished ranked runs),
-  // oldest → newest. "Previous" is the most recent; on the third attempt a diff
-  // against the one before it shows the trend — higher time is better, so a gain
-  // is green and a drop red. Absent on the first attempt.
+  // Ranked runs spent so far, oldest first. `diff` is the latest against the
+  // one before it (higher is better: a gain is green); none on the first
+  // attempt.
   const spent = viewedAttempts
     .filter((a) => a.ranked)
     .sort((a, b) => a.created - b.created);
@@ -67,11 +61,9 @@ export const Prestart = () => {
   const start = () => {
     if (starting) return;
     setStarting(true);
-    // On failure/supersession, re-enable so the player can retry; on success
-    // the live board stages (phase leaves prestart) and the reset effect above
-    // clears `starting` for the next attempt. A lost answer is re-checked
-    // before the button comes back (see startDailyRun), so a retry can't burn
-    // a second attempt.
+    // On failure or supersession, re-enable for a retry; on success the phase
+    // leaves prestart and the effect above resets. `startDailyRun` re-checks a
+    // lost answer first, so a retry can't burn a second attempt.
     startDailyRun(completed).then((ok) => {
       if (!ok) setStarting(false);
     });
@@ -103,10 +95,9 @@ export const Prestart = () => {
         <Logo size={44} />
         {newDailyAvailable.value
           ? (
-            // Parked off today's daily — local midnight rolled a fresh one in,
-            // or a past day was deep-linked while today's was still outstanding.
-            // Either way offer today's daily instead of a start; switching
-            // re-boots the day (playNewDaily) with no manual refresh.
+            // Parked off today's daily (midnight rolled, or a past day was
+            // deep-linked while today's is outstanding): offer it instead of
+            // a start. `playNewDaily` re-boots the day.
             <Fragment>
               <div class="prestart__eyebrow">
                 {t("prestart.eyebrow", { date: displayDate })}
@@ -174,11 +165,9 @@ export const Prestart = () => {
           )}
       </div>
       {
-        /* The way to the account controls while today's daily is outstanding —
-           the profile button is hidden until its attempts are spent, but export
-           and erasure can't wait on them. Understated on purpose: a footer to
-           the overlay, not a rival to the start button. Only here, between
-           attempts, never over a running one. */
+        /* The way to the account controls while the profile button is hidden
+           (data export and erasure can't wait on the attempts). Understated so
+           it doesn't rival the start button. */
       }
       <button
         type="button"

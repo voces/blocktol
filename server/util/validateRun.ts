@@ -3,8 +3,8 @@ import type { Point } from "../../common/types.ts";
 
 export type ValidationBlock = Point & { thunder?: boolean };
 
-// The fields of an iteration a run is validated against. `blocks` is the
-// iteration's own fixed pieces (both blocks and thunders, thunders flagged).
+// The fields of an iteration a run is validated against. `blocks` is its fixed
+// pieces, thunders flagged.
 export type IterationShape = {
   bricks: number;
   power: number;
@@ -12,11 +12,10 @@ export type IterationShape = {
   blocks: ValidationBlock[];
 };
 
-// The placeable range of a piece's anchor (its top-left cell). A piece covers
-// a 2×2 footprint (anchor + `offsets`), and the 20×20 board's interior is cells
-// 1..18 (0 and 19 are the border ring), so an anchor at 1..17 keeps the whole
-// footprint inside — the same clamp the client's placement applies
-// (useInputStart). Shared with the API's zod piece schema so both gates agree.
+// The placeable range of a piece's anchor (top-left cell). A piece covers 2×2
+// and the interior is cells 1..18 (0 and 19 are the border ring), so anchors
+// 1..17 keep the footprint inside. Matches the client's clamp (useInputStart)
+// and is shared with the zod piece schema (routes/iteration/run/piece.ts).
 export const PIECE_MIN = 1;
 export const PIECE_MAX = 17;
 
@@ -30,11 +29,10 @@ export type RunValidation =
     reason: "too many blocks" | "too many slows" | "invalid path";
   };
 
-// The single source of truth for whether a player's placement is a legal run,
-// and — when it is — the canonical time it produces. Used both on the write
-// path (POST update) and by the run audit so the two can never drift: a block
-// count / power / placement / reachability that passes here is exactly what the
-// server will accept, and `duration` is exactly what it will persist.
+// The single source of truth for whether a placement is a legal run and, if so,
+// the canonical time it produces. The write path (updateRun) and
+// scripts/auditRuns.ts both use it so they can't drift: `duration` is what gets
+// persisted.
 export const validateRun = (
   iteration: IterationShape,
   playerBlocks: ValidationBlock[],
@@ -47,12 +45,10 @@ export const validateRun = (
   }
 
   // Defense in depth behind the zod schema: the solver indexes `grid[y][x]`, and
-  // a fractional or off-board coordinate reads `undefined` there — i.e. FREE —
-  // so it would happily place a piece inside the border, over a fixed block, or
-  // half-overlapping another piece (and serializeRun would then mangle 4.5,4
-  // into "4.54"). Only whole, on-board anchors are pieces at all; overlap among
-  // those (duplicates included) and with the day's pieces / checkpoint is then
-  // the solver's job, below.
+  // a fractional or off-board coordinate reads `undefined` there, i.e. FREE, so
+  // a piece would land in the border or half-overlap another (and serializeRun
+  // would write 4.5,4 as "4.54"). Overlap among whole, on-board anchors and
+  // with the day's pieces / checkpoint is the solver's job, below.
   if (!playerBlocks.every((b) => onBoard(b.x) && onBoard(b.y))) {
     return { ok: false, reason: "invalid path" };
   }
@@ -60,10 +56,9 @@ export const validateRun = (
   let path: Point[] | undefined;
   try {
     // Throws when a piece is out of bounds or overlaps another (the player's or
-    // the iteration's), so illegal placements never reach pathDuration. A bad
-    // base board throws in the PathSolver constructor and lands here too,
-    // before anything is cached. The shared cachedSolver reuses one base
-    // precompute across every save/validation against the same iteration.
+    // the iteration's). A bad base board throws in the PathSolver constructor
+    // and lands here too, before anything is cached. cachedSolver reuses one
+    // base precompute across all validations of the same iteration.
     path = cachedSolver(iteration.blocks, iteration.checkpoint)
       .solve(playerBlocks);
   } catch {

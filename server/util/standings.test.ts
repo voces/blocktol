@@ -115,8 +115,8 @@ Deno.test("empty and single-player fields", () => {
 });
 
 Deno.test("secondary passes through; window users are returned, not on rows", () => {
-  // Entries carry a secondary (e.g. each daily player's PB); rows surface it,
-  // while the parallel user list stays server-side for attaching values.
+  // Rows surface each entry's secondary; the parallel user list is returned
+  // beside the rows for the route to drop.
   const field: FieldEntry[] = [
     { user: "a", name: "a", hue: 0, time: 40, at: 0, secondary: 42 },
     { user: "b", name: "b", hue: 1, time: 38, at: 0, secondary: 39 },

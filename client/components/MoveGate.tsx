@@ -16,13 +16,13 @@ import { Logo } from "./Logo.tsx";
 import { intlLocale, t, tJsx } from "../util/t.ts";
 
 // A sign-in link opened on a device that already has a profile is a fork, not a
-// sign-in (see getPendingLink). This gate resolves it before the app boots —
-// ahead of onboarding, per the design. Outcomes:
+// sign-in (see getPendingLink). This gate resolves it before the app boots,
+// ahead of onboarding. Outcomes (1d, 2a-2e label the design's screens):
 //   • clean device (no local profile) → confirm the adopt (1d)
 //   • this device nearly empty + a real link → adopt the link silently (2e)
 //   • otherwise (incl. a tiny link over a real profile) → merge / switch / keep
 //     (2a → 2b / 2c)
-// The runs figure and the threshold both use non-void run count (moveInfo).
+// Run counts, and the threshold, are non-void runs (moveInfo).
 
 type Side =
   | {
@@ -34,8 +34,8 @@ type Side =
   }
   | null;
 
-// Below this share of the larger side's runs, a profile is "almost nothing" and
-// we merge it away silently instead of showing the fork.
+// Below this share of the other side's runs, a profile is "almost nothing" and
+// is merged away silently instead of showing the fork.
 const SILENT_RATIO = 0.05;
 
 const Avatar = (
@@ -184,8 +184,8 @@ const CopyIcon = () =>
 type Mode = "loading" | "working" | "confirm" | "fork" | "pick" | "switch";
 
 export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
-  // getPendingLink → a fork over an existing profile; getCleanLink → a link on a
-  // fresh device (confirm-adopt). Exactly one is non-null when this renders.
+  // getPendingLink: a fork over an existing profile; getCleanLink: a link on a
+  // fresh device. Exactly one is non-null when this renders.
   const pending = getPendingLink();
   const linkId = pending ?? getCleanLink()!;
   const localId = pending ? getId() : null;
@@ -197,17 +197,16 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   const [copied, setCopied] = useState(false);
   const [linkSaved, setLinkSaved] = useState(false);
 
-  // Leave the app as the current id (merge-into-self, keep, or new game): strip
-  // the link so a refresh won't re-open the gate, then hand back to the app.
+  // Keep the current id (merge-into-self, keep, new game): strip the link so a
+  // refresh won't re-open the gate, then hand back to the app.
   const proceed = () => {
     clearLinkFromUrl();
     onResolved();
   };
-  // Adopt a new identity (switch, adopt-other, merge-into-other, clean confirm):
-  // commit the id and reboot so avatar, caches, and run state all reset cleanly.
-  // Adopting an account that already has runs skips onboarding — a returning
-  // player on a new device shouldn't get the tutorial. `toast` (silent 2e only)
-  // rides sessionStorage to the fresh boot, where the app shows it over the board.
+  // Adopt a new identity (switch, adopt-other, merge-into-other, clean adopt):
+  // commit the id and reboot so avatar, caches and run state reset. An account
+  // with runs skips onboarding. `toast` (silent 2e only) rides sessionStorage
+  // to the fresh boot, where App shows it.
   const reloadAs = (
     id: string,
     opts?: { adoptedRuns?: number; toast?: { title: string; sub: string } },
@@ -216,8 +215,8 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       storage.setItem("hasCompletedOnboarding", "true");
     }
     if (opts?.toast) {
-      // Best-effort: blocked site data throws on access, and a lost toast
-      // must not stop the adopt.
+      // Best-effort: blocked site data throws, and a lost toast mustn't stop
+      // the adopt.
       try {
         sessionStorage.setItem("gateToast", JSON.stringify(opts.toast));
       } catch { /* no toast */ }
@@ -227,11 +226,10 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     location.assign("/");
   };
 
-  // Whether the merge actually happened. Only then may the device let go of
-  // its current id: adopting the link's id over a failed merge would overwrite
-  // the ONLY local copy of the old credential, orphaning that profile. A
-  // lost answer for a merge that did land is safe to retry — the server
-  // then finds the secondary already folded in and succeeds as a no-op.
+  // Whether the merge happened. Only then may the device drop its current id:
+  // adopting over a failed merge would overwrite the ONLY local copy of the old
+  // credential. Retrying a merge whose answer was lost is safe; the server
+  // finds the secondary already folded in and succeeds as a no-op.
   const [mergeFailed, setMergeFailed] = useState(false);
   const tryMerge = async (which: "self" | "other") => {
     try {
@@ -275,7 +273,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       setSelf(s);
       setOther(o);
 
-      // The link id has no profile — nothing to become; adopt it fresh.
+      // The link id has no profile; adopt it fresh.
       if (!o) return reloadAs(linkId);
 
       const selfRuns = s?.runs ?? 0;
@@ -284,17 +282,16 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
       // Clean device / no local data: confirm the adopt (1d).
       if (!localId || selfRuns === 0) return setMode("confirm");
 
-      // Escape hatch, one direction only: this device has almost nothing and the
-      // link is a real account → adopt the link silently (2e). The link is
-      // plainly meant to be the primary here, and its identity wins. We do NOT do
-      // the reverse (silently folding a tiny link into a real local profile):
-      // opening a link implies it should likely be primary, so quietly demoting
-      // it to a discarded secondary would surprise — show the fork instead.
+      // Silent adopt (2e), one direction only: this device has almost nothing
+      // and the link is a real account, so the link wins. Never the reverse
+      // (folding a tiny link into a real local profile): opening a link implies
+      // it should be primary, so quietly discarding it would surprise. Show the
+      // fork instead.
       if (selfRuns < SILENT_RATIO * otherRuns) { // 2e
         setMode("working");
         if (!(await tryMerge("other"))) {
-          // Not silently, then: fall back to the explicit fork, with the
-          // link as primary as intended, and say what went wrong.
+          // Fall back to the explicit fork with the link as primary, and say
+          // what went wrong.
           if (!live) return;
           setMergeFailed(true);
           setPrimaryIsSelf(false);
@@ -311,8 +308,8 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         });
       }
 
-      // Otherwise the fork — including a tiny link over a real profile. Default
-      // the primary to the larger side.
+      // Otherwise the fork (including a tiny link over a real profile); the
+      // larger side is the default primary.
       setPrimaryIsSelf(selfRuns >= otherRuns);
       setMode("fork");
     }).catch(() => proceed());
@@ -322,10 +319,10 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // "Copied" is said only once the clipboard actually took the link. A refused
-  // or missing clipboard (insecure context, an old WebView) still unlocks the
-  // switch — the link is printed right beside the button for a manual save,
-  // and locking it would strand the player — but claims nothing.
+  // "Copied" shows only once the clipboard took the link. A refused clipboard
+  // (insecure context, old WebView) still unlocks the switch, since the link is
+  // printed beside the button for a manual save and locking would strand the
+  // player, but claims nothing.
   const copyLink = () => {
     const url = signInLink(localId!);
     Promise.resolve()

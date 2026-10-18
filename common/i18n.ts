@@ -1,29 +1,26 @@
-// The message-catalog runtime, shared by the server (push copy rendered in the
-// recipient's stored locale) and the client (UI copy in the viewer's locale) —
-// the same single-engine posture as the pathing solver and `common/format.ts`.
+// The message-catalog runtime, shared by the server (push copy in the
+// recipient's stored locale) and the client (UI copy in the viewer's locale).
 //
 // Messages are authored in `i18n/en.json` as ICU MessageFormat strings and
-// compiled by `scripts/genI18n.ts` into `common/i18n.generated.ts` (gitignored,
-// a build artifact like `common/version.ts`): each message is pre-parsed to the
-// `I18nNode[]` AST below, so NO ICU parser ships in the client bundle — this
-// module only walks the AST. The generated file also derives `MessageKey` and a
-// per-key params type map from `en.json`, so a missing key or a wrong argument
-// is a compile error (the same type-derivation move as `BlocktolApi`).
+// compiled by `scripts/genI18n.ts` into `common/i18n.generated.ts` (gitignored
+// build artifact): each is pre-parsed to the `I18nNode[]` AST below, so no ICU
+// parser ships in the client bundle. The generated file also derives
+// `MessageKey` and per-key param types from `en.json`, so a missing key or
+// wrong argument is a compile error.
 //
-// `t(locale, key, params)` is pure and framework-free so both sides call it
-// directly; the client wraps it with its locale signal (see client/util/t.ts).
+// `t(locale, key, params)` is pure; the client wraps it with its locale signal
+// (see client/util/t.ts).
 
 import { catalog, type Locale, locales } from "./i18n.generated.ts";
 export type { Locale, MessageKey, MessageParams } from "./i18n.generated.ts";
-// The supported catalog locales, exposed so the language picker can enumerate
-// them (the type-only re-export above can't carry the runtime array).
+// The runtime array of supported locales, for the language picker.
 export { locales } from "./i18n.generated.ts";
 import type { MessageKey, MessageParams } from "./i18n.generated.ts";
 
-// One node of a compiled ICU message. A plain string is literal text; `{ arg }`
-// substitutes a param; `pound` is the `#` inside a plural branch (the count);
-// `plural`/`select` hold their branch sub-messages keyed by CLDR category /
-// `=N` (plural) or literal value (select), always including `other`.
+// One node of a compiled ICU message. A string is literal text; `{ arg }`
+// substitutes a param; `pound` is the `#` in a plural branch (the count);
+// `plural`/`select` hold branches keyed by CLDR category or `=N` (plural) or
+// literal value (select), always including `other`.
 export type I18nNode =
   | string
   | { arg: string }
@@ -33,10 +30,9 @@ export type I18nNode =
 
 export type I18nParams = Record<string, string | number>;
 
-// Intl constructors aren't free and copy renders in tight loops (the board's
-// time column, the standings sheet), so cache per locale. A malformed stored
-// locale would throw, so fall back to the runtime default rather than let one
-// bad `user.locale` break push rendering — mirroring common/format.ts.
+// Intl constructors are costly and copy renders in tight loops, so cache per
+// locale. A malformed stored locale throws; fall back to the runtime default so
+// one bad `user.locale` can't break push rendering (as in common/format.ts).
 const nfCache = new Map<string, Intl.NumberFormat>();
 const numberFormat = (locale: string | undefined): Intl.NumberFormat => {
   const key = locale ?? "";
@@ -67,8 +63,7 @@ const pluralRules = (locale: string | undefined): Intl.PluralRules => {
   return r;
 };
 
-// Walk a compiled message. `pound` carries the active plural count so a nested
-// `#` renders the (locale-formatted) number.
+// Walk a compiled message. `pound` is the active plural count (renders `#`).
 export const renderMessage = (
   nodes: readonly I18nNode[],
   locale: string | undefined,
@@ -103,10 +98,9 @@ export const renderMessage = (
   return out;
 };
 
-// Match any BCP-47 tag against a set of catalog locales — exact tag, then
-// language-only prefix — or undefined when neither hits. Generic over the set so
-// a separately-compiled catalog (the server's privacy page) negotiates exactly
-// the way the app catalog does.
+// Match a BCP-47 tag against catalog locales (exact tag, then language-only
+// prefix), or undefined. Generic over the set so a separately compiled catalog
+// (the server's privacy page) negotiates the same way.
 export const matchLocale = <L extends string>(
   locale: string | undefined,
   available: readonly L[],
@@ -125,18 +119,15 @@ export const matchLocale = <L extends string>(
   return undefined;
 };
 
-// Resolve any BCP-47 tag (a viewer's runtime locale, a stored `user.locale`) to
-// a supported catalog locale — exact tag, then language-only prefix, then `en`.
-// The full tag still drives Intl formatting inside the message, so an `en-GB`
-// viewer gets `en` copy with British number/date conventions for free.
+// Resolve a BCP-47 tag to a supported catalog locale: exact, then language
+// prefix, then `en`. The full tag still drives Intl formatting, so `en-GB` gets
+// `en` copy with British number conventions.
 export const resolveCatalog = (locale: string | undefined): Locale =>
   matchLocale(locale, locales) ?? "en";
 
-// A language's name in its own tongue (endonym) — "Español", "日本語",
-// "Português (Brasil)" — for a language picker, which must be readable by
-// someone who doesn't read the current UI language. DisplayNames can lowercase
-// some (French, Spanish), so uppercase the first letter. Cached; Intl
-// constructors aren't free.
+// A language's name in its own tongue ("Español", "日本語") for the picker,
+// which must be readable by someone who can't read the current UI language.
+// DisplayNames lowercases some (French, Spanish): uppercase the first letter.
 const endonymCache = new Map<string, string>();
 export const endonym = (tag: string): string => {
   let v = endonymCache.get(tag);
@@ -154,9 +145,8 @@ export const endonym = (tag: string): string => {
 };
 
 // Resolve a key to its compiled AST in the best-matching catalog, falling back
-// to English. Exposed so a framework-aware renderer (the client's `tJsx`, which
-// substitutes VNodes for some args) can walk the same nodes without re-resolving
-// the catalog or shipping the parser.
+// to English. Exposed so the client's `tJsx` (which substitutes VNodes for some
+// args) can walk the same nodes.
 export const messageNodes = (
   locale: string | undefined,
   key: MessageKey,
@@ -165,17 +155,14 @@ export const messageNodes = (
   return catalog[cat][key] ?? catalog.en[key];
 };
 
-// Locale-aware number formatting, shared so `tJsx` formats numeric args exactly
-// as `renderMessage` does.
+// Shared so `tJsx` formats numeric args as `renderMessage` does.
 export const formatNumber = (locale: string | undefined, n: number): string =>
   numberFormat(locale).format(n);
 
 /**
- * Render a catalog message. `locale` is a BCP-47 tag — omitted on the client
- * (renders in the viewer's own locale), set on the server to the recipient's
- * `user.locale` for push copy. The key and params are typed against `en.json`,
- * so this call site can't drift from the catalog. A locale missing the key
- * falls back to the English message rather than rendering nothing.
+ * Render a catalog message. `locale` is a BCP-47 tag: omitted on the client,
+ * the recipient's `user.locale` on the server for push copy. Key and params are
+ * typed against `en.json`. A locale missing the key falls back to English.
  */
 export const t = <K extends MessageKey>(
   locale: string | undefined,

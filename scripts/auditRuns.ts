@@ -1,19 +1,16 @@
-// One-time audit of the `run` table: recompute every non-void run against its
-// iteration and flag any that aren't legal — too many blocks/power, an illegal
-// placement, no path, or a stored `time` that doesn't match the maze. This is
-// what surfaces the rows corrupted by the cross-iteration write bug (a run whose
+// Audit of the `run` table: recompute every non-void run against its iteration
+// and flag any that aren't legal: too many blocks/power, an illegal placement,
+// no path, or a stored `time` that doesn't match the maze (e.g. a run whose
 // time was computed for a different iteration).
 //
-// Dry-run by default: prints a report and changes nothing. Pass `--apply` to
-// DELETE the illegal runs.
+// Dry-run by default: prints a report. `--apply` DELETEs the illegal runs.
 //
-// Run locally against an environment (reads the same proxy the app uses):
+// Run locally against an environment (via the same SQL proxy the app uses):
 //   APP_ENV=prod SQL_PASSWORD=... \
 //     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL scripts/auditRuns.ts
 //   ...add --apply to actually delete.
 //
-// Reusing validateRun means "legal" here is identical to what the server accepts
-// on write, so the audit can't drift from the live rules.
+// It uses validateRun, so "legal" is what the server accepts on write.
 
 import { type ExecResult, sql } from "../server/db/query.ts";
 import { deserializeRun } from "../server/util/run.ts";
@@ -22,9 +19,9 @@ import {
   validateRun,
 } from "../server/util/validateRun.ts";
 
-// Single-precision float round-trip through the DB plus 2-decimal rounding in
-// pathDuration means an exact `===` would spuriously fail; real corruption is
-// off by whole seconds, so this tolerance separates the two cleanly.
+// The DB stores `time` as a single-precision float and pathDuration rounds to 2
+// decimals, so `===` would spuriously fail; real corruption is off by whole
+// seconds.
 const TIME_EPSILON = 0.005;
 
 const apply = Deno.args.includes("--apply");
@@ -68,8 +65,7 @@ for (const b of blockRows) {
   );
 }
 
-// Only scored runs — void rows are in-progress/abandoned placeholders (empty
-// data, not counted) and the corruption always landed on a void=FALSE row.
+// Scored runs only: void rows are in-progress or abandoned placeholders.
 const runRows = await sql<
   {
     user: string;
@@ -111,7 +107,7 @@ for (const r of runRows) {
 
 const byReason = new Map<string, number>();
 for (const r of illegal) {
-  // Collapse the mismatch detail so the summary groups cleanly.
+  // Collapse the mismatch detail so the summary groups.
   const key = r.reason.startsWith("time mismatch") ? "time mismatch" : r.reason;
   byReason.set(key, (byReason.get(key) ?? 0) + 1);
 }
@@ -135,10 +131,9 @@ if (!apply) {
 
 let deleted = 0;
 for (const r of illegal) {
-  // Keyed on user+iteration+data+time — the table has no id, and `created` is
-  // deliberately left out: it comes back as an ISO string that won't compare
-  // back against the TIMESTAMP column, and these four already pin the row (rows
-  // identical on all four are duplicates, so deleting both is correct anyway).
+  // Keyed on user+iteration+data+time: the table has no id, and `created` is
+  // left out because its ISO string won't compare against the TIMESTAMP column.
+  // Rows identical on these four are duplicates, so deleting both is fine.
   // ABS(time-…) rather than `=` because `time` is a single-precision float.
   const res = await sql<ExecResult>`
     DELETE FROM run

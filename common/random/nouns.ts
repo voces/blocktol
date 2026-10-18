@@ -1,6 +1,6 @@
-// Short, friendly, single-word nouns for seeded display names (paired with an
-// adjective, e.g. `abruptfalcon`). Kept concrete and mostly creatures / nature /
-// objects so the combinations read well and stay family-safe.
+// Short, friendly, single-word nouns for random display names (paired with an
+// adjective, e.g. `abruptfalcon`): concrete creatures, nature and objects, so
+// combinations read well and stay family-safe.
 export const nouns = [
   "falcon",
   "otter",

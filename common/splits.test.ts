@@ -14,9 +14,8 @@ Deno.test("splits time the checkpoint and flags along the path", () => {
     path: PATH,
     thunders: [],
     checkpoint: CHECKPOINT,
-    // Cell (9,14) sits on the line, 5 units in — the runner is AT it at 1s
-    // (not 0.9s, when it first came within half a cell). Cell (2,2) is nowhere
-    // near the route and never fires.
+    // Cell (9,14) is 5 units in: the runner is AT it at 1s (not 0.9s, when it
+    // first came within half a cell). Cell (2,2) is off the route.
     flags: [{ x: 9, y: 14 }, { x: 2, y: 2 }],
   });
 
@@ -24,7 +23,7 @@ Deno.test("splits time the checkpoint and flags along the path", () => {
     ["flag", 1, 1],
     ["checkpoint", 1, 2],
   ]);
-  // The last mark can never exceed the run's own time.
+  // Unslowed duration; no mark can exceed it.
   assertEquals(pathDuration(PATH, []), [3.8, []]);
 });
 
@@ -39,16 +38,15 @@ const OUT_AND_BACK_CHECKPOINT = { x: 8.5, y: 4.5 };
 Deno.test("a piece keeps its number on every crossing", () => {
   const splits = computeSplits({
     path: OUT_AND_BACK,
-    // Off to the side of both legs, and inside its radius long enough for the
-    // 3.2s cooldown to expire before the second pass.
+    // Beside both legs, in range long enough for the 3.2s cooldown to expire
+    // before the second pass.
     thunders: [{ x: 5, y: 9 }],
     checkpoint: OUT_AND_BACK_CHECKPOINT,
     flags: [{ x: 9, y: 10 }],
   });
 
-  // One flag crossed twice is "Flag 1" both times, and one thunder striking
-  // twice is "Slow 1" both times — the number names the piece, not the event.
-  // The keys still separate the passes, which is what a delta pairs on.
+  // The index names the piece, not the event: one flag crossed twice is "Flag
+  // 1" both times. The keys separate the passes, which is what deltas pair on.
   assertEquals(
     splits.map((s) => [s.kind, s.index, s.key]),
     [
@@ -62,10 +60,9 @@ Deno.test("a piece keeps its number on every crossing", () => {
 });
 
 Deno.test("a flag on the checkpoint reads the checkpoint's time", () => {
-  // The two marks are timed differently — the checkpoint at the node the runner
-  // reaches, a flag at its closest approach — and on the same cell those are the
-  // same instant. Timing the flag at the edge of its radius instead put it half
-  // a cell early.
+  // The checkpoint is timed at its node, a flag at its closest approach; on the
+  // same cell those coincide. Timing the flag at its radius's edge would read
+  // half a cell early.
   const splits = computeSplits({
     path: PATH,
     thunders: [],
@@ -79,9 +76,8 @@ Deno.test("a flag on the checkpoint reads the checkpoint's time", () => {
 });
 
 Deno.test("a flag is crossed once per leg", () => {
-  // Cell (9,9) is the checkpoint's own node: the runner reaches it, turns, and
-  // leaves — one continuous pass, so one mark. Cell (9,4) is only on the second
-  // leg.
+  // Cell (9,9) is the checkpoint's node: the runner turns there, so it is one
+  // continuous pass and one mark. Cell (9,4) is only on the second leg.
   const splits = computeSplits({
     path: PATH,
     thunders: [],
@@ -94,10 +90,9 @@ Deno.test("a flag is crossed once per leg", () => {
 
 Deno.test("distinct thunders number in strike order and price their waste", () => {
   // Two thunders 3.5 units off the line, so both trigger. The second lands
-  // 2.112s in, while the first's 6s slow still has 4.4s to run — a reset, not a
-  // stack, so 4.4s of slow never lands: 2.2s of finish time. The runner then
-  // crosses the line with 1.024s of that second slow still owed (another 0.512s
-  // of finish time), which folds into the same row: 2.71s in all.
+  // 2.112s in while the first's slow has 4.4s left: a reset, so 4.4s of slow
+  // (2.2s of finish time) never lands. The runner finishes with 1.024s of the
+  // second slow owed (0.512s of finish time), folded into the same row: 2.71s.
   const thunders = [
     { x: 5, y: 14, local: true },
     { x: 5, y: 10 },
@@ -121,8 +116,7 @@ Deno.test("distinct thunders number in strike order and price their waste", () =
 });
 
 Deno.test("deltas pair marks by identity, not by ordinal", () => {
-  // Flags belong to the board, so both runs see the same pair — but the
-  // straight route only ever crosses (9,14).
+  // Both runs see the same flags, but the straight route only crosses (9,14).
   const flags = [{ x: 9, y: 14 }, { x: 7, y: 16 }];
   const best = computeSplits({
     path: PATH,
@@ -130,8 +124,8 @@ Deno.test("deltas pair marks by identity, not by ordinal", () => {
     checkpoint: CHECKPOINT,
     flags,
   });
-  // A route that detours out to (6,17) and back, reaching the shared flag later
-  // and picking up one the reference never crossed.
+  // Detours out to (6,17): reaches the shared flag later and crosses one the
+  // reference never did.
   const slower: Point[] = [{ x: 9, y: 19 }, { x: 6, y: 17 }, { x: 9, y: 14 }, {
     x: 9,
     y: 9,

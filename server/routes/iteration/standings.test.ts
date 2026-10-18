@@ -4,11 +4,9 @@ import { createOrUpdateUser } from "../../db/user.ts";
 import { extractUserId } from "../../middleware/userid.ts";
 import { standings } from "./standings.ts";
 
-// Integration test for the standings route against the real (dev) database —
-// the per-user-best/void/daily filtering lives in SQL, so a fake couldn't
-// prove it. Plays out on a throwaway iteration with throwaway users, all
-// removed afterwards (runs cascade from both). Skipped wholesale when
-// SQL_PASSWORD isn't available, so a credential-less environment stays green.
+// Integration test for `standings` against the dev database (the per-user-best,
+// void and daily filtering lives in SQL). Uses a throwaway iteration and users,
+// removed afterwards (runs cascade). Skipped without SQL_PASSWORD.
 const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
@@ -139,10 +137,10 @@ Deno.test({
         assert(row.at > 0);
       }
 
-      // --- PB board: SAME response, the same players re-ranked by best build ---
-      // The viewer's 60 free-play run is their best that day, so they jump to
-      // #1 (their ranked day best was only 5th); each row's secondary is that
-      // day's ranked time. Same five players, same count — just re-sorted.
+      // --- PB board: SAME response, the same players re-ranked by best build
+      // --- The viewer's 60 free-play run is their best that day, so they jump
+      // to #1 (their ranked day best was only 5th); each row's secondary is
+      // that day's ranked time. Same five players, same count — just re-sorted.
       assertEquals(r.pb.players, 5);
       assertEquals(r.pb.me, {
         rank: 1,
@@ -152,7 +150,8 @@ Deno.test({
         record: "beat",
         percentile: 1,
         // Standing on the PB board: the viewer holds the field best (60), so
-        // (60 - 10) / (60 - 10) = 1 — the metric the dock colours the PB rank by.
+        // (60 - 10) / (60 - 10) = 1 — the metric the dock colours the PB rank
+        // by.
         percent: 1,
       });
       // PB order: viewer 60, leader 40, {tiedA,tiedB} 38.5, fourth 36.

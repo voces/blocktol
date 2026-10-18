@@ -28,8 +28,7 @@ Deno.test("free play resume: same board within the window resumes and keeps the 
   assertEquals(resumed?.iteration, 7);
   assertEquals(resumed?.clientId, id);
   assertEquals(resumed?.blocks.length, 2);
-  // The record survives a successful resume — a reload mid-build must be able
-  // to resume again.
+  // The record survives a resume: a reload mid-build can resume again.
   assertEquals(resumableFreePlay(7, NOW)?.iteration, 7);
 
   clearFreePlay();
@@ -39,11 +38,10 @@ Deno.test("free play resume: staging another day skips the record but KEEPS it",
   clearFreePlay();
   persistFreePlay(7, NOW + 30_000, [{ x: 5, y: 5 }]);
 
-  // Wandering off (a day switch, a reviewed maze) doesn't abandon the build:
-  // the mismatched record isn't handed to the other board...
+  // Wandering off doesn't abandon the build: the other board gets nothing...
   assertEquals(resumableFreePlay(8, NOW), null);
-  // ...but it survives, so returning within the window still resumes. Only an
-  // explicit reset (clearFreePlay) or the window expiring ends the attempt.
+  // ...but the record survives, so returning within the window resumes. Only
+  // clearFreePlay or expiry ends the attempt.
   assertEquals(resumableFreePlay(7, NOW)?.iteration, 7);
 
   clearFreePlay();
@@ -54,9 +52,8 @@ Deno.test("free play pending: the expiry hand-off reads the record past its dead
   const id = freePlayClientId();
   persistFreePlay(7, NOW + 30_000, [{ x: 5, y: 5 }]);
 
-  // The hand-off happens exactly when the deadline check starts failing —
-  // resume refuses the expired record, pending still hands it over (with its
-  // idempotency id, so the commit lands under the attempt's own key).
+  // The hand-off happens as the deadline check starts failing: resume refuses
+  // the expired record, pending still hands it over with its idempotency id.
   assertEquals(resumableFreePlay(7, NOW + 60_000), null);
   const pending = pendingFreePlay(7);
   assertEquals(pending?.iteration, 7);
@@ -83,8 +80,8 @@ Deno.test("free play resume: an expired, empty, or reset record does not resume"
 });
 
 // --- The commit outbox -------------------------------------------------------
-// A stubbed fetch stands in for the server, so these exercise the real api
-// client (its retries and transport classification) end to end.
+// A stubbed fetch stands in for the server, so the real api client (retries,
+// transport classification) is exercised end to end.
 
 // getId reads the URL for sign-in links; Deno has no `location` by default.
 Object.defineProperty(globalThis, "location", {

@@ -21,9 +21,8 @@ const percentOf = (item: Item) =>
     ? standing(item.ownBest, item.min, item.best)
     : null;
 
-// Today's standing at a glance: the ranked result (best of the three attempts,
-// with its field percentile and rating) and the personal best (which may be a
-// higher unranked free-play run).
+// Today's standing: the ranked result (best of the three attempts, with its
+// field percentile) and the personal best (possibly a higher free-play run).
 export const TodayResult = () => {
   const items = dailyItems.value;
   const summary = useApiListener("getDailySummary");
@@ -31,9 +30,8 @@ export const TodayResult = () => {
     GameStateContext,
   );
 
-  // While the daily is still in progress (attempts left, or the summary hasn't
-  // loaded yet) there's no result to show yet — and surfacing it mid-run would
-  // spoil the standing. Only reveal it once all three attempts are spent.
+  // Shown only once all three attempts are spent; mid-daily it would spoil the
+  // standing.
   if (attemptsRemaining !== 0) return null;
 
   const now = new Date();
@@ -42,10 +40,9 @@ export const TodayResult = () => {
   }-${now.getDate()}`;
   const today = [...items.values()].find((i) => i.daily.join("-") === todayKey);
 
-  // These results are today's, but the board might be showing another day. Load
-  // today's board first (so the maze renders on the right fixed pieces and the
-  // calendar selects today) before overlaying the reviewed maze — skipped if a
-  // newer navigation superseded this one mid-flight.
+  // These results are today's but the board may show another day. Stage
+  // today's board first (so the maze lands on the right fixed pieces), then
+  // overlay; skipped if a newer navigation superseded it.
   const onToday = today && iteration === today.iteration;
   const reviewToday = (show: () => void) => {
     if (onToday || !today) return show();
@@ -54,9 +51,8 @@ export const TodayResult = () => {
     });
   };
 
-  // The personal best's maze lives server-side: fetch it and stage the board
-  // in parallel (two round trips become one), overlaying once both land —
-  // skipped if a newer navigation superseded the stage.
+  // The best maze lives server-side: fetch it while staging the board, and
+  // overlay once both land (skipped if superseded).
   const reviewBest = () => {
     if (!today) return;
     const best = api.best({ iteration: today.iteration });
@@ -77,9 +73,8 @@ export const TodayResult = () => {
   const personalUnranked = today?.ownBest != null &&
     today.ownDailyBest != null && today.ownBest > today.ownDailyBest;
 
-  // Tint each chip to its percentile band (supreme → gold + glow; a non-supreme
-  // tie for the field's top → peak green-yellow), matching the result modal
-  // rather than a fixed green/blue.
+  // Each chip takes its percentile band, as in the result modal: supreme gold,
+  // a tie for the field's top peak green-yellow.
   const rankedBand = rankedBest
     ? rankedBest.supreme
       ? "var(--gold)"

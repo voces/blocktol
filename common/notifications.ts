@@ -1,8 +1,7 @@
 // The notification domain, shared by server (generation, storage, push) and
-// client (the bell + panel). Kept framework-free — the classification of a
-// finalized daily is a pure function so its five-way branch is unit-testable
-// without a database, and both sides import the same payload shapes so a stored
-// row round-trips with no re-derivation.
+// client (the bell + panel). The classification of a finalized daily is a pure
+// function, unit-testable without a database, and both sides share the payload
+// shapes.
 
 import { formatSeconds } from "./format.ts";
 import { t } from "./i18n.ts";
@@ -11,11 +10,9 @@ export const notificationKinds = ["lost_top", "daily_final"] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
 // The daily-finalized notification's five faces (see classifyDailyOutcome):
-//   placed  — an ordinary finish (#55/2363); compares your time to the day best
-//   t1      — TIED best of everyone's first-three attempts, but a free-play
-//             build bettered it (still a celebration)
-//   first   — the SOLE best of everyone's first-three attempts, bettered only in
-//             free play
+//   placed  — an ordinary finish (#55/2363)
+//   t1      — TIED best of the ranked board, but a free-play build bettered it
+//   first   — the SOLE best of the ranked board, bettered only in free play
 //   record  — like t1, but no free-play build beat it (a held record)
 //   supreme — like first, but no one even tied you, in ranked OR free play
 export const dailyVariants = [
@@ -27,9 +24,9 @@ export const dailyVariants = [
 ] as const;
 export type DailyVariant = (typeof dailyVariants)[number];
 
-// Someone passed your best build on a day you led — you dropped off the top of
-// the PB board. Times are best-build (PB-board) values. (Only a strict pass
-// fires; a tie doesn't cost you the top.)
+// Someone passed your best build on a day you led, dropping you off the top of
+// the PB board. Times are best-build values. Only a strict pass fires; a tie
+// keeps the top.
 export type LostTopData = {
   passer: string; // the display name of who passed you
   passerTime: number; // their best build that day — the new top
@@ -49,9 +46,9 @@ export type NotificationDataOf<K extends NotificationKind> = K extends
   "lost_top" ? LostTopData
   : DailyFinalData;
 
-// A stored, client-facing notification. The raw recipient id never rides along
-// (it's the bearer credential); the payload is fully denormalized at write time
-// so a later change to the field can't rewrite history.
+// A stored, client-facing notification. The recipient id never rides along
+// (it's the bearer credential); the payload is denormalized at write time so a
+// later change to the field can't rewrite history.
 export type NotificationOf<K extends NotificationKind> = {
   id: number;
   kind: K;
@@ -59,37 +56,34 @@ export type NotificationOf<K extends NotificationKind> = {
   day: [number, number, number]; // the daily's [year, month, day]
   createdAt: number; // ms epoch
   read: boolean;
-  // Computed live at read time, never stored: whether a "lost top" has been
-  // reclaimed (the viewer holds the day's top build again) and how — "solo" for
-  // an outright top (gold), "tied" for a shared top (chartreuse), null when not
-  // reclaimed. The card is struck through but kept. Always null for a daily_final.
+  // Computed at read time, never stored: whether a "lost top" has been
+  // reclaimed (see `Reclaimed`). The card is struck through but kept. Always
+  // null for a daily_final.
   reclaimed: Reclaimed;
   data: NotificationDataOf<K>;
 };
 
-// How a reclaimed lost-top holds the top: "solo" = sole best build (outright #1,
-// gold), "tied" = shares the best build with someone (a held record, chartreuse).
-// null = not reclaimed. Mirrors the standings record palette (outright vs shared).
+// How a reclaimed lost-top holds the top: "solo" = sole best build (gold),
+// "tied" = shares it (chartreuse), null = not reclaimed. Mirrors the standings
+// record palette.
 export type Reclaimed = "solo" | "tied" | null;
 
 export type Notification =
   | NotificationOf<"lost_top">
   | NotificationOf<"daily_final">;
 
-// One player's day, as the outcome classifier reads it: their best ranked daily
-// time (null if they never made a ranked attempt) and their best build that day
-// (free play included — always defined for anyone with a non-void run).
+// One player's day for the outcome classifier: best ranked daily time (null
+// without a ranked attempt) and best build that day (free play included).
 export type OutcomePlayer = { user: string; daily: number | null; pb: number };
 
 /**
  * Classify a player's finalized daily into a DailyFinalData, or null when they
- * made no ranked attempt (nothing to finalize). Higher time is better.
+ * made no ranked attempt. Higher time is better.
  *
- * The framing: the ranked board is everyone's best of their first three
- * attempts; free play (the PB board) can then better it. Comparisons are
- * self-excluded — measured against the REST of the field — matching the ratings
- * / profile / calendar convention, so "no one even tied you" means no OTHER
- * player reached your mark in ranked or free play.
+ * The ranked board is everyone's best of their first three attempts; free play
+ * (the PB board) can then better it. Comparisons exclude the player, matching
+ * the ratings/profile/calendar convention: "no one even tied you" means no
+ * OTHER player reached your mark.
  */
 export const classifyDailyOutcome = (
   players: readonly OutcomePlayer[],
@@ -99,13 +93,11 @@ export const classifyDailyOutcome = (
   if (!me || me.daily == null) return null;
   const myDaily = me.daily;
 
-  // Standard competition ranking on the ranked board: your rank is 1 + the
-  // number of players with a strictly better ranked time (ties share a rank).
+  // Competition ranking: 1 + the players with a strictly better ranked time.
   const ranked = players.filter((p) => p.daily != null);
   const field = ranked.length;
   const rank = 1 + ranked.filter((p) => (p.daily as number) > myDaily).length;
 
-  // The rest of the field's extremes.
   let othersTopDaily = -Infinity; // best ranked time among others
   let othersBestBuild = -Infinity; // best build among others (free play incl.)
   for (const p of players) {
@@ -120,17 +112,17 @@ export const classifyDailyOutcome = (
   );
   const base = { rank, players: field, yourTime: myDaily, dayBest };
 
-  // Someone out-ranked you → an ordinary finish.
+  // Someone out-ranked you.
   if (othersTopDaily > myDaily) return { ...base, variant: "placed" };
 
-  // You're (co-)top of the ranked board. Did another player's build better your
-  // ranked mark in free play, or merely tie it?
+  // You're (co-)top of the ranked board. Did another build better or tie your
+  // ranked mark in free play?
   const buildBeat = othersBestBuild > myDaily;
   const buildTied = othersBestBuild === myDaily;
   const tiedRanked = othersTopDaily === myDaily;
 
   if (buildBeat) return { ...base, variant: tiedRanked ? "t1" : "first" };
-  // No free-play build beat your ranked mark: a record. Sole and untied → supreme.
+  // No free-play build beat your mark: a record, or supreme if untied.
   if (tiedRanked || buildTied) return { ...base, variant: "record" };
   return { ...base, variant: "supreme" };
 };
@@ -138,7 +130,7 @@ export const classifyDailyOutcome = (
 // ---- shared copy ----
 
 // A daily's calendar day as "Jul 6". Built as a LOCAL date so locale formatting
-// can't shift it across midnight (matching the standings sheet's formatter).
+// can't shift it across midnight.
 export const formatNotifDate = (
   [y, m, d]: readonly [number, number, number],
   locale?: string,
@@ -148,24 +140,18 @@ export const formatNotifDate = (
     day: "numeric",
   });
 
-// Notification times render at two decimals ("21.43s"), matching the board and
-// every other time surface. One decimal read punchier but hid the very thing a
-// "passed you" line is about: a pass decided in the hundredths ("30.34s vs your
-// 30.30s") collapsed to two identical-looking values ("30.3s vs your 30.3s").
-// `locale` is set when the server renders push copy for a device; omitted in the
-// in-app panel, which renders in the viewer's own locale.
+// Notification times use two decimals ("21.43s"), like every time surface; one
+// decimal would show a pass decided in the hundredths ("30.34s vs your 30.30s")
+// as identical values. `locale` is set for server-rendered push copy.
 export const formatNotifTime = (t: number, locale?: string): string =>
   `${formatSeconds(t, { locale })}s`;
 
-// The single source of a notification's headline + one-line body, shared by the
-// lock-screen push text and the in-app panel so the two never drift. The words
-// live in the message catalog (i18n/en.json, keys `notif.*`); this maps a stored
-// notification to the right key + params. The panel layers icons/colour around
-// the same words (and adds a comparison detail from the raw data); the push
-// sends these verbatim. `locale` is the recipient's for server-rendered push,
-// omitted on the client so the viewer's own locale renders. The variant enum
-// maps to a key via a literal ternary (never an interpolated key) so every live
-// key stays greppable.
+// The single source of a notification's headline + one-line body, shared by
+// push and the in-app panel so they never drift. The words live in i18n/en.json
+// (`notif.*`); this maps a notification to key + params. The panel adds
+// icons/colour and a comparison detail; push sends these verbatim. `locale` is
+// the recipient's for push, omitted on the client. Variants map to keys by
+// literal ternary, never an interpolated key, to keep every key greppable.
 export const notificationText = (
   n: Pick<Notification, "kind" | "data" | "day">,
   locale?: string,

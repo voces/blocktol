@@ -11,32 +11,27 @@ import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
 import { piece } from "./piece.ts";
 
-// Whether the save commits (daily attempt) or stays void until execution (free
-// play) is derived server-side in updateCurrentRun from the run itself; the
-// body carries no freePlay flag (a cached client that still sends one is
-// stripped by zod).
+// Whether a save commits (ranked) or stays void until execution (free play) is
+// derived in updateCurrentRun from the run itself; the body has no freePlay
+// flag (zod strips one from a cached client).
 const updateRunBody = z.object({
   iteration: z.number(),
-  // The interior of the 20×20 board (its 18×18 non-border cells) is 324 cells, so
-  // no legal maze can carry more than that many pieces; cap well above it (400) so
-  // an oversized array is rejected by zod before validateRun pays to walk it — the
-  // budget check in validateRun is per-piece and runs only after the full parse.
+  // The 18×18 interior is 324 cells, so no legal maze has more pieces. Cap at
+  // 400 so zod rejects an oversized array before validateRun walks it.
   blocks: z.array(piece).max(400),
 });
 
 // Stale-while-revalidate per (iteration, user), so a burst of saves doesn't
-// re-run the field query each time. Bounded (`boundedTrailer`): an unbounded
-// cache would keep one entry per player per day forever on the long-lived
-// process. 10k keys comfortably covers every builder active at once; an evicted
-// one just pays a fresh fetch on its next save.
+// re-run the field query. Bounded (`boundedTrailer`) because the process is
+// long-lived; 10k keys covers every concurrent builder, and an evicted key just
+// refetches on its next save.
 const getIterationOtherBest = boundedTrailer(getIterationOtherBestRaw, 10_000);
 
 export const updateRun = method(updateRunBody, true)(
   async ({ iteration: iterationId, blocks, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
-    // The best build among other players (void excluded) — the mark this build
-    // must beat to lead the field, used for both the supreme flag and the
-    // lost-top gate below.
+    // The best build among other players (void excluded): the mark to beat to
+    // lead the field, for both `supreme` and the onPbBuild gate below.
     let otherBest: number | null;
     try {
       [iteration, otherBest] = await Promise.all([
@@ -50,12 +45,11 @@ export const updateRun = method(updateRunBody, true)(
 
     const validation = validateRun(iteration, blocks);
     if (!validation.ok) {
-      // A caller with no run on this iteration has no build to save — every
-      // run row comes through the board gate (startRun; util/boardAccess.ts) —
-      // so answer what a legal save would have: expired, nothing persisted.
-      // Echoing validateRun's reason instead would make this an oracle on a
-      // board the caller can't see: probe one cell per request and "invalid
-      // path" maps the fixed pieces, "too many blocks" the budget.
+      // A caller with no run here (every run row passes the board gate in
+      // startRun) gets `expired`, as a legal save would. Echoing validateRun's
+      // reason would be an oracle on a board they can't see: "invalid path"
+      // maps the fixed pieces one probe at a time, "too many blocks" the
+      // budget.
       if (!(await getLatestRun(userId, iterationId))) {
         return { expired: true as const };
       }
@@ -63,8 +57,8 @@ export const updateRun = method(updateRunBody, true)(
     }
     const { path, duration, slows } = validation;
 
-    // Awaited, never fire-and-forget: a Deno Deploy preview tears the isolate
-    // down after the response, killing a still-pending write.
+    // Awaited: a Deno Deploy preview kills a write still pending after the
+    // response.
     try {
       const { saved } = await updateCurrentRun(
         userId,
@@ -72,41 +66,31 @@ export const updateRun = method(updateRunBody, true)(
         blocks.map((b) => ({ ...b, player: true })),
         iterationId,
       );
-      // The run's 60s window closed before this save (or there's no current
-      // run): the edit was NOT persisted. Not an error — success-shaped so the
-      // client doesn't report it; it reverts the optimistic edit to the last
-      // accepted maze and starts the run (which is what the server is doing).
+      // The 60s window closed before this save (or no current run): the edit
+      // was NOT persisted. Success-shaped, not an error, so the client doesn't
+      // report it; it reverts its optimistic edit to the last accepted maze.
       if (!saved) return { expired: true as const };
     } catch (err) {
       log.error(req, "failed to save run", { error: errText(err) });
       return { error: "failed to save run", status: 500 };
     }
 
-    // A ranked attempt's build enters the PB field just like free play. When it
-    // reaches the field top, run the PB-board side effects: lost-top
-    // notifications for anyone it passed, and the Discord "top PB" record post /
-    // tie edit. Gated on the (already-computed) otherBest so it costs nothing on
-    // the common save that isn't leading; onPbBuild re-validates and dedupes both
-    // effects, so a stream of leading saves within one attempt notifies/posts
-    // once. The gate includes an exact TIE (>=) and the no-other-player case
-    // (otherBest == null, this is the day's first build) because both can newly
-    // set or match the day's record even though decideLostTop stays silent on
-    // them. Awaited (a Deploy preview kills work left running after the
-    // response) and it never throws.
+    // A ranked build enters the PB field like free play. When it reaches the
+    // field top, onPbBuild sends lost-top notifications and the Discord top-PB
+    // post/edit; it re-validates and dedupes, so a stream of leading saves
+    // notifies once. The gate includes an exact TIE (>=) and the first build of
+    // the day (otherBest == null): both can set or match the record though
+    // decideLostTop stays silent on them. Awaited because a Deploy preview
+    // kills work left running after the response; never throws.
     //
-    // Accepted edge case: because this fires per build save (not at
-    // finalization), a build can momentarily reach the field top — firing the
-    // card / posting the record — then be trimmed back below it before the 60s
-    // window freezes the attempt, leaving a stale "lost #1" (and a record post
-    // whose holder later slipped). It's rare (you must lead mid-build, then
-    // worsen the maze in the same window) and low-harm: the upsert/dedupe keeps
-    // it to one card, which deep-links to live standings, so it reads as stale
-    // rather than wrong. Deferring until the attempt finalizes would be the clean
-    // fix, but there is no cheap cancelable one-off scheduler (a `setTimeout`
-    // past the response dies with a Deploy preview's isolate; `Deno.cron` is
-    // hourly, not per-run), so real-time with rare staleness is the deliberate
-    // trade. Free play doesn't have this — its `commitRun` hook fires once at
-    // execution, when the build is already locked.
+    // Known edge: this fires per save, not at finalization, so a build can
+    // reach the top, fire the card/post, then be trimmed back below it before
+    // the 60s window closes, leaving a stale "lost #1" or record post. Rare and
+    // low-harm (deduped to one card that deep-links to live standings).
+    // Deferring to finalization needs a cancelable one-off scheduler, and
+    // neither `setTimeout` (dies with a preview isolate) nor hourly `Deno.cron`
+    // is one. Free play fires once at execution (commitRun), so it has no such
+    // edge.
     if (otherBest == null || duration >= otherBest) {
       await onPbBuild(iterationId, userId);
     }

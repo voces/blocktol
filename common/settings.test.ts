@@ -7,8 +7,8 @@ import {
   parseSettings,
 } from "./settings.ts";
 
-// The notification prefs default on; most cases below don't exercise them, so a
-// helper keeps the expected objects readable.
+// Most cases below don't exercise the notification prefs; the alias keeps the
+// expected objects short.
 const notifs = defaultNotificationPrefs;
 
 Deno.test("parseSettings: null / non-object / bad JSON → defaults", () => {
@@ -73,7 +73,7 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
 });
 
 Deno.test("parseSettings: push prefs default off; only true opts in", () => {
-  // Absent / garbage → both off (explicit opt-in).
+  // Absent or garbage → both off.
   assertEquals(parseSettings({}).notifications, {
     lostTop: false,
     dailyFinal: false,

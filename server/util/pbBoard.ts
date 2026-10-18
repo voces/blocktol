@@ -1,27 +1,24 @@
-// The PB (best-build) board's post-build side effects, run once per build that
-// enters the field — a free-play commit, or a ranked build that reaches the field
-// top (see run/commit.ts and run/update.ts). Two effects share one load of the
-// day's bests:
+// The PB (best-build) board's side effects, run once per build that enters the
+// field: a free-play commit, or a ranked build that reaches the field top (see
+// routes/iteration/run/commit.ts and update.ts). Two effects share one load of
+// the day's bests:
 //
-//   1. lost-top notifications — a prior #1/T1 holder passed by this build
-//      (decideLostTop; its tie/lead edge cases are unit-tested in lostTop.ts).
-//   2. the Discord "top PB" post — a message tracking the day's current record on
-//      the PB board, and ONLY on a day that is already RATED (see onPbBuild: while
-//      the daily is live the post would spoil the ceiling for everyone still
-//      holding attempts; the daily-final post carries the day's records instead).
-//      A new holder taking the top (a record-break — the event that sets a lost-top
-//      notification — or the day's first PB) posts a fresh message; a build MATCHING
-//      the announced top edits it with the tie count (chartreuse); the SAME holder
-//      improving their own lead edits it within a 12h window and posts a fresh one
-//      past it OR once the record has been matched in between (breaking a shared
-//      record is its own event). Ties/non-topping builds/replays that don't take the
-//      top do nothing. A `pb_top` marker (holder, message, time, tie count, post
-//      time) is the state that drives this.
+//   1. lost-top notifications: a prior #1/T1 holder passed by this build
+//      (decideLostTop in util/lostTop.ts).
+//   2. the Discord "top PB" post tracking the day's record, ONLY on a day that
+//      is already RATED (a live post would spoil the ceiling for players still
+//      holding attempts; see onPbBuild). Rules, driven by the `pb_top` marker:
+//      - a new holder taking the top (a record-break or the day's first PB)
+//        posts fresh;
+//      - a build MATCHING the announced top edits it with the tie count;
+//      - the SAME holder improving their lead edits within 12h
+//        (PB_EDIT_WINDOW_MS) and posts fresh past it OR once the record has
+//        been matched in between;
+//      - ties, non-topping builds and replays do nothing.
 //
-// Both never throw — a notification/webhook hiccup must not fail the run — and
-// the caller AWAITs onPbBuild because a Deno Deploy preview kills work left
-// running past the response (the EC2 instance doesn't, but callers stay
-// uniform).
+// Neither throws: a notification/webhook failure must not fail the run. Callers
+// AWAIT onPbBuild: a Deno Deploy preview kills work left running past the
+// response.
 
 import { formatNotifDate } from "../../common/notifications.ts";
 import { formatSeconds } from "../../common/format.ts";
@@ -45,24 +42,24 @@ import { notifyLostTop } from "./notify.ts";
 
 type Day = [number, number, number];
 
-// A best-build row plus when the player FIRST reached it (`at`, ms epoch) — the
+// A best-build row plus when the player FIRST reached it (`at`, ms epoch); the
 // earliest setter of a shared top is the holder the post credits.
 type Best = BestRow & { at: number };
 
-// Times are stored to two decimals; round the float MAX back to that grid so top
-// equality (a match of the current top) is exact rather than float-fuzzy.
+// Times are stored to two decimals; round back to that grid so top equality is
+// exact.
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// How long the standing post absorbs the SAME holder's own improvements as edits
-// before a further one earns a fresh message. Anchored at the post, not each edit
-// (see editPbTop), so a long slow climb still re-posts 12h after it began.
+// How long the standing post absorbs the SAME holder's improvements as edits
+// before one earns a fresh message. Anchored at the post, not each edit (see
+// editPbTop), so a slow climb still re-posts 12h after it began.
 export const PB_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
-// Whether this build makes the actor a NEW top holder — a record-break (reusing
-// the lost-top pass detection, so it fires on exactly the event that sets a
-// lost-top notification) or the day's first PB (the sole player bettering their own
-// best). The actor's prior best guards against a replay: a build by someone already
-// leading, or below the top, returns null. Pure; the once-only guard is the marker.
+// Whether this build makes the actor a NEW top holder: a record-break (exactly
+// the event that sets a lost-top notification) or the day's first PB (the sole
+// player bettering their own best). The actor's prior best guards against
+// replays: a build by someone already leading, or below the top, returns null.
+// Pure; the once-only guard is the marker.
 export const topPbToAnnounce = (
   bests: readonly BestRow[],
   actor: string,
@@ -77,17 +74,13 @@ export const topPbToAnnounce = (
   return null;
 };
 
-// What the Discord post should do, given the board state and the marker. Pure so
-// its branches are unit-testable without a webhook or a clock:
-//   - "post": the actor NEWLY took the sole top (`newHolder`, replay-safe); or the
-//     actor holds the announced top and improved it, but the record has been matched
-//     since the post (a shared record they're now breaking) or the post is stale
-//     (past the window) — a fresh message goes up.
-//   - "edit": the actor holds the announced top and improved it within the window
-//     while still sole; OR a build just matched the announced top (the tie count
-//     grew) — the standing message is updated in place.
-//   - "none": the actor isn't the outright top and didn't just match it, or holds
-//     it but didn't improve — nothing changed.
+// What the Discord post should do, given the board state and the marker. Pure.
+//   - "post": the actor NEWLY took the sole top (`newHolder`); or holds the
+//     announced top and improved it, but the record has since been matched or
+//     the post is past the window.
+//   - "edit": the actor holds the announced top and improved it within the
+//     window while still sole; or a build just matched the announced top.
+//   - "none": anything else.
 export const decidePbAction = (
   isTop: boolean, // actor is (one of) the current top holder(s), incl. a tie
   me: number, // actor's current best, rounded
@@ -98,9 +91,9 @@ export const decidePbAction = (
   stale: boolean, // marker is the actor's and older than the edit window
 ): "post" | "edit" | "none" => {
   if (marker && marker.topUser === actor) {
-    // The announced holder. Only their own IMPROVEMENT (while still the sole top)
-    // does anything — edit within the window, else re-post; a match in between
-    // (marker.holders > 1) also breaks the seal into a fresh post.
+    // The announced holder: only their own IMPROVEMENT does anything. Edit
+    // within the window, else re-post; a match in between (marker.holders > 1)
+    // also forces a fresh post.
     if (!isTop || me <= marker.topTime) return "none";
     return stale || marker.holders > 1 ? "post" : "edit";
   }
@@ -112,16 +105,12 @@ export const decidePbAction = (
   return "none";
 };
 
-// The record post's embed. Gold for a sole holder, chartreuse once matched. The
+// The record post's embed: gold for a sole holder, chartreuse once matched; the
 // title links to the day's PB board.
 //
-// A matched top NAMES who matched it. A bare tally ("1 player has matched it")
-// tells you the record is shared without telling you the one thing you'd want to
-// know, and a day's top is shared by a handful of players at most. Past
-// MAX_NAMES it falls back to the count, as every list in this channel does — and
-// so does the grey-out path, which rebuilds a SUPERSEDED message from the marker
-// and has only its count stored (a message nobody is reading any more, so the
-// shape it collapses to costs nothing).
+// A matched top NAMES its matchers. Past MAX_NAMES, or when `matchers` is
+// omitted (the grey-out path rebuilds a SUPERSEDED message from the marker,
+// which stores only the count), it falls back to the count.
 export const pbEmbed = (
   name: string,
   time: number,
@@ -169,8 +158,8 @@ const announce = async (
 ) => {
   if (bests.length === 0) return;
   const top = round2(Math.max(...bests.map((b) => b.best)));
-  // Earliest-first: the first to reach the top time is the holder the post
-  // credits, and the rest are its matchers, in the order they got there.
+  // Earliest-first: the first to reach the top is credited; the rest are
+  // matchers.
   const holders = bests
     .filter((b) => round2(b.best) === top)
     .sort((a, b) => a.at - b.at);
@@ -204,19 +193,16 @@ const announce = async (
     holders.slice(1).map((h) => h.name),
   );
   if (action === "edit" && marker?.messageId) {
-    // Edit the standing message; editPbTop leaves the window anchor untouched so a
-    // burst of edits can't defer the past-window re-post.
+    // editPbTop leaves the window anchor alone, so edits can't defer a re-post.
     if (await editResult(marker.messageId, embed)) {
       await editPbTop(iteration, top, holders.length);
     }
   } else {
-    // A fresh post supersedes the standing message: grey out the old one first (so
-    // the channel highlights only the current record), then post the new. Its
-    // content is reconstructed from the marker — topTime/holders are the old
-    // message's current values, the name re-derived from the still-present holder.
-    // Greying first means a failed post just retries (and re-greys) next save,
-    // rather than stranding two coloured messages. topTime is non-null whenever a
-    // message id is (both are written together).
+    // A fresh post supersedes the standing message: grey the old one out first,
+    // rebuilt from the marker (the name is re-derived from the holder's current
+    // row). Greying first means a failed post retries, and re-greys, on the
+    // next save rather than leaving two coloured messages. topTime is non-null
+    // whenever messageId is (written together).
     if (marker?.messageId && marker.topTime != null) {
       const prevName = bests.find((b) => b.user === marker.topUser)?.name ??
         "anonymous";
@@ -225,8 +211,8 @@ const announce = async (
         color: GREY,
       });
     }
-    // A fresh post (or an "edit" with no message to PATCH — a pre-column marker).
-    // Advance the marker only on success, so a failed post retries next save.
+    // Also reached by an "edit" whose marker has no message id. Advance the
+    // marker only on success, so a failed post retries next save.
     const messageId = await postResult(embed);
     if (messageId) {
       await upsertPbTop(iteration, messageId, holder.user, top, holders.length);
@@ -250,7 +236,7 @@ export const onPbBuild = async (iteration: number, actor: string) => {
     }));
     const day: Day = [meta.y, meta.m, meta.d];
 
-    // Lost-top notifications (unchanged): tell whoever this build passed.
+    // Tell whoever this build passed.
     const decision = decideLostTop(bests, actor, prev);
     const lostTop = decision.passer
       ? Promise.all(
@@ -264,16 +250,12 @@ export const onPbBuild = async (iteration: number, actor: string) => {
       )
       : Promise.resolve();
 
-    // The Discord record post is HELD until the day is rated. While the daily is
-    // still live, a "new top build" in the results channel is a heads-up on what
-    // the puzzle can do: it hands everyone who hasn't spent their three ranked
-    // attempts the shape of the ceiling. The in-app lost-top card above stays —
-    // it's addressed to one player, about their own record, on a surface they
-    // only reach after their attempts. Once the field is frozen and the ELOs are
-    // written there is nothing left to leak, so a later free-play record on a
-    // rated day posts (and edits) exactly as before. The day's live records reach
-    // the channel instead as the daily-final post's free-play addendum
-    // (util/dailyAnnounce.ts).
+    // The Discord record post is HELD until the day is rated: a "new top build"
+    // in the channel would show everyone still holding ranked attempts the
+    // ceiling. The in-app lost-top notification is unaffected: it goes to one
+    // player about their own record, on a surface reached after their attempts.
+    // The day's record reaches the channel as the top-build post in
+    // util/dailyAnnounce.ts.
     await Promise.all([
       lostTop,
       meta.rated

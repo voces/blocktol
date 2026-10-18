@@ -1,8 +1,7 @@
-/* Self-hosted copies of the Google Fonts the game uses (Space Grotesk,
-   JetBrains Mono — both SIL Open Font License 1.1), so no request leaves for
-   Google. Generated from the css2 API's output; each file name carries a hash
-   of its bytes, so a changed font is a new URL. Browsers fetch only the subsets
-   whose unicode-range the page actually uses. */
+/* Self-hosted Google Fonts (Space Grotesk, JetBrains Mono; SIL OFL 1.1),
+   generated from the css2 API output. File names carry a hash of their bytes
+   (sw.js FONT_FILE depends on that shape). Browsers fetch only the subsets
+   whose unicode-range the page uses. */
 /* cyrillic-ext */
 @font-face {
   font-family: 'JetBrains Mono';
