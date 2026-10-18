@@ -1,0 +1,17 @@
+#!/bin/bash
+# Reference template — nothing reads this file live. The authoritative copy is
+# /usr/local/sbin/unit-failure-alert (root:root 0750), copied from here; see
+# deploy/README.md "Alerts".
+#
+# Posts "<unit> failed" to the admin Discord webhook, read from blocktol's env
+# file so the URL lives in one place. Run by unit-failure-alert@.service, which
+# units name in OnFailure=.
+set -euo pipefail
+unit="${1:-unknown unit}"
+url=$(sed -n 's/^DISCORD_ADMIN_WEBHOOK_URL=//p' /home/ubuntu/blocktol/.env)
+[ -n "$url" ] || { echo "no DISCORD_ADMIN_WEBHOOK_URL in .env" >&2; exit 1; }
+msg="[$(hostname)] ${unit} failed; see journalctl -u ${unit}"
+curl -sS -m 10 -o /dev/null -w '%{http_code}\n' \
+  -H 'Content-Type: application/json' \
+  -d "$(printf '{"content":"%s","allowed_mentions":{"parse":[]}}' "$msg")" \
+  "$url"

@@ -282,8 +282,11 @@ Other invariants:
   distinct **anonymous** competitor — the day's field, others' percentiles, and
   the applied ELO deltas aren't rewritten, and every `JOIN user` still resolves.
   The new id is never returned, so the link to the person is gone
-  (anonymization, not pseudonymization). The op is an idempotent no-op on retry
-  (the old id is gone), but `deleteAccount` is still **excluded from the client
+  (anonymization, not pseudonymization). Each erasure posts the old id's
+  **hash** (never the id) to the admin Discord channel: an off-box ledger that
+  lets `scripts/reapplyErasures.ts` re-apply deletions after a restore even if
+  the box and its logs are lost. The op is an idempotent no-op on retry (the old
+  id is gone), but `deleteAccount` is still **excluded from the client
   `RETRYABLE` allowlist** because on success the client mints a fresh local id +
   reloads, so a blind retry would act on the stale id. The confirm is gated
   behind typing "DELETE" (`DeleteAccount.tsx`). `/privacy.html` is the

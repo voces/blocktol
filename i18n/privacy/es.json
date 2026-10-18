@@ -92,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Tu perfil y tus builds se conservan mientras juegas, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para quitarlos antes. Las notificaciones dentro de la aplicación se eliminan después de 90 días, y un perfil que nunca jugó se elimina después de 30 días. Los diagnósticos se eliminan después de unos 30 días, y los registros de acceso al servidor después de 14 días. Las copias de seguridad, conservadas únicamente para recuperarse de una falla, se eliminan después de 30 días como máximo; si alguna vez restauramos una, volvemos a eliminar cualquier dato que nos hubieras pedido eliminar.",
-    "hash": "33ca7f7fda9baaad648b5f63708b1748d7a6c0d05269b4cb98c83e7c0481c440"
+    "message": "Tu perfil y tus construcciones se conservan mientras juegas, para que tus estadísticas e historial permanezcan intactos. Elimina tus datos (arriba) para quitarlos antes. Las notificaciones dentro de la aplicación se eliminan tras 90 días, y un perfil que nunca jugó se elimina tras 30 días. Los diagnósticos se eliminan tras unos 30 días, y los registros de acceso del servidor tras 14 días. Las copias de seguridad, conservadas solo para recuperarse de un fallo, se eliminan tras 30 días como máximo; si alguna vez restauramos una, volvemos a eliminar cualquier dato que nos hubieras pedido eliminar. Para que eso sea posible conservamos un hash unidireccional del antiguo ID de un perfil eliminado, que no puede convertirse de nuevo en el ID.",
+    "hash": "e0d8e1793c5300783a7fe5ddcf106df149e2132e3ac986c712d043e957df905b"
   },
   "privacy.retention.heading": {
     "message": "Cuánto tiempo lo conservamos",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Elimina de forma permanente tu perfil, nombre, preferencias, banderas, notificaciones y suscripciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones pasadas como un jugador anónimo —sin ninguna forma de volver a relacionarlas contigo— para que no se reescriban los resultados históricos de los días en que otras personas compitieron. Los nombres ya publicados en Discord permanecen allí. Esto no se puede deshacer, y tu dispositivo empieza de cero como un jugador totalmente nuevo.",
-    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
+    "message": "Elimina de forma permanente tu perfil, nombre, preferencias, banderas, notificaciones y suscripciones push, y desvincula de ti cada laberinto que hayas construido. Tus construcciones permanecen en las clasificaciones pasadas como un jugador anónimo, sin nada que guardemos que las vincule contigo, de modo que los resultados históricos de los días en que compitieron otras personas no se reescriben. Los nombres ya publicados en Discord, y tu nombre en notificaciones ya enviadas a otros jugadores (eliminadas tras 90 días), permanecen ahí. Esto no se puede deshacer, y tu dispositivo empieza de nuevo como un jugador completamente nuevo.",
+    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
   },
   "privacy.rights.export.body": {
     "message": "Descarga un archivo JSON con todo lo que tenemos sobre ti: tu perfil, cada carrera, tus banderines, tus notificaciones y tus suscripciones push.",

@@ -52,15 +52,22 @@ sync. The same holds for the box-level backup and journald files described under
    VAPID_PUBLIC_KEY=...
    VAPID_PRIVATE_KEY=...
    VAPID_SUBJECT=...
+   DISCORD_ADMIN_WEBHOOK_URL=...
+   DISCORD_RESULTS_WEBHOOK_URL=...
    ```
+
+   Every one of these fails silently when missing: no push without the VAPID
+   keys, no operator alerts without `DISCORD_ADMIN_WEBHOOK_URL` (and no off-box
+   record of deletions, see Backups), and results posts fall back to the admin
+   channel without `DISCORD_RESULTS_WEBHOOK_URL`. Check them after any rebuild
+   of the box (see Alerts for a test).
 
    Telemetry (traces + logs) is env-configured via the OTel vars — see the
    Observability section of the top-level `CLAUDE.md`; those go in this same
    file on the co-located instance. `SQL_PASSWORD` is the password of the MySQL
-   user named after the database (`blocktol-prod`) — the **same secret Deno
-   Deploy prod uses**, NOT a shared/ global one (reusing w3xio's yields
-   `Access denied for 'blocktol-prod'`). The `blocktol-dev`/`-prod`/`-local`
-   databases already exist.
+   user named after the database (`blocktol-prod`), NOT a shared/global one
+   (reusing w3xio's yields `Access denied for 'blocktol-prod'`). The
+   `blocktol-dev`/`-prod`/`-local` databases already exist.
 
 3. **systemd service.** Copy `deploy/blocktol.service` to
    `/etc/systemd/system/blocktol.service`, then:
@@ -171,24 +178,34 @@ systemctl start mariadb-nightly-dump.service   # one run now
 journalctl -u mariadb-nightly-dump -n 5        # "wrote /data/mariadb-backups/…"
 ```
 
-Restore (the dump carries its own `CREATE DATABASE`/`USE` statements):
+Restore. Do these in order: the deletion list has to be saved first, because a
+snapshot restore rolls VictoriaLogs back with `/data`, and the app must be
+stopped, or live writes and the rating cron run against half-restored tables.
 
-```bash
-# every database
-zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb
-# one database only — --one-database skips statements for any other
-zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb --one-database blocktol-prod
-```
+1. **Save the deletions made since the backup**, off the box. Each
+   `deleteAccount` posts `erasure <hash>` to the admin Discord channel (copy
+   every hash posted after the backup's date into `erased.txt`), and logs the
+   same hash locally; while the box is alive, the log query in
+   `scripts/reapplyErasures.ts`'s header gives the same list. Keep the file
+   somewhere the restore won't touch (your own machine).
+2. **Stop the app:** `sudo systemctl stop blocktol`.
+3. **Restore.** From a dump (it carries its own `CREATE DATABASE`/`USE`):
 
-Restoring over a live database replaces its tables with the dump's; to inspect
-first, load it into a scratch MariaDB instance.
+   ```bash
+   # one database only — --one-database skips statements for any other
+   zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb --one-database blocktol-prod
+   # or every database on the box
+   zcat /data/mariadb-backups/all-<ts>.sql.gz | sudo mariadb
+   ```
 
-**After restoring `blocktol-prod`, re-apply data deletions.** A backup still
-holds every player who used "Delete my data" after it was taken, and the privacy
-page promises that deletion sticks. `scripts/reapplyErasures.ts` finds them by
-the hashed id each `deleteAccount` request logged (logs are kept 30 days, longer
-than any backup here) and anonymizes them again; its header has the exact
-VictoriaLogs query and invocation. Run it before reopening the game.
+   Or restore volumes from an EBS snapshot in the AWS console.
+4. **Re-apply the deletions** with the saved list, before reopening the game:
+   dry run, then `--apply` (`scripts/reapplyErasures.ts`; it reaches the
+   database through the SQL proxy, so the app needn't be running).
+5. **Start the app:** `sudo systemctl start blocktol`.
+
+Restoring over a live database replaces its tables with the dump's; to inspect a
+dump first, load it into a scratch MariaDB instance.
 
 Retention is what keeps backups compatible with deletion: a dump lives 14 days,
 and a snapshot (default policy, 14 days at most) can carry a dump up to 14 more,
@@ -197,8 +214,38 @@ states that bound; lengthening either retention means updating it.
 
 **journald** — `journald-size.conf` (installed as
 `/etc/systemd/journald.conf.d/size.conf`, then
-`systemctl restart systemd-journald`) caps the persistent journal at 500M. It
-had grown to ~1.1G uncapped on the root volume.
+`systemctl restart systemd-journald`) caps the persistent journal at 500M and 30
+days. blocktol's stdout lands there as well as in VictoriaLogs, and the privacy
+page promises diagnostics go after about 30 days.
+
+## Alerts
+
+The app posts operator alerts to `DISCORD_ADMIN_WEBHOOK_URL` (a failed
+migration, puzzle generation or rating, a stalled rating cron, the run cap, each
+erasure's hash). Test the webhook the running app actually has:
+
+```bash
+PID=$(systemctl show -p MainPID --value blocktol)
+URL=$(sudo cat /proc/$PID/environ | tr '\0' '\n' | sed -n 's/^DISCORD_ADMIN_WEBHOOK_URL=//p')
+curl -sS -o /dev/null -w '%{http_code}\n' -H 'Content-Type: application/json' \
+  -d '{"content":"blocktol: alert test","allowed_mentions":{"parse":[]}}' "$URL"   # 204
+```
+
+Box-level failures can't come from the app. `unit-failure-alert@.service` (+ its
+script) posts "<unit> failed" to the same webhook for any unit that sets
+`OnFailure=unit-failure-alert@%n.service`; the nightly dump does. Install (as
+root):
+
+```bash
+install -m 750 deploy/unit-failure-alert /usr/local/sbin/unit-failure-alert
+install -m 644 deploy/unit-failure-alert@.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl start unit-failure-alert@test.service   # posts "test failed"
+```
+
+Nothing on the box can report the box itself being down. Point a free external
+uptime monitor (UptimeRobot, healthchecks.io, …) at `https://blocktol.com/` so
+an outage reaches you before players do.
 
 ## Operating
 

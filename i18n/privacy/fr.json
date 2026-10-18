@@ -92,16 +92,16 @@
     "hash": "971012a5337e5192d5ca9b242712d22c57e69d6f8b5f8ca5d44de236c3b0336e"
   },
   "privacy.retention.body": {
-    "message": "Votre profil et vos builds sont conservés tant que vous jouez, afin que vos statistiques et votre historique restent intacts. Supprimez vos données (ci-dessus) pour les retirer plus tôt. Les notifications in-app sont supprimées après 90 jours, et un profil qui n'a jamais joué est supprimé après 30 jours. Les diagnostics sont supprimés après environ 30 jours, et les journaux d'accès au serveur après 14 jours. Les sauvegardes, conservées uniquement pour récupérer après une panne, sont supprimées après 30 jours au maximum ; si nous en restaurons une un jour, nous supprimons de nouveau toutes les données que vous nous aviez demandé de supprimer.",
-    "hash": "33ca7f7fda9baaad648b5f63708b1748d7a6c0d05269b4cb98c83e7c0481c440"
+    "message": "Votre profil et vos constructions sont conservés tant que vous jouez, afin que vos statistiques et votre historique restent intacts. Supprimez vos données (ci-dessus) pour les retirer plus tôt. Les notifications dans l'application sont supprimées après 90 jours, et un profil qui n'a jamais joué est supprimé après 30 jours. Les diagnostics sont supprimés après environ 30 jours, et les journaux d'accès au serveur après 14 jours. Les sauvegardes, conservées uniquement pour récupérer après une panne, sont supprimées après 30 jours au maximum ; si nous en restaurons une un jour, nous supprimons à nouveau toute donnée que vous nous aviez demandé de supprimer. Pour rendre cela possible, nous conservons un hachage à sens unique de l'ancien identifiant d'un profil supprimé, qui ne peut pas être reconverti en cet identifiant.",
+    "hash": "e0d8e1793c5300783a7fe5ddcf106df149e2132e3ac986c712d043e957df905b"
   },
   "privacy.retention.heading": {
     "message": "Combien de temps nous les conservons",
     "hash": "a37efe89b9d228de92a171d552292264c57d9d45511f9ec1460f1e22e81eeea0"
   },
   "privacy.rights.delete.body": {
-    "message": "Supprime définitivement votre profil, votre nom, vos préférences, vos drapeaux, vos notifications et vos abonnements push, et dissocie de vous chaque labyrinthe que vous avez construit. Vos builds restent dans les classements passés en tant que joueur anonyme — sans aucun moyen de les relier à vous — afin que les résultats historiques des jours où d'autres personnes ont concouru ne soient pas réécrits. Les noms déjà publiés sur Discord y restent. Cette action est irréversible, et votre appareil repart de zéro comme un tout nouveau joueur.",
-    "hash": "eb382986da5adeb2384e2a0658b22c54deaa9e014eb65d189cb01c7e613d474e"
+    "message": "Supprime définitivement votre profil, votre nom, vos préférences, vos drapeaux, vos notifications et vos abonnements aux notifications push, et dissocie de vous chaque labyrinthe que vous avez construit. Vos constructions restent dans les classements passés sous la forme d'un joueur anonyme, rattaché à vous par rien de ce que nous conservons, afin que les résultats historiques des jours où d'autres personnes ont concouru ne soient pas réécrits. Les noms déjà publiés sur Discord, ainsi que votre nom dans les notifications déjà envoyées à d'autres joueurs (supprimées après 90 jours), y restent. Cette action est irréversible, et votre appareil repart de zéro en tant que tout nouveau joueur.",
+    "hash": "e79e07597366cbb1ef169c95983d9507eeeba54f204e1394fe06170acc9c3cfe"
   },
   "privacy.rights.export.body": {
     "message": "Télécharge un fichier JSON contenant tout ce que nous détenons à votre sujet — votre profil, chaque partie, vos drapeaux, vos notifications et vos abonnements push.",

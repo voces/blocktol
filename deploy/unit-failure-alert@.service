@@ -1,0 +1,10 @@
+# Reference template — nothing reads this file live. The authoritative copy is
+# /etc/systemd/system/unit-failure-alert@.service, copied from here. A unit
+# that sets OnFailure=unit-failure-alert@%n.service gets its failure posted to
+# the admin Discord channel (%i is the failed unit's name).
+[Unit]
+Description=Alert the admin channel that %i failed
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/unit-failure-alert %i

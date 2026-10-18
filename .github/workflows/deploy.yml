@@ -1,27 +1,53 @@
 name: Deploy
 
-# Self-hosted deploy for the EC2 cohost. Fires after CI passes on `prod` (i.e. a
-# merge), then tells the box to pull + rebuild + restart via w3xio's /deploy
-# webhook. Two safety properties make it safe to land before the box is ready:
-#   - It only runs when the CI run it keys off concluded `success`.
-#   - The notify step no-ops unless the DEPLOY_WEBHOOK_URL secret is set, so
-#     until you configure it (and cut DNS over) the Deno Deploy integration keeps
-#     serving untouched.
+# Deploys prod to the EC2 cohost: after CI passes on a push to `prod` (a
+# merge), it tells the box to pull + rebuild + restart via w3xio's /deploy
+# webhook. It deploys only a successful CI run of a push to this repo's `prod`,
+# and only if that commit is still prod's tip. The notify step no-ops unless the
+# DEPLOY_WEBHOOK_URL secret is set.
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
     branches: [prod]
 
+# One deploy at a time, in order; a queued one isn't cancelled.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # `branches: [prod]` matches the triggering run's branch NAME, which a fork
+    # PR can also call prod; only a push to this repo's prod may deploy.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
+      # Two merges close together can finish CI out of order; deploying the
+      # older one last would roll prod back. Only deploy prod's current tip.
+      - name: Skip unless this is prod's tip
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tip=$(gh api "repos/${{ github.repository }}/commits/prod" --jq .sha)
+          if [ "$tip" = "$SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SHA is not prod's tip ($tip); its own run deploys it"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Notify deploy webhook
         # env context is available to a step's own `if`; skips cleanly when the
         # secret is unset.
-        if: env.DEPLOY_WEBHOOK_URL
+        if: env.DEPLOY_WEBHOOK_URL && steps.tip.outputs.current == 'true'
         env:
           # A secret URL that embeds the deploy token, e.g.
           # https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>
