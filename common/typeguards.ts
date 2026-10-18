@@ -138,7 +138,7 @@ type tuple = {
     typeguardD: (value: unknown) => value is D,
     typeguardE: (value: unknown) => value is E,
     typeguardF: (value: unknown) => value is F,
-  ): (value: unknown) => value is [A, B, C, D, E];
+  ): (value: unknown) => value is [A, B, C, D, E, F];
   <T extends unknown[]>(
     ...typeguards: ((value: unknown) => value is T[number])[]
   ): (value: unknown) => value is T;

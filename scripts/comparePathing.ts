@@ -238,7 +238,7 @@ for (const b of minBroken.slice(0, limit)) {
 }
 
 console.log("\n=== Stored runs ===");
-console.log(`Scored runs examined: ${runRows.length}`);
+console.log(`Runs examined (void included): ${runRows.length}`);
 console.log(`  unchanged (±${TIME_EPSILON}s): ${unchanged}`);
 console.log(
   `  retimed, thunder-free — shorter path: ${improved.length} (${

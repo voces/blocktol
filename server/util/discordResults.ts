@@ -100,13 +100,15 @@ export const postResult = async (
   }
 };
 
-// Edit a previously posted result. Best-effort, never throws. Returns whether
-// the edit landed, so callers advance their marker only on success.
+// Edit a previously posted result. Best-effort, never throws. "ok" means the
+// edit landed (callers advance their marker only then); "gone" means Discord no
+// longer has the message (a moderator deleted it), so retrying is pointless;
+// "failed" is anything else, worth retrying on the next build.
 export const editResult = async (
   messageId: string,
   embed: ResultEmbed,
-): Promise<boolean> => {
-  if (!WEBHOOK) return false;
+): Promise<"ok" | "gone" | "failed"> => {
+  if (!WEBHOOK) return "failed";
   try {
     const res = await fetch(`${WEBHOOK}/messages/${messageId}`, {
       method: "PATCH",
@@ -114,13 +116,18 @@ export const editResult = async (
       body: body(embed),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
+    if (res.status === 404) {
+      await res.body?.cancel();
+      log.info("result edit: message gone", { messageId });
+      return "gone";
+    }
     if (!res.ok) {
       log.error("result edit failed", { status: res.status });
-      return false;
+      return "failed";
     }
-    return true;
+    return "ok";
   } catch (err) {
     log.error("result edit error", { error: errText(err) });
-    return false;
+    return "failed";
   }
 };

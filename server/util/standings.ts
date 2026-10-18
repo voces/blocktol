@@ -124,9 +124,5 @@ export const buildStandings = (
       percentile: percentileOf(meIdx),
     },
     rows,
-    // Player ids parallel to `rows`. The route drops them (and `meUser`) before
-    // responding: they must never reach the wire.
-    rowUsers: windowIdx.map((i) => field[i].user),
-    meUser: meIdx < 0 ? null : field[meIdx].user,
   };
 };

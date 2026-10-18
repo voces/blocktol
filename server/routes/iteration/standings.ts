@@ -196,8 +196,6 @@ export const standings = method(standingsBody, true)(
     // a fact of the day, not of the PB board (free play never ranks).
     const final = field.rated || field.closesAt <= Date.now();
 
-    // Drop rowUsers/meUser (parallel id arrays): the raw id is the bearer
-    // credential and must never reach the wire.
     return {
       iteration,
       day: field.day,
