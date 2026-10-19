@@ -20,6 +20,7 @@ export type ExportRunRow = {
   pinned: number;
   client_id: string | null;
   data: string;
+  trace: string | null;
 };
 
 export type ExportNotificationRow = {
@@ -63,7 +64,7 @@ export const exportUserData = (userId: string) =>
     FROM \`user\` WHERE id = ${userId};
 
     SELECT iteration, UNIX_TIMESTAMP(created) * 1000 created, time,
-           daily, void, ranked, pinned, client_id, data
+           daily, void, ranked, pinned, client_id, data, trace
     FROM run WHERE user = ${userId} ORDER BY created ASC;
 
     SELECT iteration, kind, data,

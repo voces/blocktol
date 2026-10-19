@@ -1,3 +1,8 @@
+import {
+  diffMaze,
+  TRACE_BATCH_MAX,
+  type TraceEdit,
+} from "../../../common/runTrace.ts";
 import { Point } from "../../../common/types.ts";
 import { api, MessageMap, withKeepalive } from "../../api.ts";
 
@@ -41,11 +46,11 @@ export const setRunSaverHandlers = (h: Handlers) => {
 let latest: Save | null = null;
 let inFlight = false;
 let attempt = 0;
-let retryTimer = -1;
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
 // Trailing-debounce timer: a burst of placements collapses to one save. The
 // delay is passed per save (`saveDebounce` in useInputEnd) and shrinks to 0 as
 // the clock runs out. DEBOUNCE_MS is the ceiling and the default.
-let debounceTimer = -1;
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 export const DEBOUNCE_MS = 2_000;
 // Bumped by `resetRunSaver`; a response from an older generation is ignored so
 // a late verdict can't mutate a board it no longer describes.
@@ -53,12 +58,69 @@ let gen = 0;
 
 const BACKOFF_MS = [500, 1_000, 2_000, 4_000, 4_000, 4_000, 4_000, 4_000];
 
+// The attempt's edit trace (common/runTrace.ts), recorded for solver review.
+// Edits come from diffing each saved maze against `traceBase`, the maze the
+// last edit left (or the one the server holds after a revert), and wait in
+// `traceQueue` until a save carrying them is accepted. Every save sends the
+// whole queue, so coalesced and retried saves lose nothing; a resend after a
+// lost response repeats `(tracePage, i)`, which the reader dedupes.
+type QueuedEdit = { i: number; at: number; edit: TraceEdit };
+const tracePage = Math.random().toString(36).slice(2, 10) || "0";
+let traceIndex = 0;
+let tracing = false;
+let traceBase: readonly LocalBlock[] = [];
+let traceQueue: QueuedEdit[] = [];
+// The maze the server last accepted, which a rejected save reverts the board
+// to.
+let acceptedMaze: readonly LocalBlock[] = [];
+
+// A ranked attempt was staged (started or resumed) with `blocks` on the board,
+// the maze the server holds. Edits queued from an earlier staging of the same
+// attempt stay queued; `resetRunSaver` drops them when the attempt ends.
+export const beginRunTrace = (blocks: readonly LocalBlock[]) => {
+  tracing = true;
+  traceBase = blocks;
+  acceptedMaze = blocks;
+};
+
+const recordEdits = (blocks: readonly LocalBlock[]) => {
+  if (!tracing) return;
+  const at = performance.now();
+  for (const edit of diffMaze(traceBase, blocks)) {
+    traceQueue.push({ i: traceIndex++, at, edit });
+  }
+  traceBase = blocks;
+};
+
+// The queued edits as a batch, ages taken now.
+const traceBatch = (sent: QueuedEdit[]) => {
+  if (!tracing) return undefined;
+  const now = performance.now();
+  return {
+    p: tracePage,
+    e: sent.map(({ i, at, edit }) =>
+      [i, Math.round(now - at), ...edit] as [number, number, ...TraceEdit]
+    ),
+  };
+};
+
+// Confirmed (or abandoned): drop the edits a save carried.
+const dropSent = (sent: QueuedEdit[]) => {
+  const last = sent.at(-1)?.i;
+  if (last !== undefined) traceQueue = traceQueue.filter((q) => q.i > last);
+};
+
 const flush = () => {
   if (inFlight || !latest) return;
   const save = latest;
   const g = gen;
+  const sent = traceQueue.slice(0, TRACE_BATCH_MAX);
   inFlight = true;
-  api.updateRun({ iteration: save.iteration, blocks: save.blocks }).then(
+  api.updateRun({
+    iteration: save.iteration,
+    blocks: save.blocks,
+    trace: traceBatch(sent),
+  }).then(
     (r) => {
       if (g !== gen) return;
       inFlight = false;
@@ -67,14 +129,22 @@ const flush = () => {
         // verdict.
         if (latest === save) {
           latest = null;
+          // The board reverts to the accepted maze; the next edit diffs from
+          // there.
+          dropSent(sent);
+          traceBase = acceptedMaze;
           handlers.onRejected();
         }
       } else if ("expired" in r) {
         // The window is closed: anything newer would expire too.
         latest = null;
+        tracing = false;
+        traceQueue = [];
         handlers.onExpired();
       } else {
         if (latest === save) latest = null;
+        dropSent(sent);
+        acceptedMaze = save.blocks;
         handlers.onAccepted(save.blocks, r);
       }
       attempt = 0;
@@ -105,6 +175,7 @@ const flush = () => {
 // Queue the build's current maze (replacing any older unconfirmed save); it
 // also supersedes a pending retry backoff. `debounceMs` of 0 sends now.
 export const saveRun = (save: Save, debounceMs = DEBOUNCE_MS) => {
+  recordEdits(save.blocks);
   latest = save;
   clearTimeout(retryTimer);
   clearTimeout(debounceTimer);
@@ -119,6 +190,8 @@ export const saveRun = (save: Save, debounceMs = DEBOUNCE_MS) => {
 export const resetRunSaver = () => {
   gen++;
   latest = null;
+  tracing = false;
+  traceQueue = [];
   inFlight = false;
   attempt = 0;
   clearTimeout(retryTimer);

@@ -42,6 +42,7 @@ import {
   transitionBlock,
 } from "./interaction.ts";
 import {
+  beginRunTrace,
   flushRunSaver,
   resetRunSaver,
   setRunSaverHandlers,
@@ -170,6 +171,8 @@ export const useInit = () => {
       savedBlocksRef.current = data.blocks
         .filter((b) => b.player)
         .map((b) => ({ ...b, local: true }));
+      // The edit trace diffs from the maze the server holds.
+      beginRunTrace(savedBlocksRef.current);
       // Total = what's left plus what's already placed, so a resumed run
       // recovers the true budget (the HUD counts derive in useGameState).
       setBricksTotal(data.bricks + data.blocks.filter((b) => b.player).length);

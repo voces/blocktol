@@ -13,6 +13,7 @@ import { ensureDailyIterationId } from "../../../util/newIteration.ts";
 import { dailyParts } from "../../../util/dailyParts.ts";
 import { method } from "../../apiHelpers.ts";
 import { pieceCoords } from "./piece.ts";
+import { traceLine } from "./trace.ts";
 import { startRun as dbStartRun, updateCurrentRun } from "../../../db/run.ts";
 import { getOwnBest } from "../../../db/user.ts";
 import { cachedSolver, pathDuration } from "../../../../common/pathing.ts";
@@ -82,6 +83,8 @@ export const startRun = method(startRunBody, true)(
           validation.duration,
           [player],
           iteration,
+          // Free play, so updateCurrentRun keeps no trace of it.
+          traceLine(1, validation.duration, undefined),
         );
       } catch (err) {
         // The client re-sends the maze on its next placement, healing this.
