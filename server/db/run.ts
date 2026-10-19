@@ -167,11 +167,23 @@ export const insertFreePlayRun = (
 // abandoned attempt still holds the iteration's min as its time, so when a
 // built one also sat at min, the earliest-wins tie could point `daily` at the
 // void row — and every read excludes void, dropping the player from the field.
+//
+// A ranked save also appends one line to `trace` (common/runTrace.ts):
+// `traceLine` is the batch's JSON minus its opening brace, and the SQL prefixes
+// `{"s":` with the ms since the run's `created` (whole-second, so `s` reads up
+// to 1s late). It rides the same fresh-gated UPDATE, so the trace never holds
+// an edit the maze doesn't. The append isn't idempotent, so `sql`'s retry after
+// a lost response can write a line twice; the reader's `(p, i)` dedupe absorbs
+// that as it does a client resend. Past TRACE_MAX_BYTES it stops growing rather
+// than failing the save; no honest 60s build comes near it.
+export const TRACE_MAX_BYTES = 65_536;
+
 export const updateCurrentRun = (
   user: string,
   time: number,
   blocks: (Point & { thunder?: boolean; player?: boolean })[],
   iteration: number,
+  traceLine: string,
 ) =>
   sql<
     [
@@ -195,7 +207,18 @@ export const updateCurrentRun = (
     UPDATE run
     SET time = ${time}, data = ${
     serializeRun(blocks)
-  }, void = void AND NOT @ranked
+  }, void = void AND NOT @ranked,
+      trace = IF(
+        @ranked AND COALESCE(LENGTH(trace), 0) < ${TRACE_MAX_BYTES},
+        CONCAT(
+          COALESCE(trace, ''),
+          '{"s":',
+          TIMESTAMPDIFF(MICROSECOND, created, NOW(3)) DIV 1000,
+          ',',
+          ${traceLine}
+        ),
+        trace
+      )
     WHERE @fresh
       AND user = ${user}
       AND iteration = ${iteration}

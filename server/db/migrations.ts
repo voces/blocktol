@@ -343,6 +343,15 @@ export const migrations: Migration[] = [
     // the splits feature, which is gone; nothing reads or writes it.
     up: "DROP TABLE IF EXISTS `flag`;",
   },
+  {
+    version: 18,
+    name: "run-trace",
+    // A ranked attempt's edit trace (common/runTrace.ts), one JSON line per
+    // save, appended by updateCurrentRun and read only for solver review.
+    // Nullable and additive: free play and runs saved before it hold NULL.
+    up:
+      "ALTER TABLE `run` ADD COLUMN IF NOT EXISTS `trace` mediumtext NULL DEFAULT NULL;",
+  },
 ];
 
 // ── Editing an already-applied migration (read before you change one above) ──

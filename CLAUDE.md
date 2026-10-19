@@ -133,6 +133,13 @@ flags — get these right, they encode the whole competitive model:
 - **`pinned`** — a player's bookmark that floats a run to the top of their own
   Attempts panel. The panel merges runs that built the identical maze into one
   row, so pinning toggles the whole maze-group together.
+- **`trace`** — how a ranked attempt was built, kept for solver review and never
+  shown in the app (`common/runTrace.ts`). Each `updateRun` carries the edits
+  since the last confirmed save, timed as client ages (ms before the send), and
+  `updateCurrentRun` appends one JSON line per save stamped with the server's ms
+  since `created`, so a log can't be written after the fact without being sent
+  live. A missing or malformed trace still saves (its line has no `p`); free
+  play keeps none.
 
 Other invariants:
 

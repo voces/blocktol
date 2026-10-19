@@ -499,3 +499,73 @@ Deno.test({
     }
   },
 });
+
+// The trace column of the user's runs, in runRows order.
+const traces = (user: string) =>
+  sql<{ trace: string | null }[]>`
+    SELECT trace
+    FROM run
+    WHERE user = ${user}
+    ORDER BY created ASC, time ASC;`.then((r) => r.map((x) => x.trace));
+
+Deno.test({
+  name: "a ranked save appends its edit batch to the trace; free play has none",
+  ignore: !live,
+  fn: async () => {
+    const user = await testUser();
+    const req = authed(user);
+    try {
+      const data = await getIteration(await todayDaily());
+      const [c0, c1] = freeCells(data, 2);
+
+      await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
+      await updateRun.handler({
+        iteration: data.iteration,
+        blocks: [c0],
+        trace: { p: "pg1", e: [[0, 800, "p", c0.x, c0.y]] },
+      }, req);
+      // A malformed trace still saves, and records a line without a batch.
+      const saved = await updateRun.handler({
+        iteration: data.iteration,
+        blocks: [c0, c1],
+        trace: { p: "pg1", e: [["bogus"]] },
+      }, req);
+      assert(!("error" in saved) && !("expired" in saved), "save must land");
+
+      const lines = (await traces(user))[0]!.trim().split("\n").map((l) =>
+        JSON.parse(l)
+      );
+      assertEquals(lines.length, 2);
+      assert(lines[0].s >= 0 && lines[0].s < 61_000, "server ms since start");
+      assertEquals(lines[0].n, 1);
+      assertEquals(lines[0].p, "pg1");
+      assertEquals(lines[0].e, [[0, 800, "p", c0.x, c0.y]]);
+      assertEquals(lines[1].n, 2);
+      assertEquals(lines[1].p, undefined, "no usable batch");
+
+      // A save after the window keeps the trace as it was.
+      await backdate(user, 120);
+      await updateRun.handler({
+        iteration: data.iteration,
+        blocks: [c0],
+        trace: { p: "pg1", e: [[1, 5, "d", c1.x, c1.y]] },
+      }, req);
+      assertEquals(
+        (await traces(user))[0]!.trim().split("\n").length,
+        2,
+        "an expired save appends nothing",
+      );
+
+      const past = await pastIteration();
+      const pastData = await getIteration(past);
+      const [f0] = freeCells(pastData, 1);
+      await startRun.handler(
+        { iteration: past, timeZone: "UTC", block: f0 },
+        req,
+      );
+      assertEquals((await traces(user))[1], null, "free play keeps no trace");
+    } finally {
+      await cleanup(user);
+    }
+  },
+});

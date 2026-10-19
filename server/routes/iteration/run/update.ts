@@ -10,6 +10,7 @@ import { boundedTrailer } from "../../../util/memoize.ts";
 import { validateRun } from "../../../util/validateRun.ts";
 import { method } from "../../apiHelpers.ts";
 import { piece } from "./piece.ts";
+import { parseTraceBatch, traceLine } from "./trace.ts";
 
 // Whether a save commits (ranked) or stays void until execution (free play) is
 // derived in updateCurrentRun from the run itself; the body has no freePlay
@@ -19,6 +20,9 @@ const updateRunBody = z.object({
   // The 18×18 interior is 324 cells, so no legal maze has more pieces. Cap at
   // 400 so zod rejects an oversized array before validateRun walks it.
   blocks: z.array(piece).max(400),
+  // The edits since the last confirmed save (common/runTrace.ts), parsed
+  // leniently by parseTraceBatch so a bad trace can't fail the save.
+  trace: z.unknown().optional(),
 });
 
 // Stale-while-revalidate per (iteration, user), so a burst of saves doesn't
@@ -28,7 +32,7 @@ const updateRunBody = z.object({
 const getIterationOtherBest = boundedTrailer(getIterationOtherBestRaw, 10_000);
 
 export const updateRun = method(updateRunBody, true)(
-  async ({ iteration: iterationId, blocks, userId }, req) => {
+  async ({ iteration: iterationId, blocks, trace, userId }, req) => {
     let iteration: Awaited<ReturnType<typeof getIteration>>;
     // The best build among other players (void excluded): the mark to beat to
     // lead the field, for both `supreme` and the onPbBuild gate below.
@@ -65,6 +69,7 @@ export const updateRun = method(updateRunBody, true)(
         duration,
         blocks.map((b) => ({ ...b, player: true })),
         iterationId,
+        traceLine(blocks.length, duration, parseTraceBatch(trace)),
       );
       // The 60s window closed before this save (or no current run): the edit
       // was NOT persisted. Success-shaped, not an error, so the client doesn't
