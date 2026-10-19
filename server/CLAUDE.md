@@ -395,7 +395,12 @@ and the 500 response marks its span errored; a relayed client crash
 the request span's trace id on every response as `x-blocktol-trace-id` (skipped
 when tracing is off — a Deno Deploy preview reports the all-zero id), so a
 response can be pasted straight into VictoriaTraces to pull its trace, and its
-logs via the shared `trace_id`.
+logs via the shared `trace_id`. On the EC2 box nginx picks that id: it sends its
+`$request_id` as `traceparent` (overwriting any the client sent), Deno's OTel
+adopts it, and nginx logs it as `trace=` in `/var/log/nginx/blocktol.access.log`
+(`deploy/blocktol-trace.conf`), so its line for a request that reached blocktol
+joins that request's trace and logs. A 429/502 that never reached it still gets
+an id there, with no trace behind it.
 
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
 (`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
