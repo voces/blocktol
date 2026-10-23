@@ -15,12 +15,14 @@ auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
   `SQL_PROXY_URL` (no proxy semantics change). A later step can switch to a
   direct `mysql2` connection.
 
-`deploy/blocktol.service`, `deploy/blocktol.nginx.conf` and
-`deploy/blocktol-ratelimit.conf` are **reference templates** — nothing reads
-them live. The authoritative files are `/etc/systemd/system/blocktol.service`,
-`/etc/nginx/sites-enabled/blocktol.conf` and
-`/etc/nginx/conf.d/blocktol-ratelimit.conf`, copied from these; keep them in
-sync. The same holds for the box-level backup and journald files described under
+`deploy/blocktol.service`, `deploy/blocktol.nginx.conf`,
+`deploy/blocktol-ratelimit.conf` and `deploy/blocktol-trace.conf` are
+**reference templates** — nothing reads them live. The authoritative files are
+`/etc/systemd/system/blocktol.service`,
+`/etc/nginx/sites-enabled/blocktol.conf`,
+`/etc/nginx/conf.d/blocktol-ratelimit.conf` and
+`/etc/nginx/conf.d/blocktol-trace.conf`, copied from these; keep them in sync.
+The same holds for the box-level backup and journald files described under
 [Backups](#backups).
 
 ## Box facts (this cohost)
@@ -86,10 +88,11 @@ sync. The same holds for the box-level backup and journald files described under
    `deno task build`).
 
 5. **nginx.** Install `deploy/blocktol-ratelimit.conf` as
-   `/etc/nginx/conf.d/blocktol-ratelimit.conf` (the API rate-limit zone, which
-   must live in the `http` context) and `deploy/blocktol.nginx.conf` as
-   `/etc/nginx/sites-enabled/blocktol.conf`, then
-   `sudo nginx -t && sudo systemctl reload nginx`. TLS is the next step.
+   `/etc/nginx/conf.d/blocktol-ratelimit.conf` (the API rate-limit zone) and
+   `deploy/blocktol-trace.conf` as `/etc/nginx/conf.d/blocktol-trace.conf` (the
+   trace-id map and access-log format) — both must live in the `http` context —
+   and `deploy/blocktol.nginx.conf` as `/etc/nginx/sites-enabled/blocktol.conf`,
+   then `sudo nginx -t && sudo systemctl reload nginx`. TLS is the next step.
 
    Once certbot has edited the live vhost, don't copy the template over it (that
    drops the 443 listener and certs) — merge changes into the existing `server`

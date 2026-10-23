@@ -395,7 +395,9 @@ and the 500 response marks its span errored; a relayed client crash
 the request span's trace id on every response as `x-blocktol-trace-id` (skipped
 when tracing is off — a Deno Deploy preview reports the all-zero id), so a
 response can be pasted straight into VictoriaTraces to pull its trace, and its
-logs via the shared `trace_id`.
+logs via the shared `trace_id`. On the EC2 box that id is nginx's: the same
+value is the `trace=` on the request's line in
+`/var/log/nginx/blocktol.access.log` (`deploy/blocktol-trace.conf`).
 
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
 (`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
