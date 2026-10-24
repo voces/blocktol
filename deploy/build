@@ -1,0 +1,8 @@
+#!/bin/sh
+# Run by w3xio's /deploy in the checkout, after it checks out the commit being
+# deployed and before it restarts the unit, for both prod (`blocktol`) and dev
+# (`blocktol-dev`). It is read from that same commit, so a change to how
+# blocktol builds ships in the PR that needs it. A non-zero exit fails the
+# deploy before the restart.
+set -eu
+deno task build

@@ -9,7 +9,8 @@ auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
   rate-limits `/api/` per IP, and reverse-proxies to it.
 - **Deploy:** merge to `prod` → CI passes → `.github/workflows/deploy.yml` POSTs
   `{app:"blocktol", version:<sha>}` to w3xio's `/deploy`, which does
-  `git fetch origin prod` → `git checkout <sha>` → `deno task build` →
+  `git fetch origin prod` → `git checkout <sha>` → `./deploy/build` (read from
+  that commit, so a change to the build ships with the code that needs it) →
   `systemctl restart blocktol`.
 - **DB:** the app talks to the co-located `/sql` proxy over localhost via
   `SQL_PROXY_URL` (no proxy semantics change). A later step can switch to a
@@ -84,7 +85,7 @@ The same holds for the box-level backup and journald files described under
    ```
    <w3xio-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart blocktol
    ```
-   Also ensure `deno` is on that process's `PATH` (the deploy build step runs
+   Also ensure `deno` is on that process's `PATH` (`deploy/build` runs
    `deno task build`).
 
 5. **nginx.** Install `deploy/blocktol-ratelimit.conf` as
@@ -153,7 +154,7 @@ A second, long-lived instance on this box serves `dev.blocktol.com` against the
 `blocktol-dev` database, replacing the Deno Deploy branch previews (#227).
 `.github/workflows/deploy-dev.yml` deploys to it (→ w3xio's `/deploy` with
 `app:"blocktol-dev"`, whose entry in w3xio's `src/api/routes/deploy.ts` fetches,
-checks out the commit, runs `deno task build` and restarts `blocktol-dev`), and
+checks out the commit, runs its `deploy/build` and restarts `blocktol-dev`), and
 its boot applies the deployed commit's pending migrations to `blocktol-dev`. A
 commit gets there two ways:
 
@@ -167,7 +168,9 @@ commit gets there two ways:
 It is **one** instance: dev runs whichever of the two deployed last, and the
 next merge returns it to `prod`'s tip. A migration from an approved PR that is
 later dropped stays applied to `blocktol-dev` (`server/db/CLAUDE.md`), so
-approve a PR carrying a migration only when that is acceptable.
+approve a PR carrying a migration only when that is acceptable. A branch cut
+from `prod` before `deploy/build` existed fails its deploy at the build step
+until it merges `prod` in.
 
 Unlike a preview, it runs both crons (`DISABLE_CRONS` unset): it is the only
 long-lived writer on `blocktol-dev`, so dev gets its dailies generated and rated
