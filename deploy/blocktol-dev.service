@@ -1,0 +1,37 @@
+# Reference template for the DEV instance's systemd unit on the EC2 cohost.
+# Nothing reads this file live — the authoritative copy is
+# /etc/systemd/system/blocktol-dev.service, copied from here (see "Dev instance"
+# in deploy/README.md). It mirrors blocktol.service with its own checkout, env
+# file, port and journal tag; keep the two in step. `blocktol-deploy` (deploy/)
+# restarts it after each dev deploy, and boot applies the checkout's pending
+# migrations to blocktol-dev.
+[Unit]
+Description=Blocktol dev (Deno server)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/blocktol-dev
+
+# systemd doesn't set HOME; deno needs it for ~/.cache/deno.
+Environment=HOME=/home/ubuntu
+
+# PORT=3041, APP_ENV=dev and the rest; see deploy/README.md for the list.
+EnvironmentFile=/home/ubuntu/blocktol-dev/.env
+
+ExecStart=/home/ubuntu/.deno/bin/deno task start
+
+TimeoutStopSec=90
+SuccessExitStatus=143 SIGTERM
+
+Environment=TZ=UTC
+
+SyslogIdentifier=blocktol-dev
+
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

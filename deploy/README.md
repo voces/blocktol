@@ -30,9 +30,9 @@ The same holds for the box-level backup and journald files described under
 - Service account `ubuntu`, home `/home/ubuntu`, checkout
   `/home/ubuntu/blocktol`.
 - deno binary: `/home/ubuntu/.deno/bin/deno`.
-- **Port 3040** (free). Do NOT reuse the occupied ports: 3017 (st2mr), 3020
-  (w3xio/dapi), 3030 (emoji-sheep-tag / est.w3x.io), 3626 (w3x.io main + the
-  `/sql` proxy), 3627 (katma).
+- **Port 3040** (prod) and **3041** (the dev instance). Do NOT reuse the
+  occupied ports: 3017 (st2mr), 3020 (w3xio/dapi), 3030 (emoji-sheep-tag /
+  est.w3x.io), 3626 (w3x.io main + the `/sql` proxy), 3627 (katma).
 - The `/sql` proxy is co-located, reachable locally at
   `http://127.0.0.1:3626/sql` (w3x.io's nginx `location /` proxies to 3626).
 
@@ -146,6 +146,122 @@ With the service healthy and the apex cert pre-issued (step 6):
    then delete the Deno `_acme-challenge.blocktol.com` CNAME permanently.
 4. **Disconnect the Deno Deploy GitHub integration** (app.deno.com) so the two
    don't both deploy on push to `prod`.
+
+## Dev instance
+
+A second, long-lived instance on this box serves `dev.blocktol.com` against the
+`blocktol-dev` database, replacing the Deno Deploy branch previews (#227). It is
+**one** instance, not one per branch: every push to a branch other than `prod`
+deploys that commit (`.github/workflows/deploy-dev.yml` → w3xio's `/deploy` with
+`app:"blocktol-dev"` → `blocktol-dev-deploy`), so dev runs the most recent push,
+and its boot applies that commit's pending migrations to `blocktol-dev` — the
+same "a push is a deploy, and a deploy migrates" rule the previews had. A
+migration from a branch that is later dropped stays applied, as before
+(`server/db/CLAUDE.md`).
+
+Unlike a preview, it runs both crons (`DISABLE_CRONS` unset): it is the only
+long-lived writer on `blocktol-dev`, so dev gets its dailies generated and rated
+on schedule rather than only on demand.
+
+- **Checkout:** `/home/ubuntu/blocktol-dev` (detached at the deployed commit).
+- **Unit:** `blocktol-dev.service` (template `deploy/blocktol-dev.service`),
+  port 3041, journal tag `blocktol-dev`.
+- **Vhost:** `/etc/nginx/sites-enabled/blocktol-dev.conf` (template
+  `deploy/blocktol-dev.nginx.conf`), its own rate-limit zone `blocktol_dev_api`
+  (in `blocktol-ratelimit.conf`), `X-Robots-Tag: noindex`.
+- **Deploy script:** `/usr/local/bin/blocktol-dev-deploy <sha>` (template
+  `deploy/blocktol-dev-deploy`).
+
+Setup, in order:
+
+1. **Preconditions.** Confirm port 3041 is free (`ss -ltn | grep 3041` prints
+   nothing). Add a DNS `A` record `dev.blocktol.com` → this box (IPv4 only, no
+   `AAAA`, as for the apex); certbot's HTTP-01 check in step 6 needs it
+   resolving.
+
+2. **Clone + build** as `ubuntu`:
+   ```bash
+   git clone https://github.com/voces/blocktol /home/ubuntu/blocktol-dev
+   cd /home/ubuntu/blocktol-dev && git checkout --detach origin/prod
+   deno task build
+   ```
+
+3. **Env file** `/home/ubuntu/blocktol-dev/.env` (chmod 600):
+   ```
+   PORT=3041
+   APP_ENV=dev
+   SQL_PASSWORD=...          # the blocktol-dev MySQL user's, not prod's
+   SQL_PROXY_URL=http://127.0.0.1:3626/sql
+   VAPID_PUBLIC_KEY=...
+   VAPID_PRIVATE_KEY=...
+   VAPID_SUBJECT=...
+   DISCORD_ADMIN_WEBHOOK_URL=...
+   ```
+   - **VAPID:** copy the pair from the Deno Deploy project's dev environment
+     (app.deno.com), so the `push_subscription` rows already on `blocktol-dev`
+     keep working; a new pair silently invalidates them (see `server/CLAUDE.md`,
+     Environment variables).
+   - **Discord:** never prod's `DISCORD_RESULTS_WEBHOOK_URL` — dev's crons post
+     daily results, and players would see them. Use a dev channel's webhook as
+     `DISCORD_ADMIN_WEBHOOK_URL` (results fall back to it, footer-tagged
+     `blocktol:dev`), or leave both unset to make the posts no-ops.
+   - **Telemetry** (optional): the same OTel vars as prod with
+     `OTEL_SERVICE_NAME=blocktol-dev`, so dev's traces and logs don't mix with
+     prod's.
+
+4. **systemd.** Copy `deploy/blocktol-dev.service` to
+   `/etc/systemd/system/blocktol-dev.service`, then
+   `sudo systemctl daemon-reload && sudo systemctl enable --now blocktol-dev`.
+   `journalctl -u blocktol-dev -n 20` shows `listening` with port 3041.
+
+5. **Deploy script + sudoers.** As root:
+   ```bash
+   install -m 755 deploy/blocktol-dev-deploy /usr/local/bin/blocktol-dev-deploy
+   ```
+   The script runs as the user that runs prod's deploy, so give it write access
+   to `/home/ubuntu/blocktol-dev` the same way prod's checkout is, and add
+   beside prod's rule:
+   ```
+   <w3xio-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart blocktol-dev
+   ```
+
+6. **nginx + TLS.** Install the updated `deploy/blocktol-ratelimit.conf` over
+   `/etc/nginx/conf.d/blocktol-ratelimit.conf` (it adds the dev zone) and
+   `deploy/blocktol-dev.nginx.conf` as
+   `/etc/nginx/sites-enabled/blocktol-dev.conf`, then
+   `sudo nginx -t && sudo systemctl reload nginx` and
+   `sudo certbot --nginx -d dev.blocktol.com`. A new name has no live traffic,
+   so the HTTP-01 flow is fine here (the apex's DNS-01 dance doesn't apply).
+
+7. **w3xio.** Teach `/deploy` the app `blocktol-dev`: for
+   `{app:"blocktol-dev", version:<sha>}`, run
+   `/usr/local/bin/blocktol-dev-deploy <sha>` and report a non-zero exit the way
+   a failed prod deploy is reported. It reuses the same `DEPLOY_SECRET` and
+   webhook URL; prod's handling is unchanged.
+
+8. **Verify by hand**, as the deploy user:
+   `blocktol-dev-deploy "$(git -C /home/ubuntu/blocktol-dev rev-parse origin/prod)"`,
+   then `curl -sS https://dev.blocktol.com/health` (200) and
+   `curl -sSI https://dev.blocktol.com/ | grep -i x-robots-tag`.
+
+9. **Turn it on.** Set the repository variable `DEV_DEPLOY` to `true` (GitHub →
+   Settings → Secrets and variables → Actions → Variables). Push any branch and
+   confirm the Deploy dev run succeeds and `journalctl -u blocktol-dev` shows
+   the restart at that commit.
+
+**Retiring the previews.** Until the Deno Deploy integration is disconnected,
+each push migrates `blocktol-dev` twice (preview and dev instance); a version
+already applied doesn't re-run, so that is harmless. Once the dev instance has
+taken a few pushes cleanly, disconnect the integration in app.deno.com, then
+finish #227 in the code (the `deploy` block in `deno.jsonc`, the Deploy-only
+paths, and the push-is-a-deploy text in the `CLAUDE.md` files).
+
+## Operating dev
+
+- Logs: `journalctl -u blocktol-dev -f`
+- Redeploy a commit: `blocktol-dev-deploy <sha>` as the deploy user, or run the
+  Deploy dev workflow on a branch (Actions → Deploy dev → Run workflow).
+- Pause dev deploys: set `DEV_DEPLOY` to anything but `true`.
 
 ## Backups
 
