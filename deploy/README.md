@@ -197,7 +197,7 @@ Setup, in order:
    ```bash
    git clone https://github.com/voces/blocktol /home/ubuntu/blocktol-dev
    cd /home/ubuntu/blocktol-dev && git checkout --detach origin/prod
-   deno task build
+   ./deploy/build             # what each deploy runs; generates public/js/*
    ```
 
 3. **Env file** `/home/ubuntu/blocktol-dev/.env` (chmod 600):
