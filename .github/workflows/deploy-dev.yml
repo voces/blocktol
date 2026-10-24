@@ -1,39 +1,91 @@
 name: Deploy dev
 
-# Deploys every pushed branch (except `prod`, which deploy.yml owns) to the dev
-# instance on the EC2 cohost: it POSTs `{app:"blocktol-dev", version:<sha>}` to
-# w3xio's /deploy webhook, which runs deploy/blocktol-dev-deploy. Dev is ONE
-# instance, so the most recent push is what dev runs, and its boot applies that
-# commit's pending migrations to blocktol-dev. No CI gate: a branch is deployed
-# to be tried before review, as the Deno Deploy previews were. Off until the
-# DEV_DEPLOY repository variable is "true" (set it once the box side of "Dev
-# instance" in deploy/README.md is done), so pushes don't fail against a webhook
-# that doesn't know the app yet.
+# Deploys to the dev instance on the EC2 cohost: it POSTs
+# `{app:"blocktol-dev", version:<sha>}` to w3xio's /deploy webhook, which runs
+# deploy/blocktol-dev-deploy, and the instance's boot applies that commit's
+# pending migrations to blocktol-dev. Two ways a commit gets there:
+#
+# - prod's tip, automatically, whenever deploy.yml would deploy it to prod, so
+#   dev stays current with no one acting.
+# - a PR's head, only when a person approves its waiting `pr` job. The `dev`
+#   environment requires a reviewer (Settings → Environments), so a push alone
+#   never deploys and never migrates dev.
+#
+# Dev is ONE instance: it runs whichever of these deployed last. Off until the
+# DEV_DEPLOY repository variable is "true" (the last step of "Dev instance" in
+# deploy/README.md), so nothing calls a webhook that doesn't know the app yet.
 on:
-  push:
-    branches-ignore: [prod]
-  workflow_dispatch:
-
-# A newer push replaces a queued or running one; the box serializes the deploys
-# themselves (blocktol-dev-deploy's lock).
-concurrency:
-  group: deploy-dev
-  cancel-in-progress: true
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [prod]
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-    # A branch deletion is a push event too, with no commit to deploy.
-    if: ${{ vars.DEV_DEPLOY == 'true' && !github.event.deleted }}
+  pr:
+    # A fork's PR gets no secrets, and its code must not reach dev anyway.
+    if: >-
+      ${{ vars.DEV_DEPLOY == 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://dev.blocktol.com
+    # A newer push to the same PR replaces its waiting job, so what you approve
+    # is the PR's current head. Other PRs' jobs are untouched.
+    concurrency:
+      group: deploy-dev-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Notify deploy webhook
         if: env.DEPLOY_WEBHOOK_URL
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"app\": \"blocktol-dev\", \"version\": \"$SHA\"}"
+
+  prod-tip:
+    # The same gate as deploy.yml: a successful CI run of a push to this repo's
+    # prod. No environment, so it never waits for approval.
+    if: >-
+      ${{ vars.DEV_DEPLOY == 'true' &&
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-dev-prod
+      cancel-in-progress: false
+    steps:
+      # As in deploy.yml: an older merge's CI finishing last must not roll dev
+      # back.
+      - name: Skip unless this is prod's tip
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tip=$(gh api "repos/${{ github.repository }}/commits/prod" --jq .sha)
+          if [ "$tip" = "$SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SHA is not prod's tip ($tip); its own run deploys it"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Notify deploy webhook
+        if: env.DEPLOY_WEBHOOK_URL && steps.tip.outputs.current == 'true'
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
