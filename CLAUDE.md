@@ -29,6 +29,12 @@ There is no step between `git push` and a database:
 - **Merging to `prod`** deploys the EC2 instance (`deploy.yml`), which applies
   the same migrations to the **production** database on boot.
 
+The **dev instance** on the EC2 box (`deploy/README.md` "Dev instance") takes
+over from the previews, and does not deploy on push: it follows `prod`'s tip,
+and a PR reaches it (migrations included) only when a person approves that PR's
+waiting Deploy dev job. Once the previews are retired, pushing a branch runs no
+migration anywhere.
+
 So a migration is live on dev the moment its branch is pushed, before review,
 and can't be taken back by deleting the branch. Before pushing one: make sure
 its version number isn't also taken by another open branch (two branches' v17s
