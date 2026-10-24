@@ -1,8 +1,8 @@
 name: Deploy dev
 
 # Deploys to the dev instance on the EC2 cohost: it POSTs
-# `{app:"blocktol-dev", version:<sha>}` to w3xio's /deploy webhook, which runs
-# deploy/blocktol-dev-deploy, and the instance's boot applies that commit's
+# `{app:"blocktol-dev", version:<sha>}` to w3xio's /deploy webhook (its
+# `blocktol-dev` app), and the instance's boot applies that commit's
 # pending migrations to blocktol-dev. Two ways a commit gets there:
 #
 # - prod's tip, automatically, whenever deploy.yml would deploy it to prod, so
