@@ -150,14 +150,22 @@ With the service healthy and the apex cert pre-issued (step 6):
 ## Dev instance
 
 A second, long-lived instance on this box serves `dev.blocktol.com` against the
-`blocktol-dev` database, replacing the Deno Deploy branch previews (#227). It is
-**one** instance, not one per branch: every push to a branch other than `prod`
-deploys that commit (`.github/workflows/deploy-dev.yml` → w3xio's `/deploy` with
-`app:"blocktol-dev"` → `blocktol-dev-deploy`), so dev runs the most recent push,
-and its boot applies that commit's pending migrations to `blocktol-dev` — the
-same "a push is a deploy, and a deploy migrates" rule the previews had. A
-migration from a branch that is later dropped stays applied, as before
-(`server/db/CLAUDE.md`).
+`blocktol-dev` database, replacing the Deno Deploy branch previews (#227).
+`.github/workflows/deploy-dev.yml` deploys to it (→ w3xio's `/deploy` with
+`app:"blocktol-dev"` → `blocktol-dev-deploy`), and its boot applies the deployed
+commit's pending migrations to `blocktol-dev`. A commit gets there two ways:
+
+- **`prod`'s tip, automatically**, on the same trigger that deploys it to prod.
+  This is dev's resting state.
+- **A PR's head, only when a person approves it.** Every PR's run has a `pr` job
+  that waits on the `dev` environment's required reviewer; approve it (the run
+  page → Review deployments) to put that commit on dev. A newer push to the PR
+  replaces its waiting job. A push alone never deploys and never migrates dev.
+
+It is **one** instance: dev runs whichever of the two deployed last, and the
+next merge returns it to `prod`'s tip. A migration from an approved PR that is
+later dropped stays applied to `blocktol-dev` (`server/db/CLAUDE.md`), so
+approve a PR carrying a migration only when that is acceptable.
 
 Unlike a preview, it runs both crons (`DISABLE_CRONS` unset): it is the only
 long-lived writer on `blocktol-dev`, so dev gets its dailies generated and rated
@@ -244,23 +252,29 @@ Setup, in order:
    then `curl -sS https://dev.blocktol.com/health` (200) and
    `curl -sSI https://dev.blocktol.com/ | grep -i x-robots-tag`.
 
-9. **Turn it on.** Set the repository variable `DEV_DEPLOY` to `true` (GitHub →
-   Settings → Secrets and variables → Actions → Variables). Push any branch and
-   confirm the Deploy dev run succeeds and `journalctl -u blocktol-dev` shows
-   the restart at that commit.
+9. **GitHub environment.** Settings → Environments → New environment `dev`;
+   under Deployment protection rules tick **Required reviewers** and add
+   yourself (leave "Prevent self-review" off, so you can approve your own PRs).
+   This is what makes a PR's deploy wait; without it every PR push deploys.
+
+10. **Turn it on.** Set the repository variable `DEV_DEPLOY` to `true` (GitHub →
+    Settings → Secrets and variables → Actions → Variables). Then check both
+    paths: on an open PR, approve its waiting Deploy dev job, and after the next
+    merge, confirm the `prod-tip` job ran; each time
+    `journalctl -u blocktol-dev` shows the restart at that commit.
 
 **Retiring the previews.** Until the Deno Deploy integration is disconnected,
-each push migrates `blocktol-dev` twice (preview and dev instance); a version
-already applied doesn't re-run, so that is harmless. Once the dev instance has
-taken a few pushes cleanly, disconnect the integration in app.deno.com, then
-finish #227 in the code (the `deploy` block in `deno.jsonc`, the Deploy-only
-paths, and the push-is-a-deploy text in the `CLAUDE.md` files).
+every push still migrates `blocktol-dev` through its preview. Once the dev
+instance has taken a few deploys cleanly, disconnect the integration in
+app.deno.com, then finish #227 in the code (the `deploy` block in `deno.jsonc`,
+the Deploy-only paths, and the push-is-a-deploy text in the `CLAUDE.md` files).
 
 ## Operating dev
 
 - Logs: `journalctl -u blocktol-dev -f`
-- Redeploy a commit: `blocktol-dev-deploy <sha>` as the deploy user, or run the
-  Deploy dev workflow on a branch (Actions → Deploy dev → Run workflow).
+- Put a PR on dev: approve its waiting Deploy dev job. Back to `prod`'s tip:
+  re-run the latest `prod-tip` job, or wait for the next merge.
+- Deploy a commit by hand: `blocktol-dev-deploy <sha>` as the deploy user.
 - Pause dev deploys: set `DEV_DEPLOY` to anything but `true`.
 
 ## Backups
