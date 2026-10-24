@@ -2,9 +2,9 @@
 # Nothing reads this file live — the authoritative copy is
 # /etc/systemd/system/blocktol-dev.service, copied from here (see "Dev instance"
 # in deploy/README.md). It mirrors blocktol.service with its own checkout, env
-# file, port and journal tag; keep the two in step. `blocktol-deploy` (deploy/)
-# restarts it after each dev deploy, and boot applies the checkout's pending
-# migrations to blocktol-dev.
+# file, port and journal tag; keep the two in step. w3xio's /deploy restarts it
+# after each dev deploy, and boot applies the checkout's pending migrations to
+# blocktol-dev.
 [Unit]
 Description=Blocktol dev (Deno server)
 After=network-online.target

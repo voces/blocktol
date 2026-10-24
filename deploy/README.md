@@ -152,8 +152,10 @@ With the service healthy and the apex cert pre-issued (step 6):
 A second, long-lived instance on this box serves `dev.blocktol.com` against the
 `blocktol-dev` database, replacing the Deno Deploy branch previews (#227).
 `.github/workflows/deploy-dev.yml` deploys to it (→ w3xio's `/deploy` with
-`app:"blocktol-dev"` → `blocktol-dev-deploy`), and its boot applies the deployed
-commit's pending migrations to `blocktol-dev`. A commit gets there two ways:
+`app:"blocktol-dev"`, whose entry in w3xio's `src/api/routes/deploy.ts` fetches,
+checks out the commit, runs `deno task build` and restarts `blocktol-dev`), and
+its boot applies the deployed commit's pending migrations to `blocktol-dev`. A
+commit gets there two ways:
 
 - **`prod`'s tip, automatically**, on the same trigger that deploys it to prod.
   This is dev's resting state.
@@ -177,8 +179,9 @@ on schedule rather than only on demand.
 - **Vhost:** `/etc/nginx/sites-enabled/blocktol-dev.conf` (template
   `deploy/blocktol-dev.nginx.conf`), its own rate-limit zone `blocktol_dev_api`
   (in `blocktol-ratelimit.conf`), `X-Robots-Tag: noindex`.
-- **Deploy script:** `/usr/local/bin/blocktol-dev-deploy <sha>` (template
-  `deploy/blocktol-dev-deploy`).
+- **Deploy:** w3xio's `blocktol-dev` app (checkout from `BLOCKTOL_DEV_DIR`,
+  default `/home/ubuntu/blocktol-dev`). w3xio runs one deploy per app at a time,
+  so an approved PR and a merge landing together don't interleave.
 
 Setup, in order:
 
@@ -222,13 +225,9 @@ Setup, in order:
    `sudo systemctl daemon-reload && sudo systemctl enable --now blocktol-dev`.
    `journalctl -u blocktol-dev -n 20` shows `listening` with port 3041.
 
-5. **Deploy script + sudoers.** As root:
-   ```bash
-   install -m 755 deploy/blocktol-dev-deploy /usr/local/bin/blocktol-dev-deploy
-   ```
-   The script runs as the user that runs prod's deploy, so give it write access
-   to `/home/ubuntu/blocktol-dev` the same way prod's checkout is, and add
-   beside prod's rule:
+5. **Checkout access + sudoers.** w3xio runs the dev deploy as the same user as
+   prod's, so give that user write access to `/home/ubuntu/blocktol-dev` the
+   same way prod's checkout is, and add beside prod's rule:
    ```
    <w3xio-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart blocktol-dev
    ```
@@ -241,15 +240,22 @@ Setup, in order:
    `sudo certbot --nginx -d dev.blocktol.com`. A new name has no live traffic,
    so the HTTP-01 flow is fine here (the apex's DNS-01 dance doesn't apply).
 
-7. **w3xio.** Teach `/deploy` the app `blocktol-dev`: for
-   `{app:"blocktol-dev", version:<sha>}`, run
-   `/usr/local/bin/blocktol-dev-deploy <sha>` and report a non-zero exit the way
-   a failed prod deploy is reported. It reuses the same `DEPLOY_SECRET` and
-   webhook URL; prod's handling is unchanged.
+7. **w3xio.** Deploy the w3xio version that knows the `blocktol-dev` app, and
+   set `BLOCKTOL_DEV_DIR` in its environment if the checkout isn't at the
+   default. It reuses the same `DEPLOY_SECRET` and webhook URL; prod's handling
+   is unchanged. A failed dev deploy is reported to the admin channel the same
+   way as prod's.
 
-8. **Verify by hand**, as the deploy user:
-   `blocktol-dev-deploy "$(git -C /home/ubuntu/blocktol-dev rev-parse origin/prod)"`,
-   then `curl -sS https://dev.blocktol.com/health` (200) and
+8. **Verify by hand**: send the webhook what the workflow will, with prod's
+   current tip:
+   ```bash
+   SHA=$(git -C /home/ubuntu/blocktol-dev rev-parse origin/prod)
+   curl -sf -X POST "https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>" \
+     -H "Content-Type: application/json" \
+     -d "{\"app\": \"blocktol-dev\", \"version\": \"$SHA\"}"
+   ```
+   (it answers once the restart is confirmed), then
+   `curl -sS https://dev.blocktol.com/health` (200) and
    `curl -sSI https://dev.blocktol.com/ | grep -i x-robots-tag`.
 
 9. **GitHub environment.** Settings → Environments → New environment `dev`;
@@ -274,7 +280,8 @@ the Deploy-only paths, and the push-is-a-deploy text in the `CLAUDE.md` files).
 - Logs: `journalctl -u blocktol-dev -f`
 - Put a PR on dev: approve its waiting Deploy dev job. Back to `prod`'s tip:
   re-run the latest `prod-tip` job, or wait for the next merge.
-- Deploy a commit by hand: `blocktol-dev-deploy <sha>` as the deploy user.
+- Deploy a commit by hand: the webhook call from setup step 8, with that
+  commit's sha.
 - Pause dev deploys: set `DEV_DEPLOY` to anything but `true`.
 
 ## Backups
