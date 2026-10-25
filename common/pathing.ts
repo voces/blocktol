@@ -107,7 +107,7 @@ const euclideanDistance = (s: Point, e: Point) =>
 // Canonical identity of a set of pieces: sorted geometry + thunder flag. Keys
 // PathSolver's result memo and cachedSolver's solvers.
 const placementKey = (
-  pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+  pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean | undefined }>>,
 ) => pieces.map((b) => `${b.thunder ? "t" : ""}${b.x},${b.y}`).sort().join(";");
 
 // Does this node path cross a 2x2 piece's inflated footprint, i.e. would adding
@@ -212,7 +212,9 @@ export class PathSolver {
   // Throws "invalid data" when a base block is out of bounds or overlaps
   // another block or the checkpoint cell.
   constructor(
-    baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+    baseBlocks: ReadonlyArray<
+      Readonly<Point & { thunder?: boolean | undefined }>
+    >,
     checkpoint: Point,
     start: Point = { x: 9, y: 19 },
     end: Point = { x: 10, y: 0 },
@@ -290,7 +292,7 @@ export class PathSolver {
   // `oneAddedShortcut`, which may return a different equally-short path
   // (cosmetic: without thunders duration depends on length alone).
   solve(
-    pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+    pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean | undefined }>>,
   ): Point[] | undefined {
     if (pieces.length === 0) {
       // The grid already is the base board.
@@ -348,7 +350,7 @@ export class PathSolver {
   // duration-exact on a thunder-free board. On real build streams ~27% of
   // placements skip the search. Returns null when no shortcut applies.
   private oneAddedShortcut(
-    pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+    pieces: ReadonlyArray<Readonly<Point & { thunder?: boolean | undefined }>>,
   ): { path: Point[] | undefined } | null {
     const thunderFree = !this.baseHasThunder &&
       !pieces.some((b) => b.thunder);
@@ -511,7 +513,9 @@ const solverCache = new Map<string, PathSolver>();
 const MAX_CACHED_SOLVERS = 32;
 
 export const cachedSolver = (
-  baseBlocks: ReadonlyArray<Readonly<Point & { thunder?: boolean }>>,
+  baseBlocks: ReadonlyArray<
+    Readonly<Point & { thunder?: boolean | undefined }>
+  >,
   checkpoint: Point,
 ): PathSolver => {
   // Thunder flags are in the key: `baseHasThunder` gates the reuse shortcut, so

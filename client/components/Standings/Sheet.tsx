@@ -91,7 +91,7 @@ const BoardRow = ({ row, sort }: { row: Row; sort: StandingsSort }) => {
 // board's viewed day and toggles daily/PB instantly (one response has both).
 export const StandingsSheet = (
   { iteration, isToday, onClose }: {
-    iteration?: number;
+    iteration?: number | undefined;
     isToday: boolean;
     onClose: () => void;
   },

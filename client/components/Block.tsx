@@ -12,7 +12,7 @@ export const Block = (
       | "game-thunder"
       | "placing-block"
       | "placing-error";
-    opacity?: number;
+    opacity?: number | undefined;
     size?: 1 | 2;
     style?: JSX.CSSProperties;
   },

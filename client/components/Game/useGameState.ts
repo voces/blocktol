@@ -85,7 +85,7 @@ export const useGameState = () => {
   // Transient implosion ghosts where a reverted (never-persisted) block
   // vanished. Each self-clears ~0.4s after spawn.
   const [implosions, setImplosions] = useState<
-    ReadonlyArray<Point & { id: number; thunder?: boolean }>
+    ReadonlyArray<Point & { id: number; thunder?: boolean | undefined }>
   >([]);
   // The iteration's full brick/power budget, set when the board loads (a
   // resumed run adds back what it placed). -1 until a board has loaded, which

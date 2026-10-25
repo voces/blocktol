@@ -41,7 +41,7 @@ export type FormatOptions = {
   min?: number;
   max?: number;
   // For server-rendered copy; omit on the client.
-  locale?: string;
+  locale?: string | undefined;
 };
 
 // A general ungrouped decimal (zoom multiplier, "~1.9k" rank). Defaults to

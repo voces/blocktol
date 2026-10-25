@@ -57,7 +57,9 @@ export const Board = (
     onSlow: (thunder: Point & { local?: boolean }) => void;
     date: number;
     // Optional: the intro board never reverts, so it has no ghosts.
-    implosions?: ReadonlyArray<Point & { id: number; thunder?: boolean }>;
+    implosions?: ReadonlyArray<
+      Point & { id: number; thunder?: boolean | undefined }
+    >;
   },
 ) => {
   // Board magnification while placing (touch); 1× disables it.

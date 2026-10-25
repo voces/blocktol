@@ -13,6 +13,9 @@
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
     "strict": true,
+    // An optional property that may also be set to undefined says so
+    // (`x?: T | undefined`), keeping "absent" and "undefined" apart.
+    "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,

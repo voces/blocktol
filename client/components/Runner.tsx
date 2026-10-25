@@ -20,7 +20,7 @@ export const Runner = (
     onSlow: (thunder: Point) => void;
     // Holds the walk and its clock; the run resumes at the time it left off.
     // Read through a ref so toggling never restarts the walk.
-    paused?: boolean;
+    paused?: boolean | undefined;
   },
 ) => {
   const [loc, setLoc] = useState(path[0]);

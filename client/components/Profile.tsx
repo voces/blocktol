@@ -239,8 +239,8 @@ const Stat = (
     value: h.JSX.Element | string;
     label: string;
     // What the figure is out of, under the label ("29 of 75 days").
-    sub?: string;
-    color?: string;
+    sub?: string | undefined;
+    color?: string | undefined;
   },
 ) => (
   <div class="profile-stat">
