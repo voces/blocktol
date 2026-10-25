@@ -1,4 +1,4 @@
-import { ExecResult, sql } from "./query.ts";
+import { type ExecResult, sql } from "./query.ts";
 
 // Data nothing reads, deleted in bounded batches by the hourly
 // ensure-iterations cron (util/retention.ts). Each call deletes at most `limit`

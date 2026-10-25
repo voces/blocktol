@@ -1,4 +1,4 @@
-import { h, JSX } from "preact";
+import { h, type JSX } from "preact";
 
 export const Block = (
   { x, y, color, opacity, style, size = 2 }: {

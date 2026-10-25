@@ -9,7 +9,7 @@ import {
 import { standing } from "../../../common/standing.ts";
 import { api } from "../../api.ts";
 import { showBoard } from "../../store/board.ts";
-import { DailyItem, dailyItems } from "../../store/dailyItems.ts";
+import { type DailyItem, dailyItems } from "../../store/dailyItems.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { t } from "../../util/t.ts";
 import { GameStateContext } from "./useGameState.ts";

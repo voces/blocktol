@@ -7,10 +7,10 @@ import {
   newGrid,
   pathDuration,
   PathSolver,
-  Slow,
+  type Slow,
 } from "./pathing.ts";
 import { offsets } from "./constants.ts";
-import { Point } from "./types.ts";
+import type { Point } from "./types.ts";
 
 test("pathDuration", async (t) => {
   const assertPathDuration = (

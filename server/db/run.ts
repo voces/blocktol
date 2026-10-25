@@ -1,4 +1,4 @@
-import { Point } from "../../common/types.ts";
+import type { Point } from "../../common/types.ts";
 import { deserializeRun, serializeRun } from "../util/run.ts";
 import { raw, sql, sqlOnce } from "./query.ts";
 

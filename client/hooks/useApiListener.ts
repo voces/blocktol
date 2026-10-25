@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/compat";
-import { api, MessageMap } from "../api.ts";
+import { api, type MessageMap } from "../api.ts";
 
 export const useApiListener = <Method extends keyof MessageMap>(
   method: Method,

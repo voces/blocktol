@@ -8,8 +8,8 @@ import {
   fetchStandings,
   setStandingsSort,
   standingsByKey,
-  StandingsData,
-  StandingsSort,
+  type StandingsData,
+  type StandingsSort,
   standingsSort,
   todayIteration,
 } from "../../store/standings.ts";

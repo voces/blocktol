@@ -1,5 +1,5 @@
 import { standing } from "../../common/standing.ts";
-import { Point } from "../../common/types.ts";
+import type { Point } from "../../common/types.ts";
 import {
   getIteration,
   getIterationOtherBest,

@@ -1,8 +1,8 @@
 import { useCallback, useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
 import { newGrid } from "../../../common/pathing.ts";
-import { api, MessageMap } from "../../api.ts";
-import { Point } from "../../../common/types.ts";
+import { api, type MessageMap } from "../../api.ts";
+import { type Point } from "../../../common/types.ts";
 import { standing } from "../../../common/standing.ts";
 import { useApiListener } from "../../hooks/useApiListener.ts";
 import { applyRun } from "../../store/dailyItems.ts";
@@ -19,7 +19,7 @@ import {
   setNewDailyRestage,
 } from "../../store/dailyRollover.ts";
 import {
-  BoardData,
+  type BoardData,
   boardSeq,
   ingestBoard,
   setBoardHandlers,

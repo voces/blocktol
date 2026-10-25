@@ -1,5 +1,5 @@
-import { ZodType } from "zod";
-import { AuthError, getUserId } from "../middleware/userid.ts";
+import type { ZodType } from "zod";
+import { type AuthError, getUserId } from "../middleware/userid.ts";
 
 // Builds one API handler entry `{ validation, handler }` for the `handlers`
 // registry in api.ts: `method(zodSchema, authed?)(fn)`. `api` validates the

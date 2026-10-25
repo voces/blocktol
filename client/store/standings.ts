@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals";
-import { api, MessageMap } from "../api.ts";
+import { api, type MessageMap } from "../api.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { storage } from "../util/storage.ts";
 import { keyedQuery } from "./query.ts";

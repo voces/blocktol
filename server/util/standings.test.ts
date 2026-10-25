@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
-import { buildStandings, FieldEntry } from "./standings.ts";
+import { buildStandings, type FieldEntry } from "./standings.ts";
 
 // A descending field where entry N's identity is just its position.
 const entry = (i: number, time: number): FieldEntry => ({

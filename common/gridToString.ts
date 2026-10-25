@@ -1,4 +1,4 @@
-import { Point } from "./types.ts";
+import type { Point } from "./types.ts";
 
 export const gridToString = (
   grid: boolean[][],

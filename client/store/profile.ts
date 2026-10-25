@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals";
-import { api, MessageMap } from "../api.ts";
+import { api, type MessageMap } from "../api.ts";
 import { keyedQuery } from "./query.ts";
 
 export type ProfileData = MessageMap["getProfile"];

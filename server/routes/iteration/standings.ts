@@ -21,7 +21,7 @@ import {
 } from "../../db/standings.ts";
 import { dailyParts } from "../../util/dailyParts.ts";
 import { LRUMap } from "../../util/LRUMap.ts";
-import { buildStandings, FieldEntry } from "../../util/standings.ts";
+import { buildStandings, type FieldEntry } from "../../util/standings.ts";
 import { method } from "../apiHelpers.ts";
 
 // "today" (from the caller's timezone), an iteration, or a calendar day (a

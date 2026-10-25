@@ -1,4 +1,4 @@
-import { api, MessageMap, primeFrom } from "../api.ts";
+import { api, type MessageMap, primeFrom } from "../api.ts";
 import { getTimeZone } from "../util/timeZone.ts";
 import { todayIteration } from "./standings.ts";
 

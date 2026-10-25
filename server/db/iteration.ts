@@ -1,7 +1,7 @@
-import { Point } from "../../common/types.ts";
+import type { Point } from "../../common/types.ts";
 import { memoize } from "../util/memoize.ts";
 import { NotFoundError } from "../util/UserError.ts";
-import { ExecResult, format, raw, sql, sqlOnce } from "./query.ts";
+import { type ExecResult, format, raw, sql, sqlOnce } from "./query.ts";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 

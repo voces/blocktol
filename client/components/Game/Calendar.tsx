@@ -12,7 +12,7 @@ import { standing } from "../../../common/standing.ts";
 import { showBoard, showDay } from "../../store/board.ts";
 import { newDailyAvailable, playNewDaily } from "../../store/dailyRollover.ts";
 import {
-  DailyItem,
+  type DailyItem,
   dailyItems,
   ensureMonth,
   oldestDaily,

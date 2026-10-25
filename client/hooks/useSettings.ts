@@ -3,9 +3,9 @@ import {
   defaultSettings,
   type Language,
   parseSettings,
-  Settings,
-  SettingsPatch,
-  Theme,
+  type Settings,
+  type SettingsPatch,
+  type Theme,
 } from "../../common/settings.ts";
 import { setDefaultLocale } from "../../common/format.ts";
 import { resolveCatalog } from "../../common/i18n.ts";

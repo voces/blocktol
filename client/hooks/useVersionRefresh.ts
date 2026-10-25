@@ -1,5 +1,5 @@
 import { useEffect } from "preact/compat";
-import { BoardPhase } from "../components/Game/useGameState.ts";
+import { type BoardPhase } from "../components/Game/useGameState.ts";
 import { claimReloadFor, staleServerSha } from "../store/version.ts";
 
 // Reload the tab once the server reports a different build than this bundle

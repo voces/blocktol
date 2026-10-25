@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { assertEquals } from "@std/assert";
-import { Player, project } from "./standings.ts";
+import { type Player, project } from "./standings.ts";
 
 // A player carrying both boards' values + timestamps. Defaults keep the two
 // boards' fields independent so a test can vary only what it's exercising.

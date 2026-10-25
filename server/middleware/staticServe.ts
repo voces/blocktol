@@ -1,7 +1,7 @@
 import { serveFile } from "@std/http/file-server";
 import { join, normalize } from "@std/path/posix";
 import { assets } from "../util/assets.ts";
-import { Handler } from "../util/Router.ts";
+import type { Handler } from "../util/Router.ts";
 
 // The shell / SW / manifest are precomputed (with `?v=` stamps injected) and
 // served no-cache, so a new asset hash reaches the client on its next visit.

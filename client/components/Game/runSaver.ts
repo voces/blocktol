@@ -3,8 +3,8 @@ import {
   TRACE_BATCH_MAX,
   type TraceEdit,
 } from "../../../common/runTrace.ts";
-import { Point } from "../../../common/types.ts";
-import { api, MessageMap, withKeepalive } from "../../api.ts";
+import { type Point } from "../../../common/types.ts";
+import { api, type MessageMap, withKeepalive } from "../../api.ts";
 
 // Serialized persistence for a ranked build. Every save carries the FULL local
 // maze, so only the newest matters: at most one updateRun is in flight and

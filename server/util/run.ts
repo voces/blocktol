@@ -1,4 +1,4 @@
-import { Point } from "../../common/types.ts";
+import type { Point } from "../../common/types.ts";
 
 export const serializeRun = (
   blocks: (Point & { thunder?: boolean; player?: boolean })[],

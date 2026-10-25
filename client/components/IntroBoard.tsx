@@ -1,15 +1,15 @@
-import { ComponentChildren, h } from "preact";
+import { type ComponentChildren, h } from "preact";
 import { Board } from "./Board.tsx";
 import { BrickIcon, PowerIcon } from "./Game/Hud.tsx";
 import {
-  CSSProperties,
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "preact/compat";
-import { Point } from "../../common/types.ts";
+import { type Point } from "../../common/types.ts";
 import { formatSeconds } from "../../common/format.ts";
 import { localRun } from "./Game/helpers.ts";
 import { runnerTime } from "./Game/interaction.ts";

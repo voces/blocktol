@@ -1,4 +1,4 @@
-import { Point } from "./types.ts";
+import type { Point } from "./types.ts";
 
 // The edit trace of a ranked attempt: how the maze was built, recorded for
 // solver review and never shown in the app. The client derives edits by diffing

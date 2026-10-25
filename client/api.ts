@@ -1,7 +1,7 @@
 import type { BlocktolApi } from "../common/api.ts";
 import { noteFailure, noteSuccess } from "./store/connection.ts";
 import { CLIENT_SHA, noteServerVersion } from "./store/version.ts";
-import { Emitter, emitter } from "./util/emitter.ts";
+import { type Emitter, emitter } from "./util/emitter.ts";
 import { getId } from "./util/id.ts";
 import { primePool } from "./util/primePool.ts";
 import { allowReport } from "./util/reportGate.ts";
@@ -122,8 +122,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // verdict: retryable methods retry it, and it feeds the connection tracker
 // rather than the error channel.
 export class TransportError extends Error {
-  constructor(message: string, readonly status: number) {
+  readonly status: number;
+  constructor(message: string, status: number) {
     super(message);
+    this.status = status;
   }
 }
 

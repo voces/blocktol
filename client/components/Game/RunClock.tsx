@@ -1,11 +1,11 @@
-import { Fragment, h, JSX } from "preact";
+import { Fragment, h, type JSX } from "preact";
 import { createPortal, useLayoutEffect, useRef, useState } from "preact/compat";
 import { formatSeconds } from "../../../common/format.ts";
 import { formatPercentile } from "../../../common/formatPercentile.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
 import { readableInk } from "../../../common/percentileColor.ts";
 import { t } from "../../util/t.ts";
-import { climbColor, scorePercent, Verdict } from "./verdict.ts";
+import { climbColor, scorePercent, type Verdict } from "./verdict.ts";
 
 /**
  * The free-play run clock, doubling as a verdict. It shows the run's final time

@@ -1,6 +1,6 @@
 import { SHA } from "../../common/version.ts";
 import { log } from "../util/logging.ts";
-import { Handler } from "../util/Router.ts";
+import type { Handler } from "../util/Router.ts";
 
 type LogData = {
   start: number;

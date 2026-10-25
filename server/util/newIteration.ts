@@ -1,6 +1,6 @@
 import { offsets } from "../../common/constants.ts";
 import { newGrid, pathDuration, PathSolver } from "../../common/pathing.ts";
-import { Point } from "../../common/types.ts";
+import type { Point } from "../../common/types.ts";
 import {
   createIteration,
   getDailyIterationId,

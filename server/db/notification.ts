@@ -1,10 +1,10 @@
-import {
+import type {
   DailyFinalData,
   LostTopData,
   Notification,
   NotificationKind,
 } from "../../common/notifications.ts";
-import { parseSettings, Settings } from "../../common/settings.ts";
+import { parseSettings, type Settings } from "../../common/settings.ts";
 import { sql } from "./query.ts";
 
 // A stored subscription's push fields (endpoint + keys), joined to its owner's

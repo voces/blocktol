@@ -4,9 +4,9 @@ import {
   cachedSolver,
   newGrid,
   pathDuration,
-  Slow,
+  type Slow,
 } from "../../../common/pathing.ts";
-import { Point } from "../../../common/types.ts";
+import { type Point } from "../../../common/types.ts";
 
 export type LocalRun = { path: Point[]; duration: number; slows: Slow[] };
 
