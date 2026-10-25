@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals, assertMatch } from "@std/assert";
 import {
   percentileBand,
@@ -25,7 +26,7 @@ const STOPS: [number, string][] = [
 ];
 
 for (const [p, hex] of STOPS) {
-  Deno.test(`percentileColor(${p}) ≈ ${hex}`, () => {
+  test(`percentileColor(${p}) ≈ ${hex}`, () => {
     const got = rgb(percentileColor(p));
     const want = rgb(hex);
     for (let c = 0; c < 3; c++) {
@@ -37,30 +38,30 @@ for (const [p, hex] of STOPS) {
   });
 }
 
-Deno.test("percentileColor clamps out-of-range input to the endpoints", () => {
+test("percentileColor clamps out-of-range input to the endpoints", () => {
   assertEquals(percentileColor(-1), percentileColor(0));
   assertEquals(percentileColor(2), percentileColor(1));
 });
 
-Deno.test("percentileColor always returns a valid #rrggbb", () => {
+test("percentileColor always returns a valid #rrggbb", () => {
   for (let p = 0; p <= 1.0001; p += 0.05) {
     assertMatch(percentileColor(p), /^#[0-9a-f]{6}$/);
   }
 });
 
-Deno.test("readableInk picks contrasting ink", () => {
+test("readableInk picks contrasting ink", () => {
   assertEquals(readableInk("#000000"), "#fff");
   assertEquals(readableInk("#ffffff"), "#1a1a1a");
 });
 
-Deno.test("standingColor curves the input before the ramp", () => {
+test("standingColor curves the input before the ramp", () => {
   // A full standing still lands on the ramp's top; other values use the gamma.
   assertEquals(standingColor(1), percentileColor(1));
   assertEquals(standingColor(0.5), percentileColor(0.5 ** STANDING_GAMMA));
   assertEquals(standingColor(0.9), percentileColor(0.9 ** STANDING_GAMMA));
 });
 
-Deno.test("standingBand curves before banding, and passes null through", () => {
+test("standingBand curves before banding, and passes null through", () => {
   assertEquals(standingBand(0.5), percentileBand(0.5 ** STANDING_GAMMA));
   assertEquals(standingBand(1), percentileBand(1));
   assertEquals(standingBand(null), percentileBand(null));

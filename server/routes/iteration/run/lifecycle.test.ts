@@ -1,3 +1,5 @@
+import { test } from "node:test";
+import { live } from "../../../db/liveTests.ts";
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { getDailyIteration, getIteration } from "../../../db/iteration.ts";
 import { sql } from "../../../db/query.ts";
@@ -17,7 +19,6 @@ import { updateRun } from "./update.ts";
 // window checks, transactions) that a fake can't emulate, so these run the REAL
 // handlers against the dev database. Each test plays as a throwaway user and
 // deletes it afterwards (runs cascade). Skipped without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 // Handlers read the user id the way extractUserId leaves it, so run that
 // middleware on the request.
@@ -122,10 +123,10 @@ const pastIteration = (() => {
   };
 })();
 
-Deno.test({
-  name: "a daily attempt records ranked and commits on build",
-  ignore: !live,
-  fn: async () => {
+test(
+  "a daily attempt records ranked and commits on build",
+  { skip: !live },
+  async () => {
     const user = await testUser();
     const req = authed(user);
     try {
@@ -156,220 +157,209 @@ Deno.test({
       await cleanup(user);
     }
   },
+);
+
+test("free play stays void through builds and moves; commits on execution", {
+  skip: !live,
+}, async () => {
+  const user = await testUser();
+  const req = authed(user);
+  try {
+    const iteration = await pastIteration();
+    const data = await getIteration(iteration);
+    const [c0, c1, c2] = freeCells(data, 3);
+
+    const started = await startRun.handler(
+      { iteration, timeZone: "UTC", block: c0 },
+      req,
+    );
+    assert(!("error" in started), "free-play start should succeed");
+
+    let rows = await runRows(user);
+    assertEquals(Number(rows[0].ranked), 0, "a past day is never ranked");
+    assertEquals(Number(rows[0].void), 1, "void until it executes");
+
+    // Build more, then MOVE a block (1a): a move must not commit the run.
+    await updateRun.handler({ iteration, blocks: [c0, c1] }, req);
+    await updateRun.handler({ iteration, blocks: [c0, c2] }, req);
+    rows = await runRows(user);
+    assertEquals(Number(rows[0].void), 1, "builds and moves never commit");
+    assertEquals(deserializeRun(rows[0].data).length, 2);
+
+    const committed = await commitRun.handler({ iteration }, req);
+    assert(!("error" in committed));
+    rows = await runRows(user);
+    assertEquals(Number(rows[0].void), 0, "execution commits");
+  } finally {
+    await cleanup(user);
+  }
 });
 
-Deno.test({
-  name: "free play stays void through builds and moves; commits on execution",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const req = authed(user);
-    try {
-      const iteration = await pastIteration();
-      const data = await getIteration(iteration);
-      const [c0, c1, c2] = freeCells(data, 3);
+test("commit-only free play inserts one non-void run with the server's time", {
+  skip: !live,
+}, async () => {
+  const user = await testUser();
+  const req = authed(user);
+  try {
+    const iteration = await pastIteration();
+    const data = await getIteration(iteration);
+    const cells = freeCells(data, 2);
+    const expected = validateRun(data, cells);
+    assert(expected.ok);
 
-      const started = await startRun.handler(
-        { iteration, timeZone: "UTC", block: c0 },
-        req,
-      );
-      assert(!("error" in started), "free-play start should succeed");
+    // The current client: the whole maze arrives at commit.
+    const committed = await commitRun.handler(
+      { iteration, blocks: cells, clientId: crypto.randomUUID() },
+      req,
+    );
+    assert(!("error" in committed), "commit-only free play should succeed");
 
-      let rows = await runRows(user);
-      assertEquals(Number(rows[0].ranked), 0, "a past day is never ranked");
-      assertEquals(Number(rows[0].void), 1, "void until it executes");
-
-      // Build more, then MOVE a block (1a): a move must not commit the run.
-      await updateRun.handler({ iteration, blocks: [c0, c1] }, req);
-      await updateRun.handler({ iteration, blocks: [c0, c2] }, req);
-      rows = await runRows(user);
-      assertEquals(Number(rows[0].void), 1, "builds and moves never commit");
-      assertEquals(deserializeRun(rows[0].data).length, 2);
-
-      const committed = await commitRun.handler({ iteration }, req);
-      assert(!("error" in committed));
-      rows = await runRows(user);
-      assertEquals(Number(rows[0].void), 0, "execution commits");
-    } finally {
-      await cleanup(user);
-    }
-  },
+    const rows = await runRows(user);
+    assertEquals(rows.length, 1, "one row, inserted at commit");
+    assertEquals(Number(rows[0].void), 0, "inserted already non-void");
+    assertEquals(Number(rows[0].ranked), 0, "free play is never ranked");
+    assertEquals(Number(rows[0].daily), 0, "free play never counts as daily");
+    assertEquals(
+      rows[0].time,
+      expected.duration,
+      "the server recomputes the time from the maze",
+    );
+    assertEquals(deserializeRun(rows[0].data).length, cells.length);
+  } finally {
+    await cleanup(user);
+  }
 });
 
-Deno.test({
-  name: "commit-only free play inserts one non-void run with the server's time",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const req = authed(user);
-    try {
-      const iteration = await pastIteration();
-      const data = await getIteration(iteration);
-      const cells = freeCells(data, 2);
-      const expected = validateRun(data, cells);
-      assert(expected.ok);
+test("commitRun returns the server-stored created so the run can be pinned", {
+  skip: !live,
+}, async () => {
+  const user = await testUser();
+  const req = authed(user);
+  try {
+    const iteration = await pastIteration();
+    const data = await getIteration(iteration);
+    const cells = freeCells(data, 2);
 
-      // The current client: the whole maze arrives at commit.
-      const committed = await commitRun.handler(
-        { iteration, blocks: cells, clientId: crypto.randomUUID() },
-        req,
-      );
-      assert(!("error" in committed), "commit-only free play should succeed");
+    // Commit the way the current client does.
+    const committed = await commitRun.handler(
+      { iteration, blocks: cells, clientId: crypto.randomUUID() },
+      req,
+    );
+    assert(!("error" in committed), "commit-only free play should succeed");
 
-      const rows = await runRows(user);
-      assertEquals(rows.length, 1, "one row, inserted at commit");
-      assertEquals(Number(rows[0].void), 0, "inserted already non-void");
-      assertEquals(Number(rows[0].ranked), 0, "free play is never ranked");
-      assertEquals(Number(rows[0].daily), 0, "free play never counts as daily");
-      assertEquals(
-        rows[0].time,
-        expected.duration,
-        "the server recomputes the time from the maze",
-      );
-      assertEquals(deserializeRun(rows[0].data).length, cells.length);
-    } finally {
-      await cleanup(user);
-    }
-  },
+    // The client shows the just-executed run optimistically before any
+    // refetch. For a pin on that row to persist, the commit must return the
+    // server-assigned `created` (the second-precision ms the pin query
+    // matches on), not a client Date.now() stamp.
+    assertExists(committed.created, "commit returns the run's created");
+    assertEquals(
+      committed.created % 1000,
+      0,
+      "the returned created is the DB's second-precision value",
+    );
+
+    // A millisecond-precision client stamp can't match the server's
+    // second-precision row, so the pin silently no-ops.
+    const clientStamp = committed.created + 123;
+    const stale = await setRunPinned.handler(
+      { iteration, created: [clientStamp], pinned: true },
+      req,
+    );
+    assert(!("error" in stale));
+    assertEquals(
+      await pinnedFlags(user),
+      [0],
+      "a mis-stamped pin matches no row",
+    );
+
+    // The created the commit returned matches exactly, so the pin lands.
+    const pinned = await setRunPinned.handler(
+      { iteration, created: [committed.created], pinned: true },
+      req,
+    );
+    assert(!("error" in pinned));
+    assertEquals(
+      await pinnedFlags(user),
+      [1],
+      "pinning with the server-returned created persists",
+    );
+  } finally {
+    await cleanup(user);
+  }
 });
 
-Deno.test({
-  name: "commitRun returns the server-stored created so the run can be pinned",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const req = authed(user);
-    try {
-      const iteration = await pastIteration();
-      const data = await getIteration(iteration);
-      const cells = freeCells(data, 2);
+test("a free-play commit is idempotent on client_id (deploy-retry safe)", {
+  skip: !live,
+}, async () => {
+  const user = await testUser();
+  const req = authed(user);
+  try {
+    const iteration = await pastIteration();
+    const data = await getIteration(iteration);
+    const [cell] = freeCells(data, 1);
+    const clientId = crypto.randomUUID();
 
-      // Commit the way the current client does.
-      const committed = await commitRun.handler(
-        { iteration, blocks: cells, clientId: crypto.randomUUID() },
-        req,
-      );
-      assert(!("error" in committed), "commit-only free play should succeed");
+    // The same commit twice (a retry after a dropped connection) leaves one
+    // row; a fresh id is a new run.
+    await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
+    await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
+    assertEquals(
+      (await runRows(user)).length,
+      1,
+      "a retried commit with the same id inserts nothing new",
+    );
 
-      // The client shows the just-executed run optimistically before any
-      // refetch. For a pin on that row to persist, the commit must return the
-      // server-assigned `created` (the second-precision ms the pin query
-      // matches on), not a client Date.now() stamp.
-      assertExists(committed.created, "commit returns the run's created");
-      assertEquals(
-        committed.created % 1000,
-        0,
-        "the returned created is the DB's second-precision value",
-      );
-
-      // A millisecond-precision client stamp can't match the server's
-      // second-precision row, so the pin silently no-ops.
-      const clientStamp = committed.created + 123;
-      const stale = await setRunPinned.handler(
-        { iteration, created: [clientStamp], pinned: true },
-        req,
-      );
-      assert(!("error" in stale));
-      assertEquals(
-        await pinnedFlags(user),
-        [0],
-        "a mis-stamped pin matches no row",
-      );
-
-      // The created the commit returned matches exactly, so the pin lands.
-      const pinned = await setRunPinned.handler(
-        { iteration, created: [committed.created], pinned: true },
-        req,
-      );
-      assert(!("error" in pinned));
-      assertEquals(
-        await pinnedFlags(user),
-        [1],
-        "pinning with the server-returned created persists",
-      );
-    } finally {
-      await cleanup(user);
-    }
-  },
+    await commitRun.handler(
+      { iteration, blocks: [cell], clientId: crypto.randomUUID() },
+      req,
+    );
+    assertEquals(
+      (await runRows(user)).length,
+      2,
+      "a different id is a new run",
+    );
+  } finally {
+    await cleanup(user);
+  }
 });
 
-Deno.test({
-  name: "a free-play commit is idempotent on client_id (deploy-retry safe)",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const req = authed(user);
-    try {
-      const iteration = await pastIteration();
-      const data = await getIteration(iteration);
-      const [cell] = freeCells(data, 1);
-      const clientId = crypto.randomUUID();
+test("a save after the window reports expired and persists nothing (1c)", {
+  skip: !live,
+}, async () => {
+  const user = await testUser();
+  const req = authed(user);
+  try {
+    const iteration = await pastIteration();
+    const data = await getIteration(iteration);
+    const [c0, c1] = freeCells(data, 2);
 
-      // The same commit twice (a retry after a dropped connection) leaves one
-      // row; a fresh id is a new run.
-      await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
-      await commitRun.handler({ iteration, blocks: [cell], clientId }, req);
-      assertEquals(
-        (await runRows(user)).length,
-        1,
-        "a retried commit with the same id inserts nothing new",
-      );
+    await startRun.handler({ iteration, timeZone: "UTC", block: c0 }, req);
+    await backdate(user, 120);
 
-      await commitRun.handler(
-        { iteration, blocks: [cell], clientId: crypto.randomUUID() },
-        req,
-      );
-      assertEquals(
-        (await runRows(user)).length,
-        2,
-        "a different id is a new run",
-      );
-    } finally {
-      await cleanup(user);
-    }
-  },
+    const late = await updateRun.handler(
+      { iteration, blocks: [c0, c1] },
+      req,
+    );
+    assert(
+      !("error" in late) && "expired" in late && late.expired,
+      "a post-window save must say so",
+    );
+
+    const rows = await runRows(user);
+    assertEquals(
+      deserializeRun(rows[0].data).length,
+      1,
+      "the expired save must not have persisted",
+    );
+  } finally {
+    await cleanup(user);
+  }
 });
 
-Deno.test({
-  name: "a save after the window reports expired and persists nothing (1c)",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const req = authed(user);
-    try {
-      const iteration = await pastIteration();
-      const data = await getIteration(iteration);
-      const [c0, c1] = freeCells(data, 2);
-
-      await startRun.handler({ iteration, timeZone: "UTC", block: c0 }, req);
-      await backdate(user, 120);
-
-      const late = await updateRun.handler(
-        { iteration, blocks: [c0, c1] },
-        req,
-      );
-      assert(
-        !("error" in late) && "expired" in late && late.expired,
-        "a post-window save must say so",
-      );
-
-      const rows = await runRows(user);
-      assertEquals(
-        deserializeRun(rows[0].data).length,
-        1,
-        "the expired save must not have persisted",
-      );
-    } finally {
-      await cleanup(user);
-    }
-  },
-});
-
-Deno.test({
-  name:
-    "resume finds the in-progress attempt even when an earlier one holds daily (1g)",
-  ignore: !live,
-  fn: async () => {
+test(
+  "resume finds the in-progress attempt even when an earlier one holds daily (1g)",
+  { skip: !live },
+  async () => {
     const user = await testUser();
     const req = authed(user);
     try {
@@ -410,12 +400,12 @@ Deno.test({
       await cleanup(user);
     }
   },
-});
+);
 
-Deno.test({
-  name: "the counted result always sits on the best ranked build",
-  ignore: !live,
-  fn: async () => {
+test(
+  "the counted result always sits on the best ranked build",
+  { skip: !live },
+  async () => {
     const user = await testUser();
     const req = authed(user);
     try {
@@ -450,12 +440,12 @@ Deno.test({
       await cleanup(user);
     }
   },
-});
+);
 
-Deno.test({
-  name: "near-simultaneous starts dedupe to one run (3b)",
-  ignore: !live,
-  fn: async () => {
+test(
+  "near-simultaneous starts dedupe to one run (3b)",
+  { skip: !live },
+  async () => {
     const user = await testUser();
     const req = authed(user);
     try {
@@ -467,13 +457,12 @@ Deno.test({
       await cleanup(user);
     }
   },
-});
+);
 
-Deno.test({
-  name:
-    "boot does not start the daily; an open run stays out of the panel (#98)",
-  ignore: !live,
-  fn: async () => {
+test(
+  "boot does not start the daily; an open run stays out of the panel (#98)",
+  { skip: !live },
+  async () => {
     const user = await testUser();
     const req = authed(user);
     try {
@@ -498,7 +487,7 @@ Deno.test({
       await cleanup(user);
     }
   },
-});
+);
 
 // The trace column of the user's runs, in runRows order.
 const traces = (user: string) =>
@@ -508,64 +497,62 @@ const traces = (user: string) =>
     WHERE user = ${user}
     ORDER BY created ASC, time ASC;`.then((r) => r.map((x) => x.trace));
 
-Deno.test({
-  name: "a ranked save appends its edit batch to the trace; free play has none",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const req = authed(user);
-    try {
-      const data = await getIteration(await todayDaily());
-      const [c0, c1] = freeCells(data, 2);
+test("a ranked save appends its edit batch to the trace; free play has none", {
+  skip: !live,
+}, async () => {
+  const user = await testUser();
+  const req = authed(user);
+  try {
+    const data = await getIteration(await todayDaily());
+    const [c0, c1] = freeCells(data, 2);
 
-      await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
-      await updateRun.handler({
-        iteration: data.iteration,
-        blocks: [c0],
-        trace: { p: "pg1", e: [[0, 800, "p", c0.x, c0.y]] },
-      }, req);
-      // A malformed trace still saves, and records a line without a batch.
-      const saved = await updateRun.handler({
-        iteration: data.iteration,
-        blocks: [c0, c1],
-        trace: { p: "pg1", e: [["bogus"]] },
-      }, req);
-      assert(!("error" in saved) && !("expired" in saved), "save must land");
+    await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
+    await updateRun.handler({
+      iteration: data.iteration,
+      blocks: [c0],
+      trace: { p: "pg1", e: [[0, 800, "p", c0.x, c0.y]] },
+    }, req);
+    // A malformed trace still saves, and records a line without a batch.
+    const saved = await updateRun.handler({
+      iteration: data.iteration,
+      blocks: [c0, c1],
+      trace: { p: "pg1", e: [["bogus"]] },
+    }, req);
+    assert(!("error" in saved) && !("expired" in saved), "save must land");
 
-      const lines = (await traces(user))[0]!.trim().split("\n").map((l) =>
-        JSON.parse(l)
-      );
-      assertEquals(lines.length, 2);
-      assert(lines[0].s >= 0 && lines[0].s < 61_000, "server ms since start");
-      assertEquals(lines[0].n, 1);
-      assertEquals(lines[0].p, "pg1");
-      assertEquals(lines[0].e, [[0, 800, "p", c0.x, c0.y]]);
-      assertEquals(lines[1].n, 2);
-      assertEquals(lines[1].p, undefined, "no usable batch");
+    const lines = (await traces(user))[0]!.trim().split("\n").map((l) =>
+      JSON.parse(l)
+    );
+    assertEquals(lines.length, 2);
+    assert(lines[0].s >= 0 && lines[0].s < 61_000, "server ms since start");
+    assertEquals(lines[0].n, 1);
+    assertEquals(lines[0].p, "pg1");
+    assertEquals(lines[0].e, [[0, 800, "p", c0.x, c0.y]]);
+    assertEquals(lines[1].n, 2);
+    assertEquals(lines[1].p, undefined, "no usable batch");
 
-      // A save after the window keeps the trace as it was.
-      await backdate(user, 120);
-      await updateRun.handler({
-        iteration: data.iteration,
-        blocks: [c0],
-        trace: { p: "pg1", e: [[1, 5, "d", c1.x, c1.y]] },
-      }, req);
-      assertEquals(
-        (await traces(user))[0]!.trim().split("\n").length,
-        2,
-        "an expired save appends nothing",
-      );
+    // A save after the window keeps the trace as it was.
+    await backdate(user, 120);
+    await updateRun.handler({
+      iteration: data.iteration,
+      blocks: [c0],
+      trace: { p: "pg1", e: [[1, 5, "d", c1.x, c1.y]] },
+    }, req);
+    assertEquals(
+      (await traces(user))[0]!.trim().split("\n").length,
+      2,
+      "an expired save appends nothing",
+    );
 
-      const past = await pastIteration();
-      const pastData = await getIteration(past);
-      const [f0] = freeCells(pastData, 1);
-      await startRun.handler(
-        { iteration: past, timeZone: "UTC", block: f0 },
-        req,
-      );
-      assertEquals((await traces(user))[1], null, "free play keeps no trace");
-    } finally {
-      await cleanup(user);
-    }
-  },
+    const past = await pastIteration();
+    const pastData = await getIteration(past);
+    const [f0] = freeCells(pastData, 1);
+    await startRun.handler(
+      { iteration: past, timeZone: "UTC", block: f0 },
+      req,
+    );
+    assertEquals((await traces(user))[1], null, "free play keeps no trace");
+  } finally {
+    await cleanup(user);
+  }
 });

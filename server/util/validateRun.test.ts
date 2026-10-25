@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import {
   type IterationShape,
@@ -14,14 +15,14 @@ const iteration: IterationShape = {
   blocks: [],
 };
 
-Deno.test("validateRun", async (t) => {
-  await t.step("a legal placement returns its computed duration", () => {
+test("validateRun", async (t) => {
+  await t.test("a legal placement returns its computed duration", () => {
     const r = validateRun(iteration, [{ x: 5, y: 5 }]);
     assertEquals(r.ok, true);
     if (r.ok) assertEquals(r.duration > 0, true);
   });
 
-  await t.step("more blocks than bricks is rejected", () => {
+  await t.test("more blocks than bricks is rejected", () => {
     const r = validateRun(iteration, [
       { x: 2, y: 2 },
       { x: 4, y: 4 },
@@ -31,7 +32,7 @@ Deno.test("validateRun", async (t) => {
     assertEquals(r, { ok: false, reason: "too many blocks" });
   });
 
-  await t.step("more thunders than power is rejected", () => {
+  await t.test("more thunders than power is rejected", () => {
     const r = validateRun(iteration, [
       { x: 2, y: 2, thunder: true },
       { x: 4, y: 4, thunder: true },
@@ -39,7 +40,7 @@ Deno.test("validateRun", async (t) => {
     assertEquals(r, { ok: false, reason: "too many slows" });
   });
 
-  await t.step("overlapping pieces are an invalid path", () => {
+  await t.test("overlapping pieces are an invalid path", () => {
     const r = validateRun(iteration, [{ x: 5, y: 5 }, { x: 5, y: 5 }]);
     assertEquals(r, { ok: false, reason: "invalid path" });
   });
@@ -52,7 +53,7 @@ Deno.test("validateRun", async (t) => {
   };
   const invalid: RunValidation = { ok: false, reason: "invalid path" };
 
-  await t.step("the placeable range's edges are legal", () => {
+  await t.test("the placeable range's edges are legal", () => {
     for (const p of [{ x: 1, y: 1 }, { x: 17, y: 17 }, { x: 1, y: 17 }]) {
       assertEquals(validateRun(withBlock, [p]).ok, true, JSON.stringify(p));
     }
@@ -60,14 +61,14 @@ Deno.test("validateRun", async (t) => {
 
   // Fractional / off-grid coordinates read `undefined` (free) in the solver's
   // grid, so without the whole-cell check each of these would validate.
-  await t.step("a fractional piece is an invalid path", () => {
+  await t.test("a fractional piece is an invalid path", () => {
     // Half over the fixed block at (4,4).
     assertEquals(validateRun(withBlock, [{ x: 4.5, y: 4 }]), invalid);
     // Half inside the left border.
     assertEquals(validateRun(withBlock, [{ x: 0.5, y: 10 }]), invalid);
   });
 
-  await t.step("an off-board piece is an invalid path", () => {
+  await t.test("an off-board piece is an invalid path", () => {
     for (
       const p of [
         { x: 50, y: 5 },
@@ -82,27 +83,27 @@ Deno.test("validateRun", async (t) => {
     ) assertEquals(validateRun(withBlock, [p]), invalid, JSON.stringify(p));
   });
 
-  await t.step("overlapping fractional pieces are an invalid path", () => {
+  await t.test("overlapping fractional pieces are an invalid path", () => {
     assertEquals(
       validateRun(withBlock, [{ x: 6.5, y: 3 }, { x: 6.6, y: 3 }]),
       invalid,
     );
   });
 
-  await t.step("a duplicate piece is an invalid path", () => {
+  await t.test("a duplicate piece is an invalid path", () => {
     assertEquals(
       validateRun(withBlock, [{ x: 8, y: 8 }, { x: 8, y: 8, thunder: true }]),
       invalid,
     );
   });
 
-  await t.step("a piece on or overlapping a fixed block is invalid", () => {
+  await t.test("a piece on or overlapping a fixed block is invalid", () => {
     for (const p of [{ x: 4, y: 4 }, { x: 3, y: 3 }, { x: 5, y: 4 }]) {
       assertEquals(validateRun(withBlock, [p]), invalid, JSON.stringify(p));
     }
   });
 
-  await t.step("a piece over the checkpoint cell is invalid", () => {
+  await t.test("a piece over the checkpoint cell is invalid", () => {
     // Checkpoint 9.5,9.5 holds cell (10,10); any footprint covering it.
     for (const p of [{ x: 9, y: 9 }, { x: 10, y: 10 }, { x: 10, y: 9 }]) {
       assertEquals(validateRun(withBlock, [p]), invalid, JSON.stringify(p));
@@ -112,7 +113,7 @@ Deno.test("validateRun", async (t) => {
   // Start (9,19) and end (10,0) sit in the border ring's gaps (rows 19 and 0),
   // which the 1..17 anchor range can't reach; the nearest legal piece seals the
   // gap from inside, which leaves no route.
-  await t.step("sealing the start or end gap is invalid", () => {
+  await t.test("sealing the start or end gap is invalid", () => {
     assertEquals(validateRun(withBlock, [{ x: 9, y: 1 }]), invalid);
     assertEquals(validateRun(withBlock, [{ x: 9, y: 17 }]), invalid);
   });

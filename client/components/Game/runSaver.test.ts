@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import {
   beginRunTrace,
@@ -64,7 +65,7 @@ setRunSaverHandlers({
   onRejected: () => {},
 });
 
-Deno.test("trace: each save carries only the edits not yet confirmed", () =>
+test("trace: each save carries only the edits not yet confirmed", () =>
   withServer(async (sent) => {
     beginRunTrace([a]);
     saveRun({ iteration: 1, blocks: [a, b] }, 0);
@@ -79,7 +80,7 @@ Deno.test("trace: each save carries only the edits not yet confirmed", () =>
     assert(i1 > i0, "indexes count up within the page");
   }));
 
-Deno.test("trace: saves coalesced behind one in flight keep every edit", () =>
+test("trace: saves coalesced behind one in flight keep every edit", () =>
   withServer(async (sent) => {
     beginRunTrace([]);
     saveRun({ iteration: 1, blocks: [a] }, 0);
@@ -91,7 +92,7 @@ Deno.test("trace: saves coalesced behind one in flight keep every edit", () =>
     assertEquals(edits(sent[1]), [["p", 4, 4], ["p", 6, 6]]);
   }));
 
-Deno.test("trace: a rejected save's edits are dropped with the revert", () =>
+test("trace: a rejected save's edits are dropped with the revert", () =>
   withServer(async (sent) => {
     beginRunTrace([a]);
     saveRun({ iteration: 1, blocks: [a, b] }, 0);
@@ -102,7 +103,7 @@ Deno.test("trace: a rejected save's edits are dropped with the revert", () =>
     assertEquals(edits(sent[1]), [["p", 6, 6]]);
   }));
 
-Deno.test("trace: nothing is recorded outside a ranked attempt", () =>
+test("trace: nothing is recorded outside a ranked attempt", () =>
   withServer(async (sent) => {
     saveRun({ iteration: 1, blocks: [a] }, 0);
     assertEquals(sent[0].body.trace, undefined);

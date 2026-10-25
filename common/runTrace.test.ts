@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { diffMaze } from "./runTrace.ts";
 
-Deno.test("diffMaze reads each gesture as its edit", () => {
+test("diffMaze reads each gesture as its edit", () => {
   const a = { x: 2, y: 2 };
   const b = { x: 4, y: 2 };
   assertEquals(diffMaze([], [a]), [["p", 2, 2]]);
@@ -15,7 +16,7 @@ Deno.test("diffMaze reads each gesture as its edit", () => {
   assertEquals(diffMaze([a, b], [b, a]), []);
 });
 
-Deno.test("diffMaze reports a multi-piece change piece by piece", () => {
+test("diffMaze reports a multi-piece change piece by piece", () => {
   const a = { x: 2, y: 2 };
   const b = { x: 4, y: 2 };
   const c = { x: 6, y: 2 };

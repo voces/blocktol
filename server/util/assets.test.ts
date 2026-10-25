@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { immutableFor, stampAssets, VersionMap } from "./assets.ts";
 
@@ -16,7 +17,7 @@ const sources = {
     `let ASSET_VERSION = "dev";\nlet PRECACHE = ["/"];\nlet ICON = "/favicon.svg";\nlet VAPID_PUBLIC_KEY = "";\n/* __ASSET_MANIFEST__ */\nconst C = ASSET_VERSION;`,
 };
 
-Deno.test("stamps ?v= onto the shell's fingerprinted refs, leaves manifest link", () => {
+test("stamps ?v= onto the shell's fingerprinted refs, leaves manifest link", () => {
   const { shell } = stampAssets(sources, version);
   assert(shell.includes('href="/styles.css?v=bbbb22"'));
   assert(shell.includes('href="/fonts/fonts.css?v=dddd44"'));
@@ -26,7 +27,7 @@ Deno.test("stamps ?v= onto the shell's fingerprinted refs, leaves manifest link"
   assert(shell.includes('href="/manifest.webmanifest"'));
 });
 
-Deno.test("versions the manifest icon", () => {
+test("versions the manifest icon", () => {
   const { manifest } = stampAssets(sources, version);
   assertEquals(
     manifest,
@@ -34,7 +35,7 @@ Deno.test("versions the manifest icon", () => {
   );
 });
 
-Deno.test("fills the SW marker with version, precache, and icon", () => {
+test("fills the SW marker with version, precache, and icon", () => {
   const { sw } = stampAssets(sources, version);
   assert(!sw.includes("__ASSET_MANIFEST__"), "marker should be replaced");
   // Build id changes whenever any fingerprinted asset changes.
@@ -48,21 +49,21 @@ Deno.test("fills the SW marker with version, precache, and icon", () => {
   assert(sw.includes('"/index.html"'));
 });
 
-Deno.test("injects the VAPID public key so the SW can re-subscribe alone", () => {
+test("injects the VAPID public key so the SW can re-subscribe alone", () => {
   // `pushsubscriptionchange` fires with no page open, so the SW can't fetch the
   // key from /api/pushConfig — it has to be baked in (see public/sw.js).
   const { sw } = stampAssets(sources, version, "BKd0F0RQ");
   assert(sw.includes('VAPID_PUBLIC_KEY = "BKd0F0RQ";'));
 });
 
-Deno.test("an unconfigured VAPID key injects an empty string, not null", () => {
+test("an unconfigured VAPID key injects an empty string, not null", () => {
   // The SW guards on a falsy key; `null` would also be falsy but wouldn't match
   // the `let VAPID_PUBLIC_KEY = ""` declaration's type.
   const { sw } = stampAssets(sources, version);
   assert(sw.includes('VAPID_PUBLIC_KEY = "";'));
 });
 
-Deno.test("a missing asset stays unversioned rather than breaking", () => {
+test("a missing asset stays unversioned rather than breaking", () => {
   const { shell, sw } = stampAssets(sources, { "/styles.css": "bbbb22" });
   assert(shell.includes('href="/styles.css?v=bbbb22"'));
   assert(shell.includes('src="/js/index.js"')); // no ?v — not hashed
@@ -70,7 +71,7 @@ Deno.test("a missing asset stays unversioned rather than breaking", () => {
   assert(sw.includes('ICON = "/favicon.svg";'));
 });
 
-Deno.test("immutable only for a matching current ?v", () => {
+test("immutable only for a matching current ?v", () => {
   const p = (v: string) => new URLSearchParams(v);
   assertEquals(
     immutableFor(version, "/js/index.js", p("v=aaaa11")),

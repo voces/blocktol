@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import {
   percentileFromTimeCounts,
@@ -5,13 +6,13 @@ import {
   selfExcludedPercentiles,
 } from "./math.ts";
 
-Deno.test("selfExcludedPercentiles", async (t) => {
-  await t.step("sole run in the field is omitted", () => {
+test("selfExcludedPercentiles", async (t) => {
+  await t.test("sole run in the field is omitted", () => {
     const p = selfExcludedPercentiles([{ time: 5, count: 1 }]);
     assertEquals(p.has(5), false);
   });
 
-  await t.step("two distinct times: worse gets 0, better gets 1", () => {
+  await t.test("two distinct times: worse gets 0, better gets 1", () => {
     const p = selfExcludedPercentiles([
       { time: 5, count: 1 },
       { time: 9, count: 1 },
@@ -20,7 +21,7 @@ Deno.test("selfExcludedPercentiles", async (t) => {
     assertEquals(p.get(9), 1);
   });
 
-  await t.step("a middle player beats the worse half", () => {
+  await t.test("a middle player beats the worse half", () => {
     // times: 1,2,3,4,5 — player at 3, self excluded → 2 worse of 4 → 0.5
     const p = selfExcludedPercentiles(
       [1, 2, 3, 4, 5].map((time) => ({ time, count: 1 })),
@@ -30,7 +31,7 @@ Deno.test("selfExcludedPercentiles", async (t) => {
     assertEquals(p.get(5), 1);
   });
 
-  await t.step(
+  await t.test(
     "matches per-player percentileFromTimeCounts (self excluded)",
     () => {
       const field = [
@@ -49,68 +50,68 @@ Deno.test("selfExcludedPercentiles", async (t) => {
   );
 });
 
-Deno.test("reverseTween", async (t) => {
-  await t.step("no data, but higher than min", () => {
+test("reverseTween", async (t) => {
+  await t.test("no data, but higher than min", () => {
     assertEquals(reverseTween([], 2, 1), 1);
   });
 
-  await t.step("no data, but lower than min", () => {
+  await t.test("no data, but lower than min", () => {
     assertEquals(reverseTween([], 1, 2), 0);
   });
 
-  await t.step("value is less than lowest & min", () => {
+  await t.test("value is less than lowest & min", () => {
     assertEquals(reverseTween([3, 4], 1, 2), 0);
   });
 
-  await t.step("value is less than lowest", () => {
+  await t.test("value is less than lowest", () => {
     // (value - min) / (nextValue - min) / length => (2-1)/(3-1)/2
     assertEquals(reverseTween([3, 4], 2, 1), 0.25); // half way from min to lowest
   });
 
-  await t.step("value is equal to lowest", () => {
+  await t.test("value is equal to lowest", () => {
     // (index + 0.5) / length => (0+0.5)/2
     assertEquals(reverseTween([1, 2], 1, 1), 0.25);
   });
 
-  await t.step("value is equal to multiple lowests", () => {
+  await t.test("value is equal to multiple lowests", () => {
     // (firstIndex + lastIndex + 1) / 2 / length => (0+2+1)/2/5
     assertEquals(reverseTween([1, 1, 1, 2, 3], 1, 1), 0.3);
   });
 
-  await t.step("value is equal to mid value", () => {
+  await t.test("value is equal to mid value", () => {
     // (index + 0.5) / length => (1+0.5)/5
     assertEquals(reverseTween([1, 2, 3, 4, 5], 2, 1), 0.3);
   });
 
-  await t.step("value is equal to multiple mid values", () => {
+  await t.test("value is equal to multiple mid values", () => {
     // (firstIndex + lastIndex + 1) / 2 / length => (1+2+1)/2/4
     assertEquals(reverseTween([1, 2, 2, 3], 2, 1), 0.5);
   });
 
-  await t.step("value is between two mid values", () => {
+  await t.test("value is between two mid values", () => {
     // (prevIndex + (value - prevValue) / (nextValue - prevValue) + 1) / length
     //   => (1+(3-2)/(4-2)+1)/4
     assertEquals(reverseTween([1, 2, 4, 4], 3, 1), 0.625);
   });
-  await t.step("value is equal to multiple highests", () => {
+  await t.test("value is equal to multiple highests", () => {
     assertEquals(reverseTween([1, 2, 2], 2, 1), 1);
   });
 
-  await t.step("value is equal to highest", () => {
+  await t.test("value is equal to highest", () => {
     assertEquals(reverseTween([1, 2], 2, 1), 1);
   });
 
-  await t.step("value is greater than highest", () => {
+  await t.test("value is greater than highest", () => {
     assertEquals(reverseTween([1, 2], 3, 1), 1);
   });
 });
 
-Deno.test("percentileFromTimeCounts", async (t) => {
-  await t.step("no other runs returns undefined, not p100", () => {
+test("percentileFromTimeCounts", async (t) => {
+  await t.test("no other runs returns undefined, not p100", () => {
     assertEquals(percentileFromTimeCounts([], 12.36), undefined);
   });
 
-  await t.step("better than everyone is p100", () => {
+  await t.test("better than everyone is p100", () => {
     assertEquals(
       percentileFromTimeCounts(
         [{ time: 10, count: 1 }, { time: 15, count: 1 }],
@@ -120,7 +121,7 @@ Deno.test("percentileFromTimeCounts", async (t) => {
     );
   });
 
-  await t.step("worse than everyone is p0", () => {
+  await t.test("worse than everyone is p0", () => {
     assertEquals(
       percentileFromTimeCounts(
         [{ time: 10, count: 1 }, { time: 15, count: 1 }],
@@ -130,7 +131,7 @@ Deno.test("percentileFromTimeCounts", async (t) => {
     );
   });
 
-  await t.step("in the middle", () => {
+  await t.test("in the middle", () => {
     assertEquals(
       percentileFromTimeCounts(
         [{ time: 10, count: 1 }, { time: 20, count: 1 }],
@@ -140,7 +141,7 @@ Deno.test("percentileFromTimeCounts", async (t) => {
     );
   });
 
-  await t.step("tie splits the count", () => {
+  await t.test("tie splits the count", () => {
     assertEquals(
       percentileFromTimeCounts(
         [{ time: 10, count: 1 }, { time: 15, count: 2 }, {

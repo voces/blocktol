@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { api, MAX_BODY_BYTES, readBodyLimited } from "./api.ts";
 import { clientFields } from "./reportClientError.ts";
@@ -5,14 +6,14 @@ import { clientFields } from "./reportClientError.ts";
 const post = (body: BodyInit | null, headers?: HeadersInit) =>
   new Request("http://x.test/api/m", { method: "POST", body, headers });
 
-Deno.test("api: a prototype key is an unknown method, not a 500", async () => {
+test("api: a prototype key is an unknown method, not a 500", async () => {
   for (const method of ["constructor", "toString", "__proto__", "nope"]) {
     const res = await api(post("{}"), { method });
     assertEquals(res?.status, 404, method);
   }
 });
 
-Deno.test("api: the largest legit body sits well under the cap", () => {
+test("api: the largest legit body sits well under the cap", () => {
   // A full 400-piece maze (commitRun's zod cap) with every optional field set.
   const body = JSON.stringify({
     iteration: 2_000_000_000,
@@ -26,14 +27,14 @@ Deno.test("api: the largest legit body sits well under the cap", () => {
   assert(body.length * 4 < MAX_BODY_BYTES, `${body.length}`);
 });
 
-Deno.test("api: an oversized body is a 413", async () => {
+test("api: an oversized body is a 413", async () => {
   const res = await api(post("x".repeat(MAX_BODY_BYTES + 1)), {
     method: "pushConfig",
   });
   assertEquals(res?.status, 413);
 });
 
-Deno.test("readBodyLimited counts a streamed body", async () => {
+test("readBodyLimited counts a streamed body", async () => {
   const stream = (n: number, size: number) =>
     new ReadableStream<Uint8Array>({
       start(c) {
@@ -51,7 +52,7 @@ Deno.test("readBodyLimited counts a streamed body", async () => {
   assertEquals(await readBodyLimited(post(null), 40), "");
 });
 
-Deno.test("clientFields namespaces and bounds a client payload", () => {
+test("clientFields namespaces and bounds a client payload", () => {
   const f = clientFields({
     userHash: "forged",
     error: "e".repeat(5000),

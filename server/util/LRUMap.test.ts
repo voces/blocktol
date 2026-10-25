@@ -1,10 +1,11 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { LRUMap } from "./LRUMap.ts";
 
 const values = Array.from(Array(15), (_, i) => i);
 
-Deno.test("set", async (it) => {
-  await it.step("simple", () => {
+test("set", async (it) => {
+  await it.test("simple", () => {
     const map = new LRUMap({ maxSize: 10 });
     for (const value of values) map.set(value, true);
 
@@ -12,7 +13,7 @@ Deno.test("set", async (it) => {
     assertEquals(Array.from(map.keys()), values.slice(5));
   });
 
-  await it.step("weaved", () => {
+  await it.test("weaved", () => {
     const map = new LRUMap({ maxSize: 3 });
     map.set(1, true);
     map.set(2, true);
@@ -24,7 +25,7 @@ Deno.test("set", async (it) => {
   });
 });
 
-Deno.test("get", () => {
+test("get", () => {
   const map = new LRUMap({ maxSize: 3 });
   map.set(1, true);
   map.set(2, true);
@@ -35,7 +36,7 @@ Deno.test("get", () => {
   assertEquals(Array.from(map.keys()), [3, 1, 4]);
 });
 
-Deno.test("has", () => {
+test("has", () => {
   const map = new LRUMap({ maxSize: 3 });
   map.set(1, true);
   map.set(2, true);

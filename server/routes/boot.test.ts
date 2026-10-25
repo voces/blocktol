@@ -1,3 +1,5 @@
+import { test } from "node:test";
+import { live } from "../db/liveTests.ts";
 import { assert, assertEquals } from "@std/assert";
 import { createOrUpdateUser } from "../db/user.ts";
 import { sql } from "../db/query.ts";
@@ -8,7 +10,6 @@ import { boot } from "./boot.ts";
 // Checks boot's bundle carries every slice and that boot does NOT start a daily
 // attempt, so a background boot can't spend one. Hits the dev DB; self-skips
 // without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
   const req = new Request("http://localhost/api/boot", {
@@ -18,10 +19,10 @@ const authed = (userId: string) => {
   return req;
 };
 
-Deno.test({
-  name: "boot bundles every slice and does not start the daily",
-  ignore: !live,
-  fn: async () => {
+test(
+  "boot bundles every slice and does not start the daily",
+  { skip: !live },
+  async () => {
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
     await createOrUpdateUser(id);
     try {
@@ -63,49 +64,47 @@ Deno.test({
       await sql`DELETE FROM user WHERE id = ${id};`;
     }
   },
-});
+);
 
-Deno.test({
-  name: "boot with a day bundles that day's linked board + standings",
-  ignore: !live,
-  fn: async () => {
-    const id = `t-${crypto.randomUUID().slice(0, 16)}`;
-    await createOrUpdateUser(id);
-    try {
-      // Today's iteration exists (ensure-iterations); link to it.
-      const { year, month, day } = dailyParts("UTC");
-      const r = await boot.handler(
-        { timeZone: "UTC", day: [year, month, day] },
-        authed(id),
-      );
-      if ("error" in r) throw new Error("boot returned an auth error");
+test("boot with a day bundles that day's linked board + standings", {
+  skip: !live,
+}, async () => {
+  const id = `t-${crypto.randomUUID().slice(0, 16)}`;
+  await createOrUpdateUser(id);
+  try {
+    // Today's iteration exists (ensure-iterations); link to it.
+    const { year, month, day } = dailyParts("UTC");
+    const r = await boot.handler(
+      { timeZone: "UTC", day: [year, month, day] },
+      authed(id),
+    );
+    if ("error" in r) throw new Error("boot returned an auth error");
 
-      assert(r.linked !== null, "linked day resolved");
-      assertEquals(
-        Object.keys(r.linked).sort(),
-        ["board", "iteration", "standings"],
-      );
-      assertEquals(
-        typeof r.linked.iteration,
-        "number",
-        "linked carries the resolved iteration",
-      );
-      // The client keys its by-date and by-iteration primes off this.
-      assert(
-        r.linked.standings && "iteration" in r.linked.standings &&
-          r.linked.standings.iteration === r.linked.iteration,
-        "linked standings is the resolved day",
-      );
+    assert(r.linked !== null, "linked day resolved");
+    assertEquals(
+      Object.keys(r.linked).sort(),
+      ["board", "iteration", "standings"],
+    );
+    assertEquals(
+      typeof r.linked.iteration,
+      "number",
+      "linked carries the resolved iteration",
+    );
+    // The client keys its by-date and by-iteration primes off this.
+    assert(
+      r.linked.standings && "iteration" in r.linked.standings &&
+        r.linked.standings.iteration === r.linked.iteration,
+      "linked standings is the resolved day",
+    );
 
-      // A never-generated far-past date gives linked: null.
-      const none = await boot.handler(
-        { timeZone: "UTC", day: [2000, 1, 1] },
-        authed(id),
-      );
-      if ("error" in none) throw new Error("boot returned an auth error");
-      assertEquals(none.linked, null, "unknown date → linked null");
-    } finally {
-      await sql`DELETE FROM user WHERE id = ${id};`;
-    }
-  },
+    // A never-generated far-past date gives linked: null.
+    const none = await boot.handler(
+      { timeZone: "UTC", day: [2000, 1, 1] },
+      authed(id),
+    );
+    if ("error" in none) throw new Error("boot returned an auth error");
+    assertEquals(none.linked, null, "unknown date → linked null");
+  } finally {
+    await sql`DELETE FROM user WHERE id = ${id};`;
+  }
 });

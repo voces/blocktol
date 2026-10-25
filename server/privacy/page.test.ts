@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { DISCORD_INVITE } from "../../common/constants.ts";
 import { locales } from "./catalog.generated.ts";
@@ -10,13 +11,13 @@ import {
 
 const available = ["en", "de", "pt-BR", "zh-Hans"] as const;
 
-Deno.test("pickLocale: an explicit ?lang wins over the browser's", () => {
+test("pickLocale: an explicit ?lang wins over the browser's", () => {
   assertEquals(pickLocale(available, "de", "zh-Hans,en;q=0.5"), "de");
   // An unsupported ?lang falls through to the header rather than to English.
   assertEquals(pickLocale(available, "ko", "pt-BR"), "pt-BR");
 });
 
-Deno.test("pickLocale: Accept-Language is taken in q order, prefix-matched", () => {
+test("pickLocale: Accept-Language is taken in q order, prefix-matched", () => {
   assertEquals(pickLocale(available, null, "fr;q=0.9,de;q=0.95"), "de");
   // Ties keep the header's own order.
   assertEquals(pickLocale(available, null, "zh-Hans,de"), "zh-Hans");
@@ -25,7 +26,7 @@ Deno.test("pickLocale: Accept-Language is taken in q order, prefix-matched", () 
   assertEquals(pickLocale(available, null, "en-US,en;q=0.9"), "en");
 });
 
-Deno.test("pickLocale: wildcards, q=0, junk, and no match give undefined", () => {
+test("pickLocale: wildcards, q=0, junk, and no match give undefined", () => {
   assertEquals(pickLocale(available, null, "*"), undefined);
   assertEquals(pickLocale(available, null, "de;q=0"), undefined);
   assertEquals(pickLocale(available, null, "not a tag!!, ;;"), undefined);
@@ -35,7 +36,7 @@ Deno.test("pickLocale: wildcards, q=0, junk, and no match give undefined", () =>
 
 const body = (html: string) => html.slice(html.indexOf("<body>"));
 
-Deno.test("the English page carries its links and no translation notice", () => {
+test("the English page carries its links and no translation notice", () => {
   const html = renderPrivacyPage("en");
   assert(html.includes('<html lang="en">'));
   assert(html.includes("<title>Privacy &amp; data — Blocktol</title>"));
@@ -54,7 +55,7 @@ Deno.test("the English page carries its links and no translation notice", () => 
   assert(html.includes("Last updated October 18, 2026"));
 });
 
-Deno.test("every catalog locale renders completely", () => {
+test("every catalog locale renders completely", () => {
   for (const locale of locales) {
     const html = renderPrivacyPage(locale);
     assert(html.includes(`<html lang="${locale}">`), locale);
@@ -65,7 +66,7 @@ Deno.test("every catalog locale renders completely", () => {
   }
 });
 
-Deno.test("the handler serves the negotiated language, keyed on the header", async () => {
+test("the handler serves the negotiated language, keyed on the header", async () => {
   const res = privacyPage(
     new Request("http://x/privacy.html?lang=en", {
       headers: { "accept-language": "de" },

@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { parseTraceBatch, traceLine } from "./trace.ts";
 
-Deno.test("parseTraceBatch keeps a well-formed batch", () => {
+test("parseTraceBatch keeps a well-formed batch", () => {
   const batch = {
     p: "abc123",
     e: [[0, 1500, "p", 2, 2], [1, 900, "m", 2, 2, 4, 4], [2, 10, "u", 4, 4]],
@@ -9,7 +10,7 @@ Deno.test("parseTraceBatch keeps a well-formed batch", () => {
   assertEquals(parseTraceBatch(batch), batch);
 });
 
-Deno.test("parseTraceBatch drops what doesn't parse instead of throwing", () => {
+test("parseTraceBatch drops what doesn't parse instead of throwing", () => {
   assertEquals(parseTraceBatch(undefined), undefined);
   assertEquals(parseTraceBatch("nope"), undefined);
   assertEquals(parseTraceBatch({ p: "x", e: [[0, 1, "m", 2, 2]] }), undefined);
@@ -17,7 +18,7 @@ Deno.test("parseTraceBatch drops what doesn't parse instead of throwing", () => 
   assertEquals(parseTraceBatch({ p: "x y", e: [] }), undefined);
 });
 
-Deno.test("traceLine completes the JSON the SQL opens", () => {
+test("traceLine completes the JSON the SQL opens", () => {
   const line = traceLine(3, 41.5, { p: "abc", e: [[0, 5, "p", 2, 2]] });
   assertEquals(JSON.parse(`{"s":1200,${line}`), {
     s: 1200,

@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { _sealRecordForTest, isPushEndpoint } from "./webpush.ts";
 
-Deno.test("isPushEndpoint accepts the browser push services", () => {
+test("isPushEndpoint accepts the browser push services", () => {
   for (
     const e of [
       "https://fcm.googleapis.com/fcm/send/abc:APA91b",
@@ -15,7 +16,7 @@ Deno.test("isPushEndpoint accepts the browser push services", () => {
   ) assert(isPushEndpoint(e), e);
 });
 
-Deno.test("isPushEndpoint refuses anything else", () => {
+test("isPushEndpoint refuses anything else", () => {
   for (
     const e of [
       "http://fcm.googleapis.com/fcm/send/abc", // not https
@@ -52,7 +53,7 @@ const toB64URL = (bytes: Uint8Array): string => {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 };
 
-Deno.test("sealRecord reproduces the RFC 8291 §5 test vector", async () => {
+test("sealRecord reproduces the RFC 8291 §5 test vector", async () => {
   const plaintext = new TextEncoder().encode(
     "When I grow up, I want to be a watermelon",
   );

@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import {
   clampZoom,
@@ -11,14 +12,14 @@ import {
 // expected objects short.
 const notifs = defaultNotificationPrefs;
 
-Deno.test("parseSettings: null / non-object / bad JSON → defaults", () => {
+test("parseSettings: null / non-object / bad JSON → defaults", () => {
   assertEquals(parseSettings(null), defaultSettings());
   assertEquals(parseSettings("not json"), defaultSettings());
   assertEquals(parseSettings(42), defaultSettings());
   assertEquals(parseSettings(undefined), defaultSettings());
 });
 
-Deno.test("parseSettings: reads a JSON string or a plain object", () => {
+test("parseSettings: reads a JSON string or a plain object", () => {
   assertEquals(parseSettings('{"theme":"dark","zoom":1.5}'), {
     theme: "dark",
     zoom: 1.5,
@@ -35,7 +36,7 @@ Deno.test("parseSettings: reads a JSON string or a plain object", () => {
   });
 });
 
-Deno.test("parseSettings: language rides through as a string, else system", () => {
+test("parseSettings: language rides through as a string, else system", () => {
   // Any string is kept (the catalog resolves an unsupported tag to English).
   assertEquals(parseSettings({ language: "fr" }).language, "fr");
   assertEquals(parseSettings({ language: "zh-Hans" }).language, "zh-Hans");
@@ -45,7 +46,7 @@ Deno.test("parseSettings: language rides through as a string, else system", () =
   assertEquals(parseSettings({ language: 5 }).language, "system");
 });
 
-Deno.test("parseSettings: each invalid field falls back independently", () => {
+test("parseSettings: each invalid field falls back independently", () => {
   // Unknown theme + out-of-range zoom.
   assertEquals(parseSettings({ theme: "neon", zoom: 5 }), {
     theme: "system",
@@ -72,7 +73,7 @@ Deno.test("parseSettings: each invalid field falls back independently", () => {
   });
 });
 
-Deno.test("parseSettings: push prefs default off; only true opts in", () => {
+test("parseSettings: push prefs default off; only true opts in", () => {
   // Absent or garbage → both off.
   assertEquals(parseSettings({}).notifications, {
     lostTop: false,
@@ -94,21 +95,21 @@ Deno.test("parseSettings: push prefs default off; only true opts in", () => {
   );
 });
 
-Deno.test("clampZoom clamps to [1, 2.5] and defaults NaN", () => {
+test("clampZoom clamps to [1, 2.5] and defaults NaN", () => {
   assertEquals(clampZoom(0), 1);
   assertEquals(clampZoom(3), 2.5);
   assertEquals(clampZoom(1.7), 1.7);
   assertEquals(clampZoom(NaN), 2);
 });
 
-Deno.test("clampZoomDelay clamps to [0, 500] and defaults NaN", () => {
+test("clampZoomDelay clamps to [0, 500] and defaults NaN", () => {
   assertEquals(clampZoomDelay(-100), 0);
   assertEquals(clampZoomDelay(1000), 500);
   assertEquals(clampZoomDelay(250), 250);
   assertEquals(clampZoomDelay(NaN), 175);
 });
 
-Deno.test("parseSettings: zoomDelay reads/clamps, else defaults", () => {
+test("parseSettings: zoomDelay reads/clamps, else defaults", () => {
   assertEquals(parseSettings({ zoomDelay: 250 }).zoomDelay, 250);
   // Out of range clamps to the nearest bound.
   assertEquals(parseSettings({ zoomDelay: 5000 }).zoomDelay, 500);

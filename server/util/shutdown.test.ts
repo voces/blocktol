@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { drainJobs, tracked } from "./shutdown.ts";
 
-Deno.test("drain waits for a running job, then refuses new ones", async () => {
+test("drain waits for a running job, then refuses new ones", async () => {
   const log: string[] = [];
   const slow = tracked("slow", async () => {
     await new Promise((r) => setTimeout(r, 50));

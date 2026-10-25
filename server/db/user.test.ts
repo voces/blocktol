@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { mergeRivals, ratingDeltaUpdate } from "./user.ts";
 
-Deno.test("ratingDeltaUpdate escapes ids, forces DOUBLE deltas, gates on the claim", () => {
+test("ratingDeltaUpdate escapes ids, forces DOUBLE deltas, gates on the claim", () => {
   const q = ratingDeltaUpdate([
     { user: "a'b", delta: 1.5e-7 },
     { user: "c", delta: -12.25 },
@@ -14,7 +15,7 @@ Deno.test("ratingDeltaUpdate escapes ids, forces DOUBLE deltas, gates on the cla
   );
 });
 
-Deno.test("mergeRivals keeps rivals with 5+ meetings on either board, most-met first", () => {
+test("mergeRivals keeps rivals with 5+ meetings on either board, most-met first", () => {
   const row = (user: string, met: number, won = 0) => ({
     user,
     name: user,

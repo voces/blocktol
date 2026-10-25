@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { primePool } from "./primePool.ts";
 
@@ -6,7 +7,7 @@ const clock = () => {
   return { now: () => t, advance: (ms: number) => (t += ms) };
 };
 
-Deno.test("a prime is taken once, within its window", () => {
+test("a prime is taken once, within its window", () => {
   const c = clock();
   const pool = primePool<string>(10_000, c.now);
   pool.set("standings:{}", "fresh");
@@ -15,7 +16,7 @@ Deno.test("a prime is taken once, within its window", () => {
   assertEquals(pool.take("standings:{}"), undefined);
 });
 
-Deno.test("a prime left unconsumed past its window is discarded", () => {
+test("a prime left unconsumed past its window is discarded", () => {
   const c = clock();
   const pool = primePool<string>(10_000, c.now);
   pool.set("standings:{}", "stale");
@@ -23,7 +24,7 @@ Deno.test("a prime left unconsumed past its window is discarded", () => {
   assertEquals(pool.take("standings:{}"), undefined);
 });
 
-Deno.test("touch restarts the window of the value still primed", () => {
+test("touch restarts the window of the value still primed", () => {
   const c = clock();
   const pool = primePool<string>(10_000, c.now);
   pool.set("k", "slow");
@@ -34,7 +35,7 @@ Deno.test("touch restarts the window of the value still primed", () => {
   assertEquals(pool.take("k"), "slow");
 });
 
-Deno.test("re-priming a key restarts its window", () => {
+test("re-priming a key restarts its window", () => {
   const c = clock();
   const pool = primePool<string>(10_000, c.now);
   pool.set("k", "first");

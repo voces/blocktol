@@ -1,11 +1,12 @@
+import { test } from "node:test";
 import { assertEquals, assertThrows } from "@std/assert";
 import { dailyParts } from "./dailyParts.ts";
 import { UserError } from "./UserError.ts";
 
-Deno.test("dailyParts", async (t) => {
+test("dailyParts", async (t) => {
   // What real browsers report, legacy aliases and Etc/ zones included — none
   // of these may be locked out.
-  await t.step("accepts IANA names and aliases", () => {
+  await t.test("accepts IANA names and aliases", () => {
     for (
       const tz of [
         "America/New_York",
@@ -29,7 +30,7 @@ Deno.test("dailyParts", async (t) => {
   // Offset zones stretch a "local day" past the real −12..+14 range.
   // GMT+5 / UTC+5 aren't zones at all to the runtime (RangeError) — rejected
   // either way.
-  await t.step("rejects offset and invalid zones", () => {
+  await t.test("rejects offset and invalid zones", () => {
     for (
       const tz of [
         "-23:59",
@@ -46,7 +47,7 @@ Deno.test("dailyParts", async (t) => {
     ) assertThrows(() => dailyParts(tz), UserError, "invalid timeZone");
   });
 
-  await t.step("the day follows the zone", () => {
+  await t.test("the day follows the zone", () => {
     // The two zones are 26h apart, so they never share a calendar day.
     const west = dailyParts("Etc/GMT+12");
     const east = dailyParts("Pacific/Kiritimati");

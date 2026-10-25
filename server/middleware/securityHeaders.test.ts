@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { withSecurityHeaders } from "./securityHeaders.ts";
 
-Deno.test("withSecurityHeaders stamps a plain response", async () => {
+test("withSecurityHeaders stamps a plain response", async () => {
   const res = withSecurityHeaders(new Response("hi", { status: 201 }));
   assertEquals(res.status, 201);
   assertEquals(await res.text(), "hi");
@@ -10,7 +11,7 @@ Deno.test("withSecurityHeaders stamps a plain response", async () => {
   assertEquals(res.headers.get("x-frame-options"), "DENY");
 });
 
-Deno.test("withSecurityHeaders re-wraps immutable headers", () => {
+test("withSecurityHeaders re-wraps immutable headers", () => {
   const res = withSecurityHeaders(Response.redirect("https://x.test/", 302));
   assertEquals(res.status, 302);
   assertEquals(res.headers.get("location"), "https://x.test/");

@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { localRun, mazeBudget, rebuildGrid } from "./helpers.ts";
 import { newGrid, pathDuration, PathSolver } from "../../../common/pathing.ts";
@@ -8,7 +9,7 @@ import { offsets } from "../../../common/constants.ts";
 // duration depends on path geometry, so times match only if equal-length ties
 // break identically too. (PathSolver's optimality is tested in
 // common/pathing.test.ts.)
-Deno.test("localRun equals the server's PathSolver + pathDuration", () => {
+test("localRun equals the server's PathSolver + pathDuration", () => {
   // Checkpoints are half-integer cells (see newIteration / validateRun.test).
   const checkpoint = { x: 9.5, y: 9.5 };
   const fixed = [
@@ -37,7 +38,7 @@ Deno.test("localRun equals the server's PathSolver + pathDuration", () => {
 
 // A path-less state (a wall cutting the board in two) returns undefined rather
 // than throwing, so apply() keeps the prior run mid-edit.
-Deno.test("localRun returns undefined when there is no path", () => {
+test("localRun returns undefined when there is no path", () => {
   const checkpoint = { x: 9.5, y: 9.5 };
   // A solid interior band at y=13..14 — below the checkpoint, above the start
   // (9,19). Anchors two apart tile 2×2 pieces edge-to-edge without overlap.
@@ -48,7 +49,7 @@ Deno.test("localRun returns undefined when there is no path", () => {
 
 // rebuildGrid feeds the hover/drag validity checks; it must reproduce a fresh
 // grid plus placements, clearing stale cells.
-Deno.test("rebuildGrid reproduces a fresh grid with placements", () => {
+test("rebuildGrid reproduces a fresh grid with placements", () => {
   const checkpoint = { x: 9.5, y: 9.5 };
   const blocks = [{ x: 5, y: 5 }, { x: 12, y: 3 }];
   const grid = newGrid();
@@ -66,7 +67,7 @@ Deno.test("rebuildGrid reproduces a fresh grid with placements", () => {
 // The chips are a FUNCTION of the maze on the board, not a stepped tally, so
 // the player is never offered a brick the budget lacks (the server rejects it
 // at commit: "too many blocks").
-Deno.test("mazeBudget counts what the maze holds", () => {
+test("mazeBudget counts what the maze holds", () => {
   const totals = { bricks: 6, power: 2 };
   assertEquals(mazeBudget([], totals), { bricks: 6, power: 2 });
   assertEquals(
@@ -84,7 +85,7 @@ Deno.test("mazeBudget counts what the maze holds", () => {
 // effects re-ran wrote back a maze still holding the deleted block. A stepped
 // count kept the refund (7 bricks on a 6-brick day); a derived one follows the
 // maze.
-Deno.test("mazeBudget cannot drift from the maze a race writes back", () => {
+test("mazeBudget cannot drift from the maze a race writes back", () => {
   const totals = { bricks: 6, power: 2 };
   const maze: { x: number; y: number; thunder?: boolean }[] = [
     { x: 1, y: 1 },
@@ -104,7 +105,7 @@ Deno.test("mazeBudget cannot drift from the maze a race writes back", () => {
 
 // An unloaded budget hides both chips (-1), and a maze never drives a count
 // negative (`mazeBudget` clamps).
-Deno.test("mazeBudget hides an unloaded budget and clamps at zero", () => {
+test("mazeBudget hides an unloaded budget and clamps at zero", () => {
   assertEquals(mazeBudget([{}], { bricks: -1, power: -1 }), {
     bricks: -1,
     power: -1,

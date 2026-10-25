@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { extractUserId, getUserIdMaybe } from "./userid.ts";
 
@@ -9,7 +10,7 @@ const withAuth = async (authorization: string) => {
   return getUserIdMaybe(req);
 };
 
-Deno.test("extractUserId accepts every id shape ever minted", async () => {
+test("extractUserId accepts every id shape ever minted", async () => {
   for (
     const id of [
       "0a1b2c3d4e5f6", // 13-char base36 (current)
@@ -20,7 +21,7 @@ Deno.test("extractUserId accepts every id shape ever minted", async () => {
   ) assertEquals(await withAuth(id), id);
 });
 
-Deno.test("extractUserId treats a malformed header as anonymous", async () => {
+test("extractUserId treats a malformed header as anonymous", async () => {
   for (
     const bad of [
       "x".repeat(37),
