@@ -52,6 +52,9 @@ jobs:
       - name: Type check
         run: deno check server/index.ts client/index.ts common/pathing.ts
 
+      - name: Type check (TypeScript 7)
+        run: deno task typecheck
+
       - name: Test
         run: deno task test
         # The run-lifecycle integration tests exercise the dev database when

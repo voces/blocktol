@@ -1,9 +1,9 @@
 import { useContext, useEffect } from "preact/compat";
 import { offsets } from "../../../common/constants.ts";
-import { Point } from "../../../common/types.ts";
+import { type Point } from "../../../common/types.ts";
 import { claimBoard } from "../../store/board.ts";
 import {
-  BoardBlock,
+  type BoardBlock,
   clearTouchZoom,
   placingBlock,
   thunderHover,

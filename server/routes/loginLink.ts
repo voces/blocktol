@@ -1,5 +1,5 @@
 import { router } from "../router.ts";
-import { Handler } from "../util/Router.ts";
+import type { Handler } from "../util/Router.ts";
 
 // Legacy `/login/:id` and `/l/:id` (see router.ts): re-route as the origin root
 // (the SPA shell) when the id is plausible; otherwise fall through.

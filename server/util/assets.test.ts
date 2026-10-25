@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
-import { immutableFor, stampAssets, VersionMap } from "./assets.ts";
+import { immutableFor, stampAssets, type VersionMap } from "./assets.ts";
 
 const version: VersionMap = {
   "/js/index.js": "aaaa11",

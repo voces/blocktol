@@ -57,7 +57,17 @@ deno task preview    # static-serve ./ (inspect public/ pages)
 
 deno fmt             # format (CI runs `deno fmt --check`; markdown included)
 deno check server/index.ts client/index.ts common/pathing.ts   # typecheck (CI does this)
+deno task typecheck  # TypeScript 7 (pinned): tsconfig.common.json, then tsconfig.json
 ```
+
+`deno task typecheck` holds the code to what Node's type stripping can run
+(#226): a type is imported with `import type` or `{ type X }`, and no enum,
+namespace or constructor parameter property. `tsconfig.common.json` checks
+`common/` with no browser, Deno or Node globals, so using one there is a compile
+error; `tsconfig.json` checks the app (client and server together, since the
+client's API type comes from the server) with Deno's types generated into
+`types/deno.generated.d.ts`, and `types/jsr-std.d.ts` for the JSR imports tsc
+can't resolve. Tests are left to `deno test`.
 
 Run a **single test file / filter**:
 
@@ -94,7 +104,7 @@ Three source roots with a strict dependency direction:
 - **`server/`** — the Deno backend. May import `common/`.
 - **`client/`** — the Preact frontend, bundled to `public/js/`. May import
   `common/`. JSX uses the `h`/`Fragment` pragma (`preact`), configured in
-  `deno.jsonc` — there is no React.
+  `deno.jsonc`, `tsconfig.json` and the `bundle` task — there is no React.
 
 `public/` holds the static shell (`index.html`, `sw.js`, `styles.css`, the
 manifest), the self-hosted fonts, icons and share card, and two debug pages; see

@@ -9,7 +9,7 @@ import {
   fetchStandingsForDate,
   requestStandings,
   setStandingsSort,
-  StandingsSort,
+  type StandingsSort,
 } from "./standings.ts";
 
 // True once the app was opened via a day deep-link this session (a notification

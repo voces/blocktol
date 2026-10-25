@@ -1,5 +1,5 @@
 import { useContext, useRef } from "preact/compat";
-import { Fragment, h, RefObject } from "preact";
+import { Fragment, h, type RefObject } from "preact";
 import { Board } from "../Board.tsx";
 import {
   dragMoved,

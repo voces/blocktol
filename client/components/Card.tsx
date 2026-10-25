@@ -1,4 +1,4 @@
-import { ComponentChildren, h, JSX } from "preact";
+import { type ComponentChildren, h, type JSX } from "preact";
 
 export const Card = (
   { children, style }: {

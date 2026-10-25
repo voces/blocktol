@@ -1,4 +1,4 @@
-import { Component, ComponentChildren, h } from "preact";
+import { Component, type ComponentChildren, h } from "preact";
 import { api } from "../api.ts";
 import { t } from "../util/t.ts";
 

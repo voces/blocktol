@@ -1,5 +1,5 @@
 import { hasTodaysIteration } from "../db/iteration.ts";
-import { Handler } from "../util/Router.ts";
+import type { Handler } from "../util/Router.ts";
 
 // `GET /health` for an external uptime monitor. One cheap query proves the
 // app, the database and puzzle generation are all working: 200 "ok", or 503

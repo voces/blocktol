@@ -1,4 +1,4 @@
-import { ComponentChildren, h } from "preact";
+import { type ComponentChildren, h } from "preact";
 import { useEffect, useRef } from "preact/compat";
 import { useDragToClose } from "../hooks/useDragToClose.ts";
 import { t } from "../util/t.ts";

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { decidePbAction, pbEmbed, topPbToAnnounce } from "./pbBoard.ts";
-import { type BestRow } from "./lostTop.ts";
+import type { BestRow } from "./lostTop.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
 
 const day: [number, number, number] = [2026, 7, 6];

@@ -1,0 +1,21 @@
+{
+  // Shared by tsconfig.json (the app) and tsconfig.common.json (common/ alone),
+  // both checked by `deno task typecheck` with TypeScript 7. Nothing is
+  // emitted: Deno runs the source, and esbuild bundles the client.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    // What Node's type stripping can run: type-only imports marked as such,
+    // and no syntax that emits code (enums, namespaces, parameter properties).
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "types": []
+  }
+}

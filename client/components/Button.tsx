@@ -1,4 +1,4 @@
-import { h, JSX } from "preact";
+import { h, type JSX } from "preact";
 
 export const Button = (
   { children, style, class: className, ...rest }: JSX.ButtonHTMLAttributes<

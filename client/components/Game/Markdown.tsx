@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/compat";
-import { Fragment, h, JSX } from "preact";
+import { Fragment, h, type JSX } from "preact";
 import { randomColor } from "./helpers.ts";
 import { intlLocale } from "../../util/t.ts";
 

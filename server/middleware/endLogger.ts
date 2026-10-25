@@ -1,7 +1,7 @@
 import { trace } from "@opentelemetry/api";
 import { SHA } from "../../common/version.ts";
 import { log } from "../util/logging.ts";
-import { Handler } from "../util/Router.ts";
+import type { Handler } from "../util/Router.ts";
 import { logMap, routeOf } from "./beginLogger.ts";
 
 // The trace id OTel's no-op span reports when tracing is off (every instance

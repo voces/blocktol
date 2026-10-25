@@ -7,7 +7,7 @@ import {
   percentileBand,
   standingColor,
 } from "../../../common/percentileColor.ts";
-import { api, MessageMap } from "../../api.ts";
+import { api, type MessageMap } from "../../api.ts";
 import type { MessageKey } from "../../../common/i18n.ts";
 import { intlLocale, t } from "../../util/t.ts";
 import { mazeKey } from "./helpers.ts";

@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals";
-import { Point } from "../../../common/types.ts";
+import { type Point } from "../../../common/types.ts";
 
 // Pointer-frequency interaction state as signals. These change on every
 // mousemove/touchmove; as context state each write would re-render the whole

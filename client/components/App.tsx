@@ -1,4 +1,4 @@
-import { ComponentChildren, h } from "preact";
+import { type ComponentChildren, h } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/compat";
 import { avatarColor } from "../../common/avatar.ts";
 import { api } from "../api.ts";

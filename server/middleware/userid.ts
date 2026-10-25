@@ -1,7 +1,7 @@
 import { trace } from "@opentelemetry/api";
 import { hashUserId } from "../util/hashUserId.ts";
 import { log, setLoggingContext } from "../util/logging.ts";
-import { Handler } from "../util/Router.ts";
+import type { Handler } from "../util/Router.ts";
 import { UserError } from "../util/UserError.ts";
 
 export class AuthError extends UserError {}

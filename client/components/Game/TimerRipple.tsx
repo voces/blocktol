@@ -1,6 +1,6 @@
 import { h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
-import { Point } from "../../../common/types.ts";
+import { type Point } from "../../../common/types.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { timerPulse } from "./timerPulse.ts";
 

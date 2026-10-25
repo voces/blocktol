@@ -1,10 +1,10 @@
-import { Fragment, h, Ref } from "preact";
+import { Fragment, h, type Ref } from "preact";
 import { useEffect, useMemo, useRef } from "preact/compat";
 
 import { Runner } from "./Runner.tsx";
 import { Block } from "./Block.tsx";
 import { debug } from "../util/debug.ts";
-import { Point } from "../../common/types.ts";
+import { type Point } from "../../common/types.ts";
 import { useSettings } from "../hooks/useSettings.ts";
 import { intlLocale } from "../util/t.ts";
 

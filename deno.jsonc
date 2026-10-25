@@ -18,6 +18,8 @@
     "sqlstring": "npm:sqlstring@^2.3.3",
     "mysql2/promise": "npm:mysql2@^3.11.0/promise",
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
+    // Types only, for `deno task typecheck` (tsc reads them from node_modules).
+    "@types/sqlstring": "npm:@types/sqlstring@2.3.2",
     "@std/assert": "jsr:@std/assert@^1",
     "@std/http/file-server": "jsr:@std/http@^1/file-server",
     "@std/path/posix": "jsr:@std/path@^1/posix"
@@ -55,6 +57,10 @@
     "sourcemap:stash": "deno run --allow-read --allow-write scripts/stashSourcemap.ts",
     "symbolicate": "deno run --allow-read --allow-write --allow-env --allow-run=git,deno scripts/symbolicate.ts",
     "bundle:pathing": "deno run --allow-read --allow-write --allow-env --allow-run npm:esbuild@0.25.5 common/pathing.ts --bundle --platform=browser --format=esm --minify --tsconfig-raw='{\"compilerOptions\":{\"useDefineForClassFields\":true}}' --outfile=public/js/pathing.js",
+    // TypeScript 7 (pinned), beside `deno check` until the server leaves Deno
+    // (#226): common/ alone, then the app. deno install fetches the types-only
+    // packages nothing imports at runtime; genDenoTypes writes Deno's own.
+    "typecheck": "deno install && deno run --allow-run --allow-write=types scripts/genDenoTypes.ts && deno run --allow-read --allow-env --allow-run npm:typescript@7.0.2/tsc -p tsconfig.common.json && deno run --allow-read --allow-env --allow-run npm:typescript@7.0.2/tsc -p tsconfig.json",
     "build": "deno task i18n && deno task version && deno task bundle && deno task sourcemap:stash && deno task bundle:pathing",
     // --no-check (not =remote): skip type-checking at start entirely. CI's
     // `deno check` and `deno task test` are the type gate, so re-checking the

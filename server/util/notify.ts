@@ -6,8 +6,8 @@
 // the response dies with a deploy's restart.
 
 import {
-  DailyFinalData,
-  LostTopData,
+  type DailyFinalData,
+  type LostTopData,
   notificationText,
 } from "../../common/notifications.ts";
 import { defaultSettings } from "../../common/settings.ts";
@@ -18,7 +18,7 @@ import {
   getSubscriptionsForUsers,
   getUsersSettings,
   insertDailyFinals,
-  PushSubscriptionRow,
+  type PushSubscriptionRow,
   upsertLostTop,
 } from "../db/notification.ts";
 import { getUserSettings } from "../db/user.ts";

@@ -10,7 +10,7 @@
 // and the server recomputes the time from the submitted maze. Only the 60s
 // build budget is taken on trust.
 
-import { Point } from "../../../common/types.ts";
+import { type Point } from "../../../common/types.ts";
 import { api } from "../../api.ts";
 import { getId } from "../../util/id.ts";
 import { storage } from "../../util/storage.ts";

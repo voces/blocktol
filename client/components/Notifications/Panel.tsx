@@ -1,7 +1,7 @@
 import { Fragment, h } from "preact";
 import { useEffect } from "preact/compat";
 import {
-  DailyFinalData,
+  type DailyFinalData,
   formatNotifDate,
   formatNotifTime,
   notificationText,
@@ -12,9 +12,9 @@ import { navigateToNotification } from "../../store/notifNav.ts";
 import {
   hideReclaimed as hideReclaimedSignal,
   markRead,
-  NotifFilter,
+  type NotifFilter,
   notifFilter as filterSignal,
-  NotificationItem,
+  type NotificationItem,
   notifications as notifSignal,
   refreshNotifications,
   setHideReclaimed,

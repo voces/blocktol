@@ -1,4 +1,4 @@
-import { Fragment, h, JSX } from "preact";
+import { Fragment, h, type JSX } from "preact";
 import { useContext, useEffect, useState } from "preact/compat";
 import { showBoard } from "../../store/board.ts";
 import { rankedEndsAtMidnight } from "../../store/dailyRollover.ts";

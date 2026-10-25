@@ -1,4 +1,4 @@
-import { Fragment, h, JSX } from "preact";
+import { Fragment, h, type JSX } from "preact";
 import { forwardRef, useState } from "preact/compat";
 
 export const Input = forwardRef<

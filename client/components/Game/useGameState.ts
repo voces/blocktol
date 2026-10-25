@@ -1,11 +1,11 @@
 import { createContext } from "preact";
 import { useMemo, useRef, useState } from "preact/compat";
 import { newGrid } from "../../../common/pathing.ts";
-import { Point } from "../../../common/types.ts";
-import { MessageMap } from "../../api.ts";
+import { type Point } from "../../../common/types.ts";
+import { type MessageMap } from "../../api.ts";
 import { localRun, mazeBudget } from "./helpers.ts";
 import {
-  BoardBlock,
+  type BoardBlock,
   clearTouchZoom,
   dragMoved,
   invalid,
@@ -13,7 +13,7 @@ import {
   thunderHover,
   transitionBlock,
 } from "./interaction.ts";
-import { Verdict } from "./verdict.ts";
+import { type Verdict } from "./verdict.ts";
 
 // The board's mode: one name for what the sentinels (time / staged / viewing /
 // run) encode together. Derived, not enforced; writers still set the

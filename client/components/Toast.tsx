@@ -1,4 +1,4 @@
-import { ComponentChildren, h } from "preact";
+import { type ComponentChildren, h } from "preact";
 import { t } from "../util/t.ts";
 
 // A status toast, bottom-centered over the board. Used after a silent profile

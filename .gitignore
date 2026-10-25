@@ -10,3 +10,5 @@ server/privacy/catalog.generated.ts
 sourcemaps/
 # npm packages, installed by Deno (deno.jsonc `nodeModulesDir`).
 node_modules/
+# Deno runtime types for tsc (scripts/genDenoTypes.ts).
+types/deno.generated.d.ts

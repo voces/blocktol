@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
 import type { NotificationKind } from "../../common/notifications.ts";
-import { api, MessageMap } from "../api.ts";
+import { api, type MessageMap } from "../api.ts";
 import { storage } from "../util/storage.ts";
 import { refreshMonth } from "./dailyItems.ts";
 import { keyedQuery } from "./query.ts";
