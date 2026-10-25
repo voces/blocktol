@@ -5,9 +5,9 @@
 //
 // The SHA is the request's `clientSha` (logged on its "request start" line,
 // same trace_id as the error). The map comes from sourcemaps/<SHA>/ (written by
-// every build); failing that, the commit is rebuilt in a temporary worktree.
-// The bundle is deterministic, so the rebuild matches given the same Deno
-// version.
+// every build); failing that, the commit is rebuilt in a temporary worktree
+// with its own `bundle` task, which reproduces the bundle exactly: esbuild is
+// pinned, and a commit from before it rebuilds with the Deno it was built by.
 import { decodeMappings, originalPosition, SourceMap } from "./sourcemap.ts";
 
 const [sha] = Deno.args;
@@ -30,17 +30,7 @@ const rebuild = async (): Promise<string> => {
   try {
     await run("deno", ["task", "i18n"], tmp);
     await run("deno", ["task", "version"], tmp);
-    await run("deno", [
-      "bundle",
-      "--unstable-bundle",
-      "--platform",
-      "browser",
-      "--minify",
-      "--sourcemap=external",
-      "client/index.ts",
-      "-o",
-      "public/js/index.js",
-    ], tmp);
+    await run("deno", ["task", "bundle"], tmp);
     return await Deno.readTextFile(`${tmp}/public/js/index.js.map`);
   } finally {
     await run("git", ["worktree", "remove", "--force", tmp], root);
@@ -55,7 +45,7 @@ const decoded = decodeMappings(map.mappings);
 // Sources are relative to public/js/; show repo files from the repo root.
 const tidy = (source: string) =>
   source.replace(/^(\.\.\/)+/, "").replace(
-    /^.*\/registry\.npmjs\.org\//,
+    /^.*\/registry\.npmjs\.org\/|^node_modules\/\.deno\/[^/]+\/node_modules\//,
     "npm:",
   );
 
