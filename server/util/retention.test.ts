@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { drain } from "./retention.ts";
 
@@ -13,19 +14,19 @@ const batches = (counts: number[]) => {
   };
 };
 
-Deno.test("drain stops at the first short batch", async () => {
+test("drain stops at the first short batch", async () => {
   const b = batches([10, 10, 3, 10]);
   assertEquals(await drain(b.batch, 10, 20), 23);
   assertEquals(b.calls, [10, 10, 3]);
 });
 
-Deno.test("drain stops after maxBatches full batches", async () => {
+test("drain stops after maxBatches full batches", async () => {
   const b = batches([10, 10, 10, 10]);
   assertEquals(await drain(b.batch, 10, 2), 20);
   assertEquals(b.calls.length, 2);
 });
 
-Deno.test("drain runs once on an empty table", async () => {
+test("drain runs once on an empty table", async () => {
   const b = batches([]);
   assertEquals(await drain(b.batch, 10, 20), 0);
   assertEquals(b.calls, [0]);

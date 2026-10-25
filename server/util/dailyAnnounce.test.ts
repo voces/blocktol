@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { dailyEmbed, dayTopBuild } from "./dailyAnnounce.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
@@ -5,7 +6,7 @@ import { pbEmbed } from "./pbBoard.ts";
 
 const day: [number, number, number] = [2026, 7, 6];
 
-Deno.test("dailyEmbed / pbEmbed: a player's name can't inject markdown", () => {
+test("dailyEmbed / pbEmbed: a player's name can't inject markdown", () => {
   const evil = "[Free Nitro](https://x.co)";
   const safe = "\\[Free Nitro\\]\\(https:\u200b//x.co\\)";
   const d = dailyEmbed([evil], 42.1, day);
@@ -15,7 +16,7 @@ Deno.test("dailyEmbed / pbEmbed: a player's name can't inject markdown", () => {
   assertStringIncludes(p.description, "Matched by **\\*\\*x\\*\\***.");
 });
 
-Deno.test("dailyEmbed: a sole winner is gold", () => {
+test("dailyEmbed: a sole winner is gold", () => {
   const e = dailyEmbed(["alice"], 42.1, day);
   assertEquals(e.color, GOLD);
   assertStringIncludes(e.description, "**alice** won the daily");
@@ -23,7 +24,7 @@ Deno.test("dailyEmbed: a sole winner is gold", () => {
   assertStringIncludes(e.url, "20260706?board=daily");
 });
 
-Deno.test("dailyEmbed: a tie up to ten lists every winner (chartreuse)", () => {
+test("dailyEmbed: a tie up to ten lists every winner (chartreuse)", () => {
   const winners = ["a", "b", "c"];
   const e = dailyEmbed(winners, 42.1, day);
   assertEquals(e.color, CHARTREUSE);
@@ -31,13 +32,13 @@ Deno.test("dailyEmbed: a tie up to ten lists every winner (chartreuse)", () => {
   for (const w of winners) assertStringIncludes(e.description, `• ${w}`);
 });
 
-Deno.test("dailyEmbed: exactly ten winners are still listed by name", () => {
+test("dailyEmbed: exactly ten winners are still listed by name", () => {
   const winners = Array.from({ length: 10 }, (_, i) => `p${i}`);
   const e = dailyEmbed(winners, 42.1, day);
   assertStringIncludes(e.description, "• p9");
 });
 
-Deno.test("dailyEmbed: more than ten winners collapse to a count", () => {
+test("dailyEmbed: more than ten winners collapse to a count", () => {
   const winners = Array.from({ length: 11 }, (_, i) => `p${i}`);
   const e = dailyEmbed(winners, 42.1, day);
   assertEquals(e.color, CHARTREUSE);
@@ -58,7 +59,7 @@ const best = (
   at,
 });
 
-Deno.test("dayTopBuild: the top of the BEST-BUILD board, not the ranked one", () => {
+test("dayTopBuild: the top of the BEST-BUILD board, not the ranked one", () => {
   const bests = [
     best("alice", 48.58), // won the daily on this, her ranked run
     best("saizil", 50), // matched the day's top build in free play
@@ -72,7 +73,7 @@ Deno.test("dayTopBuild: the top of the BEST-BUILD board, not the ranked one", ()
   });
 });
 
-Deno.test("dayTopBuild: the daily's winner counts like anyone else", () => {
+test("dayTopBuild: the daily's winner counts like anyone else", () => {
   // The Sep 7 shape: the winner's own free play holds the top build, matched.
   const bests = [
     best("katama", 50, 100), // won the daily at 48.58, then built 50.00
@@ -87,7 +88,7 @@ Deno.test("dayTopBuild: the daily's winner counts like anyone else", () => {
   });
 });
 
-Deno.test("dayTopBuild: the earliest holder is credited, the rest match", () => {
+test("dayTopBuild: the earliest holder is credited, the rest match", () => {
   const bests = [
     best("late", 50, 300),
     best("early", 50, 100),
@@ -102,7 +103,7 @@ Deno.test("dayTopBuild: the earliest holder is credited, the rest match", () => 
   assertEquals(top.matchers, ["mid", "late"]);
 });
 
-Deno.test("dayTopBuild: nothing to add when the winners ARE the top build", () => {
+test("dayTopBuild: nothing to add when the winners ARE the top build", () => {
   // Equal tops mean every winner is a holder, so an equal COUNT means the same
   // people — the daily post already said this.
   assertEquals(
@@ -119,7 +120,7 @@ Deno.test("dayTopBuild: nothing to add when the winners ARE the top build", () =
   );
 });
 
-Deno.test("dayTopBuild: a free-play match of the winning time still posts", () => {
+test("dayTopBuild: a free-play match of the winning time still posts", () => {
   const top = dayTopBuild(
     [best("alice", 42.1, 100), best("carol", 42.1, 200)],
     new Set(["alice"]),
@@ -129,7 +130,7 @@ Deno.test("dayTopBuild: a free-play match of the winning time still posts", () =
   assertEquals(top.matchers, ["carol"]);
 });
 
-Deno.test("dayTopBuild: a nameless holder reads as anonymous", () => {
+test("dayTopBuild: a nameless holder reads as anonymous", () => {
   assertEquals(
     dayTopBuild([{ user: "u", name: null, best: 42.1, at: 0 }], new Set(), 40)
       ?.name,
@@ -137,11 +138,11 @@ Deno.test("dayTopBuild: a nameless holder reads as anonymous", () => {
   );
 });
 
-Deno.test("dayTopBuild: an empty field has no record", () => {
+test("dayTopBuild: an empty field has no record", () => {
   assertEquals(dayTopBuild([], new Set(), 42.1), null);
 });
 
-Deno.test("dailyEmbed: the summary never mentions the build board", () => {
+test("dailyEmbed: the summary never mentions the build board", () => {
   const d = dailyEmbed(["alice"], 42.1, day).description;
   assertEquals(d.includes("free play"), false);
   assertEquals(d.includes("top build"), false);

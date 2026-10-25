@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { format, raw, sql } from "./query.ts";
 import { getUserRivals, getUserStats, mergeRivals } from "./user.ts";
@@ -99,10 +100,10 @@ const legacyStats = async (user: string) => {
 // so compare the lists as sets.
 const sorted = <T>(xs: T[]) => xs.map((x) => JSON.stringify(x)).sort();
 
-Deno.test({
-  name: "getUserStats matches the original whole-table queries",
-  ignore: !live,
-  fn: async () => {
+test(
+  "getUserStats matches the original whole-table queries",
+  { skip: !live },
+  async () => {
     // The heaviest players plus a random spread of others.
     const users = await sql<{ user: string }[]>`
       (SELECT user FROM run GROUP BY user ORDER BY COUNT(*) DESC LIMIT 10)
@@ -133,4 +134,4 @@ Deno.test({
       assertEquals(now.rivalCount, beforeRivals.length);
     }
   },
-});
+);

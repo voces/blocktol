@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { createOrUpdateUser } from "../db/user.ts";
 import { sql } from "../db/query.ts";
@@ -17,10 +18,10 @@ const authed = (userId: string) => {
   return req;
 };
 
-Deno.test({
-  name: "dayView bundles board + standings for a day",
-  ignore: !live,
-  fn: async () => {
+test(
+  "dayView bundles board + standings for a day",
+  { skip: !live },
+  async () => {
     const id = `t-${crypto.randomUUID().slice(0, 16)}`;
     await createOrUpdateUser(id);
     try {
@@ -51,4 +52,4 @@ Deno.test({
       await sql`DELETE FROM user WHERE id = ${id};`;
     }
   },
-});
+);

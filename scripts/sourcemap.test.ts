@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { decodeMappings, originalPosition } from "./sourcemap.ts";
 
@@ -9,7 +10,7 @@ const map = {
 };
 const decoded = decodeMappings(map.mappings);
 
-Deno.test("originalPosition maps to the nearest mapping at or before", () => {
+test("originalPosition maps to the nearest mapping at or before", () => {
   assertEquals(originalPosition(map, decoded, 1, 1), {
     source: "a.ts",
     line: 1,
@@ -21,7 +22,7 @@ Deno.test("originalPosition maps to the nearest mapping at or before", () => {
   assertEquals(originalPosition(map, decoded, 2, 1)?.line, 2);
 });
 
-Deno.test("source index and name deltas carry across segments", () => {
+test("source index and name deltas carry across segments", () => {
   // "ICCAA": col +4, source +1 (b.ts), line +1, col +0, name +0 (go). The
   // source column stays 8 from "QAAQ"; only the generated column resets per
   // line.
@@ -33,7 +34,7 @@ Deno.test("source index and name deltas carry across segments", () => {
   });
 });
 
-Deno.test("no mapping before the column, or no such line, is null", () => {
+test("no mapping before the column, or no such line, is null", () => {
   assertEquals(originalPosition(map, decodeMappings("IAAA"), 1, 1), null);
   assertEquals(originalPosition(map, decoded, 9, 1), null);
 });

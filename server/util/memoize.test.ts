@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import {
   assertNotStrictEquals,
   assertRejects,
@@ -5,8 +6,8 @@ import {
 } from "@std/assert";
 import { boundedTrailer, memoize, trailer } from "./memoize.ts";
 
-Deno.test("memoize", async (t) => {
-  await t.step("single primitive arg", () => {
+test("memoize", async (t) => {
+  await t.test("single primitive arg", () => {
     const fn = (v: number) => ({ v: v * 2 });
     const m = memoize(fn);
     const first = m(3);
@@ -15,7 +16,7 @@ Deno.test("memoize", async (t) => {
     assertNotStrictEquals(m(4), first);
   });
 
-  await t.step("single object arg", () => {
+  await t.test("single object arg", () => {
     const fn = (o: { v: number }) => ({ v: o.v * 2 });
     const m = memoize(fn);
     const a = { v: 3 };
@@ -25,7 +26,7 @@ Deno.test("memoize", async (t) => {
     assertNotStrictEquals(m({ v: 3 }), first);
   });
 
-  await t.step("nested args", () => {
+  await t.test("nested args", () => {
     const fn = (a: number, b: number) => ({ v: a ** b });
     const m = memoize(fn);
     const first = m(3, 5);
@@ -36,7 +37,7 @@ Deno.test("memoize", async (t) => {
   });
 });
 
-Deno.test("clear", () => {
+test("clear", () => {
   const fn = (v: number) => ({ v: v * 2 });
   const m = memoize(fn);
   const first = m(3);
@@ -45,7 +46,7 @@ Deno.test("clear", () => {
   assertNotStrictEquals(m(3), first);
 });
 
-Deno.test("bust", () => {
+test("bust", () => {
   const fn = (v: number) => ({ v: v * 2 });
   const m = memoize(fn);
   const first3 = m(3);
@@ -56,7 +57,7 @@ Deno.test("bust", () => {
   assertStrictEquals(m(5), first5);
 });
 
-Deno.test("rejected promises are evicted, not cached", async () => {
+test("rejected promises are evicted, not cached", async () => {
   let calls = 0;
   const fn = (v: number) => {
     calls++;
@@ -77,8 +78,8 @@ Deno.test("rejected promises are evicted, not cached", async () => {
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
-Deno.test("trailer", async (t) => {
-  await t.step("initial rejection retries on the next call", async () => {
+test("trailer", async (t) => {
+  await t.test("initial rejection retries on the next call", async () => {
     let calls = 0;
     const fn = () => {
       calls++;
@@ -92,7 +93,7 @@ Deno.test("trailer", async (t) => {
     assertStrictEquals(await get(), 2);
   });
 
-  await t.step("failed refresh keeps serving the stale value", async () => {
+  await t.test("failed refresh keeps serving the stale value", async () => {
     let calls = 0;
     const fn = () => {
       calls++;
@@ -111,13 +112,13 @@ Deno.test("trailer", async (t) => {
     assertStrictEquals(await get(), 1);
     await tick();
     assertStrictEquals(await get(), 3);
-    // Let the last isSettled race's 1ms timer fire before the step ends, or
-    // the op sanitizer reports it as a leak.
+    // Let the last isSettled race's 1ms timer fire before the step ends, so no
+    // timer outlives the test (node:test reports no leak; nothing else would).
     await tick();
   });
 });
 
-Deno.test("boundedTrailer keeps at most maxSize keys, LRU first out", async () => {
+test("boundedTrailer keeps at most maxSize keys, LRU first out", async () => {
   const calls: string[] = [];
   const fn = (a: number, b: string) => {
     calls.push(`${a}:${b}`);

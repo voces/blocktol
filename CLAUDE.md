@@ -64,14 +64,17 @@ deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL comm
 deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL --filter "line of sight" server/
 ```
 
-Most tests are pure and need no permissions. The `*.test.ts` under
-`server/routes/iteration/run/` and a few others are **run-lifecycle integration
-tests** that hit the dev database through the SQL proxy; they self-skip unless
-`SQL_PASSWORD` is set. CI (`.github/workflows/ci.yml`) runs fmt-check,
-typecheck, `deno task test`, then `deno task build`. The workflow only checks;
-deployment is separate (see the deploy warning above): `deploy.yml` deploys prod
-to the EC2 cohost after CI passes on `prod`, and `deploy-dev.yml` deploys the
-dev instance.
+Tests use `test` from `node:test` (subtests are `t.test`), never `Deno.test`:
+`deno test` runs them today and Node will after the runtime move (#226).
+`node:test` has no leak check, so a test closes every timer, connection and
+stream it opens. Most tests are pure and need no permissions. The `*.test.ts`
+under `server/routes/iteration/run/` and a few others are **run-lifecycle
+integration tests** that hit the dev database through the SQL proxy; they
+self-skip unless `SQL_PASSWORD` is set. CI (`.github/workflows/ci.yml`) runs
+fmt-check, typecheck, `deno task test`, then `deno task build`. The workflow
+only checks; deployment is separate (see the deploy warning above): `deploy.yml`
+deploys prod to the EC2 cohost after CI passes on `prod`, and `deploy-dev.yml`
+deploys the dev instance.
 
 ## Layout & the import rule
 

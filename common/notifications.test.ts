@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { classifyDailyOutcome, type OutcomePlayer } from "./notifications.ts";
 
@@ -9,7 +10,7 @@ const p = (
   pb?: number,
 ): OutcomePlayer => ({ user, daily, pb: pb ?? daily ?? 0 });
 
-Deno.test("classifyDailyOutcome: no ranked attempt → null", () => {
+test("classifyDailyOutcome: no ranked attempt → null", () => {
   // "me" only free-played (daily null).
   assertEquals(
     classifyDailyOutcome([p("me", null, 30), p("a", 40)], "me"),
@@ -19,7 +20,7 @@ Deno.test("classifyDailyOutcome: no ranked attempt → null", () => {
   assertEquals(classifyDailyOutcome([p("a", 40)], "me"), null);
 });
 
-Deno.test("classifyDailyOutcome: placed — out-ranked", () => {
+test("classifyDailyOutcome: placed — out-ranked", () => {
   const field = [p("a", 50), p("b", 40), p("me", 30), p("c", 20)];
   assertEquals(classifyDailyOutcome(field, "me"), {
     variant: "placed",
@@ -30,7 +31,7 @@ Deno.test("classifyDailyOutcome: placed — out-ranked", () => {
   });
 });
 
-Deno.test("classifyDailyOutcome: placed — day best counts free play", () => {
+test("classifyDailyOutcome: placed — day best counts free play", () => {
   // "a" free-played to 60 (pb 60) though their ranked time was 45; me #2.
   const field = [p("a", 45, 60), p("me", 40), p("b", 20)];
   const out = classifyDailyOutcome(field, "me");
@@ -39,7 +40,7 @@ Deno.test("classifyDailyOutcome: placed — day best counts free play", () => {
   assertEquals(out?.dayBest, 60);
 });
 
-Deno.test("classifyDailyOutcome: supreme — sole ranked top, untied anywhere", () => {
+test("classifyDailyOutcome: supreme — sole ranked top, untied anywhere", () => {
   const field = [p("me", 50), p("a", 40), p("b", 30)];
   assertEquals(classifyDailyOutcome(field, "me"), {
     variant: "supreme",
@@ -50,7 +51,7 @@ Deno.test("classifyDailyOutcome: supreme — sole ranked top, untied anywhere", 
   });
 });
 
-Deno.test("classifyDailyOutcome: record — tied ranked top, no free-play beat", () => {
+test("classifyDailyOutcome: record — tied ranked top, no free-play beat", () => {
   // me and "a" tie at 50 ranked; nobody built higher.
   const field = [p("me", 50), p("a", 50), p("b", 30)];
   const out = classifyDailyOutcome(field, "me");
@@ -58,14 +59,14 @@ Deno.test("classifyDailyOutcome: record — tied ranked top, no free-play beat",
   assertEquals(out?.rank, 1);
 });
 
-Deno.test("classifyDailyOutcome: record — sole ranked top but a build tied it", () => {
+test("classifyDailyOutcome: record — sole ranked top but a build tied it", () => {
   // me sole ranked #1 at 50; "a" free-played up to exactly 50 (tie, not a beat).
   const field = [p("me", 50), p("a", 40, 50)];
   const out = classifyDailyOutcome(field, "me");
   assertEquals(out?.variant, "record");
 });
 
-Deno.test("classifyDailyOutcome: t1 — tied ranked top, free play bettered it", () => {
+test("classifyDailyOutcome: t1 — tied ranked top, free play bettered it", () => {
   // me and "a" tie at 50 ranked; "b" free-played to 55.
   const field = [p("me", 50), p("a", 50), p("b", 30, 55)];
   const out = classifyDailyOutcome(field, "me");
@@ -74,7 +75,7 @@ Deno.test("classifyDailyOutcome: t1 — tied ranked top, free play bettered it",
   assertEquals(out?.rank, 1);
 });
 
-Deno.test("classifyDailyOutcome: first — sole ranked top, free play bettered it", () => {
+test("classifyDailyOutcome: first — sole ranked top, free play bettered it", () => {
   // me sole ranked #1 at 50; "a" free-played to 55.
   const field = [p("me", 50), p("a", 40, 55)];
   const out = classifyDailyOutcome(field, "me");
@@ -82,7 +83,7 @@ Deno.test("classifyDailyOutcome: first — sole ranked top, free play bettered i
   assertEquals(out?.dayBest, 55);
 });
 
-Deno.test("classifyDailyOutcome: your own free play doesn't demote your record", () => {
+test("classifyDailyOutcome: your own free play doesn't demote your record", () => {
   // me ranked 50, then free-played to 60. Still supreme: a beat must come from
   // ANOTHER player.
   const field = [p("me", 50, 60), p("a", 30)];
@@ -91,7 +92,7 @@ Deno.test("classifyDailyOutcome: your own free play doesn't demote your record",
   assertEquals(out?.dayBest, 60);
 });
 
-Deno.test("classifyDailyOutcome: solo ranked player → supreme #1 of 1", () => {
+test("classifyDailyOutcome: solo ranked player → supreme #1 of 1", () => {
   assertEquals(classifyDailyOutcome([p("me", 42)], "me"), {
     variant: "supreme",
     rank: 1,

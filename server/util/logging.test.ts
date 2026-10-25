@@ -1,7 +1,8 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { coerceFlat, errText, formatLogfmt } from "./logging.ts";
 
-Deno.test("formatLogfmt: flat scalars, bare where safe", () => {
+test("formatLogfmt: flat scalars, bare where safe", () => {
   assertEquals(
     formatLogfmt("info", "request", {
       method: "POST",
@@ -13,41 +14,41 @@ Deno.test("formatLogfmt: flat scalars, bare where safe", () => {
   );
 });
 
-Deno.test("formatLogfmt: quotes values (and the msg) with spaces", () => {
+test("formatLogfmt: quotes values (and the msg) with spaces", () => {
   assertEquals(
     formatLogfmt("error", "handler failed", { error: "bad input" }),
     'level=error msg="handler failed" error="bad input"',
   );
 });
 
-Deno.test("formatLogfmt: escapes newlines so a stack stays one line", () => {
+test("formatLogfmt: escapes newlines so a stack stays one line", () => {
   const line = formatLogfmt("error", "boom", { error: "a\nb" });
   assertEquals(line, 'level=error msg=boom error="a\\nb"');
   assert(!line.includes("\n"));
 });
 
-Deno.test("formatLogfmt: a key can't forge fields or break the line", () => {
+test("formatLogfmt: a key can't forge fields or break the line", () => {
   assertEquals(
     formatLogfmt("error", "m", { 'a b="x" c': 1, "": 2, "client.ok-1": 3 }),
     "level=error msg=m a_b__x__c=1 _=2 client.ok-1=3",
   );
 });
 
-Deno.test("formatLogfmt: drops null/undefined fields", () => {
+test("formatLogfmt: drops null/undefined fields", () => {
   assertEquals(
     formatLogfmt("info", "m", { a: 1, b: undefined, c: null, d: "x" }),
     "level=info msg=m a=1 d=x",
   );
 });
 
-Deno.test("errText: Error yields its stack (incl. message); else stringifies", () => {
+test("errText: Error yields its stack (incl. message); else stringifies", () => {
   const e = new Error("boom");
   assert(errText(e).includes("boom"));
   assertEquals(errText("plain"), "plain");
   assertEquals(errText(42), "42");
 });
 
-Deno.test("coerceFlat: primitives pass, objects stringify, Errors flatten", () => {
+test("coerceFlat: primitives pass, objects stringify, Errors flatten", () => {
   const out = coerceFlat({
     a: 1,
     b: "x",

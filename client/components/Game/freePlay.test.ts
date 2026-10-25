@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals, assertRejects } from "@std/assert";
 import { storage } from "../../util/storage.ts";
 import {
@@ -16,7 +17,7 @@ import {
 
 const NOW = 1_700_000_000_000;
 
-Deno.test("free play resume: same board within the window resumes and keeps the record", () => {
+test("free play resume: same board within the window resumes and keeps the record", () => {
   clearFreePlay();
   const id = freePlayClientId();
   persistFreePlay(7, NOW + 30_000, [
@@ -34,7 +35,7 @@ Deno.test("free play resume: same board within the window resumes and keeps the 
   clearFreePlay();
 });
 
-Deno.test("free play resume: staging another day skips the record but KEEPS it", () => {
+test("free play resume: staging another day skips the record but KEEPS it", () => {
   clearFreePlay();
   persistFreePlay(7, NOW + 30_000, [{ x: 5, y: 5 }]);
 
@@ -47,7 +48,7 @@ Deno.test("free play resume: staging another day skips the record but KEEPS it",
   clearFreePlay();
 });
 
-Deno.test("free play pending: the expiry hand-off reads the record past its deadline", () => {
+test("free play pending: the expiry hand-off reads the record past its deadline", () => {
   clearFreePlay();
   const id = freePlayClientId();
   persistFreePlay(7, NOW + 30_000, [{ x: 5, y: 5 }]);
@@ -66,7 +67,7 @@ Deno.test("free play pending: the expiry hand-off reads the record past its dead
   clearFreePlay();
 });
 
-Deno.test("free play resume: an expired, empty, or reset record does not resume", () => {
+test("free play resume: an expired, empty, or reset record does not resume", () => {
   clearFreePlay();
   persistFreePlay(7, NOW - 1, [{ x: 5, y: 5 }]);
   assertEquals(resumableFreePlay(7, NOW), null);
@@ -110,14 +111,14 @@ const withFetch = async (
 const landed = () =>
   Response.json({ kind: "commitRun", iteration: 7, created: NOW });
 
-Deno.test("commit outbox: a landed commit leaves nothing queued", async () => {
+test("commit outbox: a landed commit leaves nothing queued", async () => {
   clearFreePlayOutbox();
   await withFetch(landed, () => commitFreePlay(7, [{ x: 5, y: 5 }], 10));
   assertEquals(queued(), []);
   clearFreePlay();
 });
 
-Deno.test("commit outbox: a verdict on the maze is dropped, a server fault is kept", async () => {
+test("commit outbox: a verdict on the maze is dropped, a server fault is kept", async () => {
   clearFreePlayOutbox();
   await withFetch(
     () =>
@@ -141,7 +142,7 @@ Deno.test("commit outbox: a verdict on the maze is dropped, a server fault is ke
   assertEquals(queued(), []);
 });
 
-Deno.test("commit outbox: a gateway page is a transport failure — retried, then queued and replayed", async () => {
+test("commit outbox: a gateway page is a transport failure — retried, then queued and replayed", async () => {
   clearFreePlayOutbox();
   let calls = 0;
   await withFetch(() => {
@@ -164,7 +165,7 @@ Deno.test("commit outbox: a gateway page is a transport failure — retried, the
   assertEquals(queued(), []);
 });
 
-Deno.test("commit outbox: one queued run per board — the best, ties keep the earlier", async () => {
+test("commit outbox: one queued run per board — the best, ties keep the earlier", async () => {
   clearFreePlayOutbox();
   const fault = () =>
     Response.json({ error: "failed to commit run", status: 500 }, {

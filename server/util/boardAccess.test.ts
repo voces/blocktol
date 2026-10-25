@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { decideBoardAccess, iterationDate, ymd } from "./boardAccess.ts";
 
@@ -8,12 +9,12 @@ const base = {
   rankedAttempts: 0,
 };
 
-Deno.test("decideBoardAccess", async (t) => {
-  await t.step("a day before the caller's today is open", () => {
+test("decideBoardAccess", async (t) => {
+  await t.test("a day before the caller's today is open", () => {
     assertEquals(decideBoardAccess({ ...base, date: "2026-10-16" }), "open");
   });
 
-  await t.step("the day that just rolled over is open at once", () => {
+  await t.test("the day that just rolled over is open at once", () => {
     // Free play of yesterday right after local midnight, ranked or not.
     assertEquals(
       decideBoardAccess({ ...base, localToday: "2026-10-18" }),
@@ -21,18 +22,18 @@ Deno.test("decideBoardAccess", async (t) => {
     );
   });
 
-  await t.step("the caller's own today is locked until spent", () => {
+  await t.test("the caller's own today is locked until spent", () => {
     assertEquals(decideBoardAccess({ ...base, rankedAttempts: 2 }), "locked");
     assertEquals(decideBoardAccess({ ...base, rankedAttempts: 3 }), "open");
   });
 
-  await t.step("a future day for the caller is locked", () => {
+  await t.test("a future day for the caller is locked", () => {
     // Tomorrow's iteration exists (the gen cron runs a day ahead).
     assertEquals(decideBoardAccess({ ...base, date: "2026-10-18" }), "locked");
   });
 });
 
-Deno.test("ymd / iterationDate normalize to YYYY-MM-DD", () => {
+test("ymd / iterationDate normalize to YYYY-MM-DD", () => {
   assertEquals(ymd({ year: 2026, month: 3, day: 7 }), "2026-03-07");
   // A DATE column reads back bare (direct transport) or as an ISO midnight-Z
   // (proxy); both are the same date.

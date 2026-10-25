@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { keyMatches } from "./push.ts";
 
@@ -15,11 +16,11 @@ const bytes = (b64url: string): ArrayBuffer => {
   return out.buffer;
 };
 
-Deno.test("a subscription minted under the current key matches", () => {
+test("a subscription minted under the current key matches", () => {
   assert(keyMatches(bytes(KEY), KEY));
 });
 
-Deno.test("a subscription minted under a retired key does NOT match", () => {
+test("a subscription minted under a retired key does NOT match", () => {
   // Rotating VAPID keys leaves existing subscriptions undeliverable (403, not
   // pruned server-side); without this check the client re-registers the same
   // dead endpoint forever.
@@ -29,11 +30,11 @@ Deno.test("a subscription minted under a retired key does NOT match", () => {
   assertEquals(keyMatches(bytes(KEY), rotated), false);
 });
 
-Deno.test("a differing length is a mismatch, not a crash", () => {
+test("a differing length is a mismatch, not a crash", () => {
   assertEquals(keyMatches(new Uint8Array([1, 2, 3]).buffer, KEY), false);
 });
 
-Deno.test("an unreadable applicationServerKey is treated as matching", () => {
+test("an unreadable applicationServerKey is treated as matching", () => {
   // Some browsers don't expose PushSubscriptionOptions.applicationServerKey; an
   // unknown key must not trigger a re-subscribe of a possibly good
   // subscription.

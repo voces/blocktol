@@ -1,13 +1,14 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { formatAgo, formatCountdown, formatRank } from "./helpers.ts";
 
-Deno.test("formatRank marks shared ranks with T", () => {
+test("formatRank marks shared ranks with T", () => {
   assertEquals(formatRank(1, false), "1");
   assertEquals(formatRank(2, true), "T2");
   assertEquals(formatRank(211, false), "211");
 });
 
-Deno.test("formatRank approximates large ranks (PB board)", () => {
+test("formatRank approximates large ranks (PB board)", () => {
   // At the thousands, exact digits are noise and tie state is fuzzy — collapse
   // to "~N.Nk" and drop the T.
   assertEquals(formatRank(1900, false), "~1.9k");
@@ -17,7 +18,7 @@ Deno.test("formatRank approximates large ranks (PB board)", () => {
   assertEquals(formatRank(1000, false), "~1k");
 });
 
-Deno.test("formatAgo coarsens with distance", () => {
+test("formatAgo coarsens with distance", () => {
   const now = 1_000_000_000_000;
   assertEquals(formatAgo(now - 30 * 1000, now), "now");
   assertEquals(formatAgo(now - 5 * 60_000, now), "5m ago");
@@ -27,7 +28,7 @@ Deno.test("formatAgo coarsens with distance", () => {
   assertEquals(formatAgo(now + 60_000, now), "now");
 });
 
-Deno.test("formatCountdown counts down to 'soon'", () => {
+test("formatCountdown counts down to 'soon'", () => {
   const now = 1_000_000_000_000;
   assertEquals(
     formatCountdown(now + 9 * 3_600_000 + 41 * 60_000, now),

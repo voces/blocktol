@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { sha256, validateTranslation } from "./i18nLib.ts";
 import {
@@ -23,7 +24,7 @@ const fake = (map: Record<string, string>): Translator => ({
   },
 });
 
-Deno.test("staleKeys: missing + source-changed", async () => {
+test("staleKeys: missing + source-changed", async () => {
   const existing = {
     "a.greet": {
       message: "Hola {name}",
@@ -34,7 +35,7 @@ Deno.test("staleKeys: missing + source-changed", async () => {
   assertEquals((await staleKeys(en, existing)).sort(), ["a.count"]);
 });
 
-Deno.test("translateLocale: fills stale, keeps fresh, returns null when up to date", async () => {
+test("translateLocale: fills stale, keeps fresh, returns null when up to date", async () => {
   const existing = {
     "a.greet": {
       message: "Hola {name}",
@@ -57,7 +58,7 @@ Deno.test("translateLocale: fills stale, keeps fresh, returns null when up to da
   assertEquals(await translateLocale(t, "es", en, next, {}), null);
 });
 
-Deno.test("translateLocale: prunes orphaned keys", async () => {
+test("translateLocale: prunes orphaned keys", async () => {
   const existing = {
     "a.greet": {
       message: "Hola {name}",
@@ -74,7 +75,7 @@ Deno.test("translateLocale: prunes orphaned keys", async () => {
   assert(!("gone.key" in next));
 });
 
-Deno.test("translateLocale: retries with feedback and succeeds", async () => {
+test("translateLocale: retries with feedback and succeeds", async () => {
   let calls = 0;
   const flaky: Translator = {
     translate: (req) => {
@@ -99,7 +100,7 @@ Deno.test("translateLocale: retries with feedback and succeeds", async () => {
   assert(calls >= 2);
 });
 
-Deno.test("translateLocale: rejects a dropped placeholder", async () => {
+test("translateLocale: rejects a dropped placeholder", async () => {
   const bad = fake({ "a.greet": "Hola" }); // dropped {name}
   await assertRejects(
     () => translateLocale(bad, "es", en, {}, {}),
@@ -108,7 +109,7 @@ Deno.test("translateLocale: rejects a dropped placeholder", async () => {
   );
 });
 
-Deno.test("validateTranslation: plural category coverage", () => {
+test("validateTranslation: plural category coverage", () => {
   // Polish needs one/few/many/other; supplying only one/other must fail.
   const errs = validateTranslation(
     "pl",

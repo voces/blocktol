@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { healthCheck } from "./health.ts";
 
@@ -10,7 +11,7 @@ const call = async (check: () => Promise<boolean>) => {
   ];
 };
 
-Deno.test("health: ok when today's puzzle exists", async () => {
+test("health: ok when today's puzzle exists", async () => {
   assertEquals(await call(() => Promise.resolve(true)), [
     200,
     "ok",
@@ -18,7 +19,7 @@ Deno.test("health: ok when today's puzzle exists", async () => {
   ]);
 });
 
-Deno.test("health: 503 when today's puzzle is missing", async () => {
+test("health: 503 when today's puzzle is missing", async () => {
   assertEquals(await call(() => Promise.resolve(false)), [
     503,
     "no puzzle for today",
@@ -26,7 +27,7 @@ Deno.test("health: 503 when today's puzzle is missing", async () => {
   ]);
 });
 
-Deno.test("health: 503 when the database fails", async () => {
+test("health: 503 when the database fails", async () => {
   assertEquals(await call(() => Promise.reject(new Error("down"))), [
     503,
     "db unreachable",

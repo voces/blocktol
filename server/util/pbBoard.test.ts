@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { decidePbAction, pbEmbed, topPbToAnnounce } from "./pbBoard.ts";
 import { type BestRow } from "./lostTop.ts";
@@ -20,21 +21,21 @@ const mk = (
 
 // ── topPbToAnnounce (replay-safe new-sole-top detection) ─────────────────────
 
-Deno.test("topPbToAnnounce: passing the previous holder announces the passer", () => {
+test("topPbToAnnounce: passing the previous holder announces the passer", () => {
   assertEquals(topPbToAnnounce(rows(["me", 55], ["a", 50]), "me", 30), {
     name: "me",
     time: 55,
   });
 });
 
-Deno.test("topPbToAnnounce: the day's first PB (sole player) announces", () => {
+test("topPbToAnnounce: the day's first PB (sole player) announces", () => {
   assertEquals(topPbToAnnounce(rows(["me", 40]), "me", null), {
     name: "me",
     time: 40,
   });
 });
 
-Deno.test("topPbToAnnounce: a non-topping build, a tie, and an extended lead announce nothing", () => {
+test("topPbToAnnounce: a non-topping build, a tie, and an extended lead announce nothing", () => {
   assertEquals(topPbToAnnounce(rows(["me", 45], ["a", 50]), "me", 20), null);
   assertEquals(topPbToAnnounce(rows(["me", 50], ["a", 50]), "me", 30), null);
   assertEquals(topPbToAnnounce(rows(["me", 70], ["a", 50]), "me", 60), null);
@@ -43,7 +44,7 @@ Deno.test("topPbToAnnounce: a non-topping build, a tie, and an extended lead ann
 // ── decidePbAction (post / edit / none) ──────────────────────────────────────
 // args: (isTop, me, count, newHolder, marker, actor, stale)
 
-Deno.test("decidePbAction: a new holder posts", () => {
+test("decidePbAction: a new holder posts", () => {
   assertEquals(
     decidePbAction(true, 55, 1, true, mk({ topUser: "a" }), "me", false),
     "post",
@@ -51,19 +52,19 @@ Deno.test("decidePbAction: a new holder posts", () => {
   assertEquals(decidePbAction(true, 40, 1, true, null, "me", false), "post");
 });
 
-Deno.test("decidePbAction: a non-topping build with no prior record does nothing", () => {
+test("decidePbAction: a non-topping build with no prior record does nothing", () => {
   assertEquals(decidePbAction(false, 45, 1, false, null, "me", false), "none");
 });
 
-Deno.test("decidePbAction: the same holder improving within the window (still sole) edits", () => {
+test("decidePbAction: the same holder improving within the window (still sole) edits", () => {
   assertEquals(decidePbAction(true, 35, 1, false, mk(), "me", false), "edit");
 });
 
-Deno.test("decidePbAction: the same holder improving past the window posts anew", () => {
+test("decidePbAction: the same holder improving past the window posts anew", () => {
   assertEquals(decidePbAction(true, 35, 1, false, mk(), "me", true), "post");
 });
 
-Deno.test("decidePbAction: the same holder improving after a match posts anew (breaks the seal)", () => {
+test("decidePbAction: the same holder improving after a match posts anew (breaks the seal)", () => {
   // held supreme → someone matched (holders 2) → improve, retaking supreme → post.
   assertEquals(
     decidePbAction(true, 35, 1, false, mk({ holders: 2 }), "me", false),
@@ -71,7 +72,7 @@ Deno.test("decidePbAction: the same holder improving after a match posts anew (b
   );
 });
 
-Deno.test("decidePbAction: a build matching the announced top edits the tie count", () => {
+test("decidePbAction: a build matching the announced top edits the tie count", () => {
   // "me" ties "a"'s announced top of 30; now two share it.
   assertEquals(
     decidePbAction(true, 30, 2, false, mk({ topUser: "a" }), "me", false),
@@ -79,7 +80,7 @@ Deno.test("decidePbAction: a build matching the announced top edits the tie coun
   );
 });
 
-Deno.test("decidePbAction: matching an already-counted tie does nothing", () => {
+test("decidePbAction: matching an already-counted tie does nothing", () => {
   assertEquals(
     decidePbAction(
       true,
@@ -94,17 +95,17 @@ Deno.test("decidePbAction: matching an already-counted tie does nothing", () => 
   );
 });
 
-Deno.test("decidePbAction: the same holder not improving does nothing", () => {
+test("decidePbAction: the same holder not improving does nothing", () => {
   assertEquals(decidePbAction(true, 30, 1, false, mk(), "me", false), "none");
 });
 
-Deno.test("decidePbAction: the announced holder who got passed does nothing", () => {
+test("decidePbAction: the announced holder who got passed does nothing", () => {
   assertEquals(decidePbAction(false, 30, 1, false, mk(), "me", false), "none");
 });
 
 // ── pbEmbed ──────────────────────────────────────────────────────────────────
 
-Deno.test("pbEmbed: a sole holder is gold, no tally", () => {
+test("pbEmbed: a sole holder is gold, no tally", () => {
   const e = pbEmbed("alice", 30.5, 1, day);
   assertEquals(e.color, GOLD);
   assertEquals(e.title, "Top PB: Jul 6");
@@ -116,7 +117,7 @@ Deno.test("pbEmbed: a sole holder is gold, no tally", () => {
   assertStringIncludes(e.url, "20260706?board=pb");
 });
 
-Deno.test("pbEmbed: a matched top names who matched it", () => {
+test("pbEmbed: a matched top names who matched it", () => {
   const two = pbEmbed("alice", 30.5, 2, day, ["bob"]);
   assertEquals(two.color, CHARTREUSE);
   assertStringIncludes(two.description, "Matched by **bob**.");
@@ -125,7 +126,7 @@ Deno.test("pbEmbed: a matched top names who matched it", () => {
   assertStringIncludes(four.description, "Matched by:\n• bob\n• carol\n• dave");
 });
 
-Deno.test("pbEmbed: without names it falls back to the tie count", () => {
+test("pbEmbed: without names it falls back to the tie count", () => {
   // The grey-out path: a superseded message is rebuilt from the marker, which
   // stores only how many shared the top.
   const two = pbEmbed("alice", 30.5, 2, day);
@@ -136,14 +137,14 @@ Deno.test("pbEmbed: without names it falls back to the tie count", () => {
   assertStringIncludes(four.description, "3 players have matched it.");
 });
 
-Deno.test("pbEmbed: more than ten matchers collapse to a count", () => {
+test("pbEmbed: more than ten matchers collapse to a count", () => {
   const names = Array.from({ length: 11 }, (_, i) => `p${i}`);
   const e = pbEmbed("alice", 30.5, 12, day, names);
   assertStringIncludes(e.description, "11 players have matched it.");
   assertEquals(e.description.includes("• p0"), false);
 });
 
-Deno.test("pbEmbed: exactly ten matchers are still named", () => {
+test("pbEmbed: exactly ten matchers are still named", () => {
   const names = Array.from({ length: 10 }, (_, i) => `p${i}`);
   assertStringIncludes(
     pbEmbed("alice", 30.5, 11, day, names).description,
@@ -151,7 +152,7 @@ Deno.test("pbEmbed: exactly ten matchers are still named", () => {
   );
 });
 
-Deno.test("pbEmbed: a name list that disagrees with the count is not trusted", () => {
+test("pbEmbed: a name list that disagrees with the count is not trusted", () => {
   // The count is the authority: a short name list must not understate a tie.
   assertStringIncludes(
     pbEmbed("alice", 30.5, 4, day, ["bob"]).description,

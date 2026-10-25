@@ -1,3 +1,4 @@
+import { test } from "node:test";
 import { assertEquals } from "@std/assert";
 import { extractUserId } from "../middleware/userid.ts";
 import { merge } from "../routes/merge.ts";
@@ -69,43 +70,41 @@ const withPbTop = async (
   }
 };
 
-Deno.test({
-  name: "merge keeps the primary's ranked attempts on a day both ranked",
-  ignore: !live,
-  fn: async () => {
-    const primary = await testUser();
-    const secondary = await testUser();
-    try {
-      const [both, onlySecondary] = await oldest();
-      // Both ranked `both`: the secondary did better there.
-      await seedRun(primary, both, 10, true, true, 300);
-      await seedRun(primary, both, 11, true, false, 200);
-      await seedRun(secondary, both, 50, true, true, 100);
-      // Only the secondary ranked `onlySecondary`.
-      await seedRun(secondary, onlySecondary, 20, true, true, 100);
+test("merge keeps the primary's ranked attempts on a day both ranked", {
+  skip: !live,
+}, async () => {
+  const primary = await testUser();
+  const secondary = await testUser();
+  try {
+    const [both, onlySecondary] = await oldest();
+    // Both ranked `both`: the secondary did better there.
+    await seedRun(primary, both, 10, true, true, 300);
+    await seedRun(primary, both, 11, true, false, 200);
+    await seedRun(secondary, both, 50, true, true, 100);
+    // Only the secondary ranked `onlySecondary`.
+    await seedRun(secondary, onlySecondary, 20, true, true, 100);
 
-      await mergeUsers(primary, secondary);
+    await mergeUsers(primary, secondary);
 
-      assertEquals(await rows(primary, both), [
-        { time: 10, ranked: true, daily: true },
-        { time: 11, ranked: true, daily: false },
-        // Moved over as history, never as a fourth ranked attempt.
-        { time: 50, ranked: false, daily: false },
-      ]);
-      // A day only one side ranked moves over whole.
-      assertEquals(await rows(primary, onlySecondary), [
-        { time: 20, ranked: true, daily: true },
-      ]);
-    } finally {
-      await sql`DELETE FROM user WHERE id IN (${[primary, secondary]});`;
-    }
-  },
+    assertEquals(await rows(primary, both), [
+      { time: 10, ranked: true, daily: true },
+      { time: 11, ranked: true, daily: false },
+      // Moved over as history, never as a fourth ranked attempt.
+      { time: 50, ranked: false, daily: false },
+    ]);
+    // A day only one side ranked moves over whole.
+    assertEquals(await rows(primary, onlySecondary), [
+      { time: 20, ranked: true, daily: true },
+    ]);
+  } finally {
+    await sql`DELETE FROM user WHERE id IN (${[primary, secondary]});`;
+  }
 });
 
-Deno.test({
-  name: "merge carries the top-PB holder to the primary",
-  ignore: !live,
-  fn: async () => {
+test(
+  "merge carries the top-PB holder to the primary",
+  { skip: !live },
+  async () => {
     const primary = await testUser();
     const secondary = await testUser();
     const [iteration] = await oldest();
@@ -125,37 +124,33 @@ Deno.test({
       await sql`DELETE FROM user WHERE id IN (${[primary, secondary]});`;
     }
   },
-});
+);
 
-Deno.test({
-  name: "erasure re-points the top-PB holder",
-  ignore: !live,
-  fn: async () => {
-    const user = await testUser();
-    const newId = crypto.randomUUID();
-    const [iteration] = await oldest();
-    try {
-      await withPbTop(iteration, async () => {
-        await sql`
+test("erasure re-points the top-PB holder", { skip: !live }, async () => {
+  const user = await testUser();
+  const newId = crypto.randomUUID();
+  const [iteration] = await oldest();
+  try {
+    await withPbTop(iteration, async () => {
+      await sql`
           INSERT INTO pb_top (iteration, top_user) VALUES (${iteration}, ${user})
             ON DUPLICATE KEY UPDATE top_user = VALUES(top_user);`;
 
-        await anonymizeUser(user, newId);
+      await anonymizeUser(user, newId);
 
-        const [top] = await sql<{ top_user: string }[]>`
+      const [top] = await sql<{ top_user: string }[]>`
           SELECT top_user FROM pb_top WHERE iteration = ${iteration};`;
-        assertEquals(top.top_user, newId, "the old id must not survive");
-      });
-    } finally {
-      await sql`DELETE FROM user WHERE id IN (${[user, newId]});`;
-    }
-  },
+      assertEquals(top.top_user, newId, "the old id must not survive");
+    });
+  } finally {
+    await sql`DELETE FROM user WHERE id IN (${[user, newId]});`;
+  }
 });
 
-Deno.test({
-  name: "merge into a nonexistent primary is a 400, not a 500",
-  ignore: !live,
-  fn: async () => {
+test(
+  "merge into a nonexistent primary is a 400, not a 500",
+  { skip: !live },
+  async () => {
     const user = await testUser();
     try {
       const req = new Request("http://localhost/api/merge", {
@@ -171,4 +166,4 @@ Deno.test({
       await sql`DELETE FROM user WHERE id = ${user};`;
     }
   },
-});
+);
