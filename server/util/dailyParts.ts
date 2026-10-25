@@ -26,9 +26,9 @@ export const dailyParts = (timeZone: string) => {
     throw new UserError("invalid timeZone");
   }
 
-  const month = parseInt(parts[0]);
-  const day = parseInt(parts[1]);
-  const year = parseInt(parts[2]);
+  const month = parseInt(parts[0]!);
+  const day = parseInt(parts[1]!);
+  const year = parseInt(parts[2]!);
 
   return { month, day, year };
 };

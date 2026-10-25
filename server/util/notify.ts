@@ -83,7 +83,7 @@ const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
 const pool = async (tasks: (() => Promise<void>)[], limit: number) => {
   let i = 0;
   const worker = async () => {
-    while (i < tasks.length) await tasks[i++]();
+    while (i < tasks.length) await tasks[i++]!();
   };
   await Promise.all(
     Array.from({ length: Math.min(limit, tasks.length) }, worker),

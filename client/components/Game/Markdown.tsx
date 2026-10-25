@@ -64,7 +64,7 @@ const parse = (string: string) => {
   let index = 0;
   const chain: NodeWithChildren[] = [root];
   while (index < tokens.length) {
-    const token = tokens[index++];
+    const token = tokens[index++]!;
     if (token.kind === "inline") {
       const inlineName = getInlineName(token.content);
       if (!inlineName) throw new Error(`Unknown inline kind: ${token.content}`);
@@ -75,28 +75,28 @@ const parse = (string: string) => {
       }
 
       const node: NodeWithChildren = { kind: inlineName, children: [] };
-      chain[chain.length - 1].children.push(node);
+      chain[chain.length - 1]!.children.push(node);
       chain.push(node);
       continue;
     }
 
     if (token.kind === "newline") {
-      chain[chain.length - 1].children.push({ kind: "newline" });
+      chain[chain.length - 1]!.children.push({ kind: "newline" });
       continue;
     }
 
     if (token.kind === "text") {
-      chain[chain.length - 1].children.push(token.content);
+      chain[chain.length - 1]!.children.push(token.content);
       continue;
     }
 
     if (token.kind === "localDate") {
       const parts = token.content.match(/\\localDate\((\d+), (\d+), (\d+)\)/);
       if (!parts || parts.length !== 4) {
-        chain[chain.length - 1].children.push(token.content);
+        chain[chain.length - 1]!.children.push(token.content);
         continue;
       }
-      chain[chain.length - 1].children.push(
+      chain[chain.length - 1]!.children.push(
         new Intl.DateTimeFormat(intlLocale(), {
           dateStyle: "medium",
           timeZone: "UTC",
@@ -104,9 +104,9 @@ const parse = (string: string) => {
           // UTC midnight to match the UTC formatting; local midnight read in
           // UTC is the previous day east of Greenwich.
           new Date(Date.UTC(
-            parseInt(parts[1]),
-            parseInt(parts[2]) - 1,
-            parseInt(parts[3]),
+            parseInt(parts[1]!),
+            parseInt(parts[2]!) - 1,
+            parseInt(parts[3]!),
           )),
         ),
       );

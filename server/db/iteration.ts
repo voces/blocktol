@@ -8,7 +8,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const getIterationCount = () =>
   sql<{ count: number }[]>`
     SELECT COUNT(*) count FROM iteration;
-  `.then((r) => r[0].count);
+  `.then((r) => r[0]!.count);
 
 export const getIteration = memoize((id: number) =>
   sql<
@@ -157,7 +157,7 @@ export const getIterationOtherBest = (
       AND user != ${user}
       AND void = FALSE
       ${daily ? raw`AND daily = true` : raw("")}
-  `.then((r) => r[0].otherBest);
+  `.then((r) => r[0]!.otherBest);
 
 // Dailies whose date is fully past for every timezone (so the field is frozen)
 // and that haven't been rated yet. 37h = the UTC-12 close (D+1 12:00 UTC) plus

@@ -385,7 +385,7 @@ export const IntroBoard = (
     }
     setStep((s) => {
       if (s >= LAST_STEP) return s;
-      settle(BEATS_DONE[s]);
+      settle(BEATS_DONE[s]!);
       return s + 1;
     });
   }, [step, bare, settle]);
@@ -397,7 +397,7 @@ export const IntroBoard = (
     const seg = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
     let upTo = 0, total = 0;
     for (let i = 1; i < bare.path.length; i++) {
-      const d = seg(bare.path[i - 1], bare.path[i]);
+      const d = seg(bare.path[i - 1]!, bare.path[i]!);
       total += d;
       if (i <= cut) upTo += d;
     }
@@ -430,12 +430,12 @@ export const IntroBoard = (
   // first, one at a time (simultaneous blocks read as one event).
   useEffect(() => {
     if (step === 0 || step === 1) return;
-    const from = BEATS_DONE[step - 1], to = BEATS_DONE[step];
+    const from = BEATS_DONE[step - 1]!, to = BEATS_DONE[step]!;
     const timers: number[] = [];
     let delay = LEAD_MS;
     for (let i = from; i < to; i++) {
       timers.push(setTimeout(() => settle(i + 1), delay));
-      delay += gapAfter(BEATS[i]);
+      delay += gapAfter(BEATS[i]!);
     }
     return () => timers.forEach(clearTimeout);
   }, [step, settle]);
@@ -446,7 +446,7 @@ export const IntroBoard = (
   // the grabbed block by identity (`block === transitionBlock`), and a copy
   // would leave it drawn, reading as a second block.
   useEffect(() => {
-    const beat = BEATS[MOVE_BEAT];
+    const beat = BEATS[MOVE_BEAT]!;
     if (beat.kind !== "move" || beatsDone !== MOVE_BEAT + 1) return;
     const mover = blocksRef.current.find((b) =>
       b.x === beat.to.x && b.y === beat.to.y && b.local
@@ -596,13 +596,13 @@ export const IntroBoard = (
             separate finale step. */
         }
         <Tip
-          {...tips[step][1]}
+          {...tips[step]![1]}
           onNext={step < LAST_STEP ? advance : onDone}
           onSkip={onDone}
           onReplay={onReplay}
           last={step === LAST_STEP}
         >
-          {tips[step][0]}
+          {tips[step]![0]}
         </Tip>
       </div>
     </div>

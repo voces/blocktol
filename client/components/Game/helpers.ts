@@ -75,7 +75,7 @@ export const mazeKey = (
   JSON.stringify(
     [...maze]
       .map((b) => [b.x, b.y, b.thunder ? 1 : 0])
-      .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]),
+      .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]! || a[2]! - b[2]!),
   );
 
 export const isTouchSource = is.object({
@@ -112,9 +112,9 @@ export const rebuildGrid = (
   blocks: ReadonlyArray<Point>,
 ) => {
   grid.splice(0, Infinity, ...newGrid());
-  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+  grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
   for (const { x, y } of blocks) {
-    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    offsets.forEach(([xd, yd]) => grid[y + yd]![x + xd] = true);
   }
 };
 
@@ -134,10 +134,10 @@ export const isInvalidMove = (
 ) => {
   if (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y) <= 1) return true;
 
-  offsets.forEach(([xd, yd]) => grid[origin.y + yd][origin.x + xd] = false);
-  const invalid = offsets.some(([xd, yd]) => grid[y + yd][x + xd]) ||
+  offsets.forEach(([xd, yd]) => grid[origin.y + yd]![origin.x + xd] = false);
+  const invalid = offsets.some(([xd, yd]) => grid[y + yd]![x + xd]) ||
     !solvable(blocks.filter((b) => b !== origin), checkpoint, { x, y });
-  offsets.forEach(([xd, yd]) => grid[origin.y + yd][origin.x + xd] = true);
+  offsets.forEach(([xd, yd]) => grid[origin.y + yd]![origin.x + xd] = true);
   return invalid;
 };
 

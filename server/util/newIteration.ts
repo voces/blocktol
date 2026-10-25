@@ -27,13 +27,13 @@ export const newIteration = async (date: Date) => {
   // Whether a path exists doesn't depend on thunder flags, so probes go in
   // unflagged; the timing solve below is a separate cold construction.
   const grid = newGrid();
-  grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+  grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
   const solver = new PathSolver([], checkpoint);
   const placed: Point[] = [];
   const placeIfSolvable = (x: number, y: number) => {
-    if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) return false;
+    if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) return false;
     if (!solver.solve([...placed, { x, y }])) return false;
-    offsets.forEach(([xd, yd]) => grid[y + yd][x + xd] = true);
+    offsets.forEach(([xd, yd]) => grid[y + yd]![x + xd] = true);
     placed.push({ x, y });
     return true;
   };

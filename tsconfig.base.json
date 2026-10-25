@@ -16,6 +16,9 @@
     // An optional property that may also be set to undefined says so
     // (`x?: T | undefined`), keeping "absent" and "undefined" apart.
     "exactOptionalPropertyTypes": true,
+    // An index read may be undefined: a `!` asserts an invariant (a loop
+    // bound, a length check), anything else needs a real guard.
+    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,

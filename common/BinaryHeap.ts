@@ -13,8 +13,9 @@ export class BinaryHeap<T> extends Array<T> {
     return 0;
   }
 
+  // Callers pop only a non-empty heap (Dijkstra stops when it's empty).
   override pop(): T {
-    const top = this[0];
+    const top = this[0]!;
     const bottom = super.pop();
 
     if (this.length > 0) {
@@ -44,12 +45,12 @@ export class BinaryHeap<T> extends Array<T> {
   }
 
   bubbleUp(index: number): void {
-    const element = this[index];
+    const element = this[index]!;
     const score = this.scoreFunc(element);
 
     while (index > 0) {
       const parentIndex = Math.floor((index + 1) / 2) - 1,
-        parent = this[parentIndex];
+        parent = this[parentIndex]!;
 
       if (score >= this.scoreFunc(parent)) break;
 
@@ -62,7 +63,7 @@ export class BinaryHeap<T> extends Array<T> {
 
   sinkDown(index: number): void {
     const length = this.length;
-    const element = this[index];
+    const element = this[index]!;
     const score = this.scoreFunc(element);
 
     while (true) {
@@ -73,14 +74,14 @@ export class BinaryHeap<T> extends Array<T> {
       let swapIndex = undefined;
 
       if (leftIndex < length) {
-        const left = this[leftIndex];
+        const left = this[leftIndex]!;
         leftScore = this.scoreFunc(left);
 
         if (leftScore < score) swapIndex = leftIndex;
       }
 
       if (rightIndex < length) {
-        const right = this[rightIndex];
+        const right = this[rightIndex]!;
 
         if (
           this.scoreFunc(right) <
@@ -92,7 +93,7 @@ export class BinaryHeap<T> extends Array<T> {
 
       if (swapIndex === undefined) break;
 
-      this[index] = this[swapIndex];
+      this[index] = this[swapIndex]!;
       this[swapIndex] = element;
       index = swapIndex;
     }
