@@ -61,8 +61,8 @@ export const updateRun = method(updateRunBody, true)(
     }
     const { path, duration, slows } = validation;
 
-    // Awaited: a Deno Deploy preview kills a write still pending after the
-    // response.
+    // Awaited: the shutdown drain waits only for in-flight requests, so a
+    // write still pending after the response dies with a deploy's restart.
     try {
       const { saved } = await updateCurrentRun(
         userId,
@@ -85,15 +85,15 @@ export const updateRun = method(updateRunBody, true)(
     // post/edit; it re-validates and dedupes, so a stream of leading saves
     // notifies once. The gate includes an exact TIE (>=) and the first build of
     // the day (otherBest == null): both can set or match the record though
-    // decideLostTop stays silent on them. Awaited because a Deploy preview
-    // kills work left running after the response; never throws.
+    // decideLostTop stays silent on them. Awaited so the shutdown drain covers
+    // it (see start.ts); never throws.
     //
     // Known edge: this fires per save, not at finalization, so a build can
     // reach the top, fire the card/post, then be trimmed back below it before
     // the 60s window closes, leaving a stale "lost #1" or record post. Rare and
     // low-harm (deduped to one card that deep-links to live standings).
     // Deferring to finalization needs a cancelable one-off scheduler, and
-    // neither `setTimeout` (dies with a preview isolate) nor hourly `Deno.cron`
+    // neither `setTimeout` (lost on a deploy's restart) nor hourly `Deno.cron`
     // is one. Free play fires once at execution (commitRun), so it has no such
     // edge.
     if (otherBest == null || duration >= otherBest) {

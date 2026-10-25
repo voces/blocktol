@@ -17,8 +17,8 @@
 //      - ties, non-topping builds and replays do nothing.
 //
 // Neither throws: a notification/webhook failure must not fail the run. Callers
-// AWAIT onPbBuild: a Deno Deploy preview kills work left running past the
-// response.
+// AWAIT onPbBuild: the shutdown drain waits only for in-flight requests, so
+// work left running past the response dies with a deploy's restart.
 
 import { formatNotifDate } from "../../common/notifications.ts";
 import { formatSeconds } from "../../common/format.ts";

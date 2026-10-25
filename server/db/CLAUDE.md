@@ -1,34 +1,35 @@
 # server/db — read before touching migrations
 
-**Migrations run automatically, and a push is a deploy.**
+**Migrations run automatically on every deploy's boot.**
 
-- Pushing **any** branch deploys a Deno Deploy dev preview. It boots against the
-  shared `blocktol-dev` database and applies every pending migration in
-  `migrations.ts` on that branch, before anyone has reviewed it.
-- Merging to `prod` deploys the EC2 instance, which applies them to
-  **production** on boot.
+- Approving a PR's waiting Deploy dev job puts its head on the dev instance,
+  which applies every pending migration in `migrations.ts` on that branch to the
+  shared `blocktol-dev` database, before review ends.
+- Merging to `prod` deploys prod, which applies them to **production**, and the
+  dev instance, which applies them to `blocktol-dev` if no approved deploy did.
+- Pushing a branch runs nothing.
 - Nobody runs migrations by hand. Never ask the user to "run migration vN on
-  dev": the push already did. Ask them to check its effect instead.
+  dev": ask them to approve the PR's dev deploy, then check its effect.
 
-Before pushing a branch that adds or edits a migration:
+Before asking for a dev deploy of a branch that adds or edits a migration:
 
-1. **Version number.** Check that no other branch has pushed the same version,
-   including one since abandoned or dropped before merge: whichever reaches dev
-   first is recorded, and the other is silently skipped there. This has
-   happened. A draft of the board-access change pushed a v16 `preview` table,
-   and the feature was dropped before merge. When the real v16
-   (`user-name-utf8mb4`) arrived, dev already had a v16 and skipped it, so emoji
-   renames failed on dev only. The fix was by hand: drop the stray table, run
-   the real `ALTER`, and rename the `schema_migration` row. When in doubt, ask
-   the user to check dev's `schema_migration` for the version you're about to
-   use.
+1. **Version number.** Check that no other PR has the same version, including
+   one deployed to dev and since dropped: whichever reaches dev first is
+   recorded, and the other is silently skipped there. This has happened. A draft
+   of the board-access change pushed a v16 `preview` table, and the feature was
+   dropped before merge. When the real v16 (`user-name-utf8mb4`) arrived, dev
+   already had a v16 and skipped it, so emoji renames failed on dev only. The
+   fix was by hand: drop the stray table, run the real `ALTER`, and rename the
+   `schema_migration` row. When in doubt, ask the user to check dev's
+   `schema_migration` for the version you're about to use.
 2. **Safe on real data.** Dev holds real-shaped data. Prefer additive changes; a
-   `DROP`, a narrowing `MODIFY`, or a data rewrite runs the moment you push.
-3. **Edits after a push.** The runner keys off the version alone, so editing a
+   `DROP`, a narrowing `MODIFY`, or a data rewrite runs the moment the deploy is
+   approved.
+3. **Edits after a deploy.** The runner keys off the version alone, so editing a
    migration that dev has already applied does not re-run it. Dev then has to be
    fixed by hand (see the note at the bottom of `migrations.ts`). Once it is on
    prod, it is append-only.
-4. **Don't push to experiment.** Try the SQL against a local database first.
+4. **Don't deploy to experiment.** Try the SQL against a local database first.
 
 ## The database layer
 
@@ -36,7 +37,7 @@ Before pushing a branch that adds or edits a migration:
 transports** selected once at boot (`db/query.ts`, `useDirect`):
 
 - **proxy** (default) — HTTP to the SQL proxy at `w3x.io/sql`. Works from
-  anywhere (the Deno Deploy dev previews use it), needs no DB driver.
+  anywhere (a local run and CI's integration tests use it), needs no DB driver.
 - **direct** (`SQL_TRANSPORT=direct`) — the MySQL wire protocol straight to the
   DB via `mysql2` (`db/directTransport.ts`), for the instance **co-located with
   the database** (the w3x.io box); skips the proxy's HTTP hop entirely. mysql2
@@ -79,16 +80,17 @@ transaction), and a transport error or timeout destroys it. It also bounds the
 wait for a pooled connection (5s acquire timeout, 500-deep queue).
 
 **Migrations (`server/db/migrations.ts` + `db/migrate.ts`):** applied on boot —
-so pushing a branch applies its migrations to dev (see the warning at the top).
-Ordered, contiguous from v1, each run once and recorded in `schema_migration`. A
-lease lock elects a single migrator across processes on boot; the holder renews
-its 60s lease every 20s while it works, and the losers **wait** (polling,
-retrying the lease in case the winner died; capped at 15 min, then a
-logged/alerted throw) until the target version is recorded — so no process opens
-its `ready` gate onto a half-migrated schema. **The runner keys off `version`
-only — editing an already-shipped migration's SQL never re-runs it.** So the
-rule is **append-only once a migration has reached prod**: fix forward with a
-new migration. (Editing in place is allowed only while a migration has _only_
-reached dev — see the long note at the bottom of that file.) Every user-text
-column is utf8mb4 (v16 moved `user.name`, the last utf8mb3 holdout, so an emoji
-display name stores; `rename` answers any remaining DB refusal as a 400).
+so an approved dev deploy applies a branch's migrations to dev (see the warning
+at the top). Ordered, contiguous from v1, each run once and recorded in
+`schema_migration`. A lease lock elects a single migrator across processes on
+boot; the holder renews its 60s lease every 20s while it works, and the losers
+**wait** (polling, retrying the lease in case the winner died; capped at 15 min,
+then a logged/alerted throw) until the target version is recorded — so no
+process opens its `ready` gate onto a half-migrated schema. **The runner keys
+off `version` only — editing an already-shipped migration's SQL never re-runs
+it.** So the rule is **append-only once a migration has reached prod**: fix
+forward with a new migration. (Editing in place is allowed only while a
+migration has _only_ reached dev — see the long note at the bottom of that
+file.) Every user-text column is utf8mb4 (v16 moved `user.name`, the last
+utf8mb3 holdout, so an emoji display name stores; `rename` answers any remaining
+DB refusal as a 400).

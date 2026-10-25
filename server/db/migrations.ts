@@ -3,10 +3,10 @@ export type Migration = { version: number; name: string; up: string };
 // Ordered schema migrations. Each runs once per database, in version order,
 // recorded in `schema_migration` (see migrate.ts).
 //
-// ⚠️ These run on boot, and every push deploys: pushing a branch applies its
-// migrations to the shared DEV database at once (the Deno Deploy preview), and
-// merging to prod applies them to PRODUCTION. Nothing is run by hand. Read
-// server/db/CLAUDE.md before adding one.
+// ⚠️ These run on boot: merging to prod applies them to PRODUCTION, and to the
+// shared DEV database (dev follows prod's tip), and approving a PR's Deploy dev
+// job applies that branch's to DEV before review ends. Nothing is run by hand.
+// Read server/db/CLAUDE.md before adding one.
 //
 // v1 is the baseline, written with `CREATE TABLE IF NOT EXISTS` so it is a
 // no-op on the already-provisioned production database and provisions a fresh
@@ -284,10 +284,9 @@ export const migrations: Migration[] = [
     // A puzzle belongs to a calendar DATE, and every read already keys off
     // DATE()/YEAR()/MONTH()/DAY() of `created`. Narrowing it to DATE and making
     // it UNIQUE makes the database the mutex for daily generation: the
-    // on-demand backfill (`ensureDailyIterationId` in util/newIteration.ts,
-    // needed because Deno Deploy previews don't run the `ensure-iterations`
-    // cron) can race across isolates, and the loser's INSERT is rejected and
-    // re-reads the winner's row.
+    // on-demand backfill (`ensureDailyIterationId` in util/newIteration.ts)
+    // can race the `ensure-iterations` cron and other requests, and the
+    // loser's INSERT is rejected and re-reads the winner's row.
     //
     // The DATE narrowing collapses historical same-day timestamps; the
     // self-join then deletes all but the lowest id per date (the id reads

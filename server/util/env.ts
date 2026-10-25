@@ -1,7 +1,5 @@
 import { is } from "../../common/typeguards.ts";
 
-// `APP_ENV`, not `DENO_ENV`: Deno Deploy reserves the `DENO_` prefix,
-// so custom `DENO_*` names can't be set in the dashboard.
 const envFromEnv = Deno.env.get("APP_ENV");
 
 const isValidEnv = is.union(

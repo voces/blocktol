@@ -89,10 +89,10 @@ const checkRatingLiveness = async () => {
 // registered before `Deno.serve`.
 //
 // It is NOT the only writer: the per-request backfill (`ensureDailyIterationId`
-// in util/newIteration.ts) generates a missing day on demand, because Deno
-// Deploy previews don't run `Deno.cron`. The two can race (check-then-create),
-// but `iteration.created` is UNIQUE (migration v14), so the loser's INSERT is
-// rejected: the DB is the mutex.
+// in util/newIteration.ts) generates a missing day on demand, covering a fresh
+// database before this cron's first run and a run that failed. The two can race
+// (check-then-create), but `iteration.created` is UNIQUE (migration v14), so
+// the loser's INSERT is rejected: the DB is the mutex.
 //
 // DISABLE_CRONS skips registration so a second instance on this DB doesn't
 // duplicate the work.

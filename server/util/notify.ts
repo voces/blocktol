@@ -1,8 +1,9 @@
 // The one place a notification is created: persist the in-app row, then, if the
 // recipient's setting allows, fan out Web Push to their devices. Push is
 // best-effort (a dead endpoint is pruned, any other failure swallowed), so a
-// push never fails notification creation. Callers must AWAIT these: a Deno
-// Deploy preview tears the isolate down after the response.
+// push never fails notification creation. Callers must AWAIT these: the
+// shutdown drain waits only for in-flight requests, so work left running after
+// the response dies with a deploy's restart.
 
 import {
   DailyFinalData,

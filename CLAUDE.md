@@ -18,28 +18,26 @@ ELO-style rating.
 There is no login/password. Identity is a per-device UUID sent as the
 `authorization` header (see the identity model below).
 
-## ⚠️ A push is a deploy, and a deploy migrates
+## ⚠️ A deploy migrates
 
-There is no step between `git push` and a database:
+There is no step between a deploy and a database: every deploy boots the server,
+and boot applies every pending migration. Nobody runs one by hand; "please run
+migration vN on dev" is never a step.
 
-- **Pushing any branch** builds a Deno Deploy **dev preview**, which boots
-  against the shared `blocktol-dev` database and **applies every pending
-  migration on that branch**. Nobody runs it by hand; "please run migration vN
-  on dev" is never a step — the push already did it.
-- **Merging to `prod`** deploys the EC2 instance (`deploy.yml`), which applies
-  the same migrations to the **production** database on boot.
+- **Merging to `prod`** deploys both instances on the EC2 box: prod
+  (`deploy.yml`) against the **production** database, and the dev instance
+  (`deploy-dev.yml`, which follows `prod`'s tip) against `blocktol-dev`.
+- **Approving a PR's waiting Deploy dev job** puts that PR's head on the dev
+  instance and applies its migrations to `blocktol-dev`, before review ends.
+  Approval takes a person (the `dev` environment's required reviewer); an agent
+  asks for it rather than assuming its branch reached dev.
+- **Pushing a branch** deploys nothing and migrates nothing.
 
-The **dev instance** on the EC2 box (`deploy/README.md` "Dev instance") takes
-over from the previews, and does not deploy on push: it follows `prod`'s tip,
-and a PR reaches it (migrations included) only when a person approves that PR's
-waiting Deploy dev job. Once the previews are retired, pushing a branch runs no
-migration anywhere.
-
-So a migration is live on dev the moment its branch is pushed, before review,
-and can't be taken back by deleting the branch. Before pushing one: make sure
-its version number isn't also taken by another open branch (two branches' v17s
-collide on dev), and that it is safe to run against real data. Don't push a
-migration just to try it out. See `server/db/CLAUDE.md`.
+A migration that reached dev stays applied there even if its PR is later
+dropped. Before asking for a deploy that carries one: make sure its version
+number isn't also taken by another open PR (two PRs' v17s collide on dev), and
+that it is safe to run against real data. Don't deploy a migration just to try
+it out. See `server/db/CLAUDE.md` and `deploy/README.md` "Dev instance".
 
 ## Commands
 
@@ -71,9 +69,9 @@ Most tests are pure and need no permissions. The `*.test.ts` under
 tests** that hit the dev database through the SQL proxy; they self-skip unless
 `SQL_PASSWORD` is set. CI (`.github/workflows/ci.yml`) runs fmt-check,
 typecheck, `deno task test`, then `deno task build`. The workflow only checks;
-deployment is separate (see the push-is-a-deploy warning above): Deno Deploy
-builds a dev preview of every pushed branch, and `deploy.yml` deploys prod to
-the EC2 cohost after CI passes on `prod`.
+deployment is separate (see the deploy warning above): `deploy.yml` deploys prod
+to the EC2 cohost after CI passes on `prod`, and `deploy-dev.yml` deploys the
+dev instance.
 
 ## Layout & the import rule
 

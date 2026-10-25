@@ -69,13 +69,6 @@
     // generated catalog — so a fresh checkout must compile it before testing.
     "test": "deno task i18n && deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE"
   },
-  "deploy": {
-    "build": "deno task build",
-    "runtime": {
-      "type": "dynamic",
-      "entrypoint": "./server/index.ts"
-    }
-  },
   "lint": {
     // `scripts/` are operator CLIs where console output IS the interface, and
     // `client/` is browser code Deno's server-tuned rules (no-window, …) don't

@@ -26,10 +26,10 @@ const ready = migrate().catch((err) => {
   alertAdmin(`startup migration failed: ${errText(err)}`);
 });
 
-// `PORT` is set locally and on the cohost (nginx's upstream, see deploy/); a
-// Deno Deploy preview leaves it unset and the platform picks the port. With a
-// PORT, listen on loopback only: nginx is the one way in, so TLS and its rate
-// limits can't be bypassed if a firewall rule ever opens the port.
+// `PORT` is set on the box (nginx's upstream, see deploy/) and usually locally;
+// unset, Deno.serve picks its default. With a PORT, listen on loopback only:
+// nginx is the one way in, so TLS and its rate limits can't be bypassed if a
+// firewall rule ever opens the port.
 const port = Number(Deno.env.get("PORT")) || undefined;
 
 const server = Deno.serve({
@@ -53,7 +53,7 @@ const server = Deno.serve({
 // Graceful stop on SIGTERM (systemd's restart on every deploy): finish
 // in-flight requests and any running cron (see util/shutdown.ts) before
 // exiting, rather than dropping them. Capped below the unit's TimeoutStopSec.
-// Deno Deploy has no signal listeners; there the platform manages shutdown.
+// Windows has no SIGTERM listener, so a local run there skips the drain.
 const DRAIN_MS = 60_000;
 try {
   Deno.addSignalListener("SIGTERM", async () => {
