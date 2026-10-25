@@ -24,13 +24,20 @@ const testUser = async () => {
   return id;
 };
 
+// A random 20th-century day, older than any real puzzle: `iteration.created`
+// is UNIQUE (migration v14), so a fixed date collides with a second iteration
+// in the same test, a concurrent CI run, or a row a crashed run left behind.
+const testDate = () =>
+  new Date(Date.UTC(1900, 0, 1) + Math.floor(Math.random() * 36_500) * 864e5)
+    .toISOString().slice(0, 10);
+
 // An isolated iteration nothing else plays on, so the field is exactly what
 // the test seeds. Inserted directly (the createIteration path generates a
 // whole board this test never renders).
-const testIteration = () =>
+const testIteration = (date = testDate()) =>
   sql<{ insertId: number }>`
     INSERT INTO iteration (created, bricks, power, checkpoint_x, checkpoint_y, min)
-    VALUES ('2001-01-01', 1, 0, 9.5, 9.5, 10);
+    VALUES (${date}, 1, 0, 9.5, 9.5, 10);
   `.then((r) => r.insertId);
 
 const seedRun = (
@@ -47,7 +54,8 @@ const seedRun = (
 test("standings returns both boards, ranked and windowed, in one response", {
   skip: !live,
 }, async () => {
-  const iteration = await testIteration();
+  const date = testDate();
+  const iteration = await testIteration(date);
   const users = await Promise.all(
     Array.from({ length: 5 }, () => testUser()),
   );
@@ -70,7 +78,7 @@ test("standings returns both boards, ranked and windowed, in one response", {
     assert(!("error" in r), "expected a standings payload");
 
     assertEquals(r.iteration, iteration);
-    assertEquals(r.day, [2001, 1, 1]);
+    assertEquals(r.day, date.split("-").map(Number));
     // Unrated, but its close is long past — the field is frozen, so it reads
     // final with no countdown. `final`/`closesAt` are top-level day facts.
     assertEquals(r.final, true);
@@ -206,10 +214,12 @@ test("standings PB counts a free-play-only day and stays scoped to it", {
   // plays day A — no ranked daily run there. The PB board must still show
   // such a day, not render zero rows as a field drawn from the ranked daily
   // board alone would.
-  const dayA = await testIteration();
-  const dayB = await testIteration();
+  const days: number[] = [];
   const user = await testUser();
   try {
+    days.push(await testIteration());
+    days.push(await testIteration());
+    const [dayA, dayB] = days;
     await seedRun(user, dayA, 20, { daily: false }); // free play only on A
     await seedRun(user, dayA, 15, { daily: false }); // a worse build on A
     await seedRun(user, dayB, 55, { daily: false }); // a better build on B
@@ -241,8 +251,9 @@ test("standings PB counts a free-play-only day and stays scoped to it", {
     assert(!("error" in b));
     assertEquals(b.pb.me?.time, 55);
   } finally {
-    await sql`DELETE FROM iteration WHERE id = ${dayA};`;
-    await sql`DELETE FROM iteration WHERE id = ${dayB};`;
+    for (const day of days) {
+      await sql`DELETE FROM iteration WHERE id = ${day};`;
+    }
     await sql`DELETE FROM user WHERE id = ${user};`;
   }
 });
