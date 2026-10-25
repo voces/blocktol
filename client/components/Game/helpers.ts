@@ -70,7 +70,7 @@ export const localRun = (
  * row being reviewed.
  */
 export const mazeKey = (
-  maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean }>,
+  maze: ReadonlyArray<{ x: number; y: number; thunder?: boolean | undefined }>,
 ) =>
   JSON.stringify(
     [...maze]

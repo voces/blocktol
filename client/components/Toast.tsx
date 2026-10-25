@@ -22,7 +22,7 @@ const CheckCircle = () => (
 export const Toast = (
   { title, sub, onClose, icon }: {
     title: string;
-    sub?: string;
+    sub?: string | undefined;
     onClose: () => void;
     icon?: ComponentChildren;
   },

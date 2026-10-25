@@ -1,7 +1,7 @@
 import { cachedSolver, pathDuration, type Slow } from "../../common/pathing.ts";
 import type { Point } from "../../common/types.ts";
 
-export type ValidationBlock = Point & { thunder?: boolean };
+export type ValidationBlock = Point & { thunder?: boolean | undefined };
 
 // The fields of an iteration a run is validated against. `blocks` is its fixed
 // pieces, thunders flagged.

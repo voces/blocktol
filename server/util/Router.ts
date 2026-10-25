@@ -53,7 +53,7 @@ export class Router implements AbstractRouter {
     const handler = typeof arg1 === "function" ? arg1 : arg2!;
     const pathname = typeof arg1 === "string" ? arg1 : undefined;
 
-    const pattern = new URLPattern({ pathname });
+    const pattern = new URLPattern(pathname ? { pathname } : {});
 
     this.#routes.delete.push({ pattern, handler });
     this.#routes.patch.push({ pattern, handler });

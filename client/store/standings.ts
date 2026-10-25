@@ -70,7 +70,11 @@ export const effectiveSort = (
 // `iteration` undefined means today; null means no pending request. The dock
 // watches this, opens onto the matching day once its board is shown, and clears
 // it.
-export const openStandingsRequest = signal<{ iteration?: number } | null>(null);
+export const openStandingsRequest = signal<
+  { iteration?: number | undefined } | null
+>(
+  null,
+);
 export const requestStandings = (iteration?: number) => {
   openStandingsRequest.value = { iteration };
 };

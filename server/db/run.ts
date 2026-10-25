@@ -108,7 +108,7 @@ export const insertFreePlayRun = (
   user: string,
   iteration: number,
   time: number,
-  blocks: (Point & { thunder?: boolean })[],
+  blocks: (Point & { thunder?: boolean | undefined })[],
   clientId: string,
 ) =>
   sqlOnce<[unknown, { created: number }[]]>`
@@ -181,7 +181,7 @@ export const TRACE_MAX_BYTES = 65_536;
 export const updateCurrentRun = (
   user: string,
   time: number,
-  blocks: (Point & { thunder?: boolean; player?: boolean })[],
+  blocks: (Point & { thunder?: boolean | undefined; player?: boolean })[],
   iteration: number,
   traceLine: string,
 ) =>

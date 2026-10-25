@@ -395,8 +395,8 @@ const dateStr = ([y, m, d]: [number, number, number]) =>
 export const listDailies = async (
   user: string,
   opts: {
-    start?: [number, number, number];
-    end?: [number, number, number];
+    start?: [number, number, number] | undefined;
+    end?: [number, number, number] | undefined;
     limit?: number;
   } = {},
 ) => {

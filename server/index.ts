@@ -33,8 +33,7 @@ const ready = migrate().catch((err) => {
 const port = Number(Deno.env.get("PORT")) || undefined;
 
 const server = Deno.serve({
-  port,
-  hostname: port ? "127.0.0.1" : undefined,
+  ...(port ? { port, hostname: "127.0.0.1" } : {}),
   onListen: ({ port }) => log.info("listening", { port }),
 }, async (req) => {
   await ready;

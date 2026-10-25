@@ -204,7 +204,7 @@ const Tip = (
     onSkip: () => void;
     onNext: () => void;
     // Last tip only, in the slot Skip vacates.
-    onReplay?: () => void;
+    onReplay?: (() => void) | undefined;
     last?: boolean;
   },
 ) => (

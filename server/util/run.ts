@@ -1,7 +1,7 @@
 import type { Point } from "../../common/types.ts";
 
 export const serializeRun = (
-  blocks: (Point & { thunder?: boolean; player?: boolean })[],
+  blocks: (Point & { thunder?: boolean | undefined; player?: boolean })[],
 ) =>
   blocks.filter((b) => b.player).map((b) =>
     `${b.thunder ? "t" : ""}${b.x.toString().padStart(2, "0")}${b.y}`
