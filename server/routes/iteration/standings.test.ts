@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "../../db/liveTests.ts";
 import { assert, assertEquals } from "@std/assert";
 import { sql } from "../../db/query.ts";
 import { createOrUpdateUser } from "../../db/user.ts";
@@ -8,7 +9,6 @@ import { standings } from "./standings.ts";
 // Integration test for `standings` against the dev database (the per-user-best,
 // void and daily filtering lives in SQL). Uses a throwaway iteration and users,
 // removed afterwards (runs cascade). Skipped without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
   const req = new Request("http://localhost/api/test", {

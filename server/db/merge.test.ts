@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "./liveTests.ts";
 import { assertEquals } from "@std/assert";
 import { extractUserId } from "../middleware/userid.ts";
 import { merge } from "../routes/merge.ts";
@@ -10,7 +11,6 @@ import { createOrUpdateUser } from "./user.ts";
 // mergeUsers / anonymizeUser against the real (dev) database, since their
 // semantics are multi-statement SQL. Rows are seeded directly on the two oldest
 // iterations (safely closed days). Skipped without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const testUser = async () => {
   const id = `t-${crypto.randomUUID().slice(0, 16)}`;

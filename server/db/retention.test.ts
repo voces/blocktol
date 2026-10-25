@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "./liveTests.ts";
 import { assertEquals } from "@std/assert";
 import { drain } from "../util/retention.ts";
 import { sql } from "./query.ts";
@@ -6,7 +7,6 @@ import { pruneUnusedUsers } from "./retention.ts";
 
 // pruneUnusedUsers against the real (dev) database; it sweeps the whole table,
 // as the cron does. Skipped without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const seedUser = async (name: string | null, ageDays: number) => {
   const id = `t-${crypto.randomUUID().slice(0, 16)}`;

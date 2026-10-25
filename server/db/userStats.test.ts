@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "./liveTests.ts";
 import { assertEquals } from "@std/assert";
 import { format, raw, sql } from "./query.ts";
 import { getUserRivals, getUserStats, mergeRivals } from "./user.ts";
@@ -6,7 +7,6 @@ import { getUserRivals, getUserStats, mergeRivals } from "./user.ts";
 // Checks getUserStats, which reaches the field through the player's own
 // iterations, against whole-table reference SQL (kept verbatim below) for a
 // sample of real players on the dev database. Skipped without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const legacyRivals = (user: string, rankedOnly: string) =>
   format`

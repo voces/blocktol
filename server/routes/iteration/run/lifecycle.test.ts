@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "../../../db/liveTests.ts";
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { getDailyIteration, getIteration } from "../../../db/iteration.ts";
 import { sql } from "../../../db/query.ts";
@@ -18,7 +19,6 @@ import { updateRun } from "./update.ts";
 // window checks, transactions) that a fake can't emulate, so these run the REAL
 // handlers against the dev database. Each test plays as a throwaway user and
 // deletes it afterwards (runs cascade). Skipped without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 // Handlers read the user id the way extractUserId leaves it, so run that
 // middleware on the request.

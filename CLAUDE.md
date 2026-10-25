@@ -70,11 +70,15 @@ Tests use `test` from `node:test` (subtests are `t.test`), never `Deno.test`:
 stream it opens. Most tests are pure and need no permissions. The `*.test.ts`
 under `server/routes/iteration/run/` and a few others are **run-lifecycle
 integration tests** that hit the dev database through the SQL proxy; they
-self-skip unless `SQL_PASSWORD` is set. CI (`.github/workflows/ci.yml`) runs
-fmt-check, typecheck, `deno task test`, then `deno task build`. The workflow
-only checks; deployment is separate (see the deploy warning above): `deploy.yml`
-deploys prod to the EC2 cohost after CI passes on `prod`, and `deploy-dev.yml`
-deploys the dev instance.
+self-skip unless `SQL_PASSWORD` is set (CI has it). A new one gates on `live`
+from `server/db/liveTests.ts`, which refuses `APP_ENV=prod`; creates its users
+with a `t-` id and any iteration it inserts on a pre-2000 date; and cleans up in
+a `finally` that covers every row it created. `server/db/testLeftovers.test.ts`
+sweeps what a crashed run leaves behind (both markers, after an hour). CI
+(`.github/workflows/ci.yml`) runs fmt-check, typecheck, `deno task test`, then
+`deno task build`. The workflow only checks; deployment is separate (see the
+deploy warning above): `deploy.yml` deploys prod to the EC2 cohost after CI
+passes on `prod`, and `deploy-dev.yml` deploys the dev instance.
 
 ## Layout & the import rule
 

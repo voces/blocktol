@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "../../db/liveTests.ts";
 import { assert, assertEquals } from "@std/assert";
 import { createOrUpdateUser } from "../../db/user.ts";
 import { sql } from "../../db/query.ts";
@@ -18,7 +19,6 @@ import { updateRun } from "./run/update.ts";
 // a past day is always free-playable; a future day is locked everywhere. Runs
 // against the dev database (the gate reads run rows); skipped without
 // SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
   const req = new Request("http://localhost/api/test", {

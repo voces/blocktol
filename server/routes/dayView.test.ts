@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "../db/liveTests.ts";
 import { assert, assertEquals } from "@std/assert";
 import { createOrUpdateUser } from "../db/user.ts";
 import { sql } from "../db/query.ts";
@@ -8,7 +9,6 @@ import { dayView } from "./dayView.ts";
 
 // Checks dayView's bundle carries both slices and that its standings is the
 // requested iteration's. Hits the dev DB; self-skips without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
   const req = new Request("http://localhost/api/dayView", {

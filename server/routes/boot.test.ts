@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { live } from "../db/liveTests.ts";
 import { assert, assertEquals } from "@std/assert";
 import { createOrUpdateUser } from "../db/user.ts";
 import { sql } from "../db/query.ts";
@@ -9,7 +10,6 @@ import { boot } from "./boot.ts";
 // Checks boot's bundle carries every slice and that boot does NOT start a daily
 // attempt, so a background boot can't spend one. Hits the dev DB; self-skips
 // without SQL_PASSWORD.
-const live = !!Deno.env.get("SQL_PASSWORD");
 
 const authed = (userId: string) => {
   const req = new Request("http://localhost/api/boot", {
