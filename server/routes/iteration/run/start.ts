@@ -61,8 +61,8 @@ export const startRun = method(startRunBody, true)(
     // Validated up front so the opening block can be persisted below.
     const validation = block ? validateRun(data, [block]) : null;
 
-    // Awaited: a Deno Deploy preview kills a write still pending after the
-    // response.
+    // Awaited: the shutdown drain waits only for in-flight requests, so a
+    // write still pending after the response dies with a deploy's restart.
     try {
       await dbStartRun(iteration, userId, data.min, year, month, day);
     } catch (err) {

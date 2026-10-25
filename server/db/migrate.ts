@@ -23,7 +23,7 @@ const SCHEMA_MIGRATION_LOCK = `
 const LOCK_TTL_SECONDS = 60;
 
 // The holder renews its lease this often. A big ALTER can outlast the TTL, and
-// a lapsed lease would let a waiting isolate re-apply the same DDL. A third of
+// a lapsed lease would let a waiting process re-apply the same DDL. A third of
 // the TTL leaves room for a renewal or two to fail.
 const RENEW_EVERY_MS = (LOCK_TTL_SECONDS / 3) * 1000;
 
@@ -85,7 +85,7 @@ const applyPending = async (holder: string) => {
     );
   }, RENEW_EVERY_MS);
   try {
-    // Re-read under the lock: another isolate may have applied some of these
+    // Re-read under the lock: another process may have applied some of these
     // since our first check.
     for (const m of pendingMigrations(await currentVersion())) {
       log.info("applying migration", { version: m.version, name: m.name });
@@ -101,7 +101,7 @@ const applyPending = async (holder: string) => {
 };
 
 // Brings the database to the latest schema version. Safe to call from many
-// isolates at once: the lease elects a single migrator, and the version is
+// processes at once: the lease elects a single migrator, and the version is
 // re-read under the lock so a waiter never re-applies the winner's work.
 //
 // A caller that loses the election WAITS rather than returning: its resolution
@@ -124,19 +124,19 @@ export const migrate = async () => {
   let announced = false;
   while (!await acquireLock(holder)) {
     if (!announced) {
-      log.info("migration in progress on another isolate; waiting for it");
+      log.info("migration in progress on another process; waiting for it");
       announced = true;
     }
     if (Date.now() >= deadline) {
       throw new Error(
         `gave up after ${
           WAIT_CAP_MS / 60_000
-        } min waiting for another isolate to migrate to v${targetVersion}`,
+        } min waiting for another process to migrate to v${targetVersion}`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, WAIT_POLL_MS));
     if (pendingMigrations(await currentVersion()).length === 0) {
-      log.info("schema migrated by another isolate", {
+      log.info("schema migrated by another process", {
         version: targetVersion,
       });
       return;

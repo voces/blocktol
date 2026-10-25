@@ -30,7 +30,7 @@ export const extractUserId: Handler = async (req, _, prev) => {
     const userHash = await hashUserId(userId);
     setLoggingContext(req, (c) => ({ ...c, userHash }));
     // Tag the request span with the hash to filter a trace to one player.
-    // No-ops when OTel is off (e.g. a Deno Deploy preview).
+    // No-ops when OTel is off (e.g. a local run).
     trace.getActiveSpan()?.setAttribute("user.hash", userHash);
   }
   return prev;

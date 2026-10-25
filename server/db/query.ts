@@ -20,8 +20,8 @@ const SQL_PROXY_URL = Deno.env.get("SQL_PROXY_URL") ?? "https://w3x.io/sql";
 //   - "direct": the MySQL wire protocol straight to the DB (directTransport.ts),
 //     for the box co-located with the database.
 // Both return the same result shape, so nothing downstream of `query` cares.
-// Deno Deploy previews stay on the proxy; only the co-located box sets
-// SQL_TRANSPORT=direct.
+// Anything off the box (a local run, CI's integration tests) stays on the
+// proxy; only the co-located box sets SQL_TRANSPORT=direct.
 const useDirect = Deno.env.get("SQL_TRANSPORT") === "direct";
 
 // How one `query` call behaves on failure: `retries` re-sends after a transport

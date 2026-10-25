@@ -137,33 +137,33 @@ double-write):**
 - `ensure-iterations` (hourly) — generates each day's puzzle through _tomorrow_
   UTC (`util/newIteration.ts` builds a random solvable board; idempotent, heals
   gaps). Timezones ahead of UTC hit a new local day first, hence the look-ahead.
-  This cron is the _bulk_ generator but **not the only writer**: Deno Deploy
-  preview deployments don't run `Deno.cron`, so a dev/gappy env would otherwise
-  hit "no daily available". `ensureDailyIterationId` (same file) backfills a
-  missing day **on demand** in the daily read path (board/start/daily/standings,
-  capped at tomorrow UTC so a future deep link can't leak a puzzle, and floored
-  at the earliest existing iteration — or yesterday UTC on an empty table — so a
-  script walking dates backwards can't mass-generate boards and starve
-  `rate-dailies`; see `util/backfillWindow.ts`; the cron calls `newIteration`
-  directly, so neither bound applies to it). The cron and a request can race
-  (each check-then-create), so `iteration.created` is a **UNIQUE `DATE`**
-  (migration v14 — a puzzle is for a calendar day, not an instant) and the
-  loser's INSERT is rejected: **the DB is the mutex**, no app lock needed.
-  `getIteration` returns that `DATE` as the board's `date`; the client needs no
-  special parsing — a `DATE` deserialises to `YYYY-MM-DD` (or an ISO
-  midnight-Z), both of which `new Date()` reads as UTC midnight, and the board
-  caption formats it in UTC. The iteration row and its fixed blocks are inserted
-  in one transaction (`createIteration`), so a dropped connection can't leave a
-  day with no pieces. Each run also ends with the **rate-dailies watchdog**
-  (`checkRatingLiveness`): a closed day still unrated 6h past its close means
-  rating has stopped, and it `alertAdmin`s (once per run) — run from this cron
-  so a dead `rate-dailies` is still noticed. It then runs the **retention
-  sweep** (`util/retention.ts` → `db/retention.ts`): notifications older than 90
-  days, and `user` rows over 30 days old that hold nothing (no runs, push
-  subscriptions, settings, locale, `pb_top` mention, or chosen name — one-off
-  visitors and crawlers). Both delete in bounded `LIMIT` batches, so a backlog
-  drains over several runs inside the 3s timeout. There is no last-seen column,
-  so age is `created`; a pruned device that boots again just gets a fresh row.
+  This cron is the _bulk_ generator but **not the only writer**: it runs hourly,
+  so a fresh database (before its first run) or a failed run would otherwise hit
+  "no daily available". `ensureDailyIterationId` (same file) backfills a missing
+  day **on demand** in the daily read path (board/start/daily/standings, capped
+  at tomorrow UTC so a future deep link can't leak a puzzle, and floored at the
+  earliest existing iteration — or yesterday UTC on an empty table — so a script
+  walking dates backwards can't mass-generate boards and starve `rate-dailies`;
+  see `util/backfillWindow.ts`; the cron calls `newIteration` directly, so
+  neither bound applies to it). The cron and a request can race (each
+  check-then-create), so `iteration.created` is a **UNIQUE `DATE`** (migration
+  v14 — a puzzle is for a calendar day, not an instant) and the loser's INSERT
+  is rejected: **the DB is the mutex**, no app lock needed. `getIteration`
+  returns that `DATE` as the board's `date`; the client needs no special parsing
+  — a `DATE` deserialises to `YYYY-MM-DD` (or an ISO midnight-Z), both of which
+  `new Date()` reads as UTC midnight, and the board caption formats it in UTC.
+  The iteration row and its fixed blocks are inserted in one transaction
+  (`createIteration`), so a dropped connection can't leave a day with no pieces.
+  Each run also ends with the **rate-dailies watchdog** (`checkRatingLiveness`):
+  a closed day still unrated 6h past its close means rating has stopped, and it
+  `alertAdmin`s (once per run) — run from this cron so a dead `rate-dailies` is
+  still noticed. It then runs the **retention sweep** (`util/retention.ts` →
+  `db/retention.ts`): notifications older than 90 days, and `user` rows over 30
+  days old that hold nothing (no runs, push subscriptions, settings, locale,
+  `pb_top` mention, or chosen name — one-off visitors and crawlers). Both delete
+  in bounded `LIMIT` batches, so a backlog drains over several runs inside the
+  3s timeout. There is no last-seen column, so age is `created`; a pruned device
+  that boots again just gets a fresh row.
 - `rate-dailies` (:30 hourly) — rates each daily once its date is closed across
   _all_ timezones (~37h after creation), writes ELO deltas (`util/rating.ts`,
   percentile-based), then fires "daily final" notifications and posts the day's
@@ -241,8 +241,8 @@ caller's own row.
 
 **Reading the push path in VictoriaLogs.** A successful send logs **nothing**,
 so an empty result for `"push send"` means "nothing failed", NOT "nothing was
-sent" — and telemetry only runs on the EC2 instance (the Deno Deploy dev
-previews log nothing either way). The positive signals are the two fan-out
+sent" — and telemetry only runs where its OTel env is set (the EC2 box; a local
+run logs nothing either way). The positive signals are the two fan-out
 summaries, `daily-final notifications` and `lost-top notification` (both carry a
 `pushes` count; `pushes=0` is "opted in, but no live subscription"), and
 `push subscription pruned` — the one line a dying row emits — a 410 prune is
@@ -324,9 +324,9 @@ webhooks send `allowed_mentions: { parse: [] }`. See the `DISCORD_*` env vars.
 
 ## Environment variables
 
-`PORT` (set locally and on the EC2 instance, where nginx proxies to it; a Deno
-Deploy preview manages its own), `APP_ENV` (`dev`/`prod` — selects the proxy
-database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL` (the SQL proxy
+`PORT` (set on the EC2 box, where nginx proxies to it, and usually locally;
+unset, `Deno.serve` picks its default), `APP_ENV` (`dev`/`prod` — selects the
+proxy database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL` (the SQL proxy
 endpoint; defaults to `https://w3x.io/sql` — set to the proxy's localhost
 address when the server is co-located with it, e.g. the EC2 cohost, to drop the
 internet round-trip), `SQL_TRANSPORT` (`direct` selects the direct MariaDB
@@ -361,19 +361,20 @@ grants.
 code**: there is no OTel SDK wiring in the source, and these vars are read by
 the runtime's telemetry subsystem, **not** user code, so they need no
 `--allow-env` grant (and `start`/`dev` already use bare `--allow-net`).
-Telemetry is enabled **only on the EC2 instance** (blocktol.com, on the w3x.io
-box alongside VictoriaTraces + VictoriaLogs); the Deno Deploy dev previews are
-un-instrumented. VictoriaLogs v1.51.0 (`127.0.0.1:9428`) and VictoriaTraces
-v0.9.4 (`127.0.0.1:10428`) run as systemd services, **bound to localhost only**,
-data under `/data`, 30-day retention — first-party infra (same box as the SQL
-proxy, not a third-party recipient), so ingest is a pure loopback call with **no
-auth**. blocktol emits **both** traces and logs through Deno's built-in OTel
-straight to those endpoints; the env lives in the systemd `EnvironmentFile` at
-`/home/ubuntu/blocktol/.env` (`OTEL_DENO=true`, `OTEL_SERVICE_NAME=blocktol`,
-`OTEL_METRICS_EXPORTER=none` — neither backend ingests metrics,
-`OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, and per-signal endpoints). The
-per-signal endpoints are required because VictoriaTraces/Logs use non-standard
-ingest paths and Deno otherwise appends the standard `/v1/*`:
+Telemetry is enabled **only on the EC2 box**, beside VictoriaTraces and
+VictoriaLogs (blocktol.com, and dev.blocktol.com when its `.env` carries the
+OTel vars); a local run is un-instrumented. VictoriaLogs v1.51.0
+(`127.0.0.1:9428`) and VictoriaTraces v0.9.4 (`127.0.0.1:10428`) run as systemd
+services, **bound to localhost only**, data under `/data`, 30-day retention —
+first-party infra (same box as the SQL proxy, not a third-party recipient), so
+ingest is a pure loopback call with **no auth**. blocktol emits **both** traces
+and logs through Deno's built-in OTel straight to those endpoints; the env lives
+in the systemd `EnvironmentFile` at `/home/ubuntu/blocktol/.env`
+(`OTEL_DENO=true`, `OTEL_SERVICE_NAME=blocktol`, `OTEL_METRICS_EXPORTER=none` —
+neither backend ingests metrics, `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`,
+and per-signal endpoints). The per-signal endpoints are required because
+VictoriaTraces/Logs use non-standard ingest paths and Deno otherwise appends the
+standard `/v1/*`:
 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/insert/opentelemetry/v1/traces`,
 `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:9428/insert/opentelemetry/v1/logs`.
 
@@ -393,7 +394,7 @@ VictoriaTraces); a handler that returns a 5xx without throwing is `log.error`'d,
 and the 500 response marks its span errored; a relayed client crash
 (`reportClientError`) is `log.error`'d the same way. `endLogger` also returns
 the request span's trace id on every response as `x-blocktol-trace-id` (skipped
-when tracing is off — a Deno Deploy preview reports the all-zero id), so a
+when tracing is off — an uninstrumented run reports the all-zero id), so a
 response can be pasted straight into VictoriaTraces to pull its trace, and its
 logs via the shared `trace_id`. On the EC2 box that id is nginx's: the same
 value is the `trace=` on the request's line in

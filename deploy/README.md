@@ -99,27 +99,13 @@ The same holds for the box-level backup and journald files described under
    drops the 443 listener and certs) — merge changes into the existing `server`
    block by hand, then run the same `nginx -t` + reload.
 
-6. **TLS (zero-downtime for a live domain).** `certbot --nginx` uses HTTP-01,
-   which needs DNS already pointing at this box — a chicken-and-egg that forces
-   a TLS gap when migrating `blocktol.com` off Deno Deploy. Pre-issue via DNS-01
-   **before** repointing DNS instead, apex only (avoids a second per-name swap
-   for `www`):
+6. **TLS.** With `blocktol.com`'s `A` record pointing at this box (IPv4 only: no
+   `AAAA`, or dual-stack clients miss it), issue and install the cert:
    ```bash
-   sudo certbot certonly --manual --preferred-challenges dns -d blocktol.com
+   sudo certbot --nginx -d blocktol.com
    ```
-   The catch on this domain: `_acme-challenge.blocktol.com` is already a CNAME →
-   `<id>._acme.deno.net` (Deno's own DNS-01 renewal delegation), and a CNAME
-   can't coexist with the TXT certbot wants there. So in the DNS zone (Google
-   Cloud DNS / googledomains nameservers):
-   1. **Save** the CNAME's target, then **delete** the CNAME.
-   2. **Add** the `_acme-challenge.blocktol.com` TXT certbot prints (TTL 60) and
-      confirm it resolves: `dig +short TXT _acme-challenge.blocktol.com`.
-   3. Press Enter so certbot issues, then **restore** the CNAME so Deno keeps
-      renewing until cutover.
-
-   Deno's live cert is unaffected — it renews only ~every 90 days, so the
-   few-minute delegation gap is a no-op. The post-cutover reissue (for
-   auto-renewal) and dropping the CNAME are in the Cutover section.
+   certbot adds the 443 listener and redirect to the vhost and renews on its
+   own.
 
 7. **w3xio config.** Set `BLOCKTOL_DIR=/home/ubuntu/blocktol` in w3xio's
    environment (its `/deploy` default is `/home/verit/blocktol`). The existing
@@ -127,36 +113,16 @@ The same holds for the box-level backup and journald files described under
 
 8. **GitHub secret.** Set the blocktol repo's `DEPLOY_WEBHOOK_URL` secret to
    `https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>` — merges to `prod` then
-   deploy automatically. (The DNS repoint is the Cutover step.)
-
-## Cutover
-
-With the service healthy and the apex cert pre-issued (step 6):
-
-1. **Lower the apex TTL ahead of time.** Deno's A/AAAA TTL is 14400 (4h); set
-   the records to 300 first so the flip takes minutes, not hours.
-2. **Repoint `blocktol.com` (apex only) from Deno Deploy to the EC2, and delete
-   the AAAA.** The apex has an AAAA (`2602:f70f::1` → Deno) and this EC2 is
-   IPv4-only, so leaving it makes dual-stack clients prefer IPv6 and keep
-   hitting Deno (a split brain). Point the A record at the EC2 and **delete the
-   AAAA** (or point it at an EC2 IPv6 if one is added).
-3. **Reissue for auto-renewal, then drop the delegation:**
-   ```bash
-   sudo certbot --nginx -d blocktol.com
-   ```
-   then delete the Deno `_acme-challenge.blocktol.com` CNAME permanently.
-4. **Disconnect the Deno Deploy GitHub integration** (app.deno.com) so the two
-   don't both deploy on push to `prod`.
+   deploy automatically.
 
 ## Dev instance
 
 A second, long-lived instance on this box serves `dev.blocktol.com` against the
-`blocktol-dev` database, replacing the Deno Deploy branch previews (#227).
-`.github/workflows/deploy-dev.yml` deploys to it (→ w3xio's `/deploy` with
-`app:"blocktol-dev"`, whose entry in w3xio's `src/api/routes/deploy.ts` fetches,
-checks out the commit, runs its `deploy/build` and restarts `blocktol-dev`), and
-its boot applies the deployed commit's pending migrations to `blocktol-dev`. A
-commit gets there two ways:
+`blocktol-dev` database. `.github/workflows/deploy-dev.yml` deploys to it (→
+w3xio's `/deploy` with `app:"blocktol-dev"`, whose entry in w3xio's
+`src/api/routes/deploy.ts` fetches, checks out the commit, runs its
+`deploy/build` and restarts `blocktol-dev`), and its boot applies the deployed
+commit's pending migrations to `blocktol-dev`. A commit gets there two ways:
 
 - **`prod`'s tip, automatically**, on the same trigger that deploys it to prod.
   This is dev's resting state.
@@ -172,9 +138,8 @@ approve a PR carrying a migration only when that is acceptable. A branch cut
 from `prod` before `deploy/build` existed fails its deploy at the build step
 until it merges `prod` in.
 
-Unlike a preview, it runs both crons (`DISABLE_CRONS` unset): it is the only
-long-lived writer on `blocktol-dev`, so dev gets its dailies generated and rated
-on schedule rather than only on demand.
+It runs both crons (`DISABLE_CRONS` unset): it is the only long-lived writer on
+`blocktol-dev`, so dev gets its dailies generated and rated on schedule.
 
 - **Checkout:** `/home/ubuntu/blocktol-dev` (detached at the deployed commit).
 - **Unit:** `blocktol-dev.service` (template `deploy/blocktol-dev.service`),
@@ -211,10 +176,10 @@ Setup, in order:
    VAPID_SUBJECT=...
    DISCORD_ADMIN_WEBHOOK_URL=...
    ```
-   - **VAPID:** copy the pair from the Deno Deploy project's dev environment
-     (app.deno.com), so the `push_subscription` rows already on `blocktol-dev`
-     keep working; a new pair silently invalidates them (see `server/CLAUDE.md`,
-     Environment variables).
+   - **VAPID:** reuse the pair dev already has (from the existing `.env`, or
+     wherever its secrets are kept), so the `push_subscription` rows on
+     `blocktol-dev` keep working; a new pair silently invalidates them (see
+     `server/CLAUDE.md`, Environment variables).
    - **Discord:** never prod's `DISCORD_RESULTS_WEBHOOK_URL` — dev's crons post
      daily results, and players would see them. Use a dev channel's webhook as
      `DISCORD_ADMIN_WEBHOOK_URL` (results fall back to it, footer-tagged
@@ -240,8 +205,7 @@ Setup, in order:
    `deploy/blocktol-dev.nginx.conf` as
    `/etc/nginx/sites-enabled/blocktol-dev.conf`, then
    `sudo nginx -t && sudo systemctl reload nginx` and
-   `sudo certbot --nginx -d dev.blocktol.com`. A new name has no live traffic,
-   so the HTTP-01 flow is fine here (the apex's DNS-01 dance doesn't apply).
+   `sudo certbot --nginx -d dev.blocktol.com`.
 
 7. **w3xio.** Deploy the w3xio version that knows the `blocktol-dev` app, and
    set `BLOCKTOL_DEV_DIR` in its environment if the checkout isn't at the
@@ -271,12 +235,6 @@ Setup, in order:
     paths: on an open PR, approve its waiting Deploy dev job, and after the next
     merge, confirm the `prod-tip` job ran; each time
     `journalctl -u blocktol-dev` shows the restart at that commit.
-
-**Retiring the previews.** Until the Deno Deploy integration is disconnected,
-every push still migrates `blocktol-dev` through its preview. Once the dev
-instance has taken a few deploys cleanly, disconnect the integration in
-app.deno.com, then finish #227 in the code (the `deploy` block in `deno.jsonc`,
-the Deploy-only paths, and the push-is-a-deploy text in the `CLAUDE.md` files).
 
 ## Operating dev
 

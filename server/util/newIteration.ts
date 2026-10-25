@@ -83,9 +83,9 @@ export const newIteration = async (date: Date) => {
 
 // Resolve a day's daily iteration id, generating it on demand when missing.
 //
-// The `ensure-iterations` cron (util/gen.ts) is the bulk generator, but Deno
-// Deploy PREVIEW deployments (what dev is served by) don't run `Deno.cron`, so
-// a dev env routinely asks for a daily nothing produced.
+// The `ensure-iterations` cron (util/gen.ts) is the bulk generator, but it runs
+// hourly: a fresh database has no puzzle until its first run, and a failed run
+// leaves a gap until the next. A request for that day generates it here.
 //
 // Racing processes are safe by DB structure: `iteration.created` is UNIQUE
 // (migration v14), so only one INSERT lands; the loser's is rejected and it
@@ -124,7 +124,7 @@ export const ensureDailyIterationId = async (
     // getDailyIterationId expect (the server runs UTC, so local == UTC).
     await newIteration(new Date(year, month - 1, day));
   } catch (err) {
-    // A concurrent isolate may have won: ours was rejected by UNIQUE(created).
+    // A concurrent process may have won: ours was rejected by UNIQUE(created).
     // If the row exists the race was harmless; otherwise the failure is real.
     const raced = await getDailyIterationId(year, month, day);
     if (raced !== undefined) return raced;
@@ -142,7 +142,7 @@ export const ensureDailyIterationId = async (
 // The floor (MIN(created)), cached in-process. Only a backfill below it could
 // move it earlier, which it forbids, so it is stale only on a fresh DB the cron
 // is still seeding (31 days back). The hourly TTL bounds that and keeps a
-// refused-date loop to one indexed MIN per isolate per hour. An empty table
+// refused-date loop to one indexed MIN per process per hour. An empty table
 // isn't cached: the next generation gives it a floor.
 const FLOOR_TTL = 1_000 * 60 * 60;
 let floorCache: { day: number; read: number } | undefined;

@@ -76,9 +76,9 @@ export const commitRun = method(commitRunBody, true)(
       return { error: "failed to commit run", status: 500 };
     }
     // The run just entered the PB field: send lost-top notifications and the
-    // Discord top-PB post/edit. Awaited because a Deploy preview kills work
-    // left running after the response. Never throws, so it can't fail the
-    // commit.
+    // Discord top-PB post/edit. Awaited so the shutdown drain covers it: work
+    // left running after the response dies with a deploy's restart. Never
+    // throws, so it can't fail the commit.
     await onPbBuild(iteration, userId);
     // The iteration lets the client refresh that day's standings.
     return { kind: "commitRun" as const, iteration, created };
