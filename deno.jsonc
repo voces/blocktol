@@ -1,4 +1,7 @@
 {
+  // npm packages install into ./node_modules (gitignored), where esbuild, which
+  // can't read the import map, resolves the client bundle's imports.
+  "nodeModulesDir": "auto",
   "compilerOptions": {
     "lib": ["deno.unstable", "dom"],
     "jsx": "react",
@@ -40,15 +43,18 @@
     "i18n:check": "deno run --no-check --allow-read=i18n scripts/i18nCheck.ts",
     "i18n:unused": "deno run --no-check --allow-read=i18n,common,server,client scripts/i18nUnused.ts",
     "i18n:translate": "deno run --no-check --allow-read --allow-write=i18n --allow-env --allow-net --allow-sys scripts/i18nTranslate.ts",
-    // Minified (~47% smaller; output is deterministic, so assets.ts's `?v` hash
-    // is stable). The external source map doesn't change the JS; `build` moves
-    // it out of public/ (never served) into sourcemaps/<SHA>/ for
-    // `deno task symbolicate`, which turns a relayed client stack back into
-    // source positions.
-    "bundle": "deno bundle --unstable-bundle --platform browser --minify --sourcemap=external client/index.ts -o public/js/index.js",
+    // esbuild, pinned to an exact version so a rebuild reproduces a past bundle
+    // byte for byte. Minified (~47% smaller; output is deterministic, so
+    // assets.ts's `?v` hash is stable). --tsconfig-raw passes the compiler
+    // options Deno applies and esbuild can't read from here: define-semantics
+    // class fields and the JSX factory. The external source map doesn't change
+    // the JS; `build` moves it out of public/ (never served) into
+    // sourcemaps/<SHA>/ for `deno task symbolicate`, which turns a relayed
+    // client stack back into source positions.
+    "bundle": "deno run --allow-read --allow-write --allow-env --allow-run npm:esbuild@0.25.5 client/index.ts --bundle --platform=browser --format=esm --minify --sourcemap=external --tsconfig-raw='{\"compilerOptions\":{\"useDefineForClassFields\":true,\"jsxFactory\":\"h\",\"jsxFragmentFactory\":\"Fragment\"}}' --outfile=public/js/index.js",
     "sourcemap:stash": "deno run --allow-read --allow-write scripts/stashSourcemap.ts",
     "symbolicate": "deno run --allow-read --allow-write --allow-env --allow-run=git,deno scripts/symbolicate.ts",
-    "bundle:pathing": "deno bundle --unstable-bundle --platform browser --minify common/pathing.ts -o public/js/pathing.js",
+    "bundle:pathing": "deno run --allow-read --allow-write --allow-env --allow-run npm:esbuild@0.25.5 common/pathing.ts --bundle --platform=browser --format=esm --minify --tsconfig-raw='{\"compilerOptions\":{\"useDefineForClassFields\":true}}' --outfile=public/js/pathing.js",
     "build": "deno task i18n && deno task version && deno task bundle && deno task sourcemap:stash && deno task bundle:pathing",
     // --no-check (not =remote): skip type-checking at start entirely. CI's
     // `deno check` and `deno task test` are the type gate, so re-checking the

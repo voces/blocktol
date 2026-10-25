@@ -41,8 +41,10 @@ it out. See `server/db/CLAUDE.md` and `deploy/README.md` "Dev instance".
 
 ## Commands
 
-Everything is a Deno task (`deno.jsonc`). Deno v2.x; no `package.json`, no
-bundler config.
+Everything is a Deno task (`deno.jsonc`). Deno v2.x; no `package.json`. The
+client is bundled by esbuild (exact version pinned in the `bundle` tasks), which
+resolves npm packages from `./node_modules` (`nodeModulesDir: "auto"`,
+gitignored).
 
 ```bash
 deno task dev        # bundle (watch) + run server (watch) — local dev
@@ -340,9 +342,10 @@ Dry-run by default, `--apply` to write; run locally against an env with
   minified and its map is never served (browsers don't apply maps to
   `error.stack` anyway); `build` moves it to `sourcemaps/<SHA>/` (gitignored,
   newest 20 kept), keyed by the `clientSha` each request logs. With no stored
-  map the script rebuilds that commit in a temp worktree: the bundle is
-  deterministic and an external map leaves its bytes unchanged, so the rebuild
-  matches given the same Deno version.
+  map the script rebuilds that commit in a temp worktree with its own `bundle`
+  task: the bundle is deterministic, esbuild is pinned to an exact version, and
+  an external map leaves its bytes unchanged, so the rebuild matches. (A commit
+  bundled by `deno bundle`, before esbuild, needs the Deno it was built with.)
 
 ## Conventions
 
