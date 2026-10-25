@@ -93,7 +93,7 @@ export const updateRun = method(updateRunBody, true)(
     // the 60s window closes, leaving a stale "lost #1" or record post. Rare and
     // low-harm (deduped to one card that deep-links to live standings).
     // Deferring to finalization needs a cancelable one-off scheduler, and
-    // neither `setTimeout` (lost on a deploy's restart) nor hourly `Deno.cron`
+    // neither `setTimeout` (lost on a deploy's restart) nor an hourly cron
     // is one. Free play fires once at execution (commitRun), so it has no such
     // edge.
     if (otherBest == null || duration >= otherBest) {
