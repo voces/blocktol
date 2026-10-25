@@ -84,8 +84,8 @@ export const percentileColor = (percent: number): string => {
   const i = Math.min(Math.floor(p * last), last - 1);
   const t = (p - i / last) * last;
 
-  const [L1, C1, H1] = stopsLCh[i];
-  const [L2, C2, H2] = stopsLCh[i + 1];
+  const [L1, C1, H1] = stopsLCh[i]!;
+  const [L2, C2, H2] = stopsLCh[i + 1]!;
   const L = L1 + t * (L2 - L1);
   const C = C1 + t * (C2 - C1);
   // Interpolate hue along the shorter arc (matching CSS `in oklch`).

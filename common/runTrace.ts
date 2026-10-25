@@ -57,9 +57,9 @@ export const diffMaze = (
   }
   if (
     removed.length === 1 && added.length === 1 &&
-    !!removed[0].thunder === !!added[0].thunder
+    !!removed[0]!.thunder === !!added[0]!.thunder
   ) {
-    edits.push(["m", removed[0].x, removed[0].y, added[0].x, added[0].y]);
+    edits.push(["m", removed[0]!.x, removed[0]!.y, added[0]!.x, added[0]!.y]);
   } else {
     for (const b of removed) edits.push(["d", b.x, b.y]);
     for (const b of added) edits.push(["p", b.x, b.y]);

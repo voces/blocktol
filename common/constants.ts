@@ -1,4 +1,5 @@
-export const offsets = [
+// The four cells a 2x2 block covers, relative to its top-left corner.
+export const offsets: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
   [1, 0],
   [0, 1],

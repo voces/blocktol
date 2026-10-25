@@ -158,7 +158,7 @@ const fetchJson = async (
       return { resp, data: await readJson(resp) };
     } catch (err) {
       if (attempt >= retries) throw err;
-      await sleep(RETRY_BACKOFF_MS[attempt] + Math.random() * 250);
+      await sleep(RETRY_BACKOFF_MS[attempt]! + Math.random() * 250);
     }
   }
 };

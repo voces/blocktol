@@ -77,8 +77,8 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
           if (dist < prev[0]) return [dist, block];
           return prev;
         },
-        [Infinity, blocks[0]],
-      )[1];
+        [Infinity, blocks[0]!],
+      )[1]!;
       const overlap =
         nearest && Math.abs(nearest.x - x) <= 1 && Math.abs(nearest.y - y) <= 1
           ? nearest
@@ -157,7 +157,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
       if (
         !invalid && !overlap &&
-        (offsets.every(([xd, yd]) => !grid[y + yd][x + xd]))
+        (offsets.every(([xd, yd]) => !grid[y + yd]![x + xd]))
       ) {
         invalid = !solvable(blocks, checkpoint, { x, y });
       }
@@ -187,12 +187,12 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     globalThis.addEventListener("mousedown", mousedownCallback);
 
     const touchmoveCallback = (e: TouchEvent) => {
-      const target = e.changedTouches[0].target;
+      const target = e.changedTouches[0]!.target;
       if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
         return;
       }
       e.preventDefault();
-      const touch = e.touches[0];
+      const touch = e.touches[0]!;
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
       callback(touch.clientX, touch.clientY);
     };
@@ -201,11 +201,11 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     });
 
     const touchstartCallback = (e: TouchEvent) => {
-      const target = e.changedTouches[0].target;
+      const target = e.changedTouches[0]!.target;
       if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
         return;
       }
-      const touch = e.touches[0];
+      const touch = e.touches[0]!;
       // Ignore taps on the border band: it holds the HUD controls (Ready?, best
       // score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;

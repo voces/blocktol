@@ -271,8 +271,8 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     api.moveInfo({ ids }).then((res) => {
       if (!live) return;
       if ("error" in res) return proceed(); // can't decide → don't block the app
-      const s = localId ? res[0] : null;
-      const o = localId ? res[1] : res[0];
+      const s = localId ? res[0] ?? null : null;
+      const o = (localId ? res[1] : res[0]) ?? null;
       setSelf(s);
       setOther(o);
 

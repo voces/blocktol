@@ -69,9 +69,9 @@ const releaseLock = (holder: string) =>
 const currentVersion = () =>
   sql<{ version: number }[]>`
     SELECT COALESCE(MAX(version), 0) version FROM schema_migration;`
-    .then((r) => r[0].version);
+    .then((r) => r[0]!.version);
 
-const targetVersion = migrations[migrations.length - 1].version;
+const targetVersion = migrations[migrations.length - 1]!.version;
 
 // Applies every pending migration while holding the lease, renewing it in the
 // background. Each runs through sqlMigrate (no timeout, no retry; see

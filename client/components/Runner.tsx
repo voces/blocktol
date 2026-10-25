@@ -23,7 +23,7 @@ export const Runner = (
     paused?: boolean | undefined;
   },
 ) => {
-  const [loc, setLoc] = useState(path[0]);
+  const [loc, setLoc] = useState(path[0]!);
   const [slowed, setSlowed] = useState(false);
   const game = useGame();
   const pausedRef = useRef(paused);
@@ -85,12 +85,12 @@ export const Runner = (
         // Fire every slow that begins before this chunk ends, once each.
         for (
           ;
-          nextSlow < slows.length && slows[nextSlow].time < stepEnd;
+          nextSlow < slows.length && slows[nextSlow]!.time < stepEnd;
           nextSlow++
         ) {
-          onSlow(slows[nextSlow].thunder);
+          onSlow(slows[nextSlow]!.thunder);
         }
-        isSlowed = nextSlow > 0 && (slows[nextSlow - 1].time) + 6 > stepEnd;
+        isSlowed = nextSlow > 0 && (slows[nextSlow - 1]!.time) + 6 > stepEnd;
         pathDistance += (stepEnd - t) * (isSlowed ? SPEED / 2 : SPEED);
         t = stepEnd;
       }
@@ -98,8 +98,9 @@ export const Runner = (
 
       let distanceRemaining = pathDistance - coveredDistance;
       while (pathIndex < path.length - 1) {
-        const legDistance = ((path[pathIndex + 1].x - path[pathIndex].x) ** 2 +
-          (path[pathIndex + 1].y - path[pathIndex].y) ** 2) ** 0.5;
+        const legDistance =
+          ((path[pathIndex + 1]!.x - path[pathIndex]!.x) ** 2 +
+            (path[pathIndex + 1]!.y - path[pathIndex]!.y) ** 2) ** 0.5;
 
         if (legDistance < distanceRemaining) {
           coveredDistance += legDistance;
@@ -110,10 +111,10 @@ export const Runner = (
 
         const r = distanceRemaining / legDistance;
         setLoc({
-          x: path[pathIndex].x * (1 - r) +
-            (path[pathIndex + 1]?.x ?? path[pathIndex].x) * r,
-          y: path[pathIndex].y * (1 - r) +
-            (path[pathIndex + 1]?.y ?? path[pathIndex].y) * r,
+          x: path[pathIndex]!.x * (1 - r) +
+            (path[pathIndex + 1]?.x ?? path[pathIndex]!.x) * r,
+          y: path[pathIndex]!.y * (1 - r) +
+            (path[pathIndex + 1]?.y ?? path[pathIndex]!.y) * r,
         });
         break;
       }
@@ -161,11 +162,11 @@ export const Runner = (
       {debug && path.map((loc, i) =>
         i > 0 && (
           <line
-            key={`${loc.x},${loc.y}-${path[i - 1].x},${path[i - 1].y}`}
+            key={`${loc.x},${loc.y}-${path[i - 1]!.x},${path[i - 1]!.y}`}
             x1={loc.x + 0.5}
             y1={loc.y + 0.5}
-            x2={path[i - 1].x + 0.5}
-            y2={path[i - 1].y + 0.5}
+            x2={path[i - 1]!.x + 0.5}
+            y2={path[i - 1]!.y + 0.5}
             stroke="var(--maze-stroke)"
             stroke-width={0.02}
           />

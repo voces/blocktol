@@ -54,12 +54,12 @@ export const buildStandings = (
   const ranks: number[] = [];
   for (let i = 0; i < field.length; i++) {
     ranks.push(
-      i > 0 && field[i].time === field[i - 1].time ? ranks[i - 1] : i + 1,
+      i > 0 && field[i]!.time === field[i - 1]!.time ? ranks[i - 1]! : i + 1,
     );
   }
   const tiedAt = (i: number) =>
-    (i > 0 && field[i - 1].time === field[i].time) ||
-    (i + 1 < field.length && field[i + 1].time === field[i].time);
+    (i > 0 && field[i - 1]!.time === field[i]!.time) ||
+    (i + 1 < field.length && field[i + 1]!.time === field[i]!.time);
 
   const meIdx = field.findIndex((e) => e.user === viewer);
 
@@ -73,9 +73,9 @@ export const buildStandings = (
   }
 
   const topTime = field[0]?.time;
-  const topShared = field.length > 1 && field[1].time === topTime;
+  const topShared = field.length > 1 && field[1]!.time === topTime;
   const recordOf = (i: number): "beat" | "match" | null =>
-    field[i].time === topTime ? (topShared ? "match" : "beat") : null;
+    field[i]!.time === topTime ? (topShared ? "match" : "beat") : null;
 
   // The viewer's self-excluded percentile (ties split, the convention ratings,
   // profile and calendar share), which colours their rank. null when there's
@@ -87,8 +87,8 @@ export const buildStandings = (
     let equal = 0;
     let more = 0;
     for (const e of field) {
-      if (e.time < field[i].time) less++;
-      else if (e.time === field[i].time) equal++;
+      if (e.time < field[i]!.time) less++;
+      else if (e.time === field[i]!.time) equal++;
       else more++;
     }
     return more === 0 ? 1 : (less + (equal - 1) / 2) / others;
@@ -100,14 +100,14 @@ export const buildStandings = (
     const gapBefore = prev < 0 ? 0 : i - prev - 1;
     prev = i;
     return {
-      rank: ranks[i],
+      rank: ranks[i]!,
       tied: tiedAt(i),
       you: i === meIdx,
-      name: field[i].name,
-      hue: field[i].hue,
-      time: field[i].time,
-      secondary: field[i].secondary ?? null,
-      at: field[i].at,
+      name: field[i]!.name,
+      hue: field[i]!.hue,
+      time: field[i]!.time,
+      secondary: field[i]!.secondary ?? null,
+      at: field[i]!.at,
       record: recordOf(i),
       gapBefore,
     };
@@ -116,10 +116,10 @@ export const buildStandings = (
   return {
     players: field.length,
     me: meIdx < 0 ? null : {
-      rank: ranks[meIdx],
+      rank: ranks[meIdx]!,
       tied: tiedAt(meIdx),
-      time: field[meIdx].time,
-      secondary: field[meIdx].secondary ?? null,
+      time: field[meIdx]!.time,
+      secondary: field[meIdx]!.secondary ?? null,
       record: recordOf(meIdx),
       percentile: percentileOf(meIdx),
     },

@@ -4,8 +4,8 @@ import { log } from "../util/logging.ts";
 import type { Handler } from "../util/Router.ts";
 import { logMap, routeOf } from "./beginLogger.ts";
 
-// The trace id OTel's no-op span reports when tracing is off (every instance
-// but the EC2 one); nothing to correlate, so it isn't stamped.
+// The trace id OTel's no-op span reports when tracing is off (a run without
+// the OTel env); nothing to correlate, so it isn't stamped.
 const INVALID_TRACE_ID = "00000000000000000000000000000000";
 
 const sizes = ["B", "KB", "MB", "GB", "TB"];
@@ -14,12 +14,12 @@ const prettySize = (size: number) => {
   if (Number.isNaN(size)) return "";
 
   let exp = 0;
-  while (size >= 1024 && exp < sizes.length) {
+  while (size >= 1024 && exp < sizes.length - 1) {
     size /= 1024;
     exp++;
   }
 
-  return Math.round(size) + sizes[exp];
+  return Math.round(size) + sizes[exp]!;
 };
 
 export const endLogger: Handler = (req, _, prev) => {

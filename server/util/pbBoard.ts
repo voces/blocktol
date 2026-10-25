@@ -163,7 +163,7 @@ const announce = async (
   const holders = bests
     .filter((b) => round2(b.best) === top)
     .sort((a, b) => a.at - b.at);
-  const holder = holders[0];
+  const holder = holders[0]!;
   const actorAtTop = holders.some((h) => h.user === actor);
 
   const stale = marker != null && marker.topUser === actor &&

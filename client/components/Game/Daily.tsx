@@ -98,9 +98,9 @@ export const Daily = () => {
 
   let bestIdx = 0;
   attempts.forEach((a, i) => {
-    if (a.duration > attempts[bestIdx].duration) bestIdx = i;
+    if (a.duration > attempts[bestIdx]!.duration) bestIdx = i;
   });
-  const best = attempts[bestIdx];
+  const best = attempts[bestIdx]!;
   const isSupreme = best.supreme;
   // Ties the field's top time without taking the record.
   const isPeak = !isSupreme && best.percent === 1;

@@ -75,8 +75,8 @@ export const dayTopBuild = (
     .sort((a, b) => a.at - b.at);
   if (time === rankedTop && holders.length === winners.size) return null;
   return {
-    user: holders[0].user,
-    name: holders[0].name ?? "anonymous",
+    user: holders[0]!.user,
+    name: holders[0]!.name ?? "anonymous",
     time,
     matchers: holders.slice(1).map((b) => b.name ?? "anonymous"),
   };
@@ -122,7 +122,7 @@ export const announceDailyResult = async (iteration: number) => {
       getStandingsMeta(iteration),
     ]);
     if (rows.length === 0) return; // no ranked field — nothing to announce
-    const top = round2(rows[0].time);
+    const top = round2(rows[0]!.time);
     const winners = rows.filter((r) => round2(r.time) === top);
     const day: Day = [meta.y, meta.m, meta.d];
 

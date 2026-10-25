@@ -15,19 +15,19 @@ export const reverseTween = (
   min: number,
 ): number => {
   if (data.length === 0) return value < min ? 0 : 1;
-  if (value < data[0]) {
+  if (value < data[0]!) {
     if (value < min) return 0;
-    return reverseInterpolate(min, data[0], value) / data.length;
+    return reverseInterpolate(min, data[0]!, value) / data.length;
   }
   const length = data.length - 1;
-  if (value >= data[length]) return 1;
+  if (value >= data[length]!) return 1;
 
   let left = 0;
   let right = length;
   let middle = Math.floor((left + right) / 2);
   while (left <= right) {
-    if (data[middle] < value) left = middle + 1;
-    else if (data[middle] > value) right = middle - 1;
+    if (data[middle]! < value) left = middle + 1;
+    else if (data[middle]! > value) right = middle - 1;
     else break;
 
     middle = Math.floor((left + right) / 2);
@@ -45,8 +45,8 @@ export const reverseTween = (
   // Between two entries but at or below the unobstructed time `min`.
   if (value <= min) return 0;
 
-  const leftValue = data[middle];
-  const rightValue = data[middle + 1];
+  const leftValue = data[middle]!;
+  const rightValue = data[middle + 1]!;
   const relativePercent = reverseInterpolate(leftValue, rightValue, value);
 
   return (middle + relativePercent + 1) / data.length;
@@ -95,7 +95,7 @@ export const fieldQuantiles = (
       cumulative += count;
       if (cumulative >= target) return time;
     }
-    return timeCounts[timeCounts.length - 1].time;
+    return timeCounts[timeCounts.length - 1]!.time;
   };
 
   return { p25: at(0.25), median: at(0.5), p75: at(0.75) };

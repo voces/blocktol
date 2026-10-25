@@ -20,10 +20,10 @@ export const streaks = (dates: readonly string[], today: string) => {
   let run = 0;
   let current = 0;
   for (let i = 0; i < days.length; i++) {
-    run = i > 0 && days[i] - days[i - 1] === 1 ? run + 1 : 1;
+    run = i > 0 && days[i]! - days[i - 1]! === 1 ? run + 1 : 1;
     if (run > best) best = run;
     // A later date overwrites this, so the final assignment wins.
-    if (days[i] >= now - 1) current = run;
+    if (days[i]! >= now - 1) current = run;
   }
   return { current, best };
 };

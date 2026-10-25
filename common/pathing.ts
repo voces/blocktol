@@ -5,15 +5,15 @@ import { offsets } from "./constants.ts";
 export const newGrid = () => {
   const grid = Array.from(Array(20), () => Array<boolean>(20).fill(false));
   for (let i = 0; i < 9; i++) {
-    grid[0][i] = true;
-    grid[0][19 - i] = true;
-    grid[19][i] = true;
-    grid[19][19 - i] = true;
+    grid[0]![i] = true;
+    grid[0]![19 - i] = true;
+    grid[19]![i] = true;
+    grid[19]![19 - i] = true;
 
-    grid[i + 1][0] = true;
-    grid[18 - i][0] = true;
-    grid[i + 1][19] = true;
-    grid[18 - i][19] = true;
+    grid[i + 1]![0] = true;
+    grid[18 - i]![0] = true;
+    grid[i + 1]![19] = true;
+    grid[18 - i]![19] = true;
   }
   return grid;
 };
@@ -45,10 +45,10 @@ const segmentCrossesBox = (
   for (let i = 0; i < 4; i++) {
     if (p[i] === 0) {
       // Parallel to this pair of edges: outside the slab means no crossing.
-      if (q[i] < 0) return false;
+      if (q[i]! < 0) return false;
     } else {
-      const r = q[i] / p[i];
-      if (p[i] < 0) {
+      const r = q[i]! / p[i]!;
+      if (p[i]! < 0) {
         if (r > t1) return false;
         if (r > t0) t0 = r;
       } else {
@@ -122,10 +122,10 @@ const pathTouchesPiece = (path: ReadonlyArray<Point>, piece: Point) => {
   for (let i = 1; i < path.length; i++) {
     if (
       segmentCrossesBox(
-        path[i - 1].x + 0.5,
-        path[i - 1].y + 0.5,
-        path[i].x + 0.5,
-        path[i].y + 0.5,
+        path[i - 1]!.x + 0.5,
+        path[i - 1]!.y + 0.5,
+        path[i]!.x + 0.5,
+        path[i]!.y + 0.5,
         xMin,
         yMin,
         xMax,
@@ -164,7 +164,7 @@ const isCornerCell = (grid: boolean[][], x: number, y: number) => {
 const cornerNodes = (grid: boolean[][]): Point[] => {
   const corners: Point[] = [];
   for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
+    for (let x = 0; x < grid[y]!.length; x++) {
       if (!isBlocked(grid, x, y) && isCornerCell(grid, x, y)) {
         corners.push({ x, y });
       }
@@ -222,18 +222,18 @@ export class PathSolver {
     this.baseHasThunder = baseBlocks.some((b) => b.thunder);
     const grid = newGrid();
     const checkpointCell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
-    grid[checkpointCell.y][checkpointCell.x] = true;
+    grid[checkpointCell.y]![checkpointCell.x] = true;
     for (const { x, y } of baseBlocks) {
       if (
         offsets.some(([xd, yd]) => {
-          if (grid[y + yd][x + xd]) return true;
-          grid[y + yd][x + xd] = true;
+          if (grid[y + yd]![x + xd]) return true;
+          grid[y + yd]![x + xd] = true;
           return false;
         })
       ) throw new Error("invalid data");
     }
     // The checkpoint cell blocks placements but not the runner.
-    grid[checkpointCell.y][checkpointCell.x] = false;
+    grid[checkpointCell.y]![checkpointCell.x] = false;
 
     this.grid = grid;
     this.checkpointCell = checkpointCell;
@@ -251,7 +251,7 @@ export class PathSolver {
     this.baseLOS = new Uint8Array(n * n);
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
-        if (lineOfSight(this.baseNodes[i], this.baseNodes[j], grid)) {
+        if (lineOfSight(this.baseNodes[i]!, this.baseNodes[j]!, grid)) {
           this.baseLOS[i * n + j] = this.baseLOS[j * n + i] = 1;
         }
       }
@@ -316,28 +316,28 @@ export class PathSolver {
     // The checkpoint cell counts as occupied for overlap, then is freed for the
     // search. The base grid is shared across solves, so `placed` records every
     // cell to restore, even when a piece throws half-placed.
-    grid[checkpointCell.y][checkpointCell.x] = true;
+    grid[checkpointCell.y]![checkpointCell.x] = true;
     const placed: Point[] = [];
     try {
       for (const { x, y } of pieces) {
         if (
           offsets.some(([xd, yd]) => {
-            if (grid[y + yd][x + xd]) return true;
-            grid[y + yd][x + xd] = true;
+            if (grid[y + yd]![x + xd]) return true;
+            grid[y + yd]![x + xd] = true;
             placed.push({ x: x + xd, y: y + yd });
             return false;
           })
         ) throw new Error("invalid data");
       }
-      grid[checkpointCell.y][checkpointCell.x] = false;
+      grid[checkpointCell.y]![checkpointCell.x] = false;
 
       const shortcut = this.oneAddedShortcut(pieces);
       const path = shortcut ? shortcut.path : this.search(pieces);
       this.remember(key, path);
       return path?.map((p) => ({ ...p }));
     } finally {
-      for (const { x, y } of placed) grid[y][x] = false;
-      grid[checkpointCell.y][checkpointCell.x] = false;
+      for (const { x, y } of placed) grid[y]![x] = false;
+      grid[checkpointCell.y]![checkpointCell.x] = false;
     }
   }
 
@@ -359,7 +359,7 @@ export class PathSolver {
       const prev = key === "" ? this.baseResult : this.results.get(key);
       if (!prev) continue;
       if (!prev.path) return { path: undefined };
-      if (thunderFree && !pathTouchesPiece(prev.path, pieces[i])) return prev;
+      if (thunderFree && !pathTouchesPiece(prev.path, pieces[i]!)) return prev;
     }
     return null;
   }
@@ -378,8 +378,8 @@ export class PathSolver {
     const baseIdx: number[] = [];
     const seen = new Set<number>();
     for (let i = 0; i < nBase; i++) {
-      const p = baseNodes[i];
-      if (grid[p.y][p.x]) continue;
+      const p = baseNodes[i]!;
+      if (grid[p.y]![p.x]) continue;
       seen.add(p.y * 20 + p.x);
       nodes.push(p);
       baseIdx.push(i);
@@ -417,20 +417,20 @@ export class PathSolver {
     }
 
     const visible = (i: number, j: number) => {
-      const bi = baseIdx[i];
-      const bj = baseIdx[j];
+      const bi = baseIdx[i]!;
+      const bj = baseIdx[j]!;
       // Piece-created corners have no precomputed answer: ask the oracle.
-      if (bi < 0 || bj < 0) return lineOfSight(nodes[i], nodes[j], grid);
+      if (bi < 0 || bj < 0) return lineOfSight(nodes[i]!, nodes[j]!, grid);
       if (!baseLOS[bi * nBase + bj]) return false;
-      const ax = nodes[i].x + 0.5;
-      const ay = nodes[i].y + 0.5;
-      const bx = nodes[j].x + 0.5;
-      const by = nodes[j].y + 0.5;
+      const ax = nodes[i]!.x + 0.5;
+      const ay = nodes[i]!.y + 0.5;
+      const bx = nodes[j]!.x + 0.5;
+      const by = nodes[j]!.y + 0.5;
       for (let b = 0; b < boxes.length; b += 4) {
-        const xMin = boxes[b];
-        const yMin = boxes[b + 1];
-        const xMax = boxes[b + 2];
-        const yMax = boxes[b + 3];
+        const xMin = boxes[b]!;
+        const yMin = boxes[b + 1]!;
+        const xMax = boxes[b + 2]!;
+        const yMax = boxes[b + 3]!;
         if (
           (ax < xMin && bx < xMin) || (ax > xMax && bx > xMax) ||
           (ay < yMin && by < yMin) || (ay > yMax && by > yMax)
@@ -471,14 +471,14 @@ export class PathSolver {
         settled++;
         if (settled === 2) break;
       }
-      const cx = nodes[cur].x;
-      const cy = nodes[cur].y;
+      const cx = nodes[cur]!.x;
+      const cy = nodes[cur]!.y;
       for (let j = 0; j < n; j++) {
         if (j === cur || closed[j]) continue;
         // The cheap relaxation test gates the expensive visibility test.
         const score = g +
-          ((nodes[j].x - cx) ** 2 + (nodes[j].y - cy) ** 2) ** 0.5;
-        if (score >= gScore[j]) continue;
+          ((nodes[j]!.x - cx) ** 2 + (nodes[j]!.y - cy) ** 2) ** 0.5;
+        if (score >= gScore[j]!) continue;
         if (!visible(cur, j)) continue;
         gScore[j] = score;
         parent[j] = cur;
@@ -492,14 +492,14 @@ export class PathSolver {
     // start -> checkpoint and the walk from end is checkpoint -> end reversed.
     // Points are copied so callers can't alias the shared base nodes.
     const path: Point[] = [];
-    for (let i = startIdx; i !== -1; i = parent[i]) {
-      path.push({ x: nodes[i].x, y: nodes[i].y });
+    for (let i = startIdx; i !== -1; i = parent[i]!) {
+      path.push({ x: nodes[i]!.x, y: nodes[i]!.y });
     }
     const tail: Point[] = [];
-    for (let i = endIdx; parent[i] !== -1; i = parent[i]) {
-      tail.push({ x: nodes[i].x, y: nodes[i].y });
+    for (let i = endIdx; parent[i] !== -1; i = parent[i]!) {
+      tail.push({ x: nodes[i]!.x, y: nodes[i]!.y });
     }
-    for (let i = tail.length - 1; i >= 0; i--) path.push(tail[i]);
+    for (let i = tail.length - 1; i >= 0; i--) path.push(tail[i]!);
     return path;
   }
 }
@@ -564,12 +564,12 @@ const circleWindows = (
 ) => {
   const list: [number, number][] = [];
   for (let i = 1; i < path.length; i++) {
-    const segment = cum[i] - cum[i - 1];
+    const segment = cum[i]! - cum[i - 1]!;
     if (segment === 0) continue;
-    const dx = path[i].x - path[i - 1].x;
-    const dy = path[i].y - path[i - 1].y;
-    const fx = path[i - 1].x - cx;
-    const fy = path[i - 1].y - cy;
+    const dx = path[i]!.x - path[i - 1]!.x;
+    const dy = path[i]!.y - path[i - 1]!.y;
+    const fx = path[i - 1]!.x - cx;
+    const fy = path[i - 1]!.y - cy;
     const a = dx * dx + dy * dy;
     const b = 2 * (fx * dx + fy * dy);
     const c = fx * fx + fy * fy - radius * radius;
@@ -579,8 +579,8 @@ const circleWindows = (
     const u1 = Math.max(0, (-b - sq) / (2 * a));
     const u2 = Math.min(1, (-b + sq) / (2 * a));
     if (u2 <= u1) continue;
-    const start = cum[i - 1] + u1 * segment;
-    const end = cum[i - 1] + u2 * segment;
+    const start = cum[i - 1]! + u1 * segment;
+    const end = cum[i - 1]! + u2 * segment;
     const previous = list[list.length - 1];
     if (previous && start <= previous[1] + 1e-9) {
       previous[1] = Math.max(previous[1], end);
@@ -593,7 +593,7 @@ const circleWindows = (
 const pathDistances = (path: ReadonlyArray<Readonly<Point>>) => {
   const cum: number[] = [0];
   for (let i = 1; i < path.length; i++) {
-    cum.push(cum[i - 1] + euclideanDistance(path[i - 1], path[i]));
+    cum.push(cum[i - 1]! + euclideanDistance(path[i - 1]!, path[i]!));
   }
   return cum;
 };
@@ -624,7 +624,7 @@ export const pathDuration = (
   if (path.length < 2) return [0, []];
 
   const cum = pathDistances(path);
-  const total = cum[cum.length - 1];
+  const total = cum[cum.length - 1]!;
 
   const windows = thunders.map((thunder) =>
     circleWindows(path, cum, thunder.x + 0.5, thunder.y + 0.5, THUNDER_RADIUS)
@@ -657,10 +657,10 @@ export const pathDuration = (
     let best = Infinity;
     let firing: number[] = [];
     for (let i = 0; i < thunders.length; i++) {
-      for (const [start, end] of windows[i]) {
+      for (const [start, end] of windows[i]!) {
         if (end <= d) continue;
         const entry = start <= d ? t : timeToReach(start);
-        const fire = Math.max(entry, lastFire[i] + TRIGGER_COOLDOWN);
+        const fire = Math.max(entry, lastFire[i]! + TRIGGER_COOLDOWN);
         if (fire >= timeToReach(end)) continue;
         if (fire < best) {
           best = fire;
@@ -684,7 +684,10 @@ export const pathDuration = (
     slowEnd = t + SLOW_DURATION;
     for (const i of firing) {
       lastFire[i] = t;
-      slows.push({ time: t, thunder: { x: thunders[i].x, y: thunders[i].y } });
+      slows.push({
+        time: t,
+        thunder: { x: thunders[i]!.x, y: thunders[i]!.y },
+      });
     }
   }
 

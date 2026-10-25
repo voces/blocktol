@@ -102,8 +102,8 @@ const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
   const pq: Array<[number, number, number]> = [[0, src.x, src.y]];
   while (pq.length) {
     let mi = 0;
-    for (let i = 1; i < pq.length; i++) if (pq[i][0] < pq[mi][0]) mi = i;
-    const [d, x, y] = pq.splice(mi, 1)[0];
+    for (let i = 1; i < pq.length; i++) if (pq[i]![0] < pq[mi]![0]) mi = i;
+    const [d, x, y] = pq.splice(mi, 1)[0]!;
     if (d > (dist.get(key(x, y)) ?? Infinity)) continue;
     for (const [dx, dy, w] of STEPS) {
       const nx = x + dx;
@@ -140,7 +140,7 @@ const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
       lastIdx = cells.length - 1;
     }
   }
-  if (cells.length) cells[lastIdx].last = true;
+  if (cells.length) cells[lastIdx]!.last = true;
   return cells;
 };
 
@@ -179,7 +179,7 @@ export const TimerRipple = () => {
       for (const m of passed) firedRef.current.add(m);
       // The most urgent mark reached sets the intensity.
       const mark = Math.min(...passed);
-      const cells = floodCells(blocksRef.current, MARK_PEAK[mark]);
+      const cells = floodCells(blocksRef.current, MARK_PEAK[mark]!);
       if (!cells.length) return;
       setWaves((w) => [...w, { id: nextId.current++, cells }]);
       // Cue the button's drop (see Hud).

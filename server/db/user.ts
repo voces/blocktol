@@ -562,7 +562,7 @@ export const getOwnBest = (user: string, iteration: number) =>
     FROM run
     WHERE user = ${user}
       AND iteration = ${iteration}
-      AND void = FALSE;`.then((r) => r?.[0].ownBest ?? null);
+      AND void = FALSE;`.then((r) => r?.[0]!.ownBest ?? null);
 
 export const getOwnBestMaze = (user: string, iteration: number) =>
   sql<({ data: string | null } | null)[] | null>`
