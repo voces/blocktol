@@ -20,9 +20,8 @@ const randomId = () => {
 
 // The sign-in link for an id, shown as a QR and copied by "move to device". The
 // id rides the URL FRAGMENT (`/#l=<id>`), which a browser never sends. A path
-// segment would reach nginx's access log and Deno's OTel span (`url.full` /
-// `url.path`), which app code can't scrub, and the id is the whole bearer
-// credential.
+// segment would reach nginx's access log, which app code can't scrub, and the
+// id is the whole bearer credential.
 export const signInLink = (id: string) =>
   new URL("/#l=" + encodeURIComponent(id), location.origin).href;
 

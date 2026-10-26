@@ -1,12 +1,13 @@
 # Deploying blocktol on the EC2 cohost
 
-Blocktol runs as a long-lived Deno process on the same EC2 box as the MariaDB +
+Blocktol runs as a long-lived Node process on the same EC2 box as the MariaDB +
 `/sql` proxy (and emoji-sheep-tag / w3xio / others), behind nginx + certbot, and
 auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
 
-- **Serving:** `blocktol.service` (systemd) runs `deno task start` on a local
-  port; nginx (`blocktol.nginx.conf`) terminates TLS, gzips text responses,
-  rate-limits `/api/` per IP, and reverse-proxies to it.
+- **Serving:** `blocktol.service` (systemd) runs `deno task start`, which runs
+  `node server/index.ts`, on a local port; nginx (`blocktol.nginx.conf`)
+  terminates TLS, gzips text responses, rate-limits `/api/` per IP, and
+  reverse-proxies to it.
 - **Deploy:** merge to `prod` → CI passes → `.github/workflows/deploy.yml` POSTs
   `{app:"blocktol", version:<sha>}` to w3xio's `/deploy`, which does
   `git fetch origin prod` → `git checkout <sha>` → `./deploy/build` (read from
@@ -30,7 +31,10 @@ The same holds for the box-level backup and journald files described under
 
 - Service account `ubuntu`, home `/home/ubuntu`, checkout
   `/home/ubuntu/blocktol`.
-- deno binary: `/home/ubuntu/.deno/bin/deno`.
+- deno binary: `/home/ubuntu/.deno/bin/deno` (tasks, installs and the client
+  build).
+- node binary: Node 24 at `/usr/bin/node`, on systemd's default `PATH`; it runs
+  the server. Check with `node --version`.
 - **Port 3040** (prod) and **3041** (the dev instance). Do NOT reuse the
   occupied ports: 3017 (st2mr), 3020 (w3xio/dapi), 3030 (emoji-sheep-tag /
   est.w3x.io), 3626 (w3x.io main + the `/sql` proxy), 3627 (katma).
@@ -43,7 +47,7 @@ The same holds for the box-level backup and journald files described under
    ```bash
    git clone https://github.com/voces/blocktol /home/ubuntu/blocktol
    cd /home/ubuntu/blocktol && git checkout prod
-   deno task build            # generates public/js/*, which is gitignored
+   ./deploy/build             # node_modules/ and public/js/*, both gitignored
    ```
 
 2. **Env file** `/home/ubuntu/blocktol/.env` (chmod 600; `.env` is gitignored):
@@ -86,7 +90,7 @@ The same holds for the box-level backup and journald files described under
    <w3xio-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart blocktol
    ```
    Also ensure `deno` is on that process's `PATH` (`deploy/build` runs
-   `deno task build`).
+   `deno install` and `deno task build`).
 
 5. **nginx.** Install `deploy/blocktol-ratelimit.conf` as
    `/etc/nginx/conf.d/blocktol-ratelimit.conf` (the API rate-limit zone) and
@@ -355,7 +359,8 @@ work (`server/routes/health.ts`), and 503 with the reason otherwise.
 - Manual restart: `sudo systemctl restart blocktol` (uses the assets already on
   disk — a full redeploy rebuilds them)
 - Rollback:
-  `git -C /home/ubuntu/blocktol checkout <old-sha> && deno task build &&
+  `cd /home/ubuntu/blocktol && git checkout <old-sha> && ./deploy/build &&
   sudo systemctl restart blocktol`
+  (the unit runs whichever runtime that commit's `start` task names)
 - A failed deploy pings the admin Discord channel (via w3xio) with the
   `journalctl` tail.

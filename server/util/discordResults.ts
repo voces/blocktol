@@ -1,5 +1,6 @@
 import { env } from "./env.ts";
 import { errText, log } from "./logging.ts";
+import process from "node:process";
 
 // The results webhook: player-facing "top PB" and "daily final" posts, distinct
 // from adminAlert's operator pings. Same plain webhook REST (see
@@ -8,12 +9,12 @@ import { errText, log } from "./logging.ts";
 //
 // Reads DISCORD_RESULTS_WEBHOOK_URL, falling back to DISCORD_ADMIN_WEBHOOK_URL.
 // The env read is guarded as in adminAlert.ts: the run routes and rating cron
-// import this transitively, so a bare Deno.env.get would crash tests and ops
-// scripts that lack the grant.
+// import this transitively, and under Deno a bare read would crash tests and
+// ops scripts that lack the grant.
 const WEBHOOK = (() => {
   try {
-    return Deno.env.get("DISCORD_RESULTS_WEBHOOK_URL") ??
-      Deno.env.get("DISCORD_ADMIN_WEBHOOK_URL");
+    return process.env.DISCORD_RESULTS_WEBHOOK_URL ??
+      process.env.DISCORD_ADMIN_WEBHOOK_URL;
   } catch {
     return undefined;
   }

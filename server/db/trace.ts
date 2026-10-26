@@ -2,7 +2,7 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 
 // A manual OTel span around every DB call, tagged with the transport.
 //
-// Deno's built-in OTel auto-instruments outbound `fetch`, so the proxy hop is
+// Outbound `fetch` is traced by server/otel.ts (undici), so the proxy hop is
 // already a span. The direct connector uses a raw TCP socket (mysql2), which
 // that does NOT cover, so this wraps both paths to keep DB timing visible and
 // to stamp `db.transport`.

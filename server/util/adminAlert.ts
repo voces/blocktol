@@ -1,5 +1,6 @@
 import { env } from "./env.ts";
 import { errText, log } from "./logging.ts";
+import process from "node:process";
 
 // A fire-and-forget admin ping to Discord for rare, human-actionable events
 // (e.g. a player hitting the attempts cap).
@@ -9,12 +10,12 @@ import { errText, log } from "./logging.ts";
 // env prefix keeps a dev ping from being mistaken for prod.
 //
 // The read is guarded: db/user.ts imports this and nearly everything imports
-// db/user.ts (tests, ops scripts), so a bare Deno.env.get would crash on import
-// wherever --allow-env lacks this var. Catching the permission error makes it
-// a silent no-op there; only `start`/`dev` grant it.
+// db/user.ts (tests, ops scripts), and under Deno an env read throws wherever
+// --allow-env lacks the var. Catching that makes it a silent no-op in the test
+// task and the scripts; the server, on Node, reads it freely.
 const WEBHOOK = (() => {
   try {
-    return Deno.env.get("DISCORD_ADMIN_WEBHOOK_URL");
+    return process.env.DISCORD_ADMIN_WEBHOOK_URL;
   } catch {
     return undefined;
   }

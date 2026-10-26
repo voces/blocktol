@@ -6,23 +6,23 @@ area relies on.
 
 ## Server architecture
 
-**Entry (`server/index.ts`):** import-side-effect registers the crons
-(`util/gen.ts`, `util/rateDailies.ts`), then **binds the port immediately** and
-runs pending migrations (best-effort, never crash-loops) in the background. A
-`ready` gate makes each request `await` the migration before routing — so a
-redeploy's fresh process starts accepting connections without waiting on the
-migration DB round-trip (the cohost's single nginx upstream 502s while the port
-is unbound), yet a request is never served against a schema the code predates.
-Most deploys carry no pending migration, so `ready` resolves at once; a
-migration deploy briefly holds requests instead of dropping them.
-(`deno task start` runs with `--no-check` — CI's `deno check`/`test` is the type
-gate — so boot skips the redundant local type-check, further shrinking the
-restart gap.) With `PORT` set it listens on **127.0.0.1 only**, so nginx is the
-one way in. On SIGTERM (every deploy's restart) it stops cleanly: in-flight
-requests finish and any running cron completes (`util/shutdown.ts`; capped at
-~65s, under the unit's `TimeoutStopSec`), and no new cron starts. Killing
-`rate-dailies` between claiming a day and announcing it would lose that day's
-notifications for good.
+**Entry (`server/index.ts`, run by Node 24 through `@hono/node-server`):** its
+first import starts telemetry (`otel.ts`), import side effects register the
+crons (`util/gen.ts`, `util/rateDailies.ts`), then it **binds the port
+immediately** and runs pending migrations (best-effort, never crash-loops) in
+the background. A `ready` gate makes each request `await` the migration before
+routing — so a redeploy's fresh process starts accepting connections without
+waiting on the migration DB round-trip (the cohost's single nginx upstream 502s
+while the port is unbound), yet a request is never served against a schema the
+code predates. Most deploys carry no pending migration, so `ready` resolves at
+once; a migration deploy briefly holds requests instead of dropping them. (Node
+strips the types and runs the `.ts` as-is: CI's checks are the type gate, and
+boot has no compile step on the restart gap.) With `PORT` set it listens on
+**127.0.0.1 only**, so nginx is the one way in. On SIGTERM (every deploy's
+restart) it stops cleanly: in-flight requests finish, any running cron completes
+and buffered telemetry is flushed (`util/shutdown.ts`; capped at ~65s, under the
+unit's `TimeoutStopSec`), and no new cron starts. Killing `rate-dailies` between
+claiming a day and announcing it would lose that day's notifications for good.
 
 **Router (`server/util/Router.ts` + `server/router.ts`):** a small Express-like
 middleware chain over `URLPattern`. Path params are type-derived from the route
@@ -326,68 +326,68 @@ webhooks send `allowed_mentions: { parse: [] }`. See the `DISCORD_*` env vars.
 ## Environment variables
 
 `PORT` (set on the EC2 box, where nginx proxies to it, and usually locally;
-unset, `Deno.serve` picks its default), `APP_ENV` (`dev`/`prod` — selects the
-proxy database `blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL` (the SQL proxy
-endpoint; defaults to `https://w3x.io/sql` — set to the proxy's localhost
-address when the server is co-located with it, e.g. the EC2 cohost, to drop the
-internet round-trip), `SQL_TRANSPORT` (`direct` selects the direct MariaDB
-connector over the proxy — for the co-located instance; anything else, including
-unset, stays on the proxy) with `SQL_HOST` (default `127.0.0.1`), `SQL_PORT`
-(`3306`), `SQL_USER`/`SQL_DATABASE` (both default `blocktol-<env>`) configuring
-that connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any non-empty value
-skips registering the `ensure-iterations`/`rate-dailies` crons — for a second
-instance on the shared DB),
-`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web Push; generate with
-`deno run scripts/genVapidKeys.ts`; until set, notifications stay in-app —
-**silently**, and this has bitten prod once: with no key `/api/pushConfig`
-answers `{publicKey:null}`, clients can't subscribe, and the notify paths return
-before attempting a send, so nothing at all reaches the logs while the player's
-preference toggles still read "on". `curl -X POST <host>/api/pushConfig -d '{}'`
-is the check. Carrying the env across a host migration is the failure mode —
-existing `push_subscription` rows survive it untouched, since nothing ever sends
-and so nothing ever prunes. Restore the ORIGINAL pair where possible: new keys
-invalidate every live subscription with a 403, which is not pruned), and
-`DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook URL for fire-and-forget operator
-alerts via `util/adminAlert.ts` — plain REST, no bot token / discord.js; unset =
-alerts are no-ops), and `DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results
-webhook — the "top PB" and "daily final" posts via `util/discordResults.ts`;
-falls back to `DISCORD_ADMIN_WEBHOOK_URL` when unset, so results land in the
-operator channel until a dedicated one is wired up, and both being unset makes
-the posts no-ops). The task definitions enumerate the exact `--allow-env`
-grants.
+unset, it listens on 8000), `APP_ENV` (`dev`/`prod` — selects the proxy database
+`blocktol-<env>`), `SQL_PASSWORD`, `SQL_PROXY_URL` (the SQL proxy endpoint;
+defaults to `https://w3x.io/sql` — set to the proxy's localhost address when the
+server is co-located with it, e.g. the EC2 cohost, to drop the internet
+round-trip), `SQL_TRANSPORT` (`direct` selects the direct MariaDB connector over
+the proxy — for the co-located instance; anything else, including unset, stays
+on the proxy) with `SQL_HOST` (default `127.0.0.1`), `SQL_PORT` (`3306`),
+`SQL_USER`/`SQL_DATABASE` (both default `blocktol-<env>`) configuring that
+connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any non-empty value skips
+registering the `ensure-iterations`/`rate-dailies` crons — for a second instance
+on the shared DB), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web
+Push; generate with `deno run scripts/genVapidKeys.ts`; until set, notifications
+stay in-app — **silently**, and this has bitten prod once: with no key
+`/api/pushConfig` answers `{publicKey:null}`, clients can't subscribe, and the
+notify paths return before attempting a send, so nothing at all reaches the logs
+while the player's preference toggles still read "on".
+`curl -X POST <host>/api/pushConfig -d '{}'` is the check. Carrying the env
+across a host migration is the failure mode — existing `push_subscription` rows
+survive it untouched, since nothing ever sends and so nothing ever prunes.
+Restore the ORIGINAL pair where possible: new keys invalidate every live
+subscription with a 403, which is not pruned), and `DISCORD_ADMIN_WEBHOOK_URL`
+(a Discord webhook URL for fire-and-forget operator alerts via
+`util/adminAlert.ts` — plain REST, no bot token / discord.js; unset = alerts are
+no-ops), and `DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results webhook —
+the "top PB" and "daily final" posts via `util/discordResults.ts`; falls back to
+`DISCORD_ADMIN_WEBHOOK_URL` when unset, so results land in the operator channel
+until a dedicated one is wired up, and both being unset makes the posts no-ops).
+Under Node nothing scopes env access; the Deno tasks (tests, scripts) still
+enumerate their `--allow-env` grants, so a module that tests or scripts import
+reads its env defensively (`adminAlert.ts`, `webpush.ts`).
 
-**Observability (OpenTelemetry).** Blocktol uses Deno's **built-in** OTel
-(`OTEL_DENO=true`), which auto-instruments `Deno.serve` requests and outbound
-`fetch` (the SQL proxy hop) and exports spans the code opens through
-`@opentelemetry/api` (each cron run, `util/cron.ts`; the DB transport span,
-`db/trace.ts`) — so tracing is **env-configured**: there is no OTel SDK wiring
-in the source, and these vars are read by the runtime's telemetry subsystem,
-**not** user code, so they need no `--allow-env` grant (and `start`/`dev`
-already use bare `--allow-net`). Telemetry is enabled **only on the EC2 box**,
-beside VictoriaTraces and VictoriaLogs (blocktol.com, and dev.blocktol.com when
-its `.env` carries the OTel vars); a local run is un-instrumented. VictoriaLogs
-v1.51.0 (`127.0.0.1:9428`) and VictoriaTraces v0.9.4 (`127.0.0.1:10428`) run as
-systemd services, **bound to localhost only**, data under `/data`, 30-day
-retention — first-party infra (same box as the SQL proxy, not a third-party
-recipient), so ingest is a pure loopback call with **no auth**. blocktol emits
-**both** traces and logs through Deno's built-in OTel straight to those
-endpoints; the env lives in the systemd `EnvironmentFile` at
-`/home/ubuntu/blocktol/.env` (`OTEL_DENO=true`, `OTEL_SERVICE_NAME=blocktol`,
-`OTEL_METRICS_EXPORTER=none` — neither backend ingests metrics,
-`OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, and per-signal endpoints). The
-per-signal endpoints are required because VictoriaTraces/Logs use non-standard
-ingest paths and Deno otherwise appends the standard `/v1/*`:
+**Observability (OpenTelemetry).** `server/otel.ts` starts the OTel SDK when
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set and exports over OTLP
+(http/protobuf). Spans: each request (`util/requestSpan.ts`: named by method,
+continuing nginx's `traceparent`, its path redacted by `redactPath`), each cron
+run (`util/cron.ts`), each DB call (`db/trace.ts`) and each outbound `fetch`
+(undici's diagnostics channels, with `url.full` cut to the origin: a Discord
+webhook's path holds its token and a push endpoint is a capability URL). Logs:
+`util/logging.ts` emits every line as a log record, which joins the active
+span's trace. Request and fetch spans are made without module patching (no
+`import-in-the-middle`), so they don't depend on how ESM is loaded. Telemetry is
+enabled **only on the EC2 box**, beside VictoriaTraces and VictoriaLogs
+(blocktol.com, and dev.blocktol.com when its `.env` carries the OTel vars); a
+local run is un-instrumented. VictoriaLogs v1.51.0 (`127.0.0.1:9428`) and
+VictoriaTraces v0.9.4 (`127.0.0.1:10428`) run as systemd services, **bound to
+localhost only**, data under `/data`, 30-day retention — first-party infra (same
+box as the SQL proxy, not a third-party recipient), so ingest is a pure loopback
+call with **no auth**. The env lives in the systemd `EnvironmentFile` at
+`/home/ubuntu/blocktol/.env` (`OTEL_SERVICE_NAME=blocktol`, and the per-signal
+endpoints the exporters read). The per-signal endpoints are required because
+VictoriaTraces/Logs use non-standard ingest paths:
 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/insert/opentelemetry/v1/traces`,
 `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:9428/insert/opentelemetry/v1/logs`.
 
 The box also runs **Vector** (a journald→VictoriaLogs shipper) for its _other_
 services (`w3xio`, `dw3xio`, `katma`, `st2mr`, `emojist`) — but blocktol is
-**deliberately excluded** from Vector: Deno OTel already ships blocktol's logs,
-so listing it there would double-ingest every line. Don't re-add it. The VL/VT
-UIs are localhost-only (no public endpoint); view them over an SSH tunnel to the
-ports — `localhost:9428/select/vmui/` and `localhost:10428/select/vmui/`. (A
-`victoria.w3x.io` DNS record exists but is currently parked/unused — there is no
-authed public ingest or viewing endpoint.)
+**deliberately excluded** from Vector: `util/logging.ts` already ships
+blocktol's logs over OTLP, so listing it there would double-ingest every line.
+Don't re-add it. The VL/VT UIs are localhost-only (no public endpoint); view
+them over an SSH tunnel to the ports — `localhost:9428/select/vmui/` and
+`localhost:10428/select/vmui/`. (A `victoria.w3x.io` DNS record exists but is
+currently parked/unused — there is no authed public ingest or viewing endpoint.)
 
 This self-hosted pipeline is the only error sink; there's no separate error
 service. A thrown handler exception is `console.error`'d (→ VictoriaLogs,
@@ -405,8 +405,8 @@ value is the `trace=` on the request's line in
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
 (`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
 — so VictoriaLogs surfaces `status`/`route`/`userHash`/… as queryable fields via
-a `| unpack_logfmt _msg` at query time (nothing extracts them at ingest — Deno's
-OTel delivers the console line as the `_msg` body). The API is
+a `| unpack_logfmt _msg` at query time (nothing extracts them at ingest — the
+log record's body, `_msg`, is the logfmt line). The API is
 `log.<level>(msg, fields?)` or `log.<level>(req, msg, fields?)` (the `req` form
 folds in the request context), and **`fields` is flat by type** — nested
 objects/arrays don't compile, forcing a caller to flatten (logfmt can't
@@ -418,8 +418,8 @@ by stringifying any non-primitive value. Keys are reduced to `[A-Za-z0-9_.-]` on
 output, and `reportClientError` namespaces its payload as `client.<key>` (≤20
 keys, values cut to 4000 chars), so a client can neither forge fields nor
 override request context like `userHash` — its stack is `client.error`. No
-timestamp in the payload — Deno's OTel stamps `_time`; a second would duplicate
-it. `level=` also gives Grafana a field to colour rows by.
+timestamp in the payload — the log record carries `_time`; a second would
+duplicate it. `level=` also gives Grafana a field to colour rows by.
 
 **Build SHA / stale-client reload.** `common/version.ts` (`export const SHA`) is
 generated at build time by `scripts/genVersion.ts` — the `version` task, which

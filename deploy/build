@@ -5,4 +5,13 @@
 # blocktol builds ships in the PR that needs it. A non-zero exit fails the
 # deploy before the restart.
 set -eu
+# The server runs on Node 24 (the unit's `deno task start` runs `node`). Fail
+# here, before the restart, so a box without it keeps serving the old process
+# rather than crash-looping the new one.
+if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 24 ? 0 : 1)' 2>/dev/null; then
+  echo "deploy/build: need Node >= 24 on PATH, found $(node --version 2>/dev/null || echo none) at $(command -v node || echo nowhere)" >&2
+  exit 1
+fi
+# The server's npm packages: node resolves them from ./node_modules.
+deno install
 deno task build

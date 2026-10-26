@@ -7,6 +7,7 @@ import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
 import { pruneStaleData } from "./retention.ts";
 import { schedule } from "./cron.ts";
+import process from "node:process";
 
 const ONE_MINUTE = 1_000 * 60;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
@@ -99,7 +100,7 @@ const checkRatingLiveness = async () => {
 //
 // Each run ends with the rating-liveness check and the retention sweep
 // (util/retention.ts).
-if (!Deno.env.get("DISABLE_CRONS")) {
+if (!process.env.DISABLE_CRONS) {
   schedule("ensure-iterations", "0 * * * *", async () => {
     await ensureIterations(31);
     await checkRatingLiveness();

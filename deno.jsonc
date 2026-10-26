@@ -18,6 +18,21 @@
     "mysql2/promise": "npm:mysql2@^3.11.0/promise",
     "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
     "croner": "npm:croner@10.0.1",
+    // The Node HTTP server (server/index.ts); hono is its peer, imported by it.
+    "@hono/node-server": "npm:@hono/node-server@2.1.4",
+    "hono": "npm:hono@4.13.13",
+    // Telemetry (server/otel.ts): one release set, so the 2.x SDK and the 0.x
+    // experimental packages move together.
+    "@opentelemetry/api-logs": "npm:@opentelemetry/api-logs@0.223.0",
+    "@opentelemetry/exporter-logs-otlp-proto": "npm:@opentelemetry/exporter-logs-otlp-proto@0.223.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "npm:@opentelemetry/exporter-trace-otlp-proto@0.223.0",
+    "@opentelemetry/instrumentation": "npm:@opentelemetry/instrumentation@0.223.0",
+    "@opentelemetry/instrumentation-undici": "npm:@opentelemetry/instrumentation-undici@0.33.0",
+    "@opentelemetry/resources": "npm:@opentelemetry/resources@2.12.0",
+    "@opentelemetry/sdk-logs": "npm:@opentelemetry/sdk-logs@0.223.0",
+    "@opentelemetry/sdk-trace": "npm:@opentelemetry/sdk-trace@2.12.0",
+    "@opentelemetry/context-async-hooks": "npm:@opentelemetry/context-async-hooks@2.12.0",
+    "@opentelemetry/core": "npm:@opentelemetry/core@2.12.0",
     // Types only, for `deno task typecheck` (tsc reads them from node_modules).
     "@types/sqlstring": "npm:@types/sqlstring@2.3.2",
     "@types/node": "npm:@types/node@24.19.2",
@@ -57,21 +72,16 @@
     "sourcemap:stash": "deno run --allow-read --allow-write scripts/stashSourcemap.ts",
     "symbolicate": "deno run --allow-read --allow-write --allow-env --allow-run=git,deno scripts/symbolicate.ts",
     "bundle:pathing": "deno run --allow-read --allow-write --allow-env --allow-run npm:esbuild@0.25.5 common/pathing.ts --bundle --platform=browser --format=esm --minify --tsconfig-raw='{\"compilerOptions\":{\"useDefineForClassFields\":true}}' --outfile=public/js/pathing.js",
-    // TypeScript 7 (pinned), beside `deno check` until the server leaves Deno
-    // (#226): common/ alone, then the app. deno install fetches the types-only
-    // packages nothing imports at runtime; genDenoTypes writes Deno's own.
-    "typecheck": "deno install && deno run --allow-run --allow-write=types scripts/genDenoTypes.ts && deno run --allow-read --allow-env --allow-run npm:typescript@7.0.2/tsc -p tsconfig.common.json && deno run --allow-read --allow-env --allow-run npm:typescript@7.0.2/tsc -p tsconfig.json",
+    // TypeScript 7 (pinned): common/ alone, then the app. deno install fetches
+    // the types-only packages nothing imports at runtime.
+    "typecheck": "deno install && deno run --allow-read --allow-env --allow-run npm:typescript@7.0.2/tsc -p tsconfig.common.json && deno run --allow-read --allow-env --allow-run npm:typescript@7.0.2/tsc -p tsconfig.json",
     "build": "deno task i18n && deno task version && deno task bundle && deno task sourcemap:stash && deno task bundle:pathing",
-    // --no-check (not =remote): skip type-checking at start entirely. CI's
-    // `deno check` and `deno task test` are the type gate, so re-checking the
-    // local graph on every boot is redundant work on the cold-start critical
-    // path — dropping it shrinks the redeploy restart gap (nginx's single
-    // upstream 502s while the port is unbound; see server/index.ts).
-    // --allow-sys: the direct DB connector (mysql2) inspects host info when it
-    // opens a connection. Harmless on the proxy transport (the driver never
-    // loads). SQL_TRANSPORT/HOST/PORT/USER/DATABASE configure that connector.
-    "start": "deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL,DISCORD_RESULTS_WEBHOOK_URL --allow-read server/index.ts",
-    "dev": "deno task i18n && deno task version && deno task bundle --watch & deno run --no-check --allow-net --allow-sys --allow-env=PORT,APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE,DISABLE_CRONS,VAPID_PUBLIC_KEY,VAPID_PRIVATE_KEY,VAPID_SUBJECT,DISCORD_ADMIN_WEBHOOK_URL,DISCORD_RESULTS_WEBHOOK_URL --allow-read --watch server/index.ts",
+    // The server runs on Node 24 (#226), which strips the types and runs the
+    // .ts as-is: no build or check step on the restart path (nginx's single
+    // upstream 502s while the port is unbound; see server/index.ts). Its npm
+    // packages resolve from ./node_modules, which `deno install` fills.
+    "start": "node server/index.ts",
+    "dev": "deno task i18n && deno task version && deno task bundle --watch & node --watch server/index.ts",
     "preview": "deno run --allow-net --allow-read jsr:@std/http@^1/file-server --port 8081 .",
     "migrate": "deno run --no-check=remote --allow-net --allow-sys --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL,SQL_TRANSPORT,SQL_HOST,SQL_PORT,SQL_USER,SQL_DATABASE server/db/migrate.ts",
     // net/env grants are for the run-lifecycle integration tests, which hit

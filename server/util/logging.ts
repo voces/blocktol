@@ -1,3 +1,5 @@
+import { logs, SeverityNumber } from "@opentelemetry/api-logs";
+
 // Structured logging as **logfmt**: one line of flat `key=value` pairs, so
 // VictoriaLogs can query `status`/`route`/`userHash`/… as fields (via
 // `| unpack_logfmt _msg`). The field type bans nested objects/arrays, forcing
@@ -81,17 +83,16 @@ const fieldsToLogfmt = (fields: LogFields): string =>
 
 type Level = "error" | "warn" | "info" | "debug";
 
-// A trailing space on every emitted line. NOT cosmetic: do not remove. Deno has
-// no structured-logs API, so `console.*` is the only way a log reaches
-// VictoriaLogs, and Deno's console→OTel bridge copies console's newline into
-// the log-record *body*. `unpack_logfmt` ends a bare value at the next
-// whitespace, so "…lastKey=lastVal\n" would fold the `\n` into the last
-// value; the space ends it first. Kept out of formatLogfmt, which stays pure
-// logfmt (its tests assert exact output).
-const RECORD_TERMINATOR = " ";
+const SEVERITY: Record<Level, SeverityNumber> = {
+  error: SeverityNumber.ERROR,
+  warn: SeverityNumber.WARN,
+  info: SeverityNumber.INFO,
+  debug: SeverityNumber.DEBUG,
+};
 
 // The full logfmt line. `level=` is the field Grafana colours rows by. No
-// timestamp: Deno's OTel stamps `_time`, and a second would duplicate it.
+// timestamp: the log record carries one (VictoriaLogs' `_time`), and a second
+// would duplicate it.
 export const formatLogfmt = (
   level: string,
   msg: string,
@@ -111,9 +112,20 @@ const emit = (
   const all: LogFields = req
     ? { ...getLoggingContext(req), ...fields }
     : fields;
-  // The one sanctioned console call; every log flows through it.
+  const line = formatLogfmt(level, msg, all);
+  // The one sanctioned console call; every log flows through it. stdout is
+  // the journal, read on the box with journalctl.
   // deno-lint-ignore no-console
-  console[level](formatLogfmt(level, msg, all) + RECORD_TERMINATOR);
+  console[level](line);
+  // The same line as an OTel log record (server/otel.ts ships it to
+  // VictoriaLogs as `_msg`), joining the active span's trace; a no-op with
+  // telemetry off. Looked up per call: a logger taken before the provider is
+  // registered would stay a no-op.
+  logs.getLogger("blocktol").emit({
+    severityNumber: SEVERITY[level],
+    severityText: level.toUpperCase(),
+    body: line,
+  });
 };
 
 // `(msg, fields?)`, or `(req, msg, fields?)` to fold in the request context.

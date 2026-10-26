@@ -42,9 +42,12 @@ it out. See `server/db/CLAUDE.md` and `deploy/README.md` "Dev instance".
 ## Commands
 
 Everything is a Deno task (`deno.jsonc`). Deno v2.x; no `package.json`. The
-client is bundled by esbuild (exact version pinned in the `bundle` tasks), which
-resolves npm packages from `./node_modules` (`nodeModulesDir: "auto"`,
-gitignored).
+server runs on **Node 24** (`start` is `node server/index.ts`, which runs the
+`.ts` directly); tests, scripts and tooling still run on Deno. npm packages
+install into `./node_modules` (`nodeModulesDir: "auto"`, gitignored;
+`deno
+install` fills it), where both Node and esbuild (exact version pinned in
+the `bundle` tasks) resolve them.
 
 ```bash
 deno task dev        # bundle (watch) + run server (watch) — local dev
@@ -65,11 +68,10 @@ deno task typecheck  # TypeScript 7 (pinned): tsconfig.common.json, then tsconfi
 namespace or constructor parameter property. `tsconfig.common.json` checks
 `common/` with no browser, Deno or Node globals, so using one there is a compile
 error; `tsconfig.json` checks the app (client and server together, since the
-client's API type comes from the server) with Deno's types generated into
-`types/deno.generated.d.ts` and `@types/node` for the `node:` modules the server
-imports. Being one program, the client sees Node's globals too, so a browser
-timer handle is typed `ReturnType<typeof setTimeout>`, never `number`. Tests are
-left to `deno test`.
+client's API type comes from the server) with Node's types (`@types/node`) and
+no Deno globals, since the server runs on Node. Being one program, the client
+sees Node's globals too, so a browser timer handle is typed
+`ReturnType<typeof setTimeout>`, never `number`. Tests are left to `deno test`.
 
 Run a **single test file / filter**:
 
@@ -267,27 +269,26 @@ Other invariants:
   deliberately made _sufficient_ — that's exactly what powers "move to device":
   it issues a `/#l=<id>` link/QR (`signInLink`, `client/util/id.ts` — the id
   rides the URL **fragment**, which never reaches the server, because a path
-  segment lands verbatim in nginx's access log and Deno's OTel span
-  `url.full`/`url.path`, neither of which app code can scrub). The legacy
-  `/login/:id` and `/l/:id` path forms still work for links already in the wild;
-  our own log lines redact them (`redactPath` in `middleware/beginLogger.ts`),
-  but the span and nginx still see those. Holding two ids authorizes folding
-  them (`routes/merge.ts` → `db/merge.ts` reassigns runs and deletes the loser
-  row in one transaction; a nonexistent primary is a 400). The merge must not
-  mint attempts: on any iteration where the primary already has a ranked
-  attempt, the secondary's runs there move as history (`ranked`/`daily` cleared)
-  — otherwise `daily`'s best-ranked re-point would make it best-of-six — and
-  `pb_top.top_user` (no FK) is rewritten to the primary. The client-side gate is
-  `MoveGate`/`MoveDevice` — which adopts the link's id only after `merge`
-  succeeds: adopting over a failed merge would overwrite the device's only copy
-  of its old credential. A link never changes a profile with runs without an
-  explicit choice: no silent merge however lopsided the sides (a run-heavy link
-  posted publicly would otherwise absorb every small profile that opens it), and
-  a link naming no known profile is dropped with a toast rather than adopted.
-  Link ids of a shape the server never mints are ignored. `extractUserId` admits
-  only the id shape ever minted (`[A-Za-z0-9_-]{1,36}` — `user.id` is char(36));
-  any other header is treated exactly like a missing one (anonymous, so authed
-  methods 401), logged by length only.
+  segment lands verbatim in nginx's access log, which app code can't scrub). The
+  legacy `/login/:id` and `/l/:id` path forms still work for links already in
+  the wild; our log lines and the request span redact them (`redactPath` in
+  `middleware/beginLogger.ts`), but nginx still sees those. Holding two ids
+  authorizes folding them (`routes/merge.ts` → `db/merge.ts` reassigns runs and
+  deletes the loser row in one transaction; a nonexistent primary is a 400). The
+  merge must not mint attempts: on any iteration where the primary already has a
+  ranked attempt, the secondary's runs there move as history (`ranked`/`daily`
+  cleared) — otherwise `daily`'s best-ranked re-point would make it best-of-six
+  — and `pb_top.top_user` (no FK) is rewritten to the primary. The client-side
+  gate is `MoveGate`/`MoveDevice` — which adopts the link's id only after
+  `merge` succeeds: adopting over a failed merge would overwrite the device's
+  only copy of its old credential. A link never changes a profile with runs
+  without an explicit choice: no silent merge however lopsided the sides (a
+  run-heavy link posted publicly would otherwise absorb every small profile that
+  opens it), and a link naming no known profile is dropped with a toast rather
+  than adopted. Link ids of a shape the server never mints are ignored.
+  `extractUserId` admits only the id shape ever minted (`[A-Za-z0-9_-]{1,36}` —
+  `user.id` is char(36)); any other header is treated exactly like a missing one
+  (anonymous, so authed methods 401), logged by length only.
 - **Data rights (GDPR export / erasure):** two authed API methods, both surfaced
   in Profile → Account. `exportData` (`routes/exportData.ts` → `db/export.ts`)
   returns everything held about the caller (user row, all runs incl. void,

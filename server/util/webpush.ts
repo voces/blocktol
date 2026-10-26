@@ -6,6 +6,7 @@
 // vector (webpush.test.ts).
 
 import { errText, log } from "./logging.ts";
+import process from "node:process";
 
 // An ArrayBuffer-backed byte array: WebCrypto's BufferSource params reject a
 // bare `Uint8Array` (`ArrayBufferLike`).
@@ -216,7 +217,7 @@ export const encryptPayload = async (
 // VAPID_*) reads as push unconfigured.
 const readEnv = (name: string): string | undefined => {
   try {
-    return Deno.env.get(name);
+    return process.env[name];
   } catch {
     return undefined;
   }

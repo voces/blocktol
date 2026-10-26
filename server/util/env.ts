@@ -1,6 +1,7 @@
 import { is } from "../../common/typeguards.ts";
+import process from "node:process";
 
-const envFromEnv = Deno.env.get("APP_ENV");
+const envFromEnv = process.env.APP_ENV;
 
 const isValidEnv = is.union(
   is.undefined,
