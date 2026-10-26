@@ -55,6 +55,13 @@ const runRows = (user: string) =>
     WHERE user = ${user}
     ORDER BY created ASC, time ASC;`;
 
+// The user's earliest run.
+const firstRun = async (user: string) => {
+  const [run] = await runRows(user);
+  assertExists(run, "a run row");
+  return run;
+};
+
 const cleanup = (user: string) => sql`DELETE FROM user WHERE id = ${user};`;
 
 // The pinned flags of the user's runs, in runRows order.
@@ -106,7 +113,9 @@ const todayDaily = (() => {
       const existing = await getDailyIteration(...parts);
       if (existing) return existing.iteration;
       await newIteration(now);
-      return (await getDailyIteration(...parts))!.iteration;
+      const created = await getDailyIteration(...parts);
+      assertExists(created, "the daily just generated");
+      return created.iteration;
     })();
     return promise;
   };
@@ -119,7 +128,10 @@ const pastIteration = (() => {
   return () => {
     promise ??= sql<{ id: number }[]>`
       SELECT id FROM iteration ORDER BY id ASC LIMIT 1;
-    `.then((r) => r[0]!.id);
+    `.then(([r]) => {
+      assertExists(r, "an iteration on this database");
+      return r.id;
+    });
     return promise;
   };
 })();
@@ -137,11 +149,11 @@ test(
       );
       assert(!("error" in started), "startRun should succeed");
 
-      let rows = await runRows(user);
-      assertEquals(rows.length, 1);
-      assertEquals(Number(rows[0]!.ranked), 1, "a daily attempt is ranked");
-      assertEquals(Number(rows[0]!.void), 1, "unbuilt: still void");
-      assertEquals(Number(rows[0]!.daily), 1, "first attempt seeds daily");
+      assertEquals((await runRows(user)).length, 1);
+      let run = await firstRun(user);
+      assertEquals(Number(run.ranked), 1, "a daily attempt is ranked");
+      assertEquals(Number(run.void), 1, "unbuilt: still void");
+      assertEquals(Number(run.daily), 1, "first attempt seeds daily");
 
       const data = await getIteration(await todayDaily());
       const [cell] = freeCells(data, 1);
@@ -151,9 +163,9 @@ test(
       );
       assert(!("error" in saved) && !("expired" in saved), "save should land");
 
-      rows = await runRows(user);
-      assertEquals(Number(rows[0]!.void), 0, "a built attempt is committed");
-      assertEquals(Number(rows[0]!.daily), 1, "sole build holds the flag");
+      run = await firstRun(user);
+      assertEquals(Number(run.void), 0, "a built attempt is committed");
+      assertEquals(Number(run.daily), 1, "sole build holds the flag");
     } finally {
       await cleanup(user);
     }
@@ -176,21 +188,21 @@ test("free play stays void through builds and moves; commits on execution", {
     );
     assert(!("error" in started), "free-play start should succeed");
 
-    let rows = await runRows(user);
-    assertEquals(Number(rows[0]!.ranked), 0, "a past day is never ranked");
-    assertEquals(Number(rows[0]!.void), 1, "void until it executes");
+    let run = await firstRun(user);
+    assertEquals(Number(run.ranked), 0, "a past day is never ranked");
+    assertEquals(Number(run.void), 1, "void until it executes");
 
     // Build more, then MOVE a block (1a): a move must not commit the run.
     await updateRun.handler({ iteration, blocks: [c0, c1] }, req);
     await updateRun.handler({ iteration, blocks: [c0, c2] }, req);
-    rows = await runRows(user);
-    assertEquals(Number(rows[0]!.void), 1, "builds and moves never commit");
-    assertEquals(deserializeRun(rows[0]!.data).length, 2);
+    run = await firstRun(user);
+    assertEquals(Number(run.void), 1, "builds and moves never commit");
+    assertEquals(deserializeRun(run.data).length, 2);
 
     const committed = await commitRun.handler({ iteration }, req);
     assert(!("error" in committed));
-    rows = await runRows(user);
-    assertEquals(Number(rows[0]!.void), 0, "execution commits");
+    run = await firstRun(user);
+    assertEquals(Number(run.void), 0, "execution commits");
   } finally {
     await cleanup(user);
   }
@@ -215,17 +227,21 @@ test("commit-only free play inserts one non-void run with the server's time", {
     );
     assert(!("error" in committed), "commit-only free play should succeed");
 
-    const rows = await runRows(user);
-    assertEquals(rows.length, 1, "one row, inserted at commit");
-    assertEquals(Number(rows[0]!.void), 0, "inserted already non-void");
-    assertEquals(Number(rows[0]!.ranked), 0, "free play is never ranked");
-    assertEquals(Number(rows[0]!.daily), 0, "free play never counts as daily");
     assertEquals(
-      rows[0]!.time,
+      (await runRows(user)).length,
+      1,
+      "one row, inserted at commit",
+    );
+    const run = await firstRun(user);
+    assertEquals(Number(run.void), 0, "inserted already non-void");
+    assertEquals(Number(run.ranked), 0, "free play is never ranked");
+    assertEquals(Number(run.daily), 0, "free play never counts as daily");
+    assertEquals(
+      run.time,
       expected.duration,
       "the server recomputes the time from the maze",
     );
-    assertEquals(deserializeRun(rows[0]!.data).length, cells.length);
+    assertEquals(deserializeRun(run.data).length, cells.length);
   } finally {
     await cleanup(user);
   }
@@ -346,9 +362,8 @@ test("a save after the window reports expired and persists nothing (1c)", {
       "a post-window save must say so",
     );
 
-    const rows = await runRows(user);
     assertEquals(
-      deserializeRun(rows[0]!.data).length,
+      deserializeRun((await firstRun(user)).data).length,
       1,
       "the expired save must not have persisted",
     );
@@ -379,10 +394,10 @@ test(
       // resume must not key off it.
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       const rows = await runRows(user);
-      assertEquals(rows.length, 2);
-      assertEquals(Number(rows[0]!.daily), 1, "precondition: attempt 1 counts");
+      assert(hasLength(rows, 2), `two attempts, not ${rows.length}`);
+      assertEquals(Number(rows[0].daily), 1, "precondition: attempt 1 counts");
       assertEquals(
-        Number(rows[1]!.daily),
+        Number(rows[1].daily),
         0,
         "precondition: attempt 2 doesn't",
       );
@@ -421,7 +436,7 @@ test(
       // tie, exactly one ranked run has daily = TRUE, at the ranked maximum.
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       await updateRun.handler(
-        { iteration: data.iteration, blocks: [cells[0]!] },
+        { iteration: data.iteration, blocks: [cells[0]] },
         req,
       );
       await backdate(user, 120);
@@ -437,7 +452,7 @@ test(
       assertEquals(flagged.length, 1, "exactly one counted result");
       const maxTime = Math.max(...ranked.map((r) => r.time));
       assertEquals(
-        flagged[0]!.time,
+        flagged[0]?.time,
         maxTime,
         "the counted result is the best ranked build",
       );
@@ -525,9 +540,9 @@ test("a ranked save appends its edit batch to the trace; free play has none", {
     }, req);
     assert(!("error" in saved) && !("expired" in saved), "save must land");
 
-    const lines = (await traces(user))[0]!.trim().split("\n").map((l) =>
-      JSON.parse(l)
-    );
+    const [trace] = await traces(user);
+    assertExists(trace, "the attempt keeps a trace");
+    const lines = trace.trim().split("\n").map((l) => JSON.parse(l));
     assertEquals(lines.length, 2);
     assert(lines[0].s >= 0 && lines[0].s < 61_000, "server ms since start");
     assertEquals(lines[0].n, 1);
@@ -543,8 +558,10 @@ test("a ranked save appends its edit batch to the trace; free play has none", {
       blocks: [c0],
       trace: { p: "pg1", e: [[1, 5, "d", c1.x, c1.y]] },
     }, req);
+    const [after] = await traces(user);
+    assertExists(after, "the attempt keeps its trace");
     assertEquals(
-      (await traces(user))[0]!.trim().split("\n").length,
+      after.trim().split("\n").length,
       2,
       "an expired save appends nothing",
     );

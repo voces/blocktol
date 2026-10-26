@@ -36,7 +36,15 @@
 import { execFileSync } from "node:child_process";
 import { rm, writeFile } from "node:fs/promises";
 import process from "node:process";
+import { pairs } from "../common/arrays.ts";
 import { offsets } from "../common/constants.ts";
+import {
+  cellBlocked,
+  pieceOverlaps,
+  setCheckpoint,
+  setPiece,
+} from "../common/grid.ts";
+import { required } from "../common/typeguards.ts";
 import type { Point } from "../common/types.ts";
 import * as current from "../common/pathing.ts";
 
@@ -119,14 +127,14 @@ try {
       y: 1.5 + Math.floor(rng() * 17),
     };
     const grid = current.newGrid();
-    grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
+    setCheckpoint(grid, checkpoint, true);
     const blocks: Point[] = [];
     const target = 6 + Math.floor(rng() * 34);
     for (let i = 0; i < target * 4 && blocks.length < target; i++) {
       const x = 2 + Math.floor(rng() * 17);
       const y = 2 + Math.floor(rng() * 17);
-      if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) continue;
-      offsets.forEach(([xd, yd]) => (grid[y + yd]![x + xd] = true));
+      if (pieceOverlaps(grid, { x, y })) continue;
+      setPiece(grid, { x, y }, true);
       blocks.push({ x, y });
     }
     return { label: `seed ${seed}`, checkpoint, blocks };
@@ -136,9 +144,12 @@ try {
     const blocks = board.blocks.map(({ x, y }) => ({ x, y }));
     let path: Point[] | undefined;
     try {
-      path = mod.findPathFromData
-        ? mod.findPathFromData(blocks, board.checkpoint)
-        : new mod.PathSolver!(blocks, board.checkpoint).solve([]);
+      if (mod.findPathFromData) {
+        path = mod.findPathFromData(blocks, board.checkpoint);
+      } else {
+        const Solver = required(mod.PathSolver, "a module that can solve");
+        path = new Solver(blocks, board.checkpoint).solve([]);
+      }
     } catch {
       return undefined;
     }
@@ -165,22 +176,21 @@ try {
       else windows.push([time, time + 6]);
     }
 
-    const cum = [0];
-    for (let i = 1; i < path.length; i++) {
-      cum.push(
-        cum[i - 1]! +
-          Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y),
-      );
+    // Each segment with the distances along the path where it starts and ends.
+    const segments: { a: Point; b: Point; start: number; end: number }[] = [];
+    let total = 0;
+    for (const [a, b] of pairs(path)) {
+      const end = total + Math.hypot(b.x - a.x, b.y - a.y);
+      segments.push({ a, b, start: total, end });
+      total = end;
     }
-    const total = cum.at(-1) ?? 0;
     const pointAt = (dist: number): Point => {
-      let i = 1;
-      while (i < cum.length - 1 && cum[i]! < dist) i++;
-      const p = (dist - cum[i - 1]!) / (cum[i]! - cum[i - 1]! || 1);
-      return {
-        x: path[i - 1]!.x * (1 - p) + path[i]!.x * p,
-        y: path[i - 1]!.y * (1 - p) + path[i]!.y * p,
-      };
+      const { a, b, start, end } = required(
+        segments.find((s) => s.end >= dist) ?? segments.at(-1),
+        "a path of at least one segment",
+      );
+      const p = (dist - start) / (end - start || 1);
+      return { x: a.x * (1 - p) + b.x * p, y: a.y * (1 - p) + b.y * p };
     };
 
     const spans: Point[][] = [];
@@ -195,8 +205,8 @@ try {
       if (to <= from) continue;
       // The window's endpoints plus every path vertex inside it.
       const span: Point[] = [pointAt(from)];
-      for (let i = 1; i < path.length - 1; i++) {
-        if (cum[i]! > from && cum[i]! < to) span.push(path[i]!);
+      for (const { b, end } of segments.slice(0, -1)) {
+        if (end > from && end < to) span.push(b);
       }
       span.push(pointAt(to));
       spans.push(span);
@@ -348,17 +358,12 @@ try {
   // ---- Render -------------------------------------------------------------
 
   const grid = current.newGrid();
-  grid[board.checkpoint.y + 0.5]![board.checkpoint.x + 0.5] = true;
-  // Per-cell owner/kind, for colouring only.
-  const meta: (Cell | undefined)[][] = Array.from(
-    { length: 20 },
-    () => Array<Cell | undefined>(20).fill(undefined),
-  );
+  setCheckpoint(grid, board.checkpoint, true);
+  // Each covered cell's piece ("x,y" → piece), for colouring only.
+  const meta = new Map<string, Cell>();
   for (const b of board.blocks) {
-    offsets.forEach(([xd, yd]) => {
-      grid[b.y + yd]![b.x + xd] = true;
-      meta[b.y + yd]![b.x + xd] = b;
-    });
+    setPiece(grid, b, true);
+    for (const [xd, yd] of offsets) meta.set(`${b.x + xd},${b.y + yd}`, b);
   }
 
   const cx = board.checkpoint.x + 1; // checkpoint cell centre
@@ -384,8 +389,8 @@ try {
       let sw = 0.03;
       if (wall) {
         fill = WALL;
-      } else if (grid[y]![x]) {
-        const m = meta[y]![x];
+      } else if (cellBlocked(grid, x, y)) {
+        const m = meta.get(`${x},${y}`);
         if (m) { // a placed piece (the checkpoint cell has no meta)
           fill = m.thunder ? THUNDER : BLOCK;
           if (m.player) {
@@ -402,7 +407,10 @@ try {
   }
 
   const identical = old.path.length === neu.path.length &&
-    old.path.every((p, i) => p.x === neu.path[i]!.x && p.y === neu.path[i]!.y);
+    old.path.every((p, i) => {
+      const q = neu.path[i];
+      return q !== undefined && p.x === q.x && p.y === q.y;
+    });
   const hasThunder = board.blocks.some((b) => b.thunder);
   const hasPlayer = board.blocks.some((b) => b.player);
 

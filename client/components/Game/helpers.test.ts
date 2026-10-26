@@ -3,6 +3,7 @@ import { assertEquals } from "@std/assert";
 import { localRun, mazeBudget, rebuildGrid } from "./helpers.ts";
 import { newGrid, pathDuration, PathSolver } from "../../../common/pathing.ts";
 import { offsets } from "../../../common/constants.ts";
+import { setCell } from "../../../common/grid.ts";
 
 // The runner comes from localRun, not a server response, so it MUST agree with
 // the server's PathSolver + pathDuration (see validateRun). With thunders,
@@ -53,13 +54,13 @@ test("rebuildGrid reproduces a fresh grid with placements", () => {
   const checkpoint = { x: 9.5, y: 9.5 };
   const blocks = [{ x: 5, y: 5 }, { x: 12, y: 3 }];
   const grid = newGrid();
-  grid[7]![3] = true; // stale cell that must be cleared
+  setCell(grid, 3, 7, true); // stale cell that must be cleared
   rebuildGrid(grid, checkpoint, blocks);
 
   const expected = newGrid();
-  expected[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
+  setCell(expected, checkpoint.x + 0.5, checkpoint.y + 0.5, true);
   for (const { x, y } of blocks) {
-    offsets.forEach(([xd, yd]) => (expected[y + yd]![x + xd] = true));
+    for (const [xd, yd] of offsets) setCell(expected, x + xd, y + yd, true);
   }
   assertEquals(grid, expected);
 });

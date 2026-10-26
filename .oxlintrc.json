@@ -14,6 +14,7 @@
   },
   "rules": {
     "no-control-regex": "error",
+    "typescript/no-non-null-assertion": "error",
     "typescript/no-explicit-any": "error",
     "typescript/no-unsafe-function-type": "error",
     "typescript/no-floating-promises": [
@@ -89,6 +90,18 @@
       ],
       "rules": {
         "no-console": "error"
+      }
+    },
+    {
+      // Index arithmetic: the solver's arrays, where a checked read would sit
+      // in the hot loop, and a binary search reading its neighbours.
+      "files": [
+        "common/pathing.ts",
+        "common/BinaryHeap.ts",
+        "server/util/math.ts"
+      ],
+      "rules": {
+        "typescript/no-non-null-assertion": "off"
       }
     }
   ],

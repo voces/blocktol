@@ -49,10 +49,10 @@ test("translateLocale: fills stale, keeps fresh, returns null when up to date", 
   const next = await translateLocale(t, "es", en, existing, {});
   assert(next);
   // Unchanged translation preserved verbatim.
-  assertEquals(next["a.greet"]!.message, "Hola {name}");
+  assertEquals(next["a.greet"]?.message, "Hola {name}");
   // New one spliced in with the source hash.
-  assertEquals(next["a.count"]!.message, esCount);
-  assertEquals(next["a.count"]!.hash, await sha256(en["a.count"].message));
+  assertEquals(next["a.count"]?.message, esCount);
+  assertEquals(next["a.count"]?.hash, await sha256(en["a.count"].message));
 
   // Fully up to date → no work.
   assertEquals(await translateLocale(t, "es", en, next, {}), null);
@@ -96,7 +96,7 @@ test("translateLocale: retries with feedback and succeeds", async () => {
     {},
   );
   assert(next);
-  assertEquals(next["a.greet"]!.message, "Hola {name}");
+  assertEquals(next["a.greet"]?.message, "Hola {name}");
   assert(calls >= 2);
 });
 

@@ -73,11 +73,12 @@ const LanguageSelect = (
     };
   }, [open]);
 
+  const system = { v: "system", label: t("profile.languageSystem") };
   const options = [
-    { v: "system", label: t("profile.languageSystem") },
+    system,
     ...locales.map((l) => ({ v: l, label: endonym(l) })),
   ];
-  const current = options.find((o) => o.v === value) ?? options[0]!;
+  const current = options.find((o) => o.v === value) ?? system;
 
   return (
     <div class="lang-select" ref={ref}>

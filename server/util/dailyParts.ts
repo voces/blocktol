@@ -1,3 +1,4 @@
+import { hasLength } from "../../common/typeguards.ts";
 import { UserError } from "./UserError.ts";
 
 // A player's local calendar day, from the IANA zone their browser reports
@@ -14,21 +15,24 @@ import { UserError } from "./UserError.ts";
 const NAMED = /^[A-Za-z]/;
 
 export const dailyParts = (timeZone: string) => {
-  let parts: string[];
+  let parts: [string, string, string];
   try {
     if (!NAMED.test(timeZone)) throw new RangeError("offset time zone");
     const format = new Intl.DateTimeFormat("en-US", { timeZone });
     if (!NAMED.test(format.resolvedOptions().timeZone)) {
       throw new RangeError("offset time zone");
     }
-    parts = format.format(new Date()).split("/");
+    const split = format.format(new Date()).split("/");
+    if (!hasLength(split, 3)) throw new RangeError("unexpected date format");
+    parts = split;
   } catch {
     throw new UserError("invalid timeZone");
   }
 
-  const month = parseInt(parts[0]!);
-  const day = parseInt(parts[1]!);
-  const year = parseInt(parts[2]!);
-
-  return { month, day, year };
+  const [month, day, year] = parts;
+  return {
+    month: parseInt(month),
+    day: parseInt(day),
+    year: parseInt(year),
+  };
 };

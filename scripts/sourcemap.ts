@@ -42,19 +42,21 @@ export const decodeMappings = (mappings: string): Segment[][] => {
     const segments: Segment[] = [];
     for (const part of line.split(",")) {
       if (!part) continue;
-      const f = decodeVlq(part);
-      col += f[0]!;
-      if (f.length < 4) continue; // a generated span with no source
-      src += f[1]!;
-      srcLine += f[2]!;
-      srcCol += f[3]!;
-      if (f.length > 4) name += f[4]!;
+      const [dCol = 0, dSrc, dSrcLine, dSrcCol, dName] = decodeVlq(part);
+      col += dCol;
+      // A generated span with no source.
+      if (dSrc === undefined || dSrcLine === undefined) continue;
+      if (dSrcCol === undefined) continue;
+      src += dSrc;
+      srcLine += dSrcLine;
+      srcCol += dSrcCol;
+      if (dName !== undefined) name += dName;
       segments.push([
         col,
         src,
         srcLine,
         srcCol,
-        f.length > 4 ? name : undefined,
+        dName === undefined ? undefined : name,
       ]);
     }
     lines.push(segments);

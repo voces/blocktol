@@ -79,20 +79,19 @@ test("If-Modified-Since: a 304 unless the file is newer, and never over an If-No
 
 test("Range: a single range is a 206 of exactly those bytes", async () => {
   const path = `${DIR}/digits.txt`;
-  for (
-    const [range, body, cr] of [
-      ["bytes=2-4", "234", "bytes 2-4/10"],
-      ["bytes=7-", "789", "bytes 7-9/10"],
-      ["bytes=-3", "789", "bytes 7-9/10"],
-      ["bytes=8-100", "89", "bytes 8-9/10"],
-      ["bytes=-100", BODY, "bytes 0-9/10"],
-    ]
-  ) {
-    const res = await serve(path, get({ range: range! }));
+  const cases: [range: string, body: string, contentRange: string][] = [
+    ["bytes=2-4", "234", "bytes 2-4/10"],
+    ["bytes=7-", "789", "bytes 7-9/10"],
+    ["bytes=-3", "789", "bytes 7-9/10"],
+    ["bytes=8-100", "89", "bytes 8-9/10"],
+    ["bytes=-100", BODY, "bytes 0-9/10"],
+  ];
+  for (const [range, body, cr] of cases) {
+    const res = await serve(path, get({ range }));
     assertEquals(res.status, 206, range);
     assertEquals(await res.text(), body, range);
     assertEquals(res.headers.get("content-range"), cr, range);
-    assertEquals(res.headers.get("content-length"), `${body!.length}`);
+    assertEquals(res.headers.get("content-length"), `${body.length}`);
   }
 });
 

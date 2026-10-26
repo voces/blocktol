@@ -1,6 +1,7 @@
 import { avatarHue } from "../../common/avatar.ts";
 import { randomName } from "../../common/random/name.ts";
 import { parseSettings } from "../../common/settings.ts";
+import { required } from "../../common/typeguards.ts";
 import { alertAdmin } from "../util/adminAlert.ts";
 import { discordCode } from "../util/discordText.ts";
 import { hashUserId } from "../util/hashUserId.ts";
@@ -34,7 +35,8 @@ export const createUser = (id: string, name: string) =>
   sql`
     INSERT INTO user (id, name) VALUES (${id}, ${name});
     SELECT id, name, rating FROM user WHERE id = ${id};
-  `.then(() => getUser(id)!);
+  `.then(() => getUser(id))
+    .then((user) => required(user, "the user just inserted"));
 
 const createOrUpdateUserWithName = (id: string, name: string) =>
   sql<[unknown, User[]]>`

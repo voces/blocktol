@@ -1,13 +1,14 @@
 import { test } from "node:test";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import { healthCheck } from "./health.ts";
 
 const call = async (check: () => Promise<boolean>) => {
   const res = await healthCheck(check)(new Request("http://x/health"), {});
+  assertExists(res);
   return [
-    res!.status,
-    (await res!.text()).trim(),
-    res!.headers.get("cache-control"),
+    res.status,
+    (await res.text()).trim(),
+    res.headers.get("cache-control"),
   ];
 };
 

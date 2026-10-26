@@ -11,6 +11,8 @@ import {
 } from "preact/compat";
 import { type Point } from "../../common/types.ts";
 import { formatSeconds } from "../../common/format.ts";
+import { pairs } from "../../common/arrays.ts";
+import { required } from "../../common/typeguards.ts";
 import { localRun } from "./Game/helpers.ts";
 import { runnerTime } from "./Game/interaction.ts";
 import { t } from "../util/t.ts";
@@ -329,7 +331,14 @@ export const IntroBoard = (
 
   // Timed off the solver the game validates with, so the clock never quotes a
   // number the runner doesn't walk.
-  const bare = useMemo(() => localRun(INTRO_FIXED, introCheckpoint)!, []);
+  const bare = useMemo(
+    () =>
+      required(
+        localRun(INTRO_FIXED, introCheckpoint),
+        "a solvable intro board",
+      ),
+    [],
+  );
   // The path node nearest the checkpoint, where the opening run stops
   // (measured, not hard-coded).
   const cut = useMemo(() => {
@@ -382,7 +391,7 @@ export const IntroBoard = (
     }
     setStep((s) => {
       if (s >= LAST_STEP) return s;
-      settle(BEATS_DONE[s]!);
+      settle(BEATS_DONE[s] ?? LAST_BEAT);
       return s + 1;
     });
   }, [step, bare, settle]);
@@ -393,10 +402,10 @@ export const IntroBoard = (
   const haltAt = useMemo(() => {
     const seg = (a: Point, b: Point) => Math.hypot(b.x - a.x, b.y - a.y);
     let upTo = 0, total = 0;
-    for (let i = 1; i < bare.path.length; i++) {
-      const d = seg(bare.path[i - 1]!, bare.path[i]!);
+    for (const [i, [a, b]] of [...pairs(bare.path)].entries()) {
+      const d = seg(a, b);
       total += d;
-      if (i <= cut) upTo += d;
+      if (i < cut) upTo += d;
     }
     return total === 0 ? 0 : bare.duration * (upTo / total);
   }, [bare, cut]);
@@ -427,12 +436,13 @@ export const IntroBoard = (
   // first, one at a time (simultaneous blocks read as one event).
   useEffect(() => {
     if (step === 0 || step === 1) return;
-    const from = BEATS_DONE[step - 1]!, to = BEATS_DONE[step]!;
+    const from = BEATS_DONE[step - 1] ?? LAST_BEAT;
+    const to = BEATS_DONE[step] ?? LAST_BEAT;
     const timers: ReturnType<typeof setTimeout>[] = [];
     let delay = LEAD_MS;
-    for (let i = from; i < to; i++) {
-      timers.push(setTimeout(() => settle(i + 1), delay));
-      delay += gapAfter(BEATS[i]!);
+    for (const [k, beat] of BEATS.slice(from, to).entries()) {
+      timers.push(setTimeout(() => settle(from + k + 1), delay));
+      delay += gapAfter(beat);
     }
     return () => timers.forEach(clearTimeout);
   }, [step, settle]);
@@ -443,8 +453,8 @@ export const IntroBoard = (
   // the grabbed block by identity (`block === transitionBlock`), and a copy
   // would leave it drawn, reading as a second block.
   useEffect(() => {
-    const beat = BEATS[MOVE_BEAT]!;
-    if (beat.kind !== "move" || beatsDone !== MOVE_BEAT + 1) return;
+    const beat = BEATS[MOVE_BEAT];
+    if (beat?.kind !== "move" || beatsDone !== MOVE_BEAT + 1) return;
     const mover = blocksRef.current.find((b) =>
       b.x === beat.to.x && b.y === beat.to.y && b.local
     );
@@ -536,6 +546,7 @@ export const IntroBoard = (
     // the re-placed block at (14,13) and the runner's turn there.
     [t("intro.tipFix"), { bottom: "25%", right: "60%" }],
   ];
+  const tip = tips[step];
 
   return (
     <div class="onboarding">
@@ -592,15 +603,17 @@ export const IntroBoard = (
           /* The last tip stays up while the built run walks; there is no
             separate finale step. */
         }
-        <Tip
-          {...tips[step]![1]}
-          onNext={step < LAST_STEP ? advance : onDone}
-          onSkip={onDone}
-          onReplay={onReplay}
-          last={step === LAST_STEP}
-        >
-          {tips[step]![0]}
-        </Tip>
+        {tip && (
+          <Tip
+            {...tip[1]}
+            onNext={step < LAST_STEP ? advance : onDone}
+            onSkip={onDone}
+            onReplay={onReplay}
+            last={step === LAST_STEP}
+          >
+            {tip[0]}
+          </Tip>
+        )}
       </div>
     </div>
   );

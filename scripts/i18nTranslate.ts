@@ -41,9 +41,9 @@ export const staleKeys = async (
   existing: TargetCatalog,
 ): Promise<string[]> => {
   const out: string[] = [];
-  for (const key of Object.keys(en)) {
+  for (const [key, { message }] of Object.entries(en)) {
     const cur = existing[key];
-    if (!cur || cur.hash !== await sha256(en[key]!.message)) out.push(key);
+    if (!cur || cur.hash !== await sha256(message)) out.push(key);
   }
   return out;
 };
@@ -70,15 +70,16 @@ export const translateLocale = async (
   }
 
   if (stale.length) {
-    const entries = stale.map((key) => ({
-      key,
-      message: en[key]!.message,
-      description: en[key]!.description,
-    }));
-    let out: [key: string, message: string][] | null = null;
+    const entries = Object.entries(en)
+      .filter(([key]) => stale.includes(key))
+      .map(([key, e]) => ({
+        key,
+        message: e.message,
+        description: e.description,
+      }));
     let notes: string[] | undefined;
     const maxAttempts = 3;
-    for (let attempt = 0; attempt < maxAttempts && !out; attempt++) {
+    for (let attempt = 1;; attempt++) {
       const result = await translator.translate({
         locale,
         entries,
@@ -87,28 +88,27 @@ export const translateLocale = async (
         notes,
       });
       const errors: string[] = [];
-      const translated: [string, string][] = [];
+      const translated: TargetCatalog = {};
       for (const { key, message } of entries) {
         const got = result[key];
         if (got == null) {
           errors.push(`${locale}/${key}: no translation returned`);
         } else {
           errors.push(...validateTranslation(locale, key, got, message));
-          translated.push([key, got]);
+          translated[key] = { message: got, hash: await sha256(message) };
         }
       }
-      if (!errors.length) out = translated;
-      else if (attempt === maxAttempts - 1) {
+      if (!errors.length) {
+        Object.assign(next, translated);
+        break;
+      }
+      if (attempt === maxAttempts) {
         throw new Error(
           `translation validation failed:\n  ${errors.join("\n  ")}`,
         );
-      } else {
-        notes = errors; // fed back so the next attempt corrects them
-        console.warn(`retrying ${locale}:\n  ${errors.join("\n  ")}`);
       }
-    }
-    for (const [key, message] of out!) {
-      next[key] = { message, hash: await sha256(en[key]!.message) };
+      notes = errors; // fed back so the next attempt corrects them
+      console.warn(`retrying ${locale}:\n  ${errors.join("\n  ")}`);
     }
   }
   return next;

@@ -152,7 +152,7 @@ export const messageNodes = (
   key: MessageKey,
 ): readonly I18nNode[] => {
   const cat = resolveCatalog(locale);
-  return catalog[cat][key] ?? catalog.en[key]!;
+  return catalog[cat][key] ?? catalog.en[key];
 };
 
 // Shared so `tJsx` formats numeric args as `renderMessage` does.

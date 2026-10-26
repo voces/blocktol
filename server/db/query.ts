@@ -50,7 +50,7 @@ const proxyQuery = async <T = unknown>(
       const ret = await fetch(SQL_PROXY_URL, {
         headers: {
           "x-dbproxy-user": `blocktol-${env}`,
-          "x-dbproxy-password": process.env.SQL_PASSWORD!,
+          "x-dbproxy-password": process.env.SQL_PASSWORD ?? "",
           "x-dbproxy-database": `blocktol-${env}`,
         },
         method: "POST",

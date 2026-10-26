@@ -84,9 +84,16 @@ fire-and-forget is written `void call()`; `node:test`'s `test` is exempt),
 `no-misused-promises`, `switch-exhaustiveness-check`,
 `no-unnecessary-condition`, `no-explicit-any`, `no-require-imports`, a ban on
 other test and UI frameworks' imports, and `no-console` in `server/` and
-`common/` (log through `util/logging.ts`). A check the types can't see, such as
-a browser feature test, keeps an `oxlint-disable-next-line` with its reason on
-the line above; an unused directive is itself an error.
+`common/` (log through `util/logging.ts`). `no-non-null-assertion` bans `!`
+outside three files of index arithmetic (`common/pathing.ts`,
+`common/BinaryHeap.ts`, `server/util/math.ts`): iterate rather than index
+(`for…of`, `.entries()`, `pairs` from `common/arrays.ts` for neighbours), reach
+the pathing grid through `common/grid.ts`, destructure and check (`hasLength`
+for a tuple), and where only an invariant promises a value, say which with
+`required(value, "…")` from `common/typeguards.ts` (`assertExists` in a test). A
+check the types can't see, such as a browser feature test, keeps an
+`oxlint-disable-next-line` with its reason on the line above; an unused
+directive is itself an error.
 
 Run a **single test file / filter**:
 

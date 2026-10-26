@@ -1,5 +1,5 @@
 import { test } from "node:test";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import { computeVerdict, scorePercent } from "./verdict.ts";
 
 test("scorePercent maps time into [min, best]", () => {
@@ -37,9 +37,10 @@ test("computeVerdict: tying the field best is a record", () => {
 
 test("computeVerdict: beating the field best is supreme", () => {
   const v = computeVerdict(33, 10, 30, 25);
-  assertEquals(v?.outcome, "supreme");
+  assertExists(v);
+  assertEquals(v.outcome, "supreme");
   // Reads over 100% — the field best was the pre-run bar.
-  assertEquals(v!.percent > 1, true);
+  assertEquals(v.percent > 1, true);
 });
 
 test("computeVerdict: supreme outranks record and PB", () => {

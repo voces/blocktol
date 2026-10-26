@@ -51,77 +51,74 @@ export const buildStandings = (
   viewer: string,
   { top = 25, around = 10 } = {},
 ) => {
-  const ranks: number[] = [];
-  for (let i = 0; i < field.length; i++) {
-    ranks.push(
-      i > 0 && field[i]!.time === field[i - 1]!.time ? ranks[i - 1]! : i + 1,
-    );
-  }
-  const tiedAt = (i: number) =>
-    (i > 0 && field[i - 1]!.time === field[i]!.time) ||
-    (i + 1 < field.length && field[i + 1]!.time === field[i]!.time);
-
-  const meIdx = field.findIndex((e) => e.user === viewer);
-
-  // The window: the podium plus the viewer's neighbourhood, deduped by index.
-  const indices = new Set<number>();
-  for (let i = 0; i < Math.min(top, field.length); i++) indices.add(i);
-  if (meIdx >= 0) {
-    const from = Math.max(0, meIdx - around);
-    const to = Math.min(field.length - 1, meIdx + around);
-    for (let i = from; i <= to; i++) indices.add(i);
+  // Each entry with its index, its rank and whether it shares that rank.
+  type Ranked = FieldEntry & { index: number; rank: number; tied: boolean };
+  const ranked: Ranked[] = [];
+  for (const [index, e] of field.entries()) {
+    const prev = ranked.at(-1);
+    if (prev?.time === e.time) {
+      prev.tied = true;
+      ranked.push({ ...e, index, rank: prev.rank, tied: true });
+    } else {
+      ranked.push({ ...e, index, rank: index + 1, tied: false });
+    }
   }
 
-  const topTime = field[0]?.time;
-  const topShared = field.length > 1 && field[1]!.time === topTime;
-  const recordOf = (i: number): "beat" | "match" | null =>
-    field[i]!.time === topTime ? (topShared ? "match" : "beat") : null;
+  const me = ranked.find((e) => e.user === viewer);
+
+  const top0 = ranked[0];
+  const recordOf = (e: Ranked): "beat" | "match" | null =>
+    e.time === top0?.time ? (top0.tied ? "match" : "beat") : null;
 
   // The viewer's self-excluded percentile (ties split, the convention ratings,
   // profile and calendar share), which colours their rank. null when there's
   // nobody to rank against.
-  const percentileOf = (i: number) => {
+  const percentileOf = (time: number) => {
     const others = field.length - 1;
     if (others === 0) return null;
     let less = 0;
     let equal = 0;
     let more = 0;
     for (const e of field) {
-      if (e.time < field[i]!.time) less++;
-      else if (e.time === field[i]!.time) equal++;
+      if (e.time < time) less++;
+      else if (e.time === time) equal++;
       else more++;
     }
     return more === 0 ? 1 : (less + (equal - 1) / 2) / others;
   };
 
-  const windowIdx = [...indices].sort((a, b) => a - b);
+  // The window: the podium plus the viewer's neighbourhood, in field order.
+  const shown = ranked.filter((e) =>
+    e.index < top ||
+    (me !== undefined && Math.abs(e.index - me.index) <= around)
+  );
   let prev = -1;
-  const rows = windowIdx.map((i): StandingsRow => {
-    const gapBefore = prev < 0 ? 0 : i - prev - 1;
-    prev = i;
+  const rows = shown.map((e): StandingsRow => {
+    const gapBefore = prev < 0 ? 0 : e.index - prev - 1;
+    prev = e.index;
     return {
-      rank: ranks[i]!,
-      tied: tiedAt(i),
-      you: i === meIdx,
-      name: field[i]!.name,
-      hue: field[i]!.hue,
-      time: field[i]!.time,
-      secondary: field[i]!.secondary ?? null,
-      at: field[i]!.at,
-      record: recordOf(i),
+      rank: e.rank,
+      tied: e.tied,
+      you: e === me,
+      name: e.name,
+      hue: e.hue,
+      time: e.time,
+      secondary: e.secondary ?? null,
+      at: e.at,
+      record: recordOf(e),
       gapBefore,
     };
   });
 
   return {
     players: field.length,
-    me: meIdx < 0 ? null : {
-      rank: ranks[meIdx]!,
-      tied: tiedAt(meIdx),
-      time: field[meIdx]!.time,
-      secondary: field[meIdx]!.secondary ?? null,
-      record: recordOf(meIdx),
-      percentile: percentileOf(meIdx),
+    me: me === undefined ? null : {
+      rank: me.rank,
+      tied: me.tied,
+      time: me.time,
+      secondary: me.secondary ?? null,
+      record: recordOf(me),
+      percentile: percentileOf(me.time),
     },
     rows,
   };

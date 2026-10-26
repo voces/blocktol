@@ -1,5 +1,6 @@
 import { h } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/compat";
+import { BinaryHeap } from "../../../common/BinaryHeap.ts";
 import { type Point } from "../../../common/types.ts";
 import { GameStateContext } from "./useGameState.ts";
 import { timerPulse } from "./timerPulse.ts";
@@ -17,10 +18,15 @@ import { timerPulse } from "./timerPulse.ts";
  *
  * Only during a live `building` countdown; staged/viewing/running are inert.
  */
-// Remaining-seconds marks that fire a wave → the crest's peak brightness. It
-// dims as the window closes, so the cue softens toward the end.
-const MARK_PEAK: Record<number, number> = { 10: 0.4, 3: 0.3, 2: 0.3, 1: 0.3 };
-const RIPPLE_MARKS = Object.keys(MARK_PEAK).map(Number).sort((a, b) => b - a);
+// Remaining-seconds marks that fire a wave, in the order they fire, with the
+// crest's peak brightness. It dims as the window closes, so the cue softens
+// toward the end.
+const RIPPLE_MARKS = [
+  { mark: 10, peak: 0.4 },
+  { mark: 3, peak: 0.3 },
+  { mark: 2, peak: 0.3 },
+  { mark: 1, peak: 0.3 },
+];
 
 const N = 20; // The board is 20×20; the play area is cells 1..18.
 const LO = 1;
@@ -85,7 +91,7 @@ const nearestFree = (ax: number, ay: number, blocked: Set<number>): Point => {
 };
 
 // Dijkstra from the source over free cells, then a render cell per reachable
-// square. `peak` is the crest brightness (see MARK_PEAK); the last-launching
+// square. `peak` is the crest brightness (see RIPPLE_MARKS); the last-launching
 // cell is flagged `last` so its animation end retires the wave without a timer.
 const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
   // Every piece is 2×2 (see Block's `size`): block (x,y) fills four cells.
@@ -98,12 +104,10 @@ const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
   }
   const src = nearestFree(17, 1, blocked);
   const dist = new Map<number, number>([[key(src.x, src.y), 0]]);
-  // Small grid (≤324 cells): a linear extract-min is plenty.
-  const pq: Array<[number, number, number]> = [[0, src.x, src.y]];
+  const pq = new BinaryHeap((e: [number, number, number]) => e[0]);
+  pq.push([0, src.x, src.y]);
   while (pq.length) {
-    let mi = 0;
-    for (let i = 1; i < pq.length; i++) if (pq[i]![0] < pq[mi]![0]) mi = i;
-    const [d, x, y] = pq.splice(mi, 1)[0]!;
+    const [d, x, y] = pq.pop();
     if (d > (dist.get(key(x, y)) ?? Infinity)) continue;
     for (const [dx, dy, w] of STEPS) {
       const nx = x + dx;
@@ -124,23 +128,19 @@ const floodCells = (blocks: ReadonlyArray<Point>, peak: number): Cell[] => {
   const norm = maxDist || 1;
 
   const cells: Cell[] = [];
-  let maxDelay = -1;
-  let lastIdx = 0;
+  let latest: Cell | undefined;
   for (const [k, d] of dist) {
-    const delay = BASE_DELAY + d * DELAY_PER_UNIT;
-    cells.push({
+    const cell = {
       x: k % N,
       y: Math.floor(k / N),
       peak: peak * (1 - DIM * (d / norm)),
-      delay,
+      delay: BASE_DELAY + d * DELAY_PER_UNIT,
       last: false,
-    });
-    if (delay > maxDelay) {
-      maxDelay = delay;
-      lastIdx = cells.length - 1;
-    }
+    };
+    cells.push(cell);
+    if (!latest || cell.delay > latest.delay) latest = cell;
   }
-  if (cells.length) cells[lastIdx]!.last = true;
+  if (latest) latest.last = true;
   return cells;
 };
 
@@ -172,14 +172,17 @@ export const TimerRipple = () => {
       const remaining = (deadline - Date.now()) / 1000;
       // Never launch once the window is up: the runner is releasing.
       if (remaining <= 0) return;
-      const passed = RIPPLE_MARKS.filter((m) => remaining <= m + LEAD);
-      if (!passed.some((m) => !firedRef.current.has(m))) return;
+      const passed = RIPPLE_MARKS.filter(({ mark }) =>
+        remaining <= mark + LEAD
+      );
+      if (passed.every(({ mark }) => firedRef.current.has(mark))) return;
       // Mark every passed mark fired (a throttled tab that skipped several
       // must not replay them) but launch one wave.
-      for (const m of passed) firedRef.current.add(m);
+      for (const { mark } of passed) firedRef.current.add(mark);
       // The most urgent mark reached sets the intensity.
-      const mark = Math.min(...passed);
-      const cells = floodCells(blocksRef.current, MARK_PEAK[mark]!);
+      const urgent = passed.at(-1);
+      if (!urgent) return;
+      const cells = floodCells(blocksRef.current, urgent.peak);
       if (!cells.length) return;
       setWaves((w) => [...w, { id: nextId.current++, cells }]);
       // Cue the button's drop (see Hud).

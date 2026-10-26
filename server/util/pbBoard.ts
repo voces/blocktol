@@ -127,16 +127,20 @@ export const pbEmbed = (
     formatSeconds(time)
   }s**.`;
   const matched = count - 1;
-  const named = matchers?.length === matched && matched <= MAX_NAMES;
+  // The matchers by name when every one is known and there are few enough.
+  const names = matchers?.length === matched && matched <= MAX_NAMES
+    ? matchers
+    : undefined;
 
   let description = opener;
   if (matched === 1) {
-    description += named
-      ? ` Matched by **${matchers![0]}**.`
-      : " 1 player has matched it.";
+    const [only] = names ?? [];
+    description += only === undefined
+      ? " 1 player has matched it."
+      : ` Matched by **${only}**.`;
   } else if (matched > 1) {
-    description += named
-      ? ` Matched by:\n${matchers!.map((m) => `• ${m}`).join("\n")}`
+    description += names
+      ? ` Matched by:\n${names.map((m) => `• ${m}`).join("\n")}`
       : ` ${matched} players have matched it.`;
   }
 
@@ -163,7 +167,8 @@ const announce = async (
   const holders = bests
     .filter((b) => round2(b.best) === top)
     .sort((a, b) => a.at - b.at);
-  const holder = holders[0]!;
+  const [holder] = holders;
+  if (!holder) return;
   const actorAtTop = holders.some((h) => h.user === actor);
 
   const stale = marker != null && marker.topUser === actor &&
@@ -243,12 +248,13 @@ export const onPbBuild = async (iteration: number, actor: string) => {
 
     // Tell whoever this build passed.
     const decision = decideLostTop(bests, actor, prev);
-    const lostTop = decision.passer
+    const { passer } = decision;
+    const lostTop = passer
       ? Promise.all(
         decision.recipients.map((r) =>
           notifyLostTop(r.user, iteration, day, {
-            passer: decision.passer!.name,
-            passerTime: decision.passer!.time,
+            passer: passer.name,
+            passerTime: passer.time,
             yourTime: r.yourTime,
           })
         ),

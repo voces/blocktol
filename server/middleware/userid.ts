@@ -39,7 +39,7 @@ export const extractUserId: Handler = async (req, _, prev) => {
 export const getUserId = (req: Request) => {
   const userId = userIdContext.get(req);
   if (!userId) return new AuthError("No authorization for request");
-  return userId!;
+  return userId;
 };
 
 export const getUserIdMaybe = (req: Request) => userIdContext.get(req);

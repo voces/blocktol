@@ -61,10 +61,10 @@ const parse = (string: string) => {
   const tokens = tokenize(string);
   const root: RootNode = { kind: "root", children: [] };
 
-  let index = 0;
+  // The open nodes, innermost last; the root is never closed.
   const chain: NodeWithChildren[] = [root];
-  while (index < tokens.length) {
-    const token = tokens[index++]!;
+  const top = () => chain.at(-1) ?? root;
+  for (const token of tokens) {
     if (token.kind === "inline") {
       const inlineName = getInlineName(token.content);
       const chainIndex = chain.findIndex((n) => n.kind === inlineName);
@@ -74,28 +74,29 @@ const parse = (string: string) => {
       }
 
       const node: NodeWithChildren = { kind: inlineName, children: [] };
-      chain[chain.length - 1]!.children.push(node);
+      top().children.push(node);
       chain.push(node);
       continue;
     }
 
     if (token.kind === "newline") {
-      chain[chain.length - 1]!.children.push({ kind: "newline" });
+      top().children.push({ kind: "newline" });
       continue;
     }
 
     if (token.kind === "text") {
-      chain[chain.length - 1]!.children.push(token.content);
+      top().children.push(token.content);
       continue;
     }
 
     // The last kind: "localDate".
-    const parts = token.content.match(/\\localDate\((\d+), (\d+), (\d+)\)/);
-    if (!parts || parts.length !== 4) {
-      chain[chain.length - 1]!.children.push(token.content);
+    const [, year, month, day] =
+      token.content.match(/\\localDate\((\d+), (\d+), (\d+)\)/) ?? [];
+    if (year === undefined || month === undefined || day === undefined) {
+      top().children.push(token.content);
       continue;
     }
-    chain[chain.length - 1]!.children.push(
+    top().children.push(
       new Intl.DateTimeFormat(intlLocale(), {
         dateStyle: "medium",
         timeZone: "UTC",
@@ -103,9 +104,9 @@ const parse = (string: string) => {
         // UTC midnight to match the UTC formatting; local midnight read in
         // UTC is the previous day east of Greenwich.
         new Date(Date.UTC(
-          parseInt(parts[1]!),
-          parseInt(parts[2]!) - 1,
-          parseInt(parts[3]!),
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
         )),
       ),
     );

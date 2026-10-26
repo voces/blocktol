@@ -1,3 +1,4 @@
+import { hasLength } from "./typeguards.ts";
 import type { Point } from "./types.ts";
 
 // The edit trace of a ranked attempt: how the maze was built, recorded for
@@ -56,10 +57,10 @@ export const diffMaze = (
     }
   }
   if (
-    removed.length === 1 && added.length === 1 &&
-    !!removed[0]!.thunder === !!added[0]!.thunder
+    hasLength(removed, 1) && hasLength(added, 1) &&
+    !!removed[0].thunder === !!added[0].thunder
   ) {
-    edits.push(["m", removed[0]!.x, removed[0]!.y, added[0]!.x, added[0]!.y]);
+    edits.push(["m", removed[0].x, removed[0].y, added[0].x, added[0].y]);
   } else {
     for (const b of removed) edits.push(["d", b.x, b.y]);
     for (const b of added) edits.push(["p", b.x, b.y]);

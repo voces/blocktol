@@ -194,6 +194,18 @@ export const isTuple = (<T extends unknown[]>(
   typeguards.length === values.length &&
   typeguards.every((tg, i) => tg(values[i]))) as tuple;
 
+// The value, or a throw naming the invariant that promised it. For a value the
+// types can't prove present; a `!` would fail later, far from the cause.
+export const required = <T>(
+  value: T | null | undefined,
+  invariant: string,
+): T => {
+  if (value === null || value === undefined) {
+    throw new Error(`expected ${invariant}`);
+  }
+  return value;
+};
+
 // A tuple of exactly N Ts, for a literal N; a non-literal N is just T[].
 export type Tuple<T, N extends number, R extends T[] = []> = number extends N
   ? T[]
