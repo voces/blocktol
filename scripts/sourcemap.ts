@@ -8,7 +8,7 @@ export type SourceMap = {
 
 // [generated column, source index, source line, source column, name index?],
 // all 0-based, one array per generated line.
-type Segment = [number, number, number, number, number?];
+type Segment = [number, number, number, number, number | undefined];
 
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -43,12 +43,12 @@ export const decodeMappings = (mappings: string): Segment[][] => {
     for (const part of line.split(",")) {
       if (!part) continue;
       const f = decodeVlq(part);
-      col += f[0];
+      col += f[0]!;
       if (f.length < 4) continue; // a generated span with no source
-      src += f[1];
-      srcLine += f[2];
-      srcCol += f[3];
-      if (f.length > 4) name += f[4];
+      src += f[1]!;
+      srcLine += f[2]!;
+      srcCol += f[3]!;
+      if (f.length > 4) name += f[4]!;
       segments.push([
         col,
         src,
@@ -66,7 +66,7 @@ export type Original = {
   source: string;
   line: number;
   column: number;
-  name?: string;
+  name: string | undefined;
 };
 
 // A stack frame's 1-based line:column in the generated file → the 1-based
@@ -85,8 +85,10 @@ export const originalPosition = (
     hit = s;
   }
   if (!hit) return null;
+  const source = map.sources[hit[1]];
+  if (source === undefined) return null; // an index past the map's sources
   return {
-    source: map.sources[hit[1]],
+    source,
     line: hit[2] + 1,
     column: hit[3] + 1,
     name: hit[4] === undefined ? undefined : map.names?.[hit[4]],

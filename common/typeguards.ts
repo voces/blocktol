@@ -194,6 +194,19 @@ export const isTuple = (<T extends unknown[]>(
   typeguards.length === values.length &&
   typeguards.every((tg, i) => tg(values[i]))) as tuple;
 
+// A tuple of exactly N Ts, for a literal N; a non-literal N is just T[].
+export type Tuple<T, N extends number, R extends T[] = []> = number extends N
+  ? T[]
+  : R["length"] extends N ? R
+  : Tuple<T, N, [...R, T]>;
+
+// Narrows an array to a tuple once its length is known, so it destructures
+// without an undefined per element under noUncheckedIndexedAccess.
+export const hasLength = <T, N extends number>(
+  values: T[],
+  n: N,
+): values is Tuple<T, N> => values.length === n;
+
 export const isPartial = <T>(
   props: { [Prop in keyof T]: (value: unknown) => value is T[Prop] },
 ) =>

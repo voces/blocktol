@@ -1,15 +1,11 @@
 {
-  // The app: client, server and common/ in one program, because the client's
-  // API type is derived from server code. The server runs on Node, so it sees
-  // Node's types. Tests and scripts are tsconfig.tools.json's.
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "lib": ["esnext", "dom", "dom.iterable"],
-    "jsx": "react",
-    "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment",
-    "types": ["node"]
-  },
-  "include": ["client/**/*", "common/**/*", "server/**/*"],
-  "exclude": ["**/*.test.ts"]
+  // Checks nothing itself: it names the three real programs so that editors
+  // and oxlint's type-aware rules give each file the settings of the program
+  // that owns it (a test is typed by tsconfig.tools.json, not inferred).
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.common.json" },
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.tools.json" }
+  ]
 }

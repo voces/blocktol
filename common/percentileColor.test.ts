@@ -31,7 +31,7 @@ for (const [p, hex] of STOPS) {
     const want = rgb(hex);
     for (let c = 0; c < 3; c++) {
       assert(
-        Math.abs(got[c] - want[c]) <= 2,
+        Math.abs(got[c]! - want[c]!) <= 2,
         `channel ${c}: got ${got[c]}, want ${want[c]}`,
       );
     }

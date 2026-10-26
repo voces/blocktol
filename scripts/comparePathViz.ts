@@ -119,14 +119,14 @@ try {
       y: 1.5 + Math.floor(rng() * 17),
     };
     const grid = current.newGrid();
-    grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+    grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
     const blocks: Point[] = [];
     const target = 6 + Math.floor(rng() * 34);
     for (let i = 0; i < target * 4 && blocks.length < target; i++) {
       const x = 2 + Math.floor(rng() * 17);
       const y = 2 + Math.floor(rng() * 17);
-      if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
-      offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+      if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) continue;
+      offsets.forEach(([xd, yd]) => (grid[y + yd]![x + xd] = true));
       blocks.push({ x, y });
     }
     return { label: `seed ${seed}`, checkpoint, blocks };
@@ -168,18 +168,18 @@ try {
     const cum = [0];
     for (let i = 1; i < path.length; i++) {
       cum.push(
-        cum[i - 1] +
-          Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y),
+        cum[i - 1]! +
+          Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y),
       );
     }
-    const total = cum[cum.length - 1];
+    const total = cum.at(-1) ?? 0;
     const pointAt = (dist: number): Point => {
       let i = 1;
-      while (i < cum.length - 1 && cum[i] < dist) i++;
-      const p = (dist - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+      while (i < cum.length - 1 && cum[i]! < dist) i++;
+      const p = (dist - cum[i - 1]!) / (cum[i]! - cum[i - 1]! || 1);
       return {
-        x: path[i - 1].x * (1 - p) + path[i].x * p,
-        y: path[i - 1].y * (1 - p) + path[i].y * p,
+        x: path[i - 1]!.x * (1 - p) + path[i]!.x * p,
+        y: path[i - 1]!.y * (1 - p) + path[i]!.y * p,
       };
     };
 
@@ -196,7 +196,7 @@ try {
       // The window's endpoints plus every path vertex inside it.
       const span: Point[] = [pointAt(from)];
       for (let i = 1; i < path.length - 1; i++) {
-        if (cum[i] > from && cum[i] < to) span.push(path[i]);
+        if (cum[i]! > from && cum[i]! < to) span.push(path[i]!);
       }
       span.push(pointAt(to));
       spans.push(span);
@@ -348,7 +348,7 @@ try {
   // ---- Render -------------------------------------------------------------
 
   const grid = current.newGrid();
-  grid[board.checkpoint.y + 0.5][board.checkpoint.x + 0.5] = true;
+  grid[board.checkpoint.y + 0.5]![board.checkpoint.x + 0.5] = true;
   // Per-cell owner/kind, for colouring only.
   const meta: (Cell | undefined)[][] = Array.from(
     { length: 20 },
@@ -356,8 +356,8 @@ try {
   );
   for (const b of board.blocks) {
     offsets.forEach(([xd, yd]) => {
-      grid[b.y + yd][b.x + xd] = true;
-      meta[b.y + yd][b.x + xd] = b;
+      grid[b.y + yd]![b.x + xd] = true;
+      meta[b.y + yd]![b.x + xd] = b;
     });
   }
 
@@ -384,8 +384,8 @@ try {
       let sw = 0.03;
       if (wall) {
         fill = WALL;
-      } else if (grid[y][x]) {
-        const m = meta[y][x];
+      } else if (grid[y]![x]) {
+        const m = meta[y]![x];
         if (m) { // a placed piece (the checkpoint cell has no meta)
           fill = m.thunder ? THUNDER : BLOCK;
           if (m.player) {
@@ -402,7 +402,7 @@ try {
   }
 
   const identical = old.path.length === neu.path.length &&
-    old.path.every((p, i) => p.x === neu.path[i].x && p.y === neu.path[i].y);
+    old.path.every((p, i) => p.x === neu.path[i]!.x && p.y === neu.path[i]!.y);
   const hasThunder = board.blocks.some((b) => b.thunder);
   const hasPlayer = board.blocks.some((b) => b.player);
 

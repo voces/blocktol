@@ -57,10 +57,12 @@ const compile = async ({ dir, out }: CatalogSpec) => {
     }
     catalog[locale] = compiled;
   }
+  const enAst = catalog.en;
+  if (!enAst) throw new Error("no en catalog");
 
   // Per-key params type, derived from the English message.
   const paramsType = (key: string): string => {
-    const params = collectParams(catalog.en[key]);
+    const params = collectParams(enAst[key]!);
     const names = Object.keys(params).sort();
     // `Record<never, never>` lets `t(key)` omit the params arg.
     if (names.length === 0) return "Record<never, never>";

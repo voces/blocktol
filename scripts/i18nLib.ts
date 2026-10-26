@@ -60,7 +60,7 @@ export const writeCatalog = async (
 ): Promise<void> => {
   // Sorted keys for stable diffs; trailing newline as the formatter would add.
   const sorted: TargetCatalog = {};
-  for (const k of Object.keys(catalog).sort()) sorted[k] = catalog[k];
+  for (const k of Object.keys(catalog).sort()) sorted[k] = catalog[k]!;
   await writeFile(
     new URL(`${dir}${locale}.json`, I18N_DIR),
     JSON.stringify(sorted, null, 2) + "\n",

@@ -22,12 +22,12 @@ export type Glossary = Record<string, string>;
 
 export type TranslateRequest = {
   locale: string;
-  entries: { key: string; message: string; description?: string }[];
+  entries: { key: string; message: string; description: string | undefined }[];
   glossary: Glossary;
   // The catalog's own register guidance (CatalogSpec.brief), if it has one.
-  brief?: string;
+  brief?: string | undefined;
   // Validation errors from a previous attempt, fed back so the model self-corrects.
-  notes?: string[];
+  notes?: string[] | undefined;
 };
 
 // The seam: returns key → translated ICU message for every requested entry.
@@ -43,7 +43,7 @@ export const staleKeys = async (
   const out: string[] = [];
   for (const key of Object.keys(en)) {
     const cur = existing[key];
-    if (!cur || cur.hash !== await sha256(en[key].message)) out.push(key);
+    if (!cur || cur.hash !== await sha256(en[key]!.message)) out.push(key);
   }
   return out;
 };
@@ -72,10 +72,10 @@ export const translateLocale = async (
   if (stale.length) {
     const entries = stale.map((key) => ({
       key,
-      message: en[key].message,
-      description: en[key].description,
+      message: en[key]!.message,
+      description: en[key]!.description,
     }));
-    let out: Record<string, string> | null = null;
+    let out: [key: string, message: string][] | null = null;
     let notes: string[] | undefined;
     const maxAttempts = 3;
     for (let attempt = 0; attempt < maxAttempts && !out; attempt++) {
@@ -87,15 +87,17 @@ export const translateLocale = async (
         notes,
       });
       const errors: string[] = [];
+      const translated: [string, string][] = [];
       for (const { key, message } of entries) {
         const got = result[key];
         if (got == null) {
           errors.push(`${locale}/${key}: no translation returned`);
         } else {
           errors.push(...validateTranslation(locale, key, got, message));
+          translated.push([key, got]);
         }
       }
-      if (!errors.length) out = result;
+      if (!errors.length) out = translated;
       else if (attempt === maxAttempts - 1) {
         throw new Error(
           `translation validation failed:\n  ${errors.join("\n  ")}`,
@@ -105,8 +107,8 @@ export const translateLocale = async (
         console.warn(`retrying ${locale}:\n  ${errors.join("\n  ")}`);
       }
     }
-    for (const key of stale) {
-      next[key] = { message: out![key], hash: await sha256(en[key].message) };
+    for (const [key, message] of out!) {
+      next[key] = { message, hash: await sha256(en[key]!.message) };
     }
   }
   return next;
@@ -195,8 +197,8 @@ export const makeAnthropicTranslator = (): Translator => ({
       output_config: { format: { type: "json_schema", schema } },
       messages: [{ role: "user", content: userPrompt(req) }],
     });
-    const text = res.content.find((b: { type: string }) => b.type === "text");
-    return JSON.parse((text as { text: string })?.text ?? "{}");
+    const text = res.content.find((b) => b.type === "text");
+    return JSON.parse(text?.text ?? "{}");
   },
 });
 

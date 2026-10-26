@@ -1,12 +1,7 @@
 {
-  // Tests and scripts: the app's settings without noUncheckedIndexedAccess and
-  // exactOptionalPropertyTypes: turning those two on here (195 errors) is its
-  // own change.
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "noUncheckedIndexedAccess": false,
-    "exactOptionalPropertyTypes": false
-  },
+  // Tests and scripts: the app's settings, over the files tsconfig.app.json
+  // leaves out.
+  "extends": "./tsconfig.app.json",
   "include": ["**/*.test.ts", "**/*.test.tsx", "scripts/**/*"],
   "exclude": ["node_modules"]
 }

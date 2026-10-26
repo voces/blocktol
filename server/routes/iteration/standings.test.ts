@@ -56,9 +56,13 @@ test("standings returns both boards, ranked and windowed, in one response", {
 }, async () => {
   const date = testDate();
   const iteration = await testIteration(date);
-  const users = await Promise.all(
-    Array.from({ length: 5 }, () => testUser()),
-  );
+  const users = await Promise.all([
+    testUser(),
+    testUser(),
+    testUser(),
+    testUser(),
+    testUser(),
+  ]);
   const [leader, tiedA, tiedB, fourth, viewer] = users;
   try {
     await seedRun(leader, iteration, 40);
@@ -217,9 +221,10 @@ test("standings PB counts a free-play-only day and stays scoped to it", {
   const days: number[] = [];
   const user = await testUser();
   try {
-    days.push(await testIteration());
-    days.push(await testIteration());
-    const [dayA, dayB] = days;
+    const dayA = await testIteration();
+    days.push(dayA);
+    const dayB = await testIteration();
+    days.push(dayB);
     await seedRun(user, dayA, 20, { daily: false }); // free play only on A
     await seedRun(user, dayA, 15, { daily: false }); // a worse build on A
     await seedRun(user, dayB, 55, { daily: false }); // a better build on B
@@ -243,8 +248,8 @@ test("standings PB counts a free-play-only day and stays scoped to it", {
     // Lone player holds their own field best → standing 1.
     assertEquals(a.pb.me?.percent, 1);
     assertEquals(a.pb.rows.length, 1);
-    assertEquals(a.pb.rows[0].secondary, null);
-    assert(a.pb.rows[0].at > 0, "pb row carries the build's timestamp");
+    assertEquals(a.pb.rows[0]!.secondary, null);
+    assert(a.pb.rows[0]!.at > 0, "pb row carries the build's timestamp");
 
     // PB board on B is its own day: 55, oblivious to day A's 20.
     const b = await standings.handler({ iteration: dayB }, authed(user));

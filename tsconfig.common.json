@@ -1,7 +1,7 @@
 {
   // common/ on its own, with no browser or Node globals: the compiler
   // enforces that common/ stays pure. common/api.ts is left out because it only
-  // re-exports the server's API type (tsconfig.json covers it).
+  // re-exports the server's API type (tsconfig.app.json covers it).
   "extends": "./tsconfig.base.json",
   "compilerOptions": { "lib": ["esnext"] },
   "include": ["common/**/*.ts"],

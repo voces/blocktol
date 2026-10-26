@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { live } from "../../db/liveTests.ts";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { createOrUpdateUser } from "../../db/user.ts";
 import { sql } from "../../db/query.ts";
 import { extractUserId } from "../../middleware/userid.ts";
@@ -70,6 +70,7 @@ test("getBoard: a past day is free-playable with the daily still outstanding", {
     // The oldest iteration is a past day.
     const [oldest] = await sql<{ id: number }[]>`
         SELECT id FROM iteration ORDER BY id ASC LIMIT 1;`;
+    assertExists(oldest, "this test needs an iteration");
     // No attempts spent, yet a PAST day stages: only the caller's own today
     // is gated.
     const board = await getBoard.handler(
@@ -133,7 +134,7 @@ test("board gate: a future day is locked on every surface, layout-free", {
 
     const runs = await sql<{ n: number }[]>`
         SELECT COUNT(1) n FROM run WHERE user = ${user};`;
-    assertEquals(Number(runs[0].n), 0, "nothing was written");
+    assertEquals(Number(runs[0]!.n), 0, "nothing was written");
   } finally {
     await sql`DELETE FROM user WHERE id = ${user};`;
   }

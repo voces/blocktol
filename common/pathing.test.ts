@@ -1,5 +1,5 @@
 import { test } from "node:test";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 
 import {
   cachedSolver,
@@ -19,7 +19,7 @@ test("pathDuration", async (t) => {
     duration: number,
     slows: Slow[] = [],
   ) => {
-    const [actualDuration, actualSlows] = pathDuration(points, thunders ?? []);
+    const [actualDuration, actualSlows] = pathDuration(points, thunders);
     assert(
       Math.abs(actualDuration - duration) < 1e-9,
       `Expected duration to be ${duration}, got ${actualDuration}`,
@@ -152,7 +152,7 @@ test("pathDuration", async (t) => {
       // at the same instant. Both are recorded, but the slow is shared, so the
       // duration equals the single-thunder run's.
       const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
-      const pair = [{ x: 4.5, y: 2.5 }, { x: 4.5, y: -3.5 }]; // centres (5,±3)
+      const pair: [Point, Point] = [{ x: 4.5, y: 2.5 }, { x: 4.5, y: -3.5 }]; // centres (5,±3)
       const entry = (5 - Math.sqrt(7)) / 5; // |x-5| < √(16-9) from x=0, at SPEED
       assertPathDuration(path, pair, 23, [
         { thunder: pair[0], time: Math.round(entry * 100) / 100 },
@@ -169,7 +169,10 @@ test("pathDuration", async (t) => {
       // RESETS to 6s, so slowed time is 4 + 6 = 10s and the first slow's last
       // 2s are wasted: 100/5 + 10/2 = 25.
       const path = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
-      const thunders = [{ x: 4.5, y: 2.5 }, { x: 14.5, y: 2.5 }];
+      const thunders: [Point, Point] = [{ x: 4.5, y: 2.5 }, {
+        x: 14.5,
+        y: 2.5,
+      }];
       const t1 = (5 - Math.sqrt(7)) / 5;
       assertPathDuration(path, thunders, 25, [
         { thunder: thunders[0], time: Math.round(t1 * 100) / 100 },
@@ -192,8 +195,8 @@ test("pathDuration", async (t) => {
 const length = (path: ReadonlyArray<Point>) => {
   let total = 0;
   for (let i = 1; i < path.length; i++) {
-    total += ((path[i].x - path[i - 1].x) ** 2 +
-      (path[i].y - path[i - 1].y) ** 2) ** 0.5;
+    total += ((path[i]!.x - path[i - 1]!.x) ** 2 +
+      (path[i]!.y - path[i - 1]!.y) ** 2) ** 0.5;
   }
   return total;
 };
@@ -208,8 +211,8 @@ const bruteOptimalLength = (
 ) => {
   const nodes: Point[] = [start, end];
   for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
-      if (grid[y][x] === false && !(x === start.x && y === start.y)) {
+    for (let x = 0; x < grid[y]!.length; x++) {
+      if (grid[y]![x] === false && !(x === start.x && y === start.y)) {
         nodes.push({ x, y });
       }
     }
@@ -221,23 +224,23 @@ const bruteOptimalLength = (
   for (let it = 0; it < n; it++) {
     let u = -1;
     let best = Infinity;
-    for (let i = 0; i < n; i++) {
-      if (!done[i] && dist[i] < best) {
-        best = dist[i];
+    for (const [i, d] of dist.entries()) {
+      if (!done[i] && d < best) {
+        best = d;
         u = i;
       }
     }
     if (u < 0) break;
     done[u] = true;
     for (let v = 0; v < n; v++) {
-      if (done[v] || !lineOfSight(nodes[u], nodes[v], grid)) continue;
-      const nd = dist[u] +
-        ((nodes[u].x - nodes[v].x) ** 2 + (nodes[u].y - nodes[v].y) ** 2) **
+      if (done[v] || !lineOfSight(nodes[u]!, nodes[v]!, grid)) continue;
+      const nd = dist[u]! +
+        ((nodes[u]!.x - nodes[v]!.x) ** 2 + (nodes[u]!.y - nodes[v]!.y) ** 2) **
           0.5;
-      if (nd < dist[v]) dist[v] = nd;
+      if (nd < dist[v]!) dist[v] = nd;
     }
   }
-  return dist[1];
+  return dist[1] ?? Infinity; // nodes[1] is `end`
 };
 
 test("PathSolver — any-angle optimality", async (t) => {
@@ -260,8 +263,8 @@ test("PathSolver — any-angle optimality", async (t) => {
       // diagonal must not be line-of-sight.
       const grid = newGrid();
       for (const [xd, yd] of offsets) {
-        grid[8 + yd][8 + xd] = true; // block at (8,8): cells (8..9, 8..9)
-        grid[10 + yd][10 + xd] = true; // block at (10,10): cells (10..11, 10..11)
+        grid[8 + yd]![8 + xd] = true; // block at (8,8): cells (8..9, 8..9)
+        grid[10 + yd]![10 + xd] = true; // block at (10,10): cells (10..11, 10..11)
       }
       assert(!lineOfSight({ x: 9, y: 9 }, { x: 10, y: 10 }, grid));
     },
@@ -279,14 +282,14 @@ test("PathSolver — any-angle optimality", async (t) => {
         x: 1.5 + Math.floor(rng() * 17),
         y: 1.5 + Math.floor(rng() * 17),
       };
-      grid[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
       const anchors: Point[] = [];
       const blockCount = 3 + Math.floor(rng() * 28);
       for (let b = 0; b < blockCount; b++) {
         const x = 2 + Math.floor(rng() * 17);
         const y = 2 + Math.floor(rng() * 17);
-        if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
-        offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+        if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) continue;
+        offsets.forEach(([xd, yd]) => (grid[y + yd]![x + xd] = true));
         anchors.push({ x, y });
       }
 
@@ -301,7 +304,7 @@ test("PathSolver — any-angle optimality", async (t) => {
 
       // Reproduce the search's internal grid (checkpoint cell walkable).
       const g = structuredClone(grid);
-      g[checkpoint.y + 0.5][checkpoint.x + 0.5] = false;
+      g[checkpoint.y + 0.5]![checkpoint.x + 0.5] = false;
       const cell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
       const optimum = bruteOptimalLength({ x: 9, y: 19 }, cell, g) +
         bruteOptimalLength(cell, { x: 10, y: 0 }, g);
@@ -352,8 +355,8 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
     for (let i = 0; i < count; i++) {
       const x = 2 + Math.floor(rng() * 16);
       const y = 2 + Math.floor(rng() * 16);
-      if (offsets.some(([xd, yd]) => grid[y + yd][x + xd])) continue;
-      offsets.forEach(([xd, yd]) => (grid[y + yd][x + xd] = true));
+      if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) continue;
+      offsets.forEach(([xd, yd]) => (grid[y + yd]![x + xd] = true));
       anchors.push({ x, y });
     }
     return anchors;
@@ -370,7 +373,7 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         };
         // Scratch grid only to generate non-overlapping placements.
         const scratch = newGrid();
-        scratch[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+        scratch[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
         const base = placeRandom(scratch, 2 + Math.floor(rng() * 7));
 
         const solver = new PathSolver(base, checkpoint);
@@ -447,7 +450,7 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         y: 1.5 + Math.floor(rng() * 17),
       };
       const scratch = newGrid();
-      scratch[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      scratch[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
       const base = placeRandom(scratch, 2 + Math.floor(rng() * 6));
       const pieces = placeRandom(scratch, 4 + Math.floor(rng() * 14));
       // Fresh solvers: a shared one would agree through its memo; this tests
@@ -471,7 +474,7 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         y: 1.5 + Math.floor(rng() * 17),
       };
       const occupied = newGrid();
-      occupied[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+      occupied[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
       const base: (Point & { thunder?: boolean })[] = placeRandom(
         occupied,
         2 + Math.floor(rng() * 6),
@@ -484,15 +487,16 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         if (op < 0.55 || pieces.length === 0) {
           const added = placeRandom(occupied, 1);
           if (!added.length) continue;
-          pieces.push(added[0]);
+          pieces.push(added[0]!);
         } else if (op < 0.8) {
           const [gone] = pieces.splice(Math.floor(rng() * pieces.length), 1);
+          assertExists(gone); // pieces is non-empty on this branch
           offsets.forEach((
             [xd, yd],
-          ) => (occupied[gone.y + yd][gone.x + xd] = false));
+          ) => (occupied[gone.y + yd]![gone.x + xd] = false));
         } else {
           const i = Math.floor(rng() * pieces.length);
-          pieces[i] = { ...pieces[i], thunder: !pieces[i].thunder };
+          pieces[i] = { ...pieces[i]!, thunder: !pieces[i]!.thunder };
         }
 
         const warm = solver.solve(pieces);

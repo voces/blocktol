@@ -53,13 +53,13 @@ test("rebuildGrid reproduces a fresh grid with placements", () => {
   const checkpoint = { x: 9.5, y: 9.5 };
   const blocks = [{ x: 5, y: 5 }, { x: 12, y: 3 }];
   const grid = newGrid();
-  grid[7][3] = true; // stale cell that must be cleared
+  grid[7]![3] = true; // stale cell that must be cleared
   rebuildGrid(grid, checkpoint, blocks);
 
   const expected = newGrid();
-  expected[checkpoint.y + 0.5][checkpoint.x + 0.5] = true;
+  expected[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
   for (const { x, y } of blocks) {
-    offsets.forEach(([xd, yd]) => (expected[y + yd][x + xd] = true));
+    offsets.forEach(([xd, yd]) => (expected[y + yd]![x + xd] = true));
   }
   assertEquals(grid, expected);
 });

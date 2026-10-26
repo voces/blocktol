@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { live } from "./liveTests.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertExists } from "@std/assert";
 import { drain } from "../util/retention.ts";
 import { sql } from "./query.ts";
 import { pruneUnusedUsers } from "./retention.ts";
@@ -23,8 +23,10 @@ const exists = (id: string) =>
 test("pruneUnusedUsers removes only old, empty, unnamed profiles", {
   skip: !live,
 }, async () => {
-  const [{ id: iteration }] = await sql<{ id: number }[]>`
+  const [first] = await sql<{ id: number }[]>`
       SELECT id FROM iteration ORDER BY id ASC LIMIT 1;`;
+  assertExists(first, "this test needs an iteration");
+  const iteration = first.id;
   const empty = await seedUser("abruptfalcon", 40);
   const recent = await seedUser("abruptfalcon", 5);
   const named = await seedUser("Abrupt Falcon", 40);

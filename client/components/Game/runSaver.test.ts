@@ -72,14 +72,14 @@ test("trace: each save carries only the edits not yet confirmed", () =>
   withServer(async (sent) => {
     beginRunTrace([a]);
     saveRun({ iteration: 1, blocks: [a, b] }, 0);
-    assertEquals(edits(sent[0]), [["p", 4, 4]]);
-    sent[0].answer(accepted);
+    assertEquals(edits(sent[0]!), [["p", 4, 4]]);
+    sent[0]!.answer(accepted);
     await tick();
 
     saveRun({ iteration: 1, blocks: [a, c] }, 0);
-    assertEquals(edits(sent[1]), [["m", 4, 4, 6, 6]]);
-    const [i0] = sent[0].body.trace!.e[0];
-    const [i1] = sent[1].body.trace!.e[0];
+    assertEquals(edits(sent[1]!), [["m", 4, 4, 6, 6]]);
+    const [i0] = sent[0]!.body.trace!.e[0]!;
+    const [i1] = sent[1]!.body.trace!.e[0]!;
     assert(i1 > i0, "indexes count up within the page");
   }));
 
@@ -90,26 +90,26 @@ test("trace: saves coalesced behind one in flight keep every edit", () =>
     saveRun({ iteration: 1, blocks: [a, b] }, 0);
     saveRun({ iteration: 1, blocks: [a, b, c] }, 0);
     assertEquals(sent.length, 1, "one save in flight");
-    sent[0].answer(accepted);
+    sent[0]!.answer(accepted);
     await tick();
-    assertEquals(edits(sent[1]), [["p", 4, 4], ["p", 6, 6]]);
+    assertEquals(edits(sent[1]!), [["p", 4, 4], ["p", 6, 6]]);
   }));
 
 test("trace: a rejected save's edits are dropped with the revert", () =>
   withServer(async (sent) => {
     beginRunTrace([a]);
     saveRun({ iteration: 1, blocks: [a, b] }, 0);
-    sent[0].answer({ error: "invalid path" });
+    sent[0]!.answer({ error: "invalid path" });
     await tick();
     // The board snapped back to [a]; the next edit diffs from there.
     saveRun({ iteration: 1, blocks: [a, c] }, 0);
-    assertEquals(edits(sent[1]), [["p", 6, 6]]);
+    assertEquals(edits(sent[1]!), [["p", 6, 6]]);
   }));
 
 test("trace: nothing is recorded outside a ranked attempt", () =>
   withServer(async (sent) => {
     saveRun({ iteration: 1, blocks: [a] }, 0);
-    assertEquals(sent[0].body.trace, undefined);
-    sent[0].answer(accepted);
+    assertEquals(sent[0]!.body.trace, undefined);
+    sent[0]!.answer(accepted);
     await tick();
   }));
