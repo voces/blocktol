@@ -72,8 +72,8 @@ a browser timer handle is typed `ReturnType<typeof setTimeout>`, never `number`.
 `tsconfig.tools.json` checks the tests and scripts, with
 `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` still off there. The
 generated files (`common/version.ts`, the compiled i18n catalogs) are made by
-`npm run gen`, which `typecheck`, `test` (i18n) and `build` run first, so a
-fresh checkout needs nothing else.
+`npm run gen`, which `lint`, `typecheck`, `test` (i18n) and `build` run first,
+so a fresh checkout needs nothing else.
 
 `lint` runs oxlint with type information over every source root. Beyond its
 correctness rules it enforces `no-floating-promises` (a deliberate

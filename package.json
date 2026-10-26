@@ -22,7 +22,7 @@
     "test": "npm run i18n && node --test --test-concurrency=1 \"{client,common,scripts,server}/**/*.test.{ts,tsx}\"",
     "fmt": "dprint fmt",
     "fmt:check": "dprint check",
-    "lint": "oxlint",
+    "lint": "npm run gen && oxlint",
     "check": "npm run fmt:check && npm run lint && npm run typecheck && npm run i18n:check && npm run i18n:unused && npm test"
   },
   "dependencies": {
