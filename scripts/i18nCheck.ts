@@ -1,10 +1,11 @@
-// `deno task i18n:check` — the CI gate against deploying untranslated copy.
+// `npm run i18n:check` — the CI gate against deploying untranslated copy.
 // Fails when, for any configured target locale, a key is MISSING, STALE (stored
 // hash ≠ hash of the current English message) or ORPHANED (gone from en.json),
 // or a translation fails validation (ICU parses, argument parity with the
 // source, CLDR plural-category coverage). Network-free, so safe on forks with
 // no API key. i18n:translate heals every failure this reports.
 
+import process from "node:process";
 import {
   CATALOGS,
   loadConfig,
@@ -79,7 +80,7 @@ for (const { dir } of CATALOGS) {
 if (errors.length) {
   console.error(`i18n:check failed (${errors.length}):`);
   for (const e of errors) console.error(`  ${e}`);
-  Deno.exit(1);
+  process.exit(1);
 }
 console.log(
   `i18n:check ok — ${keyCount} keys in ${CATALOGS.length} catalog(s) × ${targets.length} target locale(s)`,

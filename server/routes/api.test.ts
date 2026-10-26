@@ -3,8 +3,15 @@ import { assert, assertEquals } from "@std/assert";
 import { api, MAX_BODY_BYTES, readBodyLimited } from "./api.ts";
 import { clientFields } from "./reportClientError.ts";
 
+// `duplex` is required for a streamed body (the fetch spec; Node enforces it)
+// and absent from the DOM lib's RequestInit.
 const post = (body: BodyInit | null, headers?: HeadersInit) =>
-  new Request("http://x.test/api/m", { method: "POST", body, headers });
+  new Request("http://x.test/api/m", {
+    method: "POST",
+    body,
+    headers,
+    duplex: "half",
+  } as RequestInit);
 
 test("api: a prototype key is an unknown method, not a 500", async () => {
   for (const method of ["constructor", "toString", "__proto__", "nope"]) {

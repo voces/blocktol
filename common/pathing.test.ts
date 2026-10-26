@@ -222,7 +222,10 @@ const bruteOptimalLength = (
     let u = -1;
     let best = Infinity;
     for (let i = 0; i < n; i++) {
-      if (!done[i] && dist[i] < best) best = dist[i], u = i;
+      if (!done[i] && dist[i] < best) {
+        best = dist[i];
+        u = i;
+      }
     }
     if (u < 0) break;
     done[u] = true;

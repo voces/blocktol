@@ -16,7 +16,7 @@ export const CLIENT_SHA = SHA;
 export const staleServerSha = signal<string | null>(null);
 
 // Fold in the server's build SHA from a response header; a mismatch marks this
-// tab stale. Skipped when either side is "dev" (`deno task dev` rebuilds
+// tab stale. Skipped when either side is "dev" (`npm run dev` rebuilds
 // without a git stamp, so comparing would reload-loop). Null on
 // synthetic/primed responses (no header) is a no-op.
 //

@@ -2,8 +2,8 @@ import { api } from "../api.ts";
 import { allowReport } from "./reportGate.ts";
 
 // Global client-error capture: uncaught exceptions and unhandled rejections go
-// to the server's `reportClientError`, which logs them (VictoriaLogs via Deno's
-// OTel). It's our own same-origin endpoint rather than a third-party browser
+// to the server's `reportClientError`, which logs them (VictoriaLogs, over
+// OTLP). It's our own same-origin endpoint rather than a third-party browser
 // agent: no SDK or keys in the bundle, no extra CSP surface, and it's the path
 // ErrorBoundary and the api proxy already use.
 //

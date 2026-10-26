@@ -20,8 +20,10 @@
 // restoring the ORIGINAL pair over minting a new one; then live subscriptions
 // keep working untouched.
 //
-// Needs no permissions (WebCrypto only):
-//   deno run scripts/genVapidKeys.ts [mailto:you@example.com]
+// WebCrypto only:
+//   node scripts/genVapidKeys.ts [mailto:you@example.com]
+
+import process from "node:process";
 
 const b64url = (bytes: Uint8Array): string =>
   btoa(String.fromCharCode(...bytes))
@@ -43,14 +45,14 @@ const { d: privateKey } = await crypto.subtle.exportKey(
   keyPair.privateKey,
 );
 
-const subject = Deno.args[0] ?? "mailto:you@example.com";
+const subject = process.argv[2] ?? "mailto:you@example.com";
 
 console.log(`VAPID_PUBLIC_KEY=${publicKey}`);
 console.log(`VAPID_PRIVATE_KEY=${privateKey}`);
 console.log(`VAPID_SUBJECT=${subject}`);
-if (!Deno.args[0]) {
+if (!process.argv[2]) {
   console.error("\n# Pass a contact to set VAPID_SUBJECT, e.g.:");
   console.error(
-    "#   deno run scripts/genVapidKeys.ts mailto:admin@blocktol.com",
+    "#   node scripts/genVapidKeys.ts mailto:admin@blocktol.com",
   );
 }

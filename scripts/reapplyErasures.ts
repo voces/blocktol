@@ -19,27 +19,26 @@
 //     | jq -r .userHash | sort -u > erased.txt
 //
 //   APP_ENV=prod SQL_PASSWORD=... \
-//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL \
-//     scripts/reapplyErasures.ts < erased.txt
+//     node scripts/reapplyErasures.ts < erased.txt
 //
 // Dry-run by default: reports how many restored players match. `--apply`
 // anonymizes them. Safe to re-run: an anonymized id matches no hash.
 
+import process from "node:process";
+import { text as readAll } from "node:stream/consumers";
 import { anonymizeUser } from "../server/db/deleteAccount.ts";
 import { sql } from "../server/db/query.ts";
 import { hashUserId } from "../server/util/hashUserId.ts";
 
-const apply = Deno.args.includes("--apply");
+const apply = process.argv.slice(2).includes("--apply");
 
-const input = new TextDecoder().decode(
-  await new Response(Deno.stdin.readable).arrayBuffer(),
-);
+const input = await readAll(process.stdin);
 const erased = new Set(
   input.split(/\s+/).filter((h) => /^[0-9a-f]{16}$/.test(h)),
 );
 if (erased.size === 0) {
   console.error("no hashes on stdin (one 16-hex-char userHash per line)");
-  Deno.exit(1);
+  process.exit(1);
 }
 
 const users = await sql<{ id: string }[]>`SELECT id FROM user`;
@@ -53,7 +52,7 @@ console.log(
 );
 if (!apply) {
   if (matches.length) console.log("dry run — pass --apply to anonymize them");
-  Deno.exit(0);
+  process.exit(0);
 }
 for (const id of matches) await anonymizeUser(id, crypto.randomUUID());
 console.log(`anonymized ${matches.length}`);

@@ -1,8 +1,7 @@
 {
   // The app: client, server and common/ in one program, because the client's
   // API type is derived from server code. The server runs on Node, so it sees
-  // Node's types and no Deno globals. Tests are left to `deno test`, which
-  // typechecks them.
+  // Node's types. Tests and scripts are tsconfig.tools.json's.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.iterable"],

@@ -1,9 +1,11 @@
-// `deno task i18n:unused` — a blocking CI gate that fails when a key in any
+// `npm run i18n:unused` — a blocking CI gate that fails when a key in any
 // catalog's en.json (see CATALOGS in i18nLib.ts) is referenced by no code.
 // Keys are never interpolated (each live key appears as a string literal, e.g.
 // in notificationText's variant ternary), so a scan of the source roots for the
 // quoted key is exact.
 
+import { readdir, readFile } from "node:fs/promises";
+import process from "node:process";
 import { CATALOGS, readJson, type SourceCatalog } from "./i18nLib.ts";
 
 const ROOTS = ["common", "server", "client"];
@@ -18,15 +20,15 @@ for (const root of ROOTS) {
 }
 
 async function* walk(dir: URL): AsyncGenerator<string> {
-  for await (const e of Deno.readDir(dir)) {
-    const child = new URL(`${e.name}${e.isDirectory ? "/" : ""}`, dir);
-    if (e.isDirectory) {
+  for (const e of await readdir(dir, { withFileTypes: true })) {
+    const child = new URL(`${e.name}${e.isDirectory() ? "/" : ""}`, dir);
+    if (e.isDirectory()) {
       yield* walk(child);
     } else if (
       (e.name.endsWith(".ts") || e.name.endsWith(".tsx")) &&
       !e.name.endsWith(GENERATED)
     ) {
-      yield await Deno.readTextFile(child);
+      yield await readFile(child, "utf8");
     }
   }
 }
@@ -50,6 +52,6 @@ if (dead.length) {
   console.error(
     "Remove them from their en.json (translations prune automatically).",
   );
-  Deno.exit(1);
+  process.exit(1);
 }
 console.log(`i18n:unused ok — all ${total} keys referenced`);

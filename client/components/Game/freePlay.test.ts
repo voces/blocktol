@@ -12,8 +12,9 @@ import {
   resumableFreePlay,
 } from "./freePlay.ts";
 
-// Deno provides a real localStorage, so these exercise the actual
-// persist/resume pair. Each test starts and ends from a clean slate.
+// No localStorage under Node, so util/storage.ts serves its in-memory map and
+// these exercise the actual persist/resume pair over it. Each test starts and
+// ends from a clean slate.
 
 const NOW = 1_700_000_000_000;
 
@@ -84,7 +85,7 @@ test("free play resume: an expired, empty, or reset record does not resume", () 
 // A stubbed fetch stands in for the server, so the real api client (retries,
 // transport classification) is exercised end to end.
 
-// getId reads the URL for sign-in links; Deno has no `location` by default.
+// getId reads the URL for sign-in links; Node has no `location`.
 Object.defineProperty(globalThis, "location", {
   value: { pathname: "/", hash: "" },
   configurable: true,

@@ -13,7 +13,7 @@
 //
 // Run locally against an environment (via the app's SQL proxy):
 //   APP_ENV=prod SQL_PASSWORD=... \
-//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL scripts/comparePathing.ts
+//     node scripts/comparePathing.ts
 //   ...add --apply to write the new times.
 //
 // Flags:
@@ -24,6 +24,7 @@
 //
 // It uses validateRun, so "the new time" is what the server would persist.
 
+import process from "node:process";
 import { type ExecResult, raw, sql } from "../server/db/query.ts";
 import { deserializeRun } from "../server/util/run.ts";
 import {
@@ -36,15 +37,15 @@ import {
 const TIME_EPSILON = 0.005;
 
 const arg = (name: string) =>
-  Deno.args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
+  process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
 const onlyIteration = arg("iteration") ? Number(arg("iteration")) : undefined;
 const limit = arg("limit") ? Number(arg("limit")) : 20;
-const printAll = Deno.args.includes("--all");
-const apply = Deno.args.includes("--apply");
+const printAll = process.argv.slice(2).includes("--all");
+const apply = process.argv.slice(2).includes("--apply");
 
 if (onlyIteration !== undefined && !Number.isInteger(onlyIteration)) {
   console.error(`--iteration must be an integer, got ${arg("iteration")}`);
-  Deno.exit(1);
+  process.exit(1);
 }
 
 // Safe to interpolate: onlyIteration is a validated integer.
@@ -290,7 +291,7 @@ if (broken.length) {
 
 if (!apply) {
   console.log("\nDry run — pass --apply to write these recomputed times.");
-  Deno.exit(0);
+  process.exit(0);
 }
 
 console.log("\nApplying recomputed times…");

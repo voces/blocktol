@@ -8,17 +8,8 @@ import process from "node:process";
 // back so a later tie can edit the post.
 //
 // Reads DISCORD_RESULTS_WEBHOOK_URL, falling back to DISCORD_ADMIN_WEBHOOK_URL.
-// The env read is guarded as in adminAlert.ts: the run routes and rating cron
-// import this transitively, and under Deno a bare read would crash tests and
-// ops scripts that lack the grant.
-const WEBHOOK = (() => {
-  try {
-    return process.env.DISCORD_RESULTS_WEBHOOK_URL ??
-      process.env.DISCORD_ADMIN_WEBHOOK_URL;
-  } catch {
-    return undefined;
-  }
-})();
+const WEBHOOK = process.env.DISCORD_RESULTS_WEBHOOK_URL ??
+  process.env.DISCORD_ADMIN_WEBHOOK_URL;
 
 // The game's result palette (common/percentileColor.ts) as Discord embed ints.
 // GOLD is SUPREME_COLOR (an outright #1), CHARTREUSE is PEAK_COLOR (a shared

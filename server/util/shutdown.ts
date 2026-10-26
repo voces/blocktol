@@ -30,7 +30,7 @@ export const drainJobs = async (maxMs: number) => {
   log.info("waiting for jobs", { count: running.size });
   let timer: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
-    Promise.allSettled([...running]),
+    Promise.allSettled(running),
     new Promise((resolve) => timer = setTimeout(resolve, maxMs)),
   ]);
   clearTimeout(timer);

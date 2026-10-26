@@ -1,5 +1,5 @@
 {
-  // common/ on its own, with no browser, Deno or Node globals: the compiler
+  // common/ on its own, with no browser or Node globals: the compiler
   // enforces that common/ stays pure. common/api.ts is left out because it only
   // re-exports the server's API type (tsconfig.json covers it).
   "extends": "./tsconfig.base.json",

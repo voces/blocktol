@@ -41,60 +41,64 @@ it out. See `server/db/CLAUDE.md` and `deploy/README.md` "Dev instance".
 
 ## Commands
 
-Everything is a Deno task (`deno.jsonc`). Deno v2.x; no `package.json`. The
-server runs on **Node 24** (`start` is `node server/index.ts`, which runs the
-`.ts` directly); tests, scripts and tooling still run on Deno. npm packages
-install into `./node_modules` (`nodeModulesDir: "auto"`, gitignored;
-`deno
-install` fills it), where both Node and esbuild (exact version pinned in
-the `bundle` tasks) resolve them.
+Node 24 runs everything, and npm manages the packages (`package.json`,
+`package-lock.json`); `npm ci` installs exactly the lockfile. The server runs
+its `.ts` directly (Node strips the types: no build step); esbuild (pinned to an
+exact version) bundles the client.
 
 ```bash
-deno task dev        # bundle (watch) + run server (watch) — local dev
-deno task start      # run the server once (prod-style)
-deno task build      # bundle + minify client -> public/js/{index.js,pathing.js}; map -> sourcemaps/<SHA>/
-deno task symbolicate <clientSha> < stack.txt   # minified client stack -> source positions
-deno task test       # run the test suite
-deno task migrate    # apply pending DB migrations (usually automatic on boot)
-deno task preview    # static-serve ./ (inspect public/ pages)
+npm run dev          # bundle (watch) + run server (watch) — local dev
+npm start            # run the server once (prod-style; needs a prior build)
+npm run build        # bundle + minify client -> public/js/{index.js,pathing.js}; map -> sourcemaps/<SHA>/
+npm run symbolicate <clientSha> < stack.txt   # minified client stack -> source positions
+npm test             # run the test suite
+npm run migrate      # apply pending DB migrations (usually automatic on boot)
+npm run preview      # static-serve ./ on :8081 (inspect public/ pages)
 
-deno fmt             # format (CI runs `deno fmt --check`; markdown included)
-deno check server/index.ts client/index.ts common/pathing.ts   # typecheck (CI does this)
-deno task typecheck  # TypeScript 7 (pinned): tsconfig.common.json, then tsconfig.json
+npm run check        # everything CI gates on: format, lint, typecheck, i18n, tests
+npm run fmt          # format with dprint (CI runs `npm run fmt:check`; markdown included)
+npm run lint         # oxlint
+npm run typecheck    # TypeScript 7 (pinned): tsconfig.common.json, tsconfig.json, tsconfig.tools.json
 ```
 
-`deno task typecheck` holds the code to what Node's type stripping can run
-(#226): a type is imported with `import type` or `{ type X }`, and no enum,
-namespace or constructor parameter property. `tsconfig.common.json` checks
-`common/` with no browser, Deno or Node globals, so using one there is a compile
-error; `tsconfig.json` checks the app (client and server together, since the
-client's API type comes from the server) with Node's types (`@types/node`) and
-no Deno globals, since the server runs on Node. Being one program, the client
-sees Node's globals too, so a browser timer handle is typed
-`ReturnType<typeof setTimeout>`, never `number`. Tests are left to `deno test`.
+`npm run check` is the one command to run before pushing. `typecheck` holds the
+code to what Node's type stripping can run: a type is imported with `import
+type` or `{ type X }`, and no enum, namespace or constructor parameter property.
+`tsconfig.common.json` checks `common/` with no browser or Node globals, so
+using one there is a compile error; `tsconfig.json` checks the app (client and
+server together, since the client's API type comes from the server) with Node's
+types (`@types/node`). Being one program, the client sees Node's globals too, so
+a browser timer handle is typed `ReturnType<typeof setTimeout>`, never `number`.
+`tsconfig.tools.json` checks the tests and scripts, with
+`noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` still off there. The
+generated files (`common/version.ts`, the compiled i18n catalogs) are made by
+`npm run gen`, which `typecheck`, `test` (i18n) and `build` run first, so a
+fresh checkout needs nothing else.
 
 Run a **single test file / filter**:
 
 ```bash
-deno test --allow-read --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL common/pathing.test.ts
-deno test --allow-read --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL --filter "line of sight" server/
+node --test common/pathing.test.ts
+node --test --test-name-pattern "line of sight" "server/**/*.test.ts"
 ```
 
-Tests use `test` from `node:test` (subtests are `t.test`), never `Deno.test`:
-`deno test` runs them today and Node will after the runtime move (#226).
-`node:test` has no leak check, so a test closes every timer, connection and
-stream it opens. Most tests are pure and need no permissions. The `*.test.ts`
-under `server/routes/iteration/run/` and a few others are **run-lifecycle
-integration tests** that hit the dev database through the SQL proxy; they
-self-skip unless `SQL_PASSWORD` is set (CI has it). A new one gates on `live`
-from `server/db/liveTests.ts`, which refuses `APP_ENV=prod`; creates its users
-with a `t-` id and any iteration it inserts on a pre-2000 date; and cleans up in
-a `finally` that covers every row it created. `server/db/testLeftovers.test.ts`
-sweeps what a crashed run leaves behind (both markers, after an hour). CI
-(`.github/workflows/ci.yml`) runs fmt-check, typecheck, `deno task test`, then
-`deno task build`. The workflow only checks; deployment is separate (see the
-deploy warning above): `deploy.yml` deploys prod to the EC2 cohost after CI
-passes on `prod`, and `deploy-dev.yml` deploys the dev instance.
+Tests use `test` from `node:test` (subtests are `t.test`) and `@std/assert` for
+assertions; `npm test` runs every `*.test.ts` one file at a time
+(`--test-concurrency=1`, since the integration tests share the dev database).
+Each file runs in its own process, which exits only once nothing holds the event
+loop, so a test closes every timer, connection and stream it opens. The
+`*.test.ts` under `server/routes/iteration/run/` and a few others are
+**run-lifecycle integration tests** that hit the dev database through the SQL
+proxy; they self-skip unless `SQL_PASSWORD` is set (CI has it). A new one gates
+on `live` from `server/db/liveTests.ts`, which refuses `APP_ENV=prod`; creates
+its users with a `t-` id and any iteration it inserts on a pre-2000 date; and
+cleans up in a `finally` that covers every row it created.
+`server/db/testLeftovers.test.ts` sweeps what a crashed run leaves behind (both
+markers, after an hour). CI (`.github/workflows/ci.yml`) runs the format check,
+lint, typecheck, the i18n gates, the tests, then `npm run build`. The workflow
+only checks; deployment is separate (see the deploy warning above): `deploy.yml`
+deploys prod to the EC2 cohost after CI passes on `prod`, and `deploy-dev.yml`
+deploys the dev instance.
 
 ## Layout & the import rule
 
@@ -105,10 +109,10 @@ Three source roots with a strict dependency direction:
   parsing). Must import nothing from `server/` or `client/`. `client/api.ts`
   imports **types only** from `server/routes/api.ts` — that type-only edge is
   the API contract, not a runtime dependency.
-- **`server/`** — the Deno backend. May import `common/`.
+- **`server/`** — the Node backend. May import `common/`.
 - **`client/`** — the Preact frontend, bundled to `public/js/`. May import
   `common/`. JSX uses the `h`/`Fragment` pragma (`preact`), configured in
-  `deno.jsonc`, `tsconfig.json` and the `bundle` task — there is no React.
+  `tsconfig.json` and the `bundle` script — there is no React.
 
 `public/` holds the static shell (`index.html`, `sw.js`, `styles.css`, the
 manifest), the self-hosted fonts, icons and share card, and two debug pages; see
@@ -337,8 +341,11 @@ Other invariants:
 
 ## Operational scripts (`scripts/`)
 
-Dry-run by default, `--apply` to write; run locally against an env with
-`APP_ENV=... SQL_PASSWORD=...`:
+Dry-run by default, `--apply` to write; run locally with `node
+scripts/<name>.ts` against an env set by `APP_ENV=... SQL_PASSWORD=...`. Node
+has no permission sandbox for env or network, so nothing scopes what a script
+can reach: **prod credentials never go into an environment where agents run
+commands.** An operator runs a prod script; an agent runs it against dev.
 
 - `auditRuns.ts` — recompute every non-void run with `validateRun` and delete
   illegal ones.
@@ -350,15 +357,16 @@ Dry-run by default, `--apply` to write; run locally against an env with
   `deleteAccount` request logged (stdin, one per line). Backups (nightly dump +
   EBS snapshots, kept ≤30 days — the bound the privacy page states) are
   described in `deploy/README.md` "Backups".
-- `symbolicate.ts` (`deno task symbolicate <clientSha> < stack.txt`) — maps a
+- `symbolicate.ts` (`npm run symbolicate <clientSha> < stack.txt`) — maps a
   minified client stack (`client.error`) back to source. The client bundle is
   minified and its map is never served (browsers don't apply maps to
   `error.stack` anyway); `build` moves it to `sourcemaps/<SHA>/` (gitignored,
   newest 20 kept), keyed by the `clientSha` each request logs. With no stored
   map the script rebuilds that commit in a temp worktree with its own `bundle`
-  task: the bundle is deterministic, esbuild is pinned to an exact version, and
-  an external map leaves its bytes unchanged, so the rebuild matches. (A commit
-  bundled by `deno bundle`, before esbuild, needs the Deno it was built with.)
+  script: the bundle is deterministic, esbuild is pinned to an exact version,
+  and an external map leaves its bytes unchanged, so the rebuild matches. (A
+  commit from before `package.json` rebuilds with its Deno tasks, so it needs
+  Deno installed.)
 
 ## Conventions
 
@@ -372,10 +380,10 @@ Dry-run by default, `--apply` to write; run locally against an env with
   git and the PR hold those. Name things exactly (`anonymizeUser`,
   `util/boardAccess.ts`) so a rename leaves a greppable trail. A comment that no
   longer matches the code is a bug: fix it in the same change.
-- `deno fmt` is authoritative (CI fails on drift), but it doesn't rewrap
-  comments in code; keep them to 80 columns by hand. There is no README: the
-  `CLAUDE.md` files, `deploy/README.md` and the inline comments are the
-  documentation.
+- `npm run fmt` (dprint, with Deno's formatting presets) is authoritative (CI
+  fails on drift), but it doesn't rewrap comments in code; keep them to 80
+  columns by hand. There is no README: the `CLAUDE.md` files, `deploy/README.md`
+  and the inline comments are the documentation.
 
 ## Maintaining these files
 

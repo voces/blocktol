@@ -8,7 +8,7 @@
 const MARKDOWN = /[\\*_~`|>[\]()#\-<]/g;
 
 // C0/C1 controls and line/paragraph separators: a name must stay on its line.
-// deno-lint-ignore no-control-regex
+// oxlint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 
 // Discord auto-links any bare `scheme://…`, escaped or not. A zero-width space

@@ -34,7 +34,7 @@ export const GameStateContext = createContext<
     get: () => {
       throw new Error("Expected context provider");
     },
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
   }) as any,
 );
 

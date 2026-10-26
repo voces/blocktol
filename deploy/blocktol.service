@@ -13,10 +13,6 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/blocktol
 
-# systemd doesn't set HOME; deno (which runs the task) needs it for
-# ~/.cache/deno.
-Environment=HOME=/home/ubuntu
-
 # All runtime config lives here (chmod 600): PORT, APP_ENV=prod, SQL_PASSWORD,
 # SQL_PROXY_URL, VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT, and the OTel telemetry
 # vars (OTEL_SERVICE_NAME and the per-signal endpoints — see server/CLAUDE.md's
@@ -25,16 +21,14 @@ Environment=HOME=/home/ubuntu
 EnvironmentFile=/home/ubuntu/blocktol/.env
 
 # The client bundle is rebuilt by the deploy webhook, not here, so start is fast;
-# a fresh checkout must run ./deploy/build once during setup. `deno task start`
-# runs `node server/index.ts` (Node 24, on systemd's default PATH); going
-# through the task keeps the unit right for whichever commit is checked out.
-ExecStart=/home/ubuntu/.deno/bin/deno task start
+# a fresh checkout must run ./deploy/build once during setup. Node 24, as
+# /usr/bin/node; it runs the server's .ts directly.
+ExecStart=/usr/bin/node server/index.ts
 
-# On SIGTERM (sent to the task and node alike) the server drains in-flight
-# requests and any running cron (up to ~65s, see server/index.ts), flushes
-# telemetry and exits 0; the task waits for it. Give it room before SIGKILL.
-# 143 is a process's exit on an unhandled SIGTERM, kept so that path isn't a
-# failure.
+# On SIGTERM the server drains in-flight requests and any running cron (up to
+# ~65s, see server/index.ts), flushes telemetry and exits 0. Give it room
+# before SIGKILL. 143 is a process's exit on an unhandled SIGTERM, kept so that
+# path isn't a failure.
 TimeoutStopSec=90
 SuccessExitStatus=143 SIGTERM
 

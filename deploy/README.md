@@ -4,15 +4,14 @@ Blocktol runs as a long-lived Node process on the same EC2 box as the MariaDB +
 `/sql` proxy (and emoji-sheep-tag / w3xio / others), behind nginx + certbot, and
 auto-deploys on merge to `prod` via w3xio's `/deploy` webhook.
 
-- **Serving:** `blocktol.service` (systemd) runs `deno task start`, which runs
-  `node server/index.ts`, on a local port; nginx (`blocktol.nginx.conf`)
-  terminates TLS, gzips text responses, rate-limits `/api/` per IP, and
-  reverse-proxies to it.
+- **Serving:** `blocktol.service` (systemd) runs `node server/index.ts` on a
+  local port; nginx (`blocktol.nginx.conf`) terminates TLS, gzips text
+  responses, rate-limits `/api/` per IP, and reverse-proxies to it.
 - **Deploy:** merge to `prod` → CI passes → `.github/workflows/deploy.yml` POSTs
-  `{app:"blocktol", version:<sha>}` to w3xio's `/deploy`, which does
-  `git fetch origin prod` → `git checkout <sha>` → `./deploy/build` (read from
-  that commit, so a change to the build ships with the code that needs it) →
-  `systemctl restart blocktol`.
+  `{app:"blocktol", version:<sha>}` to w3xio's `/deploy`, which does `git fetch
+  origin prod` → `git checkout <sha>` → `./deploy/build` (read from that commit,
+  so a change to the build ships with the code that needs it) → `systemctl
+  restart blocktol`.
 - **DB:** the app talks to the co-located `/sql` proxy over localhost via
   `SQL_PROXY_URL` (no proxy semantics change). A later step can switch to a
   direct `mysql2` connection.
@@ -31,10 +30,9 @@ The same holds for the box-level backup and journald files described under
 
 - Service account `ubuntu`, home `/home/ubuntu`, checkout
   `/home/ubuntu/blocktol`.
-- deno binary: `/home/ubuntu/.deno/bin/deno` (tasks, installs and the client
-  build).
-- node binary: Node 24 at `/usr/bin/node`, on systemd's default `PATH`; it runs
-  the server. Check with `node --version`.
+- Node 24 at `/usr/bin/node` (with npm), on systemd's default `PATH`: it runs
+  the server, and `deploy/build`'s `npm ci` + `npm run build`. Check with `node
+  --version`.
 - **Port 3040** (prod) and **3041** (the dev instance). Do NOT reuse the
   occupied ports: 3017 (st2mr), 3020 (w3xio/dapi), 3030 (emoji-sheep-tag /
   est.w3x.io), 3626 (w3x.io main + the `/sql` proxy), 3627 (katma).
@@ -89,8 +87,8 @@ The same holds for the box-level backup and journald files described under
    ```
    <w3xio-user> ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart blocktol
    ```
-   Also ensure `deno` is on that process's `PATH` (`deploy/build` runs
-   `deno install` and `deno task build`).
+   Also ensure `node` and `npm` are on that process's `PATH` (`deploy/build`
+   runs `npm ci` and `npm run build`).
 
 5. **nginx.** Install `deploy/blocktol-ratelimit.conf` as
    `/etc/nginx/conf.d/blocktol-ratelimit.conf` (the API rate-limit zone) and
@@ -193,9 +191,9 @@ Setup, in order:
      prod's.
 
 4. **systemd.** Copy `deploy/blocktol-dev.service` to
-   `/etc/systemd/system/blocktol-dev.service`, then
-   `sudo systemctl daemon-reload && sudo systemctl enable --now blocktol-dev`.
-   `journalctl -u blocktol-dev -n 20` shows `listening` with port 3041.
+   `/etc/systemd/system/blocktol-dev.service`, then `sudo systemctl
+   daemon-reload && sudo systemctl enable --now blocktol-dev`. `journalctl -u
+   blocktol-dev -n 20` shows `listening` with port 3041.
 
 5. **Checkout access + sudoers.** w3xio runs the dev deploy as the same user as
    prod's, so give that user write access to `/home/ubuntu/blocktol-dev` the
@@ -207,9 +205,8 @@ Setup, in order:
 6. **nginx + TLS.** Install the updated `deploy/blocktol-ratelimit.conf` over
    `/etc/nginx/conf.d/blocktol-ratelimit.conf` (it adds the dev zone) and
    `deploy/blocktol-dev.nginx.conf` as
-   `/etc/nginx/sites-enabled/blocktol-dev.conf`, then
-   `sudo nginx -t && sudo systemctl reload nginx` and
-   `sudo certbot --nginx -d dev.blocktol.com`.
+   `/etc/nginx/sites-enabled/blocktol-dev.conf`, then `sudo nginx -t && sudo
+   systemctl reload nginx` and `sudo certbot --nginx -d dev.blocktol.com`.
 
 7. **w3xio.** Deploy the w3xio version that knows the `blocktol-dev` app, and
    set `BLOCKTOL_DEV_DIR` in its environment if the checkout isn't at the
@@ -225,9 +222,9 @@ Setup, in order:
      -H "Content-Type: application/json" \
      -d "{\"app\": \"blocktol-dev\", \"version\": \"$SHA\"}"
    ```
-   (it answers once the restart is confirmed), then
-   `curl -sS https://dev.blocktol.com/health` (200) and
-   `curl -sSI https://dev.blocktol.com/ | grep -i x-robots-tag`.
+   (it answers once the restart is confirmed), then `curl -sS
+   https://dev.blocktol.com/health` (200) and `curl -sSI
+   https://dev.blocktol.com/ | grep -i x-robots-tag`.
 
 9. **GitHub environment.** Settings → Environments → New environment `dev`;
    under Deployment protection rules tick **Required reviewers** and add
@@ -237,8 +234,8 @@ Setup, in order:
 10. **Turn it on.** Set the repository variable `DEV_DEPLOY` to `true` (GitHub →
     Settings → Secrets and variables → Actions → Variables). Then check both
     paths: on an open PR, approve its waiting Deploy dev job, and after the next
-    merge, confirm the `prod-tip` job ran; each time
-    `journalctl -u blocktol-dev` shows the restart at that commit.
+    merge, confirm the `prod-tip` job ran; each time `journalctl -u
+    blocktol-dev` shows the restart at that commit.
 
 ## Operating dev
 
@@ -318,10 +315,10 @@ so erased data is out of every backup within about 30 days. The privacy page
 states that bound; lengthening either retention means updating it.
 
 **journald** — `journald-size.conf` (installed as
-`/etc/systemd/journald.conf.d/size.conf`, then
-`systemctl restart systemd-journald`) caps the persistent journal at 500M and 30
-days. blocktol's stdout lands there as well as in VictoriaLogs, and the privacy
-page promises diagnostics go after about 30 days.
+`/etc/systemd/journald.conf.d/size.conf`, then `systemctl restart
+systemd-journald`) caps the persistent journal at 500M and 30 days. blocktol's
+stdout lands there as well as in VictoriaLogs, and the privacy page promises
+diagnostics go after about 30 days.
 
 ## Alerts
 
@@ -358,9 +355,9 @@ work (`server/routes/health.ts`), and 503 with the reason otherwise.
 - Logs: `journalctl -u blocktol -f`
 - Manual restart: `sudo systemctl restart blocktol` (uses the assets already on
   disk — a full redeploy rebuilds them)
-- Rollback:
-  `cd /home/ubuntu/blocktol && git checkout <old-sha> && ./deploy/build &&
-  sudo systemctl restart blocktol`
-  (the unit runs whichever runtime that commit's `start` task names)
+- Rollback: `cd /home/ubuntu/blocktol && git checkout <old-sha> &&
+  ./deploy/build && sudo systemctl restart blocktol`. A commit from before
+  `package.json` (the Deno toolchain) needs that commit's unit too: its
+  `ExecStart` was `/home/ubuntu/.deno/bin/deno task start`.
 - A failed deploy pings the admin Discord channel (via w3xio) with the
   `journalctl` tail.

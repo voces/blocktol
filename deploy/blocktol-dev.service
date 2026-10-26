@@ -15,14 +15,10 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/blocktol-dev
 
-# systemd doesn't set HOME; deno (which runs the task) needs it for
-# ~/.cache/deno.
-Environment=HOME=/home/ubuntu
-
 # PORT=3041, APP_ENV=dev and the rest; see deploy/README.md for the list.
 EnvironmentFile=/home/ubuntu/blocktol-dev/.env
 
-ExecStart=/home/ubuntu/.deno/bin/deno task start
+ExecStart=/usr/bin/node server/index.ts
 
 TimeoutStopSec=90
 SuccessExitStatus=143 SIGTERM

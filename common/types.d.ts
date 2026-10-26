@@ -1,2 +1,2 @@
-// deno-lint-ignore ban-types
+// oxlint-disable-next-line typescript/no-unsafe-function-type
 declare type EmptyObject = {};

@@ -90,31 +90,30 @@ snapshot; a late consumer just fetches.
 
 A `/YYYYMMDD` **permalink cold-load** boots through the same one request:
 `primeBoot` passes the URL's date as `boot`'s optional `day`, and boot resolves
-it to an iteration and _also_ bundles that day's
-`linked: { iteration, board,
-standings }` (`getBoard` + `standings`, same
-composition as `dayView`). `primeBoot` then primes the three calls the deep-link
-handler fires for that day — by-date `standings` (what `consumeDeepLink`
-resolves the id with), then `getBoard` and `standings` **by iteration** (the id
-is only known once boot lands, so those two primes are set in boot's `.then`).
-Because the pool is content-keyed, the linked day's iteration-keyed calls never
-collide with today's timezone-keyed primes — today's slices still feed the
-dock/calendar/summary while the linked day feeds the staged board. An
-unresolvable date (or a linked slice that can't be served) throws, so the
-consumer falls through to its own fetch. `stagingPastDayLink()` (a `/YYYYMMDD`
-for a day _strictly before_ today) gates today-**staging** so a linked past day
-wins the board (`useInit`) — until that link fails to resolve or stage (a bad
-date, a transient failure), which drops the gate and re-asks `getDailySummary`,
-handing the board back to today's resume/prestart rather than an inert loading
-board. A link to _today_ or a _future_ day is deliberately **not** suppressed:
-today has no other day to stage, and a future day must not be staged at all
-(tomorrow's iteration exists — the gen cron runs a day ahead — so staging it
-would leak the puzzle you'll rank tomorrow; next week's 400s). Both fall through
-to today's normal resume/prestart flow, and `consumeDeepLink` stages only for a
-strictly-past link — so a today/future link lets `useInit` own the board.
-(Gating on any day-link would strand a fresh user on a today/future permalink:
-nothing staged, since today's board is locked until the three ranked attempts
-are spent, and the prestart suppressed.)
+it to an iteration and _also_ bundles that day's `linked: { iteration, board,
+standings }` (`getBoard` + `standings`, same composition as `dayView`).
+`primeBoot` then primes the three calls the deep-link handler fires for that day
+— by-date `standings` (what `consumeDeepLink` resolves the id with), then
+`getBoard` and `standings` **by iteration** (the id is only known once boot
+lands, so those two primes are set in boot's `.then`). Because the pool is
+content-keyed, the linked day's iteration-keyed calls never collide with today's
+timezone-keyed primes — today's slices still feed the dock/calendar/summary
+while the linked day feeds the staged board. An unresolvable date (or a linked
+slice that can't be served) throws, so the consumer falls through to its own
+fetch. `stagingPastDayLink()` (a `/YYYYMMDD` for a day _strictly before_ today)
+gates today-**staging** so a linked past day wins the board (`useInit`) — until
+that link fails to resolve or stage (a bad date, a transient failure), which
+drops the gate and re-asks `getDailySummary`, handing the board back to today's
+resume/prestart rather than an inert loading board. A link to _today_ or a
+_future_ day is deliberately **not** suppressed: today has no other day to
+stage, and a future day must not be staged at all (tomorrow's iteration exists —
+the gen cron runs a day ahead — so staging it would leak the puzzle you'll rank
+tomorrow; next week's 400s). Both fall through to today's normal resume/prestart
+flow, and `consumeDeepLink` stages only for a strictly-past link — so a
+today/future link lets `useInit` own the board. (Gating on any day-link would
+strand a fresh user on a today/future permalink: nothing staged, since today's
+board is locked until the three ranked attempts are spent, and the prestart
+suppressed.)
 
 **`dayView` is boot for one arbitrary day.** `routes/dayView.ts` composes
 `getBoard` + `standings` for a chosen `{ iteration, timeZone }` — because a day
@@ -122,8 +121,8 @@ navigation (a calendar click, view-best) fires exactly those two: `getBoard`
 from `showBoard`, and `standings` as the dock reacts to the iteration change.
 `client/store/board.ts`'s `showDay(iteration)` fires the one `dayView`, then
 `primeFrom` (the general form of `primeBoot`'s slicing — `client/api.ts`) primes
-each slice under the exact input its consumer sends: `getBoard` under
-`{ iteration, timeZone }`, and `standings` under `{ timeZone }` when the day is
+each slice under the exact input its consumer sends: `getBoard` under `{
+iteration, timeZone }`, and `standings` under `{ timeZone }` when the day is
 today (the dock keys today by timezone) or `{ iteration }` for a past day — then
 delegates to `showBoard`. Both methods are `RETRYABLE`, so a primed slice that
 fails at transport falls through to a real fetch. `Calendar` (cross-day pick)
@@ -220,8 +219,8 @@ arrives" is the typical symptom.
   server's current one (`keyMatches`) and replaces it on a mismatch, dropping
   the stale row server-side too. The send path deliberately **does not prune on
   403** — unlike a 410 it's equally consistent with a misconfigured key pair,
-  and pruning would delete every subscription in one sweep; it logs
-  `push send rejected (vapid key)` instead.
+  and pruning would delete every subscription in one sweep; it logs `push send
+  rejected (vapid key)` instead.
 - **Honesty in the UI.** `pushState` (`client/util/push.ts`) carries what this
   device can actually do — `ok` / `prompt` / `denied` / `unavailable` — and
   Profile renders it above the toggles, so a blocked permission or a browser
@@ -236,23 +235,21 @@ an allowlisted browser push service (FCM, Mozilla autopush, WNS, Apple) — neve
 an arbitrary url (SSRF into the box's loopback services). A user keeps at most
 `MAX_SUBSCRIPTIONS_PER_USER` (10) rows; the upsert bumps `created` (so it reads
 "last registered") and prunes the stalest past the cap. A pre-allowlist row that
-fails the check is skipped at send (logged once per host,
-`push endpoint refused`), not pruned. `unsubscribePush` deletes only the
-caller's own row.
+fails the check is skipped at send (logged once per host, `push endpoint
+refused`), not pruned. `unsubscribePush` deletes only the caller's own row.
 
 **Reading the push path in VictoriaLogs.** A successful send logs **nothing**,
 so an empty result for `"push send"` means "nothing failed", NOT "nothing was
 sent" — and telemetry only runs where its OTel env is set (the EC2 box; a local
 run logs nothing either way). The positive signals are the two fan-out
 summaries, `daily-final notifications` and `lost-top notification` (both carry a
-`pushes` count; `pushes=0` is "opted in, but no live subscription"), and
-`push subscription pruned` — the one line a dying row emits — a 410 prune is
-exactly how a device goes quiet. Failures are `push send failed` (its `reason`
-is the push service's own explanation), `push send rejected (vapid
-key)` (a
-rotated key — see above), `push send error`, and `push fan-out error`. Nothing
-is extracted at ingest, so filter on raw text first and unpack after:
-`_time:30d "daily-final notifications" | unpack_logfmt | fields _time, iteration, inApp, pushes`.
+`pushes` count; `pushes=0` is "opted in, but no live subscription"), and `push
+subscription pruned` — the one line a dying row emits — a 410 prune is exactly
+how a device goes quiet. Failures are `push send failed` (its `reason` is the
+push service's own explanation), `push send rejected (vapid key)` (a rotated key
+— see above), `push send error`, and `push fan-out error`. Nothing is extracted
+at ingest, so filter on raw text first and unpack after: `_time:30d "daily-final
+notifications" | unpack_logfmt | fields _time, iteration, inApp, pushes`.
 
 ## Discord results
 
@@ -337,25 +334,22 @@ on the proxy) with `SQL_HOST` (default `127.0.0.1`), `SQL_PORT` (`3306`),
 connector (it reuses `SQL_PASSWORD`), `DISABLE_CRONS` (any non-empty value skips
 registering the `ensure-iterations`/`rate-dailies` crons — for a second instance
 on the shared DB), `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (Web
-Push; generate with `deno run scripts/genVapidKeys.ts`; until set, notifications
+Push; generate with `node scripts/genVapidKeys.ts`; until set, notifications
 stay in-app — **silently**, and this has bitten prod once: with no key
 `/api/pushConfig` answers `{publicKey:null}`, clients can't subscribe, and the
 notify paths return before attempting a send, so nothing at all reaches the logs
-while the player's preference toggles still read "on".
-`curl -X POST <host>/api/pushConfig -d '{}'` is the check. Carrying the env
-across a host migration is the failure mode — existing `push_subscription` rows
-survive it untouched, since nothing ever sends and so nothing ever prunes.
-Restore the ORIGINAL pair where possible: new keys invalidate every live
-subscription with a 403, which is not pruned), and `DISCORD_ADMIN_WEBHOOK_URL`
-(a Discord webhook URL for fire-and-forget operator alerts via
-`util/adminAlert.ts` — plain REST, no bot token / discord.js; unset = alerts are
-no-ops), and `DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results webhook —
-the "top PB" and "daily final" posts via `util/discordResults.ts`; falls back to
+while the player's preference toggles still read "on". `curl -X POST
+<host>/api/pushConfig -d '{}'` is the check. Carrying the env across a host
+migration is the failure mode — existing `push_subscription` rows survive it
+untouched, since nothing ever sends and so nothing ever prunes. Restore the
+ORIGINAL pair where possible: new keys invalidate every live subscription with a
+403, which is not pruned), and `DISCORD_ADMIN_WEBHOOK_URL` (a Discord webhook
+URL for fire-and-forget operator alerts via `util/adminAlert.ts` — plain REST,
+no bot token / discord.js; unset = alerts are no-ops), and
+`DISCORD_RESULTS_WEBHOOK_URL` (the player-facing results webhook — the "top PB"
+and "daily final" posts via `util/discordResults.ts`; falls back to
 `DISCORD_ADMIN_WEBHOOK_URL` when unset, so results land in the operator channel
 until a dedicated one is wired up, and both being unset makes the posts no-ops).
-Under Node nothing scopes env access; the Deno tasks (tests, scripts) still
-enumerate their `--allow-env` grants, so a module that tests or scripts import
-reads its env defensively (`adminAlert.ts`, `webpush.ts`).
 
 **Observability (OpenTelemetry).** `server/otel.ts` starts the OTel SDK when
 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set and exports over OTLP
@@ -403,10 +397,10 @@ value is the `trace=` on the request's line in
 `/var/log/nginx/blocktol.access.log` (`deploy/blocktol-trace.conf`).
 
 `util/logging.ts` emits **logfmt** — one line of flat `key=value` pairs
-(`level=info msg=request method=POST status=200 route=/api/boot ms=13 userHash=…`)
-— so VictoriaLogs surfaces `status`/`route`/`userHash`/… as queryable fields via
-a `| unpack_logfmt _msg` at query time (nothing extracts them at ingest — the
-log record's body, `_msg`, is the logfmt line). The API is
+(`level=info msg=request method=POST status=200 route=/api/boot ms=13
+userHash=…`) — so VictoriaLogs surfaces `status`/`route`/`userHash`/… as
+queryable fields via a `| unpack_logfmt _msg` at query time (nothing extracts
+them at ingest — the log record's body, `_msg`, is the logfmt line). The API is
 `log.<level>(msg, fields?)` or `log.<level>(req, msg, fields?)` (the `req` form
 folds in the request context), and **`fields` is flat by type** — nested
 objects/arrays don't compile, forcing a caller to flatten (logfmt can't
@@ -424,28 +418,27 @@ duplicate it. `level=` also gives Grafana a field to colour rows by.
 **Build SHA / stale-client reload.** `common/version.ts` (`export const SHA`) is
 generated at build time by `scripts/genVersion.ts` — the `version` task, which
 `build`/`dev` run first; it's **gitignored** (a build artifact like
-`public/js`), so `deno task start` requires a prior build (CI generates it
-before `deno check`/`build`). Because it lives in pure `common/`, the server
-imports the _same_ constant the client bundles, so the two SHAs are
-byte-identical by construction — no `GIT_SHA` env plumbing, no short-vs-full
-mismatch. `genVersion` prefers a `GIT_SHA` env, else
-`git rev-parse --short HEAD`, else `"dev"` (which no-ops the comparison). Every
-request logs `serverSha` (this process's build) and `clientSha` (the caller's
-bundle, sent as the `x-blocktol-client-sha` header) on the start line, so
-version skew is queryable. `endLogger` stamps `x-blocktol-server-sha` on
-responses; the client reads it (`api.ts` → `store/version.ts`) and, when the
-server's build differs from its own bundle, sets a sticky `staleServerSha`
-signal. `useVersionRefresh` (wired in `App`) then `location.reload()`s to pick
-up the fresh assets — but **never mid-attempt** (deferred while the board phase
-is `building`/`running`; the sticky flag reloads once the attempt ends), and
-**at most once per server build** (`claimReloadFor`, a marker in storage; no
-auto-reload where storage is blocked). Mid in-place deploy the outgoing process
-can answer a client already holding the new bundle, which no reload fixes, so an
-unguarded reload loops. The same window can poison caches: the old process
-stamps its old `?v` while disk holds the new files. So `sw.js` caches a
-versioned asset only if its bytes hash to its `?v` (the server's `shortHash`,
-mirrored), and `staticServe` marks an asset immutable only while its file's
-mtime is the one this process hashed.
+`public/js`), so `npm start` requires a prior build (`typecheck` and `build`
+generate it first). Because it lives in pure `common/`, the server imports the
+_same_ constant the client bundles, so the two SHAs are byte-identical by
+construction — no `GIT_SHA` env plumbing, no short-vs-full mismatch.
+`genVersion` prefers a `GIT_SHA` env, else `git rev-parse --short HEAD`, else
+`"dev"` (which no-ops the comparison). Every request logs `serverSha` (this
+process's build) and `clientSha` (the caller's bundle, sent as the
+`x-blocktol-client-sha` header) on the start line, so version skew is queryable.
+`endLogger` stamps `x-blocktol-server-sha` on responses; the client reads it
+(`api.ts` → `store/version.ts`) and, when the server's build differs from its
+own bundle, sets a sticky `staleServerSha` signal. `useVersionRefresh` (wired in
+`App`) then `location.reload()`s to pick up the fresh assets — but **never
+mid-attempt** (deferred while the board phase is `building`/`running`; the
+sticky flag reloads once the attempt ends), and **at most once per server
+build** (`claimReloadFor`, a marker in storage; no auto-reload where storage is
+blocked). Mid in-place deploy the outgoing process can answer a client already
+holding the new bundle, which no reload fixes, so an unguarded reload loops. The
+same window can poison caches: the old process stamps its old `?v` while disk
+holds the new files. So `sw.js` caches a versioned asset only if its bytes hash
+to its `?v` (the server's `shortHash`, mirrored), and `staticServe` marks an
+asset immutable only while its file's mtime is the one this process hashed.
 
 The user id rides telemetry only as a **hashed** tag (`userHash` in the request
 log, `user.hash` on the request span), via `util/hashUserId.ts` (a truncated

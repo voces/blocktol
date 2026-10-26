@@ -1,8 +1,7 @@
 // A dependency-free Web Push sender on WebCrypto: VAPID request authorization
 // (RFC 8292) plus "aes128gcm" payload encryption (RFC 8291 over RFC 8188). The
 // npm `web-push` package's transitive deps read arbitrary env vars at load
-// (ECE_KEYLOG, DEBUG, …), which trips the scoped `--allow-env`; this reads
-// only the VAPID_* vars. The encryption is verified against RFC 8291 §5's test
+// (ECE_KEYLOG, DEBUG, …); this reads only the VAPID_* vars. The encryption is verified against RFC 8291 §5's test
 // vector (webpush.test.ts).
 
 import { errText, log } from "./logging.ts";
@@ -127,9 +126,7 @@ const RECORD_SIZE = 4096;
 
 // Everything after the ECDH: mix the auth secret and salt into the CEK+nonce
 // (RFC 8291 §3.4, RFC 8188), then frame one AES-128-GCM record. Split out so
-// the RFC 8291 §5 vector can feed in its published `ecdhSecret`: Deno's
-// WebCrypto can't deriveBits from an imported private key, so a fixed server
-// key can't be injected.
+// the RFC 8291 §5 vector can feed in its published `ecdhSecret` directly.
 const sealRecord = async (
   ecdhSecret: Bytes,
   uaPublic: Bytes,
@@ -212,22 +209,11 @@ export const encryptPayload = async (
 
 // ---- config from the environment ----
 
-// Returns undefined for an absent OR unpermitted var instead of throwing, so
-// importing this module under a scoped --allow-env (the test task grants no
-// VAPID_*) reads as push unconfigured.
-const readEnv = (name: string): string | undefined => {
-  try {
-    return process.env[name];
-  } catch {
-    return undefined;
-  }
-};
-
 // Read once. Without both keys sends are skipped; in-app notifications still
 // work.
-const vapidPublic = readEnv("VAPID_PUBLIC_KEY");
-const vapidPrivate = readEnv("VAPID_PRIVATE_KEY");
-const vapidSubject = readEnv("VAPID_SUBJECT") ?? "mailto:admin@blocktol.com";
+const vapidPublic = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+const vapidSubject = process.env.VAPID_SUBJECT ?? "mailto:admin@blocktol.com";
 
 export const pushConfigured = (): boolean => !!(vapidPublic && vapidPrivate);
 

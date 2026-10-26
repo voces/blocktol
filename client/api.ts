@@ -12,7 +12,7 @@ export type MessageMap =
       Awaited<ReturnType<BlocktolApi[Method]>>,
       Extract<
         Awaited<ReturnType<BlocktolApi[Method]>>,
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         { error: any }
       >
     >;
@@ -360,7 +360,7 @@ export const api = new Proxy({}, {
         reportFailedRequest(method, resp.status, data.error);
         em.dispatchEvent("error", { method, input, error: data });
       } else {
-        // deno-lint-ignore no-explicit-any
+        // oxlint-disable-next-line typescript/no-explicit-any
         em.dispatchEvent(method, data as any);
       }
       return data;

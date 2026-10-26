@@ -10,9 +10,7 @@ const utf8 = new TextEncoder();
 // credential.
 //
 // 16 hex chars (64 bits of the digest) is collision-free at any realistic user
-// count. Web Crypto, not node:crypto: importing `node:crypto` pulls in
-// `@types/node`, whose `setTimeout` returns `NodeJS.Timeout` and breaks the
-// client's `number` typing under the shared `deno check`.
+// count.
 export const hashUserId = async (id: string): Promise<string> => {
   const buf = await crypto.subtle.digest("SHA-256", utf8.encode(id));
   let hex = "";
