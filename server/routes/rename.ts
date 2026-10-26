@@ -8,6 +8,8 @@ import { method } from "./apiHelpers.ts";
 // Trimmed, at most 32 code points like the `name` column (an emoji counts
 // once). An all-whitespace name is rejected rather than blanking the profile.
 const renameBody = z.object({
+  // Counts code points, as the utf8mb4 column does, not UTF-16 units.
+  // oxlint-disable-next-line typescript/no-misused-spread
   name: z.string().trim().min(1).refine((s) => [...s].length <= 32, {
     message: "Name too long",
   }),

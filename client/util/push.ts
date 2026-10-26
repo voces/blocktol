@@ -34,7 +34,7 @@ let publicKeyPromise: Promise<string | null> | null = null;
 const getPublicKey = (): Promise<string | null> => {
   if (!publicKeyPromise) {
     publicKeyPromise = api.pushConfig({})
-      .then((r) => (r && !("error" in r) ? r.publicKey : null))
+      .then((r) => (!("error" in r) ? r.publicKey : null))
       .catch(() => null);
   }
   return publicKeyPromise;
@@ -110,7 +110,8 @@ export const subscribePush = async (): Promise<boolean> => {
     let sub = await reg.pushManager.getSubscription();
 
     // Drop a stale-key subscription here AND server-side (a 403 never prunes
-    // it), then mint a fresh one.
+    // it), then mint a fresh one. Older browsers have no `options`.
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (sub && !keyMatches(sub.options?.applicationServerKey, key)) {
       const stale = sub.endpoint;
       await sub.unsubscribe().catch(() => {});
@@ -123,6 +124,8 @@ export const subscribePush = async (): Promise<boolean> => {
       applicationServerKey: urlBase64ToUint8Array(key),
     });
     const json = sub.toJSON();
+    // toJSON's `keys` is typed always present, but a browser can omit it.
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
       pushState.value = "unavailable";
       return false;
@@ -133,7 +136,7 @@ export const subscribePush = async (): Promise<boolean> => {
       // So server-rendered push copy matches this device.
       locale: getLocale(),
     });
-    const ok = !!r && !("error" in r);
+    const ok = !("error" in r);
     if (ok) await mirrorCredential();
     pushState.value = ok ? "ok" : "unavailable";
     return ok;

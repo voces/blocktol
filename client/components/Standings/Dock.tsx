@@ -49,12 +49,12 @@ export const StandingsDock = () => {
   // Fetch the viewed day (boot consumes the primed today fetch); re-fires as
   // the calendar swaps days or the today entry first resolves.
   useEffect(() => {
-    fetchStandings(isToday ? undefined : iteration);
+    void fetchStandings(isToday ? undefined : iteration);
   }, [iteration, isToday]);
   // The reveal follows the player's own attempts, which move today's board:
   // re-rank behind the appearing dock.
   useEffect(() => {
-    if (revealed && isToday) refreshStandings(undefined);
+    if (revealed && isToday) void refreshStandings(undefined);
   }, [revealed]);
 
   const key = isToday ? todayIteration.value : iteration;
@@ -70,7 +70,7 @@ export const StandingsDock = () => {
       : request.iteration === key;
     if (!wantsThisDay) return;
     setOpen(true);
-    refreshStandings(isToday ? undefined : iteration);
+    void refreshStandings(isToday ? undefined : iteration);
     openStandingsRequest.value = null;
   }, [request, revealed, key, isToday]);
 
@@ -89,9 +89,7 @@ export const StandingsDock = () => {
   // link's entry URL before consumeDeepLink restores it.
   const day = isToday
     ? undefined
-    : (iteration !== undefined
-      ? dailyItems.value.get(iteration)?.daily
-      : undefined) ?? s?.day;
+    : dailyItems.value.get(iteration)?.daily ?? s?.day;
   const dayKey = day ? day.join("-") : "";
   useEffect(() => {
     if (!viewReady.value) return;
@@ -115,7 +113,7 @@ export const StandingsDock = () => {
     : me.record === "match"
     ? "var(--peak)"
     : sort === "pb"
-    ? (me.percent != null ? standingColor(me.percent) : undefined)
+    ? standingColor(me.percent)
     : (me.percentile != null ? percentileColor(me.percentile) : undefined);
 
   return (
@@ -128,7 +126,7 @@ export const StandingsDock = () => {
         onClick={() => {
           setOpen(true);
           // The sheet is opening onto possibly-stale ranks; refresh behind it.
-          refreshStandings(isToday ? undefined : iteration);
+          void refreshStandings(isToday ? undefined : iteration);
         }}
       >
         <span class="standings-dock__chevron">

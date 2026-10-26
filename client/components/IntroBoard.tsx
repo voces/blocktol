@@ -343,9 +343,6 @@ export const IntroBoard = (
     return best;
   }, [bare]);
 
-  const live = useMemo(() => localRun(blocks, introCheckpoint), [blocks]);
-  const duration = live?.duration ?? bare.duration;
-
   const bricks = Math.max(
     0,
     INTRO_BRICKS - blocks.filter((b) => b.local).length,

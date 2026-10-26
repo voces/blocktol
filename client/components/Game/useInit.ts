@@ -123,7 +123,7 @@ export const useInit = () => {
       return;
     }
     api.getBoard({ iteration, timeZone: getTimeZone() }).then((r) => {
-      if (r && !("error" in r) && !("incomplete" in r)) {
+      if (!("error" in r) && !("incomplete" in r)) {
         setViewedAttempts(r.attempts);
       }
     }).catch(() => {});
@@ -337,7 +337,7 @@ export const useInit = () => {
         // today would race consumeDeepLink's showBoard and steal the board
         // (and URL) from the linked day. A today-link stages here, and
         // consumeDeepLink steps aside for it.
-        if (!stagingPastDayLink()) showBoard(iteration);
+        if (!stagingPastDayLink()) void showBoard(iteration);
         return;
       }
 
@@ -374,14 +374,14 @@ export const useInit = () => {
         // instead of racing a slow (retrying) commit. Bail if the player
         // navigated away meanwhile.
         const token = boardSeq();
-        awaitPendingCommit().then(() => {
+        void awaitPendingCommit().then(() => {
           if (boardSeq() !== token) return;
           // The re-stage refreshes the board's bests and recents, then the
           // executed maze is overlaid as a review so the run just watched stays
           // up. The stage must land first: it lays out the day's fixed pieces.
           // `staged` means this request took the board, so it is the only guard
           // the overlay needs. An empty maze has nothing to review.
-          showBoard(iteration).then((staged) => {
+          void showBoard(iteration).then((staged) => {
             // No replay: the run just finished animating.
             if (staged && executed.length) {
               viewMaze(executed, { replay: false });
@@ -405,7 +405,7 @@ export const useInit = () => {
       // right attempt number; the summary refresh reconciles it.
       setAttemptsRemaining((a) => Math.max(a - 1, 0));
       if (attemptsRemaining > 1) enterPrestart();
-      api.getDailySummary({ iteration });
+      void api.getDailySummary({ iteration });
     },
     [iteration, attemptsRemaining, freePlay, blocks, viewing],
   );
@@ -478,7 +478,7 @@ export const useInit = () => {
         // server's `created` once the commit lands.
         const provisionalCreated = Date.now();
         commit.then((r) => {
-          const created = r && !("error" in r) ? r.created : null;
+          const created = !("error" in r) ? r.created : null;
           if (created == null) return;
           setViewedAttempts((attempts) =>
             attempts.map((a) =>

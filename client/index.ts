@@ -22,7 +22,7 @@ initSettings();
 // lifetime (PRIME_TTL_MS); a first-time user primes on finishing (App's onDone
 // calls primeSession).
 if (!getPendingLink() && !getCleanLink() && getHasCompletedOnboarding()) {
-  primeSession();
+  void primeSession();
 }
 
 render(h(ErrorBoundary, null, h(App, {})), document.body);

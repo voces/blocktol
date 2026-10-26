@@ -25,8 +25,8 @@ export const primeSession = () => {
     { timeZone: getTimeZone(), ...(day ? { day } : {}) },
     [monthListInput(idx), monthListInput(idx - 1)],
   ).then((b) => {
-    const s = b?.standings;
-    if (s && !("error" in s) && typeof s.iteration === "number") {
+    const s = b.standings;
+    if (!("error" in s) && typeof s.iteration === "number") {
       todayIteration.value = s.iteration;
     }
   }).catch(() => {});

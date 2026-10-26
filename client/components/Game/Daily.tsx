@@ -247,7 +247,7 @@ export const Daily = () => {
               // failed or hasn't landed.
               if (!staged) {
                 clear();
-                showBoard(iteration);
+                void showBoard(iteration);
               }
               setHideDailyResult(true);
             }}

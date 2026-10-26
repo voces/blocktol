@@ -190,7 +190,7 @@ export const App = () => {
     // Warm the profile cache in parallel; `getProfile` seeds the user row, so
     // it needn't wait on the summary. Its server-persisted settings (the
     // cross-device source of truth) override the boot-time localStorage guess.
-    fetchProfile().then((p) => {
+    void fetchProfile().then((p) => {
       if (p?.settings) adoptServerSettings(p.settings);
     });
   }, [showOnboarding, linkPending, retry, resumeNonce]);
@@ -202,7 +202,7 @@ export const App = () => {
   useEffect(() => {
     if (showOnboarding || linkPending || notificationsBooted.current) return;
     notificationsBooted.current = true;
-    fetchNotifications();
+    void fetchNotifications();
     startNotificationsPolling();
     initPushChannel();
     syncPushSubscription();
@@ -210,7 +210,7 @@ export const App = () => {
     startRolloverWatch();
     // Route a day permalink / push notification load to its day; runs after the
     // game tree mounts so board handlers exist.
-    consumeDeepLink();
+    void consumeDeepLink();
   }, [showOnboarding, linkPending]);
 
   const gameState = useGameState();
@@ -267,7 +267,7 @@ export const App = () => {
             // Prime the boot request NOW, synchronously before Game mounts and
             // its effects fetch, so the first load is one request instead of a
             // fan-out (the module-eval prime is skipped mid-onboarding).
-            primeSession();
+            void primeSession();
             setShowOnboarding(false);
             setHasCompletedOnboarding();
           }}

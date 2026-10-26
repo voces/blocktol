@@ -35,7 +35,9 @@ const subscribers = new Set<(s: Settings) => void>();
 // `--background: light-dark(#f4f4f7, #0c0c11)`.
 const BACKGROUND = { light: "#f4f4f7", dark: "#0c0c11" } as const;
 
+// matchMedia is missing outside a browser (Node, in tests).
 const prefersDark = () =>
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 
 // Point the theme-color meta at the resolved theme's background. "system"
@@ -68,6 +70,8 @@ export const applyTheme = (theme: Theme) => {
 export const applyLanguage = (language: Language) => {
   const tag = language && language !== "system"
     ? language
+    // No navigator outside a browser (Node, in tests).
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     : (globalThis.navigator?.language || "en");
   // Before the signal flips, so its re-render formats numbers in the new
   // language too.
@@ -77,6 +81,8 @@ export const applyLanguage = (language: Language) => {
 };
 
 // Re-sync the bar when the OS flips; an explicit light/dark theme ignores it.
+// No matchMedia outside a browser; no MediaQueryList listeners in old Safari.
+// oxlint-disable-next-line typescript/no-unnecessary-condition
 globalThis.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.(
   "change",
   () => {
@@ -130,7 +136,7 @@ export const adoptServerSettings = (settings: Settings) => {
 let persistTimer: ReturnType<typeof setTimeout> | undefined;
 const schedulePersist = () => {
   clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => api.setSettings(current), 400);
+  persistTimer = setTimeout(() => void api.setSettings(current), 400);
 };
 
 export const useSettings = () => {

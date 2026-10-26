@@ -101,7 +101,7 @@ export const StandingsSheet = (
   const persistedSort = standingsSort.value;
 
   useEffect(() => {
-    fetchStandings(isToday ? undefined : iteration);
+    void fetchStandings(isToday ? undefined : iteration);
   }, [iteration, isToday]);
 
   // The countdown only needs minute resolution; re-render on a slow tick.

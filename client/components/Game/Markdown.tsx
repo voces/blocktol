@@ -67,7 +67,6 @@ const parse = (string: string) => {
     const token = tokens[index++]!;
     if (token.kind === "inline") {
       const inlineName = getInlineName(token.content);
-      if (!inlineName) throw new Error(`Unknown inline kind: ${token.content}`);
       const chainIndex = chain.findIndex((n) => n.kind === inlineName);
       if (chainIndex >= 0) {
         chain.splice(chainIndex);
@@ -90,30 +89,26 @@ const parse = (string: string) => {
       continue;
     }
 
-    if (token.kind === "localDate") {
-      const parts = token.content.match(/\\localDate\((\d+), (\d+), (\d+)\)/);
-      if (!parts || parts.length !== 4) {
-        chain[chain.length - 1]!.children.push(token.content);
-        continue;
-      }
-      chain[chain.length - 1]!.children.push(
-        new Intl.DateTimeFormat(intlLocale(), {
-          dateStyle: "medium",
-          timeZone: "UTC",
-        }).format(
-          // UTC midnight to match the UTC formatting; local midnight read in
-          // UTC is the previous day east of Greenwich.
-          new Date(Date.UTC(
-            parseInt(parts[1]!),
-            parseInt(parts[2]!) - 1,
-            parseInt(parts[3]!),
-          )),
-        ),
-      );
+    // The last kind: "localDate".
+    const parts = token.content.match(/\\localDate\((\d+), (\d+), (\d+)\)/);
+    if (!parts || parts.length !== 4) {
+      chain[chain.length - 1]!.children.push(token.content);
       continue;
     }
-
-    throw new Error(`Unparseable token: ${JSON.stringify(token)}`);
+    chain[chain.length - 1]!.children.push(
+      new Intl.DateTimeFormat(intlLocale(), {
+        dateStyle: "medium",
+        timeZone: "UTC",
+      }).format(
+        // UTC midnight to match the UTC formatting; local midnight read in
+        // UTC is the previous day east of Greenwich.
+        new Date(Date.UTC(
+          parseInt(parts[1]!),
+          parseInt(parts[2]!) - 1,
+          parseInt(parts[3]!),
+        )),
+      ),
+    );
   }
 
   return root;

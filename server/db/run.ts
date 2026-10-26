@@ -130,7 +130,7 @@ export const insertFreePlayRun = (
       AND iteration = ${iteration}
       AND client_id = ${clientId}
     LIMIT 1;
-  `.then((r) => r?.[1]?.[0]?.created ?? null);
+  `.then((r) => r[1][0]?.created ?? null);
 
 // Save the caller's in-progress build (latest run, within the 60s window).
 // Whether the save also commits comes off the run row itself: `ranked` was
@@ -252,7 +252,7 @@ export const updateCurrentRun = (
     ORDER BY created ASC LIMIT 1;
 
     COMMIT;`.then((r) => ({
-    saved: !!r?.[2]?.[0]?.fresh,
+    saved: !!r[2]?.[0]?.fresh,
   }));
 
 // Pin (or unpin) the caller's runs on an iteration. The runs panel merges runs

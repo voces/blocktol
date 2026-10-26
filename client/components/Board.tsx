@@ -221,16 +221,14 @@ export const Board = (
             </>
           );
         })}
-        {checkpoint && (
-          <rect
-            x={checkpoint.x + 0.55}
-            y={checkpoint.y + 0.55}
-            rx={0.06}
-            width={0.9}
-            height={0.9}
-            fill="var(--maze-checkpoint)"
-          />
-        )}
+        <rect
+          x={checkpoint.x + 0.55}
+          y={checkpoint.y + 0.55}
+          rx={0.06}
+          width={0.9}
+          height={0.9}
+          fill="var(--maze-checkpoint)"
+        />
         {
           /* Ghosts of reverted (never-persisted) blocks: a brief puff-then-
           collapse where each stood. Visual only; they self-clear from state. */
@@ -251,7 +249,7 @@ export const Board = (
             color={invalid
               ? "placing-error"
               : dragging
-              ? transitionBlock?.thunder ? "player-thunder" : "player-block"
+              ? transitionBlock.thunder ? "player-thunder" : "player-block"
               : "placing-block"}
             opacity={dragging ? (invalid ? 0.5 : 1) : 0.4}
             style={{ transition: "x 100ms, y 100ms" }}

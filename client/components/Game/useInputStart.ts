@@ -71,14 +71,15 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         17,
       );
 
-      const nearest = blocks.reduce<[number, typeof blocks[number]]>(
-        (prev, block) => {
-          const dist = Math.abs(block.x - xRaw) + Math.abs(block.y - yRaw);
-          if (dist < prev[0]) return [dist, block];
-          return prev;
-        },
-        [Infinity, blocks[0]!],
-      )[1]!;
+      const nearest =
+        blocks.reduce<[number, typeof blocks[number] | undefined]>(
+          (prev, block) => {
+            const dist = Math.abs(block.x - xRaw) + Math.abs(block.y - yRaw);
+            if (dist < prev[0]) return [dist, block];
+            return prev;
+          },
+          [Infinity, blocks[0]],
+        )[1];
       const overlap =
         nearest && Math.abs(nearest.x - x) <= 1 && Math.abs(nearest.y - y) <= 1
           ? nearest

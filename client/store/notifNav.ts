@@ -65,7 +65,7 @@ api.addEventListener("getDailySummary", () => {
 const abandonPastDayLink = () => {
   if (!pastDayLink) return;
   pastDayLink = false;
-  if (summarySeen) api.getDailySummary({ timeZone: getTimeZone() });
+  if (summarySeen) void api.getDailySummary({ timeZone: getTimeZone() });
 };
 
 // A pending request to open the profile at its Account section or the
@@ -127,7 +127,7 @@ const sortFor = (kind: NotificationKind): StandingsSort =>
 // surface the leaderboard.
 const goToDay = (iteration: number, sort?: StandingsSort) => {
   if (sort) setStandingsSort(sort);
-  showBoard(iteration);
+  void showBoard(iteration);
   requestStandings(iteration);
 };
 
@@ -189,7 +189,7 @@ export const consumeDeepLink = async () => {
     if (boardParam) {
       requestStandings(s.iteration);
       // Tapping the push counts as reading its notification.
-      if (kind) markReadForDay(s.iteration, kind);
+      if (kind) void markReadForDay(s.iteration, kind);
     }
   } catch {
     abandonPastDayLink();

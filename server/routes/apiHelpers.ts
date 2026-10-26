@@ -14,8 +14,7 @@ export const method = <Input, Authed extends boolean>(
 <Output>(
   handler: (
     // `{}` is the identity for `&` when there is no `userId` to add.
-    // oxlint-disable-next-line typescript/no-unsafe-function-type
-    input: Input & (Authed extends true ? { userId: string } : {}),
+    input: Input & (Authed extends true ? { userId: string } : unknown),
     request: Request,
   ) => Output | Promise<Output>,
 ) => ({

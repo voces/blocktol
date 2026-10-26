@@ -57,7 +57,7 @@ npm run preview      # static-serve ./ on :8081 (inspect public/ pages)
 
 npm run check        # everything CI gates on: format, lint, typecheck, i18n, tests
 npm run fmt          # format with dprint (CI runs `npm run fmt:check`; markdown included)
-npm run lint         # oxlint
+npm run lint         # oxlint, type-aware (.oxlintrc.json)
 npm run typecheck    # TypeScript 7 (pinned): tsconfig.common.json, tsconfig.json, tsconfig.tools.json
 ```
 
@@ -74,6 +74,17 @@ a browser timer handle is typed `ReturnType<typeof setTimeout>`, never `number`.
 generated files (`common/version.ts`, the compiled i18n catalogs) are made by
 `npm run gen`, which `typecheck`, `test` (i18n) and `build` run first, so a
 fresh checkout needs nothing else.
+
+`lint` runs oxlint with type information over every source root. Beyond its
+correctness rules it enforces `no-floating-promises` (a deliberate
+fire-and-forget is written `void call()`; `node:test`'s `test` is exempt),
+`no-misused-promises`, `switch-exhaustiveness-check`, `no-unnecessary-condition`
+(off in tests and scripts until `tsconfig.tools.json` has
+`noUncheckedIndexedAccess`), `no-explicit-any`, `no-require-imports`, a ban on
+other test and UI frameworks' imports, and `no-console` in `server/` and
+`common/` (log through `util/logging.ts`). A check the types can't see, such as
+a browser feature test, keeps an `oxlint-disable-next-line` with its reason on
+the line above; an unused directive is itself an error.
 
 Run a **single test file / filter**:
 

@@ -187,7 +187,7 @@ export const commitFreePlay = (
   enqueue(entry);
   const p = send(entry);
   p.then((r) => {
-    if (settled(r)) flushFreePlayOutbox();
+    if (settled(r)) void flushFreePlayOutbox();
   }).catch(() => {});
   return p;
 };
@@ -221,8 +221,8 @@ export const clearFreePlayOutbox = () => writeOutbox([]);
 // Boot wiring: drain earlier sessions' leftovers after the boot requests have
 // had the wire to themselves, and again on `online`.
 export const installFreePlayOutbox = () => {
-  setTimeout(() => flushFreePlayOutbox(), 3_000);
-  globalThis.addEventListener("online", () => flushFreePlayOutbox());
+  setTimeout(() => void flushFreePlayOutbox(), 3_000);
+  globalThis.addEventListener("online", () => void flushFreePlayOutbox());
 };
 
 // Drop the local record and the id: at execution (the outbox holds the run from

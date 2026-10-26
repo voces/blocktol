@@ -156,7 +156,7 @@ test(
       const req = new Request("http://localhost/api/merge", {
         headers: { authorization: user },
       });
-      extractUserId(req, {} as never, undefined);
+      void extractUserId(req, {} as never, undefined);
       const res = await merge.handler(
         { other: `t-${crypto.randomUUID().slice(0, 16)}`, primary: "other" },
         req,

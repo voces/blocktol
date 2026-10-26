@@ -43,8 +43,8 @@ export const NotificationsBell = () => {
         class={"icon-button notif-bell tapc" +
           (swing ? " notif-bell--swing" : "")}
         onClick={() => setOpen(true)}
-        onPointerEnter={() => fetchNotifications()}
-        onFocus={() => fetchNotifications()}
+        onPointerEnter={() => void fetchNotifications()}
+        onFocus={() => void fetchNotifications()}
         title={t("notif.bell.title")}
         aria-label={count > 0
           ? t("notif.bell.unread", { count })

@@ -70,7 +70,7 @@ const server = serve(
 const DRAIN_MS = 60_000;
 const closed = () =>
   new Promise<void>((resolve) => server.close(() => resolve()));
-process.on("SIGTERM", async () => {
+const shutdown = async () => {
   log.info("shutting down");
   let timer: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
@@ -80,4 +80,5 @@ process.on("SIGTERM", async () => {
   clearTimeout(timer);
   await flushTelemetry(3_000);
   process.exit(0);
-});
+};
+process.on("SIGTERM", () => void shutdown());

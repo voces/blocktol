@@ -7,4 +7,4 @@ i18n/config.json linguist-generated=false
 i18n/glossary.json linguist-generated=false
 
 # Dependency lockfile.
-deno.lock linguist-generated=true
+package-lock.json linguist-generated=true

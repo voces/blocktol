@@ -31,12 +31,12 @@ const withServer = async (body: (sent: Sent[]) => Promise<void>) => {
   globalThis.fetch = (url, init) => {
     // The api client relays error answers to reportClientError; only the
     // saves are the server under test.
-    if (!String(url).endsWith("/updateRun")) {
+    if (!(url as string).endsWith("/updateRun")) {
       return Promise.resolve(Response.json({}));
     }
     return new Promise((resolve) =>
       sent.push({
-        body: JSON.parse(String(init?.body)),
+        body: JSON.parse(init?.body as string),
         answer: (r) => resolve(Response.json(r)),
       })
     );

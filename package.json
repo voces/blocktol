@@ -59,6 +59,7 @@
     "dprint-plugin-yaml": "0.6.0",
     "esbuild": "0.25.5",
     "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2004",
     "typescript": "7.0.2"
   },
   "engines": {

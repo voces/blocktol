@@ -3,7 +3,9 @@ import { forwardRef, useState } from "preact/compat";
 
 export const Input = forwardRef<
   HTMLInputElement,
-  JSX.HTMLAttributes<HTMLInputElement>
+  // A plain style: it is merged into the input's own (no signal).
+  & Omit<JSX.HTMLAttributes<HTMLInputElement>, "style">
+  & { style?: string | JSX.CSSProperties }
 >((
   { style, onFocus, onBlur, ...rest },
   ref,
@@ -21,7 +23,10 @@ export const Input = forwardRef<
           backgroundColor: "inherit",
           color: "inherit",
           outline: "none",
-          ...(typeof style === "object" && style),
+          // A plain object: preact's CSSProperties maps CSSStyleDeclaration's
+          // keys, Symbol.iterator included, so it reads as iterable.
+          // oxlint-disable-next-line typescript/no-misused-spread
+          ...(typeof style === "object" ? style : {}),
           ...(hasFocus && {
             borderBottomColor: "var(--maze-checkpoint)",
           }),

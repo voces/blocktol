@@ -53,6 +53,8 @@ export const coerceFlat = (obj: Record<string, unknown>): LogFields => {
       try {
         out[k] = JSON.stringify(v);
       } catch {
+        // JSON failed (a cycle): the default string is the last resort.
+        // oxlint-disable-next-line typescript/no-base-to-string
         out[k] = String(v);
       }
     }
@@ -115,7 +117,6 @@ const emit = (
   const line = formatLogfmt(level, msg, all);
   // The one sanctioned console call; every log flows through it. stdout is
   // the journal, read on the box with journalctl.
-  // oxlint-disable-next-line no-console
   console[level](line);
   // The same line as an OTel log record (server/otel.ts ships it to
   // VictoriaLogs as `_msg`), joining the active span's trace; a no-op with
@@ -138,7 +139,7 @@ const make = (level: Level): LogFn =>
   ((a: Request | string, b?: string | LogFields, c?: LogFields) =>
     a instanceof Request
       ? emit(level, a, b as string, c ?? {})
-      : emit(level, undefined, a, (b as LogFields) ?? {})) as LogFn;
+      : emit(level, undefined, a, (b ?? {}) as LogFields)) as LogFn;
 
 export const log = {
   error: make("error"),

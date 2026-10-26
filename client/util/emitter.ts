@@ -29,61 +29,53 @@ export const emitter = <T, Events extends EventMap>(
 
   const modifiedHost = host as T & Emitter<Events>;
 
-  if (!modifiedHost.addEventListener) {
-    modifiedHost.addEventListener = <Event extends keyof Events>(
-      name: Event,
-      callback: (event: Events[Event]) => void,
-    ) => {
-      const callbacks: ((event: Events[Event]) => void)[] = events[name] ?? [];
+  modifiedHost.addEventListener = <Event extends keyof Events>(
+    name: Event,
+    callback: (event: Events[Event]) => void,
+  ) => {
+    const callbacks: ((event: Events[Event]) => void)[] = events[name] ?? [];
 
-      if (!events[name]) events[name] = callbacks;
+    if (!events[name]) events[name] = callbacks;
 
-      callbacks.push(callback);
+    callbacks.push(callback);
 
-      return callback;
-    };
-  }
+    return callback;
+  };
 
-  if (!modifiedHost.removeEventListener) {
-    modifiedHost.removeEventListener = <Event extends keyof Events>(
-      name: Event,
-      callback: (event: Events[Event]) => void,
-    ) => {
-      const callbacks: ((event: Events[Event]) => void)[] | undefined =
-        events[name] ?? undefined;
-      if (!callbacks) return;
+  modifiedHost.removeEventListener = <Event extends keyof Events>(
+    name: Event,
+    callback: (event: Events[Event]) => void,
+  ) => {
+    const callbacks: ((event: Events[Event]) => void)[] | undefined =
+      events[name] ?? undefined;
+    if (!callbacks) return;
 
-      const index = callbacks.indexOf(callback);
-      if (index >= 0) callbacks.splice(index, 1);
-    };
-  }
+    const index = callbacks.indexOf(callback);
+    if (index >= 0) callbacks.splice(index, 1);
+  };
 
-  if (!modifiedHost.removeEventListeners) {
-    modifiedHost.removeEventListeners = (name) => {
-      if (!name) {
-        events = {};
-        return;
-      }
+  modifiedHost.removeEventListeners = (name) => {
+    if (!name) {
+      events = {};
+      return;
+    }
 
-      events[name] = [];
-    };
-  }
+    events[name] = [];
+  };
 
-  if (!modifiedHost.dispatchEvent) {
-    modifiedHost.dispatchEvent = <Event extends keyof Events>(
-      name: Event,
-      event: Events[Event],
-    ) => {
-      const callbacks: ((event: Events[Event]) => void)[] | undefined =
-        events[name] ?? undefined;
-      if (!callbacks) return;
+  modifiedHost.dispatchEvent = <Event extends keyof Events>(
+    name: Event,
+    event: Events[Event],
+  ) => {
+    const callbacks: ((event: Events[Event]) => void)[] | undefined =
+      events[name] ?? undefined;
+    if (!callbacks) return;
 
-      // Iterate a snapshot: a listener may re-render synchronously and add or
-      // remove listeners mid-dispatch, and splice would shift indices so
-      // forEach skips one.
-      [...callbacks].forEach((callback) => callback.call(host, event));
-    };
-  }
+    // Iterate a snapshot: a listener may re-render synchronously and add or
+    // remove listeners mid-dispatch, and splice would shift indices so
+    // forEach skips one.
+    [...callbacks].forEach((callback) => callback.call(host, event));
+  };
 
   return modifiedHost;
 };
