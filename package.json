@@ -22,7 +22,7 @@
     "test": "npm run i18n && node --test --test-concurrency=1 \"{client,common,scripts,server}/**/*.test.{ts,tsx}\"",
     "fmt": "dprint fmt",
     "fmt:check": "dprint check",
-    "lint": "oxlint",
+    "lint": "npm run gen && oxlint",
     "check": "npm run fmt:check && npm run lint && npm run typecheck && npm run i18n:check && npm run i18n:unused && npm test"
   },
   "dependencies": {
@@ -59,6 +59,7 @@
     "dprint-plugin-yaml": "0.6.0",
     "esbuild": "0.25.5",
     "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2004",
     "typescript": "7.0.2"
   },
   "engines": {

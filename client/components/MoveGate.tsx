@@ -298,7 +298,6 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // "Copied" shows only once the clipboard took the link. A refused clipboard
@@ -567,7 +566,7 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
         <button
           type="button"
           class="mg-btn mg-btn--primary tapc mg-body-btn"
-          onClick={() => doMerge(primaryIsSelf ? "self" : "other")}
+          onClick={() => void doMerge(primaryIsSelf ? "self" : "other")}
         >
           {t("mg.mergeInto", { name: primaryName })}
         </button>

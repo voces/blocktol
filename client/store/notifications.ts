@@ -85,7 +85,7 @@ const apply = (data: NotificationsData) => {
   const affected = [...new Set(arrived.map((n) => n.iteration))];
   for (const it of affected) {
     // Today's standings are cached under "today", past days under the id.
-    refreshStandings(it === todayIteration.peek() ? undefined : it);
+    void refreshStandings(it === todayIteration.peek() ? undefined : it);
   }
   regradedIterations.value = {
     nonce: regradedIterations.peek().nonce + 1,
@@ -96,7 +96,7 @@ const apply = (data: NotificationsData) => {
 // One request per freshness window; a failed fetch frees the window.
 const fetchOnce = keyedQuery(async () => {
   const r = await api.getNotifications({});
-  if (!r || "error" in r) throw new Error("failed to fetch notifications");
+  if ("error" in r) throw new Error("failed to fetch notifications");
   apply(r);
   return r;
 }, { staleMs: 20_000 });
@@ -125,7 +125,7 @@ export const markRead = async (ids?: number[]) => {
     notifications.value.filter((n) => !n.read && !n.reclaimed).length;
   try {
     const r = await api.markNotificationsRead(ids ? { ids } : {});
-    if (r && !("error" in r)) unreadCount.value = r.unread;
+    if (!("error" in r)) unreadCount.value = r.unread;
   } catch {
     // Leave the optimistic state; the next fetch reconciles.
   }
@@ -147,7 +147,7 @@ export const markReadForDay = async (
     notifications.value.filter((n) => !n.read && !n.reclaimed).length;
   try {
     const r = await api.markNotificationsRead({ iteration, kind });
-    if (r && !("error" in r)) unreadCount.value = r.unread;
+    if (!("error" in r)) unreadCount.value = r.unread;
   } catch {
     // Leave the optimistic state; the next fetch reconciles.
   }
@@ -159,7 +159,7 @@ export const markReadForDay = async (
 const POLL_MS = 90_000;
 let timer: ReturnType<typeof setInterval> | undefined;
 const tick = () => {
-  if (document.visibilityState === "visible") refreshNotifications();
+  if (document.visibilityState === "visible") void refreshNotifications();
 };
 export const startNotificationsPolling = () => {
   clearInterval(timer);
@@ -174,7 +174,7 @@ export const initPushChannel = () => {
   if (!("serviceWorker" in navigator)) return;
   navigator.serviceWorker.addEventListener("message", (e) => {
     if ((e.data as { type?: string } | null)?.type === "notification") {
-      refreshNotifications();
+      void refreshNotifications();
     }
   });
 };

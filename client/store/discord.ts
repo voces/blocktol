@@ -27,7 +27,7 @@ export const discordOnline = signal<number | null>(stored());
 // value.
 const fetchOnce = keyedQuery(async () => {
   const r = await api.discordInfo({});
-  if (!r || "error" in r) throw new Error("failed to fetch discord info");
+  if ("error" in r) throw new Error("failed to fetch discord info");
   if (r.online != null) {
     discordOnline.value = r.online;
     try {

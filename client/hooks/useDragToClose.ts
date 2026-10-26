@@ -27,7 +27,9 @@ export const useDragToClose = (onClose: () => void, threshold = 90) => {
       if (e.pointerType === "mouse") return;
       startY.current = e.clientY;
       offsetRef.current = 0;
-      // Keep receiving moves even once the finger leaves the grab area.
+      // Keep receiving moves even once the finger leaves the grab area. Old
+      // WebKit lacks pointer capture.
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
       e.currentTarget.setPointerCapture?.(e.pointerId);
     },
     onPointerMove: (e: h.JSX.TargetedPointerEvent<HTMLElement>) => {

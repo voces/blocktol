@@ -92,7 +92,7 @@ const fetchOnce = keyedQuery(async (qk: string) => {
   const s = await (iteration == null
     ? api.standings({ timeZone: getTimeZone() })
     : api.standings({ iteration }));
-  if (!s || "error" in s) {
+  if ("error" in s) {
     throw new Error("failed to fetch standings");
   }
   if (iteration == null) {
@@ -142,10 +142,10 @@ export const refreshStandings = (iteration?: number) => {
 //   - commitRun: a FREE-PLAY run became non-void and entered the field, which
 //     can change the PB board. startRun is the wrong signal (the run is still
 //     void). The response carries its iteration, so a past day refreshes too.
-const refreshToday = () => refreshStandings(undefined);
+const refreshToday = () => void refreshStandings(undefined);
 api.addEventListener("getDailySummary", refreshToday);
 api.addEventListener("commitRun", (r) => {
-  refreshStandings(
+  void refreshStandings(
     r.iteration === todayIteration.value ? undefined : r.iteration,
   );
 });

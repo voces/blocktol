@@ -1,17 +1,109 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "oxc", "unicorn"],
-  "categories": { "correctness": "error" },
+  "plugins": [
+    "typescript",
+    "oxc",
+    "unicorn"
+  ],
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "categories": {
+    "correctness": "error"
+  },
   "rules": {
-    "no-console": "error",
     "no-control-regex": "error",
     "typescript/no-explicit-any": "error",
-    "typescript/no-unsafe-function-type": "error"
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-floating-promises": [
+      "error",
+      {
+        "allowForKnownSafeCalls": [
+          {
+            "from": "package",
+            "name": [
+              "test",
+              "it",
+              "describe",
+              "suite"
+            ],
+            "package": "node:test"
+          }
+        ]
+      }
+    ],
+    "typescript/no-misused-promises": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/no-unnecessary-condition": [
+      "error",
+      {
+        "allowConstantLoopConditions": "only-allowed-literals"
+      }
+    ],
+    "typescript/no-require-imports": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "jest",
+            "message": "Tests use node:test."
+          },
+          {
+            "name": "@jest/globals",
+            "message": "Tests use node:test."
+          },
+          {
+            "name": "vitest",
+            "message": "Tests use node:test."
+          },
+          {
+            "name": "mocha",
+            "message": "Tests use node:test."
+          },
+          {
+            "name": "chai",
+            "message": "Assertions use @std/assert."
+          },
+          {
+            "name": "react",
+            "message": "The client is Preact (h/Fragment)."
+          }
+        ]
+      }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_|^Fragment$",
+        "argsIgnorePattern": "^_"
+      }
+    ]
   },
+  "overrides": [
+    {
+      "files": [
+        "server/**",
+        "common/**"
+      ],
+      "rules": {
+        "no-console": "error"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "scripts/**"
+      ],
+      "rules": {
+        "typescript/no-unnecessary-condition": "off"
+      }
+    }
+  ],
   "ignorePatterns": [
     "public",
-    "scripts",
-    "client",
     "node_modules",
     "sourcemaps",
     "common/version.ts",

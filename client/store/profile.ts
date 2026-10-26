@@ -11,7 +11,7 @@ export const profile = signal<ProfileData | undefined>(undefined);
 // At most one request per freshness window; a failed fetch frees the window.
 const fetchOnce = keyedQuery(async () => {
   const p = await api.getProfile({});
-  if (!p || "error" in p) throw new Error("failed to fetch profile");
+  if ("error" in p) throw new Error("failed to fetch profile");
   profile.value = p;
   return p;
 }, { staleMs: 20_000 });

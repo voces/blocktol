@@ -28,6 +28,7 @@ export type NotificationPrefs = { lostTop: boolean; dailyFinal: boolean };
 // any other value is a BCP-47 tag resolved by `resolveCatalog` in
 // common/i18n.ts (exact → language prefix → en). A plain string, so no locale
 // enum is imported.
+// oxlint-disable-next-line typescript/no-redundant-type-constituents
 export type Language = "system" | string;
 
 export type Settings = {

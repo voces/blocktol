@@ -123,13 +123,13 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
 
   // Refresh on open; the cached list stays shown meanwhile.
   useEffect(() => {
-    refreshNotifications();
+    void refreshNotifications();
   }, []);
 
   const { offset, handlers } = useDragToClose(onClose);
 
   const open = (item: NotificationItem) => {
-    if (!item.read) markRead([item.id]);
+    if (!item.read) void markRead([item.id]);
     // Open the day + board it is about (PB for a lost top, Daily for a final).
     navigateToNotification(item.iteration, item.kind);
     onClose();
@@ -178,7 +178,7 @@ export const NotificationsPanel = ({ onClose }: { onClose: () => void }) => {
             type="button"
             class="notif-sheet__mark tapc"
             disabled={!anyUnread}
-            onClick={() => markRead()}
+            onClick={() => void markRead()}
           >
             {t("notif.panel.markAllRead")}
           </button>

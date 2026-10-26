@@ -153,7 +153,9 @@ export const directQuery = async <T = unknown>(
     } catch (err) {
       // A server SQL error is deterministic — surface it, don't retry.
       if (isServerError(err)) {
-        throw new SQLError(err instanceof Error ? err.message : String(err));
+        throw new SQLError(
+          err instanceof Error ? err.message : JSON.stringify(err),
+        );
       }
       lastError = err;
       log.error("db query failed", {

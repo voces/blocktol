@@ -64,7 +64,7 @@ export const Prestart = () => {
     // On failure or supersession, re-enable for a retry; on success the phase
     // leaves prestart and the effect above resets. `startDailyRun` re-checks a
     // lost answer first, so a retry can't burn a second attempt.
-    startDailyRun(completed).then((ok) => {
+    void startDailyRun(completed).then((ok) => {
       if (!ok) setStarting(false);
     });
   };

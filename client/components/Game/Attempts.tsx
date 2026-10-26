@@ -73,7 +73,7 @@ const formatWhen = (created: number) => {
 // SUPREME when it tops the field. Clicking a row reviews that maze.
 export const Attempts = () => {
   const {
-    viewedAttempts,
+    viewedAttempts: attempts,
     setViewedAttempts,
     viewMaze,
     dailyInProgress,
@@ -94,7 +94,6 @@ export const Attempts = () => {
     setSort(mode);
     setReversed(nextReversed);
   };
-  const attempts = viewedAttempts ?? [];
 
   // Mid-daily the list is simplified: time, when, and which is your best, but
   // none of the field-relative info (percentile colour, %, SUPREME), which
@@ -182,7 +181,7 @@ export const Attempts = () => {
     flip(next);
     api.setRunPinned({ iteration, created: createds, pinned: next })
       .then((r) => {
-        if (r && "error" in r) flip(!next);
+        if ("error" in r) flip(!next);
       })
       .catch(() => flip(!next));
   };

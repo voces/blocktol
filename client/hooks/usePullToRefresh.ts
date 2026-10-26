@@ -51,6 +51,8 @@ export const usePullToRefresh = () => {
         if (dy < SLOP) return;
         active.current = true;
         setDragging(true);
+        // Old WebKit lacks pointer capture.
+        // oxlint-disable-next-line typescript/no-unnecessary-condition
         e.currentTarget.setPointerCapture?.(e.pointerId);
       }
       e.preventDefault();

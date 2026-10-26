@@ -49,7 +49,7 @@ export const DeleteAccount = (
     setBusy(true);
     setFailed(false);
     api.deleteAccount({}).then((r) => {
-      if (r && "error" in r) {
+      if ("error" in r) {
         setBusy(false);
         setFailed(true);
         return;

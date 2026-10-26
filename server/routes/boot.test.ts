@@ -15,7 +15,7 @@ const authed = (userId: string) => {
   const req = new Request("http://localhost/api/boot", {
     headers: { authorization: userId },
   });
-  extractUserId(req, {} as never, undefined);
+  void extractUserId(req, {} as never, undefined);
   return req;
 };
 

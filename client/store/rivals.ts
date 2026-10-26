@@ -10,7 +10,7 @@ export const rivals = signal<RivalList | undefined>(undefined);
 
 const fetchOnce = keyedQuery(async () => {
   const r = await api.rivals({});
-  if (!r || "error" in r) throw new Error("failed to fetch rivals");
+  if ("error" in r) throw new Error("failed to fetch rivals");
   rivals.value = r;
   return r;
 }, { staleMs: 20_000 });

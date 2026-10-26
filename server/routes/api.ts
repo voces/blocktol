@@ -125,7 +125,9 @@ export const api: Handler<"method"> = async (req, { method }) => {
   if (!result.success) {
     return Response.json({ error: result.error }, { status: 400 });
   }
-  // oxlint-disable-next-line typescript/no-explicit-any
+  // `handler` is the union of every registry entry, so its call type is lost;
+  // every handler returns a promise.
+  // oxlint-disable-next-line typescript/no-explicit-any, typescript/await-thenable
   const output = await handler.handler(result.data as any, req);
   let status = 200;
   if (isStatusObj(output)) status = output.status;

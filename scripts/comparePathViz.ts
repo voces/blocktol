@@ -388,7 +388,10 @@ try {
         const m = meta[y][x];
         if (m) { // a placed piece (the checkpoint cell has no meta)
           fill = m.thunder ? THUNDER : BLOCK;
-          if (m.player) stroke = PLAYER, sw = 0.1;
+          if (m.player) {
+            stroke = PLAYER;
+            sw = 0.1;
+          }
         }
       }
       cells.push(

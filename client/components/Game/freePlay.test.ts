@@ -159,7 +159,9 @@ test("commit outbox: a gateway page is a transport failure — retried, then que
   // Back online: the flush re-sends it under the SAME client id.
   let sentId: string | undefined;
   await withFetch((init) => {
-    sentId = JSON.parse(String(init?.body)).clientId;
+    const raw = init?.body;
+    if (typeof raw !== "string") throw new Error("commitRun sent no JSON body");
+    sentId = JSON.parse(raw).clientId;
     return landed();
   }, flushFreePlayOutbox);
   assertEquals(sentId, entry.clientId);

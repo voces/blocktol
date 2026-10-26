@@ -27,7 +27,9 @@ export const listNotifications = async (
   const rows = await sql<
     {
       id: number;
-      kind: NotificationKind;
+      // Not NotificationKind: a row of a kind this build doesn't know (a
+      // newer deploy's) is skipped below, not trusted.
+      kind: string;
       iteration: number;
       data: string;
       created: number;

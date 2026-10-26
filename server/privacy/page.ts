@@ -274,6 +274,8 @@ export const renderPrivacyPage = (locale: Locale): string => {
 
   // Every translation, named in its own language, for a reader the browser
   // guessed wrong for.
+  // `locales` is generated: a catalog set of one language has no switcher.
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   const languages = locales.length < 2 ? "" : `
       <nav aria-label="${m("privacy.languages")}">
         <ul class="langs">${

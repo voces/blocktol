@@ -49,8 +49,8 @@ const check = () => {
 export const playNewDaily = () => {
   pinSessionDay();
   restageNewDaily();
-  api.getDailySummary({ timeZone: getTimeZone() });
-  fetchStandings();
+  void api.getDailySummary({ timeZone: getTimeZone() });
+  void fetchStandings();
   refreshMonth(currentMonthIdx());
 };
 

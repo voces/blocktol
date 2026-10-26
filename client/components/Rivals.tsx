@@ -114,7 +114,7 @@ export const RivalsSheet = (
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    fetchRivals();
+    void fetchRivals();
   }, []);
 
   const needle = query.trim().toLowerCase();

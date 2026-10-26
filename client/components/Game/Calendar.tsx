@@ -154,11 +154,11 @@ export const Calendar = () => {
       // re-stage resumes the build being cancelled.
       if (freePlay && !staged) {
         clearFreePlay();
-        showBoard(item.iteration);
+        void showBoard(item.iteration);
       }
       return;
     }
-    showDay(item.iteration);
+    void showDay(item.iteration);
   };
 
   const cell = (year: number, month0: number, day: number) => {

@@ -86,7 +86,7 @@ export const Hud = () => {
     if (attemptsRemaining > 0) {
       enterPrestart();
     } else if (iteration !== undefined) {
-      showBoard(iteration);
+      void showBoard(iteration);
     }
   };
 
@@ -102,7 +102,7 @@ export const Hud = () => {
       setTime(-1);
       return;
     }
-    showBoard(iteration);
+    void showBoard(iteration);
   };
   // Free play only, from the first placement until execution, including a
   // review with the build's countdown still live (`time > 0`; parked views sit

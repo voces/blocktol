@@ -46,7 +46,7 @@ export const TodayResult = () => {
   const onToday = today && iteration === today.iteration;
   const reviewToday = (show: () => void) => {
     if (onToday || !today) return show();
-    showBoard(today.iteration).then((staged) => {
+    void showBoard(today.iteration).then((staged) => {
       if (staged) show();
     });
   };
@@ -57,7 +57,7 @@ export const TodayResult = () => {
     if (!today) return;
     const best = api.best({ iteration: today.iteration });
     const staged = onToday ? Promise.resolve(true) : showBoard(today.iteration);
-    Promise.all([staged, best]).then(([ok, b]) => {
+    void Promise.all([staged, best]).then(([ok, b]) => {
       if (ok && !("error" in b)) viewMaze(b.maze);
     });
   };

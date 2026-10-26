@@ -656,5 +656,5 @@ export const applyRatings = async (
     SELECT @claimed claimed;
   `;
   const last = r[r.length - 1] as { claimed: number | string }[];
-  return Number(last?.[0]?.claimed) > 0;
+  return Number(last[0]?.claimed) > 0;
 };

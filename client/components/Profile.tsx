@@ -21,7 +21,6 @@ import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import { DISCORD_INVITE } from "../../common/constants.ts";
 import { discordOnline, fetchDiscordOnline } from "../store/discord.ts";
 import { getId } from "../util/id.ts";
-import { getTimeZone } from "../util/timeZone.ts";
 import { GameStateContext } from "./Game/useGameState.ts";
 import { Modal } from "./Modal.tsx";
 import { MoveDevice } from "./MoveDevice.tsx";
@@ -388,7 +387,7 @@ const PushNotice = ({ state }: { state: PushStatus }) => {
         <button
           type="button"
           class="push-notice__action tapc"
-          onClick={() => requestPushPermission()}
+          onClick={() => void requestPushPermission()}
         >
           {t("profile.pushAllowAction")}
         </button>
@@ -455,8 +454,8 @@ const ProfileDialog = (
 
   // Refresh on open; the cached figures show meanwhile.
   useEffect(() => {
-    fetchProfile();
-    fetchDiscordOnline();
+    void fetchProfile();
+    void fetchDiscordOnline();
   }, []);
 
   useEffect(() => {
@@ -474,7 +473,7 @@ const ProfileDialog = (
     setSaving(true);
     api.rename({ name }).then((r) => {
       setSaving(false);
-      if (r && !("error" in r)) {
+      if (!("error" in r)) {
         if (profile) patchProfile({ ...profile, name: r.name });
         setEditing(false);
       }
@@ -488,7 +487,7 @@ const ProfileDialog = (
     setExporting(true);
     api.exportData({}).then((data) => {
       setExporting(false);
-      if (!data || "error" in data) return;
+      if ("error" in data) return;
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: "application/json",
       });
@@ -510,7 +509,9 @@ const ProfileDialog = (
   const setNotif = (patch: Partial<NotificationPrefs>) => {
     setSettings({ notifications: { ...settings.notifications, ...patch } });
     const turnedOn = patch.lostTop === true || patch.dailyFinal === true;
-    if (turnedOn && pushPermission() !== "granted") requestPushPermission();
+    if (turnedOn && pushPermission() !== "granted") {
+      void requestPushPermission();
+    }
   };
 
   const name = profile?.name || t("profile.anonymous");
@@ -1019,12 +1020,12 @@ export const Profile = () => {
           // Warm the profile on intent: pointerenter (mouse hover, first touch)
           // and onFocus (keyboard). fetchProfile coalesces repeated calls.
           onPointerEnter={() => {
-            fetchProfile();
-            fetchDiscordOnline();
+            void fetchProfile();
+            void fetchDiscordOnline();
           }}
           onFocus={() => {
-            fetchProfile();
-            fetchDiscordOnline();
+            void fetchProfile();
+            void fetchDiscordOnline();
           }}
           title={t("profile.title")}
           aria-label={t("profile.open")}
