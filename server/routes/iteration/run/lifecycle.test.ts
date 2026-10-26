@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import { live } from "../../../db/liveTests.ts";
 import { assert, assertEquals, assertExists } from "@std/assert";
+import { hasLength } from "../../../../common/typeguards.ts";
 import { getDailyIteration, getIteration } from "../../../db/iteration.ts";
 import { sql } from "../../../db/query.ts";
 import { createOrUpdateUser } from "../../../db/user.ts";
@@ -76,9 +77,9 @@ const backdate = (user: string, seconds: number) =>
     ORDER BY created DESC LIMIT 1;`;
 
 // Legal placements, grown greedily so any prefix (and the whole set) validates.
-const freeCells = (
+const freeCells = <N extends number>(
   data: Awaited<ReturnType<typeof getIteration>>,
-  n: number,
+  n: N,
 ) => {
   const cells: { x: number; y: number }[] = [];
   for (let y = 2; y <= 16 && cells.length < n; y += 2) {
@@ -86,7 +87,7 @@ const freeCells = (
       if (validateRun(data, [...cells, { x, y }]).ok) cells.push({ x, y });
     }
   }
-  if (cells.length < n) throw new Error("board too crowded for test cells");
+  if (!hasLength(cells, n)) throw new Error("board too crowded for test cells");
   return cells;
 };
 
@@ -118,7 +119,7 @@ const pastIteration = (() => {
   return () => {
     promise ??= sql<{ id: number }[]>`
       SELECT id FROM iteration ORDER BY id ASC LIMIT 1;
-    `.then((r) => r[0].id);
+    `.then((r) => r[0]!.id);
     return promise;
   };
 })();
@@ -138,9 +139,9 @@ test(
 
       let rows = await runRows(user);
       assertEquals(rows.length, 1);
-      assertEquals(Number(rows[0].ranked), 1, "a daily attempt is ranked");
-      assertEquals(Number(rows[0].void), 1, "unbuilt: still void");
-      assertEquals(Number(rows[0].daily), 1, "first attempt seeds daily");
+      assertEquals(Number(rows[0]!.ranked), 1, "a daily attempt is ranked");
+      assertEquals(Number(rows[0]!.void), 1, "unbuilt: still void");
+      assertEquals(Number(rows[0]!.daily), 1, "first attempt seeds daily");
 
       const data = await getIteration(await todayDaily());
       const [cell] = freeCells(data, 1);
@@ -151,8 +152,8 @@ test(
       assert(!("error" in saved) && !("expired" in saved), "save should land");
 
       rows = await runRows(user);
-      assertEquals(Number(rows[0].void), 0, "a built attempt is committed");
-      assertEquals(Number(rows[0].daily), 1, "sole build holds the flag");
+      assertEquals(Number(rows[0]!.void), 0, "a built attempt is committed");
+      assertEquals(Number(rows[0]!.daily), 1, "sole build holds the flag");
     } finally {
       await cleanup(user);
     }
@@ -176,20 +177,20 @@ test("free play stays void through builds and moves; commits on execution", {
     assert(!("error" in started), "free-play start should succeed");
 
     let rows = await runRows(user);
-    assertEquals(Number(rows[0].ranked), 0, "a past day is never ranked");
-    assertEquals(Number(rows[0].void), 1, "void until it executes");
+    assertEquals(Number(rows[0]!.ranked), 0, "a past day is never ranked");
+    assertEquals(Number(rows[0]!.void), 1, "void until it executes");
 
     // Build more, then MOVE a block (1a): a move must not commit the run.
     await updateRun.handler({ iteration, blocks: [c0, c1] }, req);
     await updateRun.handler({ iteration, blocks: [c0, c2] }, req);
     rows = await runRows(user);
-    assertEquals(Number(rows[0].void), 1, "builds and moves never commit");
-    assertEquals(deserializeRun(rows[0].data).length, 2);
+    assertEquals(Number(rows[0]!.void), 1, "builds and moves never commit");
+    assertEquals(deserializeRun(rows[0]!.data).length, 2);
 
     const committed = await commitRun.handler({ iteration }, req);
     assert(!("error" in committed));
     rows = await runRows(user);
-    assertEquals(Number(rows[0].void), 0, "execution commits");
+    assertEquals(Number(rows[0]!.void), 0, "execution commits");
   } finally {
     await cleanup(user);
   }
@@ -216,15 +217,15 @@ test("commit-only free play inserts one non-void run with the server's time", {
 
     const rows = await runRows(user);
     assertEquals(rows.length, 1, "one row, inserted at commit");
-    assertEquals(Number(rows[0].void), 0, "inserted already non-void");
-    assertEquals(Number(rows[0].ranked), 0, "free play is never ranked");
-    assertEquals(Number(rows[0].daily), 0, "free play never counts as daily");
+    assertEquals(Number(rows[0]!.void), 0, "inserted already non-void");
+    assertEquals(Number(rows[0]!.ranked), 0, "free play is never ranked");
+    assertEquals(Number(rows[0]!.daily), 0, "free play never counts as daily");
     assertEquals(
-      rows[0].time,
+      rows[0]!.time,
       expected.duration,
       "the server recomputes the time from the maze",
     );
-    assertEquals(deserializeRun(rows[0].data).length, cells.length);
+    assertEquals(deserializeRun(rows[0]!.data).length, cells.length);
   } finally {
     await cleanup(user);
   }
@@ -347,7 +348,7 @@ test("a save after the window reports expired and persists nothing (1c)", {
 
     const rows = await runRows(user);
     assertEquals(
-      deserializeRun(rows[0].data).length,
+      deserializeRun(rows[0]!.data).length,
       1,
       "the expired save must not have persisted",
     );
@@ -379,8 +380,12 @@ test(
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       const rows = await runRows(user);
       assertEquals(rows.length, 2);
-      assertEquals(Number(rows[0].daily), 1, "precondition: attempt 1 counts");
-      assertEquals(Number(rows[1].daily), 0, "precondition: attempt 2 doesn't");
+      assertEquals(Number(rows[0]!.daily), 1, "precondition: attempt 1 counts");
+      assertEquals(
+        Number(rows[1]!.daily),
+        0,
+        "precondition: attempt 2 doesn't",
+      );
 
       const summary = await getDailySummary.handler({ timeZone: "UTC" }, req);
       assert(!("error" in summary));
@@ -416,7 +421,7 @@ test(
       // tie, exactly one ranked run has daily = TRUE, at the ranked maximum.
       await startRun.handler({ iteration: "daily", timeZone: "UTC" }, req);
       await updateRun.handler(
-        { iteration: data.iteration, blocks: [cells[0]] },
+        { iteration: data.iteration, blocks: [cells[0]!] },
         req,
       );
       await backdate(user, 120);
@@ -432,7 +437,7 @@ test(
       assertEquals(flagged.length, 1, "exactly one counted result");
       const maxTime = Math.max(...ranked.map((r) => r.time));
       assertEquals(
-        flagged[0].time,
+        flagged[0]!.time,
         maxTime,
         "the counted result is the best ranked build",
       );

@@ -18,7 +18,7 @@
     "dev": "npm run gen && (npm run bundle -- --watch & node --watch server/index.ts)",
     "preview": "esbuild --servedir=. --serve=8081",
     "migrate": "node server/db/migrate.ts",
-    "typecheck": "npm run gen && tsc -p tsconfig.common.json && tsc -p tsconfig.json && tsc -p tsconfig.tools.json",
+    "typecheck": "npm run gen && tsc -p tsconfig.common.json && tsc -p tsconfig.app.json && tsc -p tsconfig.tools.json",
     "test": "npm run i18n && node --test --test-concurrency=1 \"{client,common,scripts,server}/**/*.test.{ts,tsx}\"",
     "fmt": "dprint fmt",
     "fmt:check": "dprint check",

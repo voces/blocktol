@@ -15,11 +15,11 @@ export const parseMessage = (src: string): I18nNode[] => {
   let i = 0;
 
   const skipWs = () => {
-    while (i < src.length && /\s/.test(src[i])) i++;
+    while (i < src.length && /\s/.test(src[i]!)) i++;
   };
   const readIdent = (): string => {
     const start = i;
-    while (i < src.length && ident.test(src[i])) i++;
+    while (i < src.length && ident.test(src[i]!)) i++;
     if (i === start) throw new Error(`expected identifier at ${i} in "${src}"`);
     return src.slice(start, i);
   };

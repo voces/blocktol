@@ -13,7 +13,7 @@ const at = (...versions: number[]): Migration[] =>
 test("migrations list is well-formed", () => {
   // The real list must always validate (contiguous from 1).
   validateMigrations();
-  assertEquals(migrations[0].version, 1);
+  assertEquals(migrations[0]!.version, 1);
 });
 
 test("validateMigrations", async (t) => {

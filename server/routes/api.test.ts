@@ -5,7 +5,7 @@ import { clientFields } from "./reportClientError.ts";
 
 // `duplex` is required for a streamed body (the fetch spec; Node enforces it)
 // and absent from the DOM lib's RequestInit, hence the widened type.
-const post = (body: BodyInit | null, headers?: HeadersInit) => {
+const post = (body: BodyInit | null, headers: HeadersInit = {}) => {
   const init: RequestInit & { duplex: "half" } = {
     method: "POST",
     body,

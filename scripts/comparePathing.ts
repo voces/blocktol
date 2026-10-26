@@ -206,8 +206,8 @@ const stats = (deltas: number[]) => {
   const abs = deltas.map(Math.abs).sort((a, b) => a - b);
   const mean = abs.reduce((s, x) => s + x, 0) / abs.length;
   return `mean ${mean.toFixed(3)}s · median ${
-    abs[abs.length >> 1].toFixed(3)
-  }s · max ${abs[abs.length - 1].toFixed(3)}s`;
+    abs[abs.length >> 1]!.toFixed(3)
+  }s · max ${abs[abs.length - 1]!.toFixed(3)}s`;
 };
 
 const runSection = (title: string, rows: RunDelta[]) => {

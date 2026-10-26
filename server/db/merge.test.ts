@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import { live } from "./liveTests.ts";
 import { assertEquals } from "@std/assert";
+import { hasLength } from "../../common/typeguards.ts";
 import { extractUserId } from "../middleware/userid.ts";
 import { merge } from "../routes/merge.ts";
 import { anonymizeUser } from "./deleteAccount.ts";
@@ -18,9 +19,12 @@ const testUser = async () => {
   return id;
 };
 
-const oldest = () =>
-  sql<{ id: number }[]>`SELECT id FROM iteration ORDER BY id ASC LIMIT 2;`
-    .then((r) => r.map((i) => i.id));
+const oldest = async () => {
+  const ids = (await sql<{ id: number }[]>`
+    SELECT id FROM iteration ORDER BY id ASC LIMIT 2;`).map((i) => i.id);
+  if (!hasLength(ids, 2)) throw new Error("these tests need two iterations");
+  return ids;
+};
 
 // One run row; `secs` back-dates created so ordering is deterministic.
 const seedRun = (
@@ -118,7 +122,7 @@ test(
 
         const [top] = await sql<{ top_user: string }[]>`
           SELECT top_user FROM pb_top WHERE iteration = ${iteration};`;
-        assertEquals(top.top_user, primary);
+        assertEquals(top?.top_user, primary);
       });
     } finally {
       await sql`DELETE FROM user WHERE id IN (${[primary, secondary]});`;
@@ -140,7 +144,7 @@ test("erasure re-points the top-PB holder", { skip: !live }, async () => {
 
       const [top] = await sql<{ top_user: string }[]>`
           SELECT top_user FROM pb_top WHERE iteration = ${iteration};`;
-      assertEquals(top.top_user, newId, "the old id must not survive");
+      assertEquals(top?.top_user, newId, "the old id must not survive");
     });
   } finally {
     await sql`DELETE FROM user WHERE id IN (${[user, newId]});`;

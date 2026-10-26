@@ -31,14 +31,14 @@ for (const { dir } of CATALOGS) {
   // The source must itself be valid ICU.
   for (const key of enKeys) {
     try {
-      parseMessage(en[key].message);
+      parseMessage(en[key]!.message);
     } catch (e) {
       errors.push(`${dir}en/${key}: ICU parse error: ${(e as Error).message}`);
     }
   }
 
   const hashes = new Map<string, string>();
-  for (const key of enKeys) hashes.set(key, await sha256(en[key].message));
+  for (const key of enKeys) hashes.set(key, await sha256(en[key]!.message));
 
   for (const locale of targets) {
     let target: TargetCatalog;
@@ -65,7 +65,7 @@ for (const { dir } of CATALOGS) {
       // Validated under the bare locale (it drives the CLDR plural check); the
       // directory is prefixed afterwards.
       errors.push(
-        ...validateTranslation(locale, key, entry.message, en[key].message)
+        ...validateTranslation(locale, key, entry.message, en[key]!.message)
           .map((e) => `${dir}${e}`),
       );
     }

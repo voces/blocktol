@@ -1,5 +1,5 @@
 import { test } from "node:test";
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertExists, assertRejects } from "@std/assert";
 import { storage } from "../../util/storage.ts";
 import {
   clearFreePlay,
@@ -153,7 +153,8 @@ test("commit outbox: a gateway page is a transport failure — retried, then que
   // The first try plus every retry, and the run is still held.
   assertEquals(calls > 1, true);
   const [entry] = queued();
-  assertEquals(typeof entry?.clientId, "string");
+  assertExists(entry, "the run is still queued");
+  assertEquals(typeof entry.clientId, "string");
   clearFreePlay();
 
   // Back online: the flush re-sends it under the SAME client id.

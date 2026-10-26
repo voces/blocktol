@@ -90,16 +90,6 @@
       "rules": {
         "no-console": "error"
       }
-    },
-    {
-      "files": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "scripts/**"
-      ],
-      "rules": {
-        "typescript/no-unnecessary-condition": "off"
-      }
     }
   ],
   "ignorePatterns": [

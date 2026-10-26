@@ -58,29 +58,31 @@ npm run preview      # static-serve ./ on :8081 (inspect public/ pages)
 npm run check        # everything CI gates on: format, lint, typecheck, i18n, tests
 npm run fmt          # format with dprint (CI runs `npm run fmt:check`; markdown included)
 npm run lint         # oxlint, type-aware (.oxlintrc.json)
-npm run typecheck    # TypeScript 7 (pinned): tsconfig.common.json, tsconfig.json, tsconfig.tools.json
+npm run typecheck    # TypeScript 7 (pinned): tsconfig.common.json, tsconfig.app.json, tsconfig.tools.json
 ```
 
 `npm run check` is the one command to run before pushing. `typecheck` holds the
 code to what Node's type stripping can run: a type is imported with `import
 type` or `{ type X }`, and no enum, namespace or constructor parameter property.
 `tsconfig.common.json` checks `common/` with no browser or Node globals, so
-using one there is a compile error; `tsconfig.json` checks the app (client and
-server together, since the client's API type comes from the server) with Node's
-types (`@types/node`). Being one program, the client sees Node's globals too, so
-a browser timer handle is typed `ReturnType<typeof setTimeout>`, never `number`.
-`tsconfig.tools.json` checks the tests and scripts, with
-`noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` still off there. The
-generated files (`common/version.ts`, the compiled i18n catalogs) are made by
-`npm run gen`, which `lint`, `typecheck`, `test` (i18n) and `build` run first,
-so a fresh checkout needs nothing else.
+using one there is a compile error; `tsconfig.app.json` checks the app (client
+and server together, since the client's API type comes from the server) with
+Node's types (`@types/node`). Being one program, the client sees Node's globals
+too, so a browser timer handle is typed `ReturnType<typeof setTimeout>`, never
+`number`. `tsconfig.tools.json` checks the tests and scripts under the same
+settings, so a test narrows an indexed read like app code does (`assertExists`,
+or `hasLength` from `common/typeguards.ts` for a tuple to destructure).
+`tsconfig.json` checks nothing: it references the three, so editors and oxlint
+type each file by the program that owns it. The generated files
+(`common/version.ts`, the compiled i18n catalogs) are made by `npm run gen`,
+which `lint`, `typecheck`, `test` (i18n) and `build` run first, so a fresh
+checkout needs nothing else.
 
 `lint` runs oxlint with type information over every source root. Beyond its
 correctness rules it enforces `no-floating-promises` (a deliberate
 fire-and-forget is written `void call()`; `node:test`'s `test` is exempt),
-`no-misused-promises`, `switch-exhaustiveness-check`, `no-unnecessary-condition`
-(off in tests and scripts until `tsconfig.tools.json` has
-`noUncheckedIndexedAccess`), `no-explicit-any`, `no-require-imports`, a ban on
+`no-misused-promises`, `switch-exhaustiveness-check`,
+`no-unnecessary-condition`, `no-explicit-any`, `no-require-imports`, a ban on
 other test and UI frameworks' imports, and `no-console` in `server/` and
 `common/` (log through `util/logging.ts`). A check the types can't see, such as
 a browser feature test, keeps an `oxlint-disable-next-line` with its reason on
@@ -123,7 +125,7 @@ Three source roots with a strict dependency direction:
 - **`server/`** — the Node backend. May import `common/`.
 - **`client/`** — the Preact frontend, bundled to `public/js/`. May import
   `common/`. JSX uses the `h`/`Fragment` pragma (`preact`), configured in
-  `tsconfig.json` and the `bundle` script — there is no React.
+  `tsconfig.app.json` and the `bundle` script — there is no React.
 
 `public/` holds the static shell (`index.html`, `sw.js`, `styles.css`, the
 manifest), the self-hosted fonts, icons and share card, and two debug pages; see
