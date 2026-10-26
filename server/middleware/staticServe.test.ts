@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { test } from "node:test";
 import { assert, assertEquals } from "@std/assert";
 import { staticServe } from "./staticServe.ts";
@@ -39,12 +40,14 @@ test("staticServe: immutable only at the current ?v", async () => {
 });
 
 test("staticServe: nothing outside public/ is reachable", async () => {
+  // The target must exist, or a miss proves nothing about traversal.
+  assert(existsSync("package.json"), "run from the repo root");
   for (
     const path of [
-      "/../deno.jsonc",
-      "/%2e%2e/deno.jsonc",
-      "/fonts/../../deno.jsonc",
-      "/..%2fdeno.jsonc",
+      "/../package.json",
+      "/%2e%2e/package.json",
+      "/fonts/../../package.json",
+      "/..%2fpackage.json",
     ]
   ) {
     assertEquals(await get(path), undefined, path);
