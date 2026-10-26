@@ -10,4 +10,6 @@ const types = new TextDecoder().decode(out.stdout)
   .split("\n")
   .filter((line) => !/^\/\/\/ <reference (lib|no-default-lib)=/.test(line))
   .join("\n");
+// types/ holds only this generated file, so a fresh checkout has no types/.
+await Deno.mkdir("types", { recursive: true });
 await Deno.writeTextFile("types/deno.generated.d.ts", types);

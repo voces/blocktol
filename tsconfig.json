@@ -8,7 +8,10 @@
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "react",
     "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment"
+    "jsxFragmentFactory": "Fragment",
+    // node: modules the server imports (#226); Deno's own types come from
+    // types/deno.generated.d.ts.
+    "types": ["node"]
   },
   "include": ["client/**/*", "common/**/*", "server/**/*", "types/*.d.ts"],
   "exclude": ["**/*.test.ts"]

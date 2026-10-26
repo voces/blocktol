@@ -157,7 +157,7 @@ export const markReadForDay = async (
 // bell can go stale. A quiet poll, paused while the tab is hidden, keeps the
 // badge honest without a push.
 const POLL_MS = 90_000;
-let timer = -1;
+let timer: ReturnType<typeof setInterval> | undefined;
 const tick = () => {
   if (document.visibilityState === "visible") refreshNotifications();
 };
