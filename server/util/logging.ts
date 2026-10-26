@@ -71,7 +71,7 @@ const encode = (v: string | number | boolean): string =>
 // in a client-supplied key (see reportClientError) could forge fields or
 // desync the line.
 const encodeKey = (k: string): string =>
-  k.replace(/[^A-Za-z0-9_.\-]/g, "_") || "_";
+  k.replace(/[^A-Za-z0-9_.-]/g, "_") || "_";
 
 const fieldsToLogfmt = (fields: LogFields): string =>
   Object.entries(fields)
@@ -115,7 +115,7 @@ const emit = (
   const line = formatLogfmt(level, msg, all);
   // The one sanctioned console call; every log flows through it. stdout is
   // the journal, read on the box with journalctl.
-  // deno-lint-ignore no-console
+  // oxlint-disable-next-line no-console
   console[level](line);
   // The same line as an OTel log record (server/otel.ts ships it to
   // VictoriaLogs as `_msg`), joining the active span's trace; a no-op with

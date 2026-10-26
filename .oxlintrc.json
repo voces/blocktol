@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "unicorn"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "no-console": "error",
+    "no-control-regex": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-unsafe-function-type": "error"
+  },
+  "ignorePatterns": [
+    "public",
+    "scripts",
+    "client",
+    "node_modules",
+    "sourcemaps",
+    "common/version.ts",
+    "common/i18n.generated.ts",
+    "server/privacy/catalog.generated.ts"
+  ]
+}

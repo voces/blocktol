@@ -1,0 +1,21 @@
+{
+  "typescript": { "deno": true },
+  "json": { "deno": true },
+  "markdown": { "deno": true },
+  "yaml": {},
+  "excludes": [
+    "public",
+    "node_modules",
+    "sourcemaps",
+    "common/version.ts",
+    "common/i18n.generated.ts",
+    "server/privacy/catalog.generated.ts",
+    "package-lock.json"
+  ],
+  "plugins": [
+    "./node_modules/@dprint/typescript/plugin.wasm",
+    "./node_modules/@dprint/json/plugin.wasm",
+    "./node_modules/@dprint/markdown/plugin.wasm",
+    "./node_modules/dprint-plugin-yaml/plugin.wasm"
+  ]
+}

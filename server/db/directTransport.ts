@@ -4,10 +4,8 @@ import { errText, log } from "../util/logging.ts";
 import type { QueryOptions } from "./query.ts";
 import process from "node:process";
 
-// The only slice of mysql2's pool we touch, declared locally because mysql2
-// defines `query` via a mixin base class that Deno's type-checker doesn't
-// surface on `Pool`. `[rows]` is the proxy-equivalent payload (see below);
-// `fields` is unused.
+// The only slice of mysql2's pool we touch. `[rows]` is the proxy-equivalent
+// payload (see below); `fields` is unused.
 type Connection = {
   query: (
     options: { sql: string; timeout?: number },

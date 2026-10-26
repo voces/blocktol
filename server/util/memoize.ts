@@ -1,7 +1,7 @@
 import { is } from "../../common/typeguards.ts";
 import { LRUMap } from "./LRUMap.ts";
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type GetLength<original extends any[]> = original extends { length: infer L }
   ? L
   : never;
@@ -10,7 +10,7 @@ type GetLength<original extends any[]> = original extends { length: infer L }
 // level, object arguments through a WeakMap (so they can be collected) and
 // primitives through a Map. `dive(...args)` returns the last level's store for
 // the final argument.
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 export const wrapperStore = <Args extends any[], Value>() => {
   // TODO: should have different roots for each args.length
   const root = [
@@ -49,7 +49,7 @@ export const wrapperStore = <Args extends any[], Value>() => {
   return dive;
 };
 
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 export const memoize = <Fn extends (...args: any[]) => any>(fn: Fn) => {
   let dive = wrapperStore<Parameters<Fn>, ReturnType<Fn>>();
 
@@ -100,7 +100,8 @@ const isSettled = async (promise: Promise<unknown>) => {
 // `boundedTrailer`.
 const staleWhileRevalidate = <T>(fetch: () => Promise<T>) => {
   // The no-op catch keeps a background refresh that rejects before anyone
-  // awaits it from tripping Deno's unhandledrejection. Awaiters still see it.
+  // awaits it from crashing the process as an unhandled rejection. Awaiters
+  // still see it.
   const kick = () => {
     const p = fetch();
     p.catch(() => {});
@@ -138,7 +139,7 @@ const staleWhileRevalidate = <T>(fetch: () => Promise<T>) => {
 };
 
 export const trailer = <
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   Fn extends (...args: any[]) => Promise<any>,
 >(
   fn: Fn,
@@ -153,7 +154,7 @@ export const trailer = <
 // with a fresh awaited fetch. Keys are the args' JSON, so use primitive args
 // only.
 export const boundedTrailer = <
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   Fn extends (...args: any[]) => Promise<any>,
 >(
   fn: Fn,

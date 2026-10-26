@@ -11,7 +11,7 @@ import {
 // trace through the real api client. Each request is held until the test
 // answers it, which is how a save stays in flight while newer ones queue.
 
-// getId reads the URL for sign-in links; Deno has no `location` by default.
+// getId reads the URL for sign-in links; Node has no `location`.
 Object.defineProperty(globalThis, "location", {
   value: { pathname: "/", hash: "" },
   configurable: true,

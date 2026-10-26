@@ -16,47 +16,38 @@ jobs:
       - name: Clone
         uses: actions/checkout@v4
 
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
+      - name: Install Node
+        uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
 
       - name: Format check
-        run: deno fmt --check
+        run: npm run fmt:check
 
       - name: Lint
         # Enforces the no-console ban (server + common; scripts/client are
-        # excluded in deno.jsonc). See deno.jsonc `lint`.
-        run: deno lint
+        # ignored in .oxlintrc.json).
+        run: npm run lint
 
-      - name: Generate version
-        # common/version.ts is gitignored/generated; both server/index.ts and
-        # client/index.ts import it, so it must exist before the type check (and
-        # the build regenerates it anyway). git is present here (checkout).
-        run: deno task version
-
-      - name: Generate i18n
-        # common/i18n.generated.ts is gitignored/generated from i18n/*.json; the
-        # type check and tests reach it through common/notifications.ts, so it
-        # must exist first (the build regenerates it anyway).
-        run: deno task i18n
+      - name: Type check
+        # Generates common/version.ts and the compiled i18n catalogs first
+        # (`npm run gen`); git is present here (checkout).
+        run: npm run typecheck
 
       - name: i18n check
         # The "never deploy untranslated" gate: every target locale must carry a
         # current, valid translation of every en.json key (i18n:translate + the
         # Translate workflow heal it). Also fails on any key no code references.
         run: |
-          deno task i18n:check
-          deno task i18n:unused
-
-      - name: Type check
-        run: deno check server/index.ts client/index.ts common/pathing.ts
-
-      - name: Type check (TypeScript 7)
-        run: deno task typecheck
+          npm run i18n:check
+          npm run i18n:unused
 
       - name: Test
-        run: deno task test
+        run: npm test
         # The run-lifecycle integration tests exercise the dev database when
         # SQL_PASSWORD is configured as a repository secret; without it they
         # self-skip and only the pure tests run.
@@ -65,4 +56,4 @@ jobs:
           SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
 
       - name: Build client
-        run: deno task build
+        run: npm run build

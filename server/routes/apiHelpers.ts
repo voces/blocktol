@@ -14,7 +14,7 @@ export const method = <Input, Authed extends boolean>(
 <Output>(
   handler: (
     // `{}` is the identity for `&` when there is no `userId` to add.
-    // deno-lint-ignore ban-types
+    // oxlint-disable-next-line typescript/no-unsafe-function-type
     input: Input & (Authed extends true ? { userId: string } : {}),
     request: Request,
   ) => Output | Promise<Output>,
@@ -27,10 +27,10 @@ export const method = <Input, Authed extends boolean>(
     ? Output | Promise<Output> | { error: AuthError; status: number }
     : Output | Promise<Output> => {
     // TS can't resolve the `Authed` conditional types inside the body.
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     if (!authed) return handler(input as any, request);
     const userId = getUserId(request);
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     if (userId instanceof Error) return { error: userId, status: 401 } as any;
     return handler({ ...input, userId }, request);
   },
@@ -38,6 +38,6 @@ export const method = <Input, Authed extends boolean>(
 
 export type MethodReturn<
   // Any handler signature must satisfy this constraint.
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   M extends { handler: (...args: any) => unknown },
 > = Awaited<ReturnType<M["handler"]>>;

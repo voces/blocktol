@@ -37,8 +37,8 @@ test("isPushEndpoint refuses anything else", () => {
 // The worked example from RFC 8291 §5. Feeding its published ECDH shared
 // secret through the post-ECDH pipeline and reproducing its output body
 // verifies the auth mix, HKDF key/nonce derivation, AES-128-GCM and header
-// framing. The ECDH step is bypassed because Deno's WebCrypto can't deriveBits
-// from an imported private key; production's generateKey ECDH isn't covered.
+// framing. The ECDH step is bypassed (the vector's own secret is fed in), so
+// production's generateKey ECDH isn't covered.
 const fromB64URL = (s: string): Uint8Array<ArrayBuffer> => {
   const b64 = s.replace(/-/g, "+").replace(/_/g, "/") +
     "===".slice((s.length + 3) % 4);

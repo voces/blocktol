@@ -8,5 +8,5 @@ common/i18n.generated.ts
 server/privacy/catalog.generated.ts
 # Client source maps, one dir per build SHA (scripts/stashSourcemap.ts).
 sourcemaps/
-# npm packages, installed by Deno (deno.jsonc `nodeModulesDir`).
+# npm packages (`npm ci`).
 node_modules/

@@ -50,16 +50,20 @@ jobs:
           # Persist the App token as the push credential (default is GITHUB_TOKEN).
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Install Deno
-        uses: denoland/setup-deno@v2
+      - name: Install Node
+        uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
 
       - name: Translate
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # TRANSLATE_MODEL: optional override; defaults to claude-opus-4-8.
-        run: deno task i18n:translate
+        run: npm run i18n:translate
 
       - name: Commit catalogs
         run: |
@@ -80,4 +84,4 @@ jobs:
 
       - name: Verify
         # Fail the run if the freshly-written catalogs don't satisfy the gate.
-        run: deno task i18n:check
+        run: npm run i18n:check

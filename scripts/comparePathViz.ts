@@ -29,18 +29,19 @@
 //   --out=PATH      output svg path (default: scratchpad/path-diff.svg)
 //
 // Examples:
-//   deno run --allow-read --allow-run --allow-write scripts/comparePathViz.ts --search
-//   deno run --allow-read --allow-run --allow-write scripts/comparePathViz.ts --seed=42
-//   APP_ENV=prod SQL_PASSWORD=... deno run --allow-read --allow-run --allow-write \
-//     --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL \
-//     scripts/comparePathViz.ts --iteration=41
+//   node scripts/comparePathViz.ts --search
+//   node scripts/comparePathViz.ts --seed=42
+//   APP_ENV=prod SQL_PASSWORD=... node scripts/comparePathViz.ts --iteration=41
 
+import { execFileSync } from "node:child_process";
+import { rm, writeFile } from "node:fs/promises";
+import process from "node:process";
 import { offsets } from "../common/constants.ts";
 import type { Point } from "../common/types.ts";
 import * as current from "../common/pathing.ts";
 
 const arg = (name: string) => {
-  const hit = Deno.args.find((a) =>
+  const hit = process.argv.slice(2).find((a) =>
     a === `--${name}` || a.startsWith(`--${name}=`)
   );
   if (!hit) return undefined;
@@ -52,24 +53,28 @@ const out = arg("out") ??
 
 // ---- Load the baseline (old) pathing module from a git ref ----------------
 
-const gitRef = arg("ref") ||
-  new TextDecoder().decode(
-    (await new Deno.Command("git", {
-      args: ["merge-base", "HEAD", "prod"],
-    }).output()).stdout,
-  ).trim() || "prod";
+// git's stdout, or "" when it fails (the checks below report it).
+const git = (...args: string[]): string => {
+  try {
+    return execFileSync("git", args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return "";
+  }
+};
 
-const baselineSource = new TextDecoder().decode(
-  (await new Deno.Command("git", {
-    args: ["show", `${gitRef}:common/pathing.ts`],
-  }).output()).stdout,
-);
+const gitRef = arg("ref") || git("merge-base", "HEAD", "prod").trim() ||
+  "prod";
+
+const baselineSource = git("show", `${gitRef}:common/pathing.ts`);
 if (
   !baselineSource.includes("findPathFromData") &&
   !baselineSource.includes("PathSolver")
 ) {
   console.error(`Could not read common/pathing.ts at ref '${gitRef}'.`);
-  Deno.exit(1);
+  process.exit(1);
 }
 
 // Drop it beside its siblings so relative imports resolve, then import it.
@@ -77,7 +82,7 @@ if (
 const baselinePath =
   new URL("../common/_baselinePathing.tmp.ts", import.meta.url)
     .pathname;
-await Deno.writeTextFile(baselinePath, baselineSource);
+await writeFile(baselinePath, baselineSource);
 
 type PathingModule = {
   findPathFromData?: (
@@ -216,7 +221,7 @@ try {
     `;
     if (!iter) {
       console.error(`Iteration ${id} not found.`);
-      Deno.exit(1);
+      process.exit(1);
     }
     // Preplaced (iteration-fixed) pieces.
     const preplaced: Cell[] = iterBlocks.map((b) => ({
@@ -270,7 +275,7 @@ try {
             ? `No run for '${runUser}' on iteration ${id} matching --created=${createdFilter}.`
             : `No scored run for '${runUser}' on iteration ${id}.`,
         );
-        Deno.exit(1);
+        process.exit(1);
       }
       const chosen = candidates.reduce((a, c) =>
         Math.abs(c.delta) > Math.abs(a.delta) ? c : a
@@ -304,7 +309,7 @@ try {
     }
     if (!best) {
       console.error("No solvable boards found while searching.");
-      Deno.exit(1);
+      process.exit(1);
     }
     board = best.board;
     console.log(
@@ -337,7 +342,7 @@ try {
   const neu = duration(current, board);
   if (!old || !neu) {
     console.error("Board is unsolvable for one of the algorithms.");
-    Deno.exit(1);
+    process.exit(1);
   }
 
   // ---- Render -------------------------------------------------------------
@@ -484,8 +489,8 @@ try {
 </svg>
 `;
 } finally {
-  await Deno.remove(baselinePath).catch(() => {});
+  await rm(baselinePath, { force: true });
 }
 
-await Deno.writeTextFile(out, svg);
+await writeFile(out, svg);
 console.log(`Wrote ${out}`);

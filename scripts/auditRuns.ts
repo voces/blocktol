@@ -7,11 +7,12 @@
 //
 // Run locally against an environment (via the same SQL proxy the app uses):
 //   APP_ENV=prod SQL_PASSWORD=... \
-//     deno run --allow-net --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL scripts/auditRuns.ts
+//     node scripts/auditRuns.ts
 //   ...add --apply to actually delete.
 //
 // It uses validateRun, so "legal" is what the server accepts on write.
 
+import process from "node:process";
 import { type ExecResult, sql } from "../server/db/query.ts";
 import { deserializeRun } from "../server/util/run.ts";
 import {
@@ -24,7 +25,7 @@ import {
 // seconds.
 const TIME_EPSILON = 0.005;
 
-const apply = Deno.args.includes("--apply");
+const apply = process.argv.slice(2).includes("--apply");
 
 type IllegalRun = {
   user: string;
@@ -126,7 +127,7 @@ if (illegal.length > 25) console.log(`  … and ${illegal.length - 25} more`);
 
 if (!apply) {
   console.log("\nDry run — pass --apply to delete these runs.");
-  Deno.exit(0);
+  process.exit(0);
 }
 
 let deleted = 0;

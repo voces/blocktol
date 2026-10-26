@@ -52,7 +52,7 @@ export const isArray =
     Array.isArray(value) && value.every(typeguard);
 
 export const isIn = <T extends string | boolean | number>(...options: T[]) =>
-// deno-lint-ignore no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 (value: unknown): value is T => options.includes(value as any);
 
 type union = {

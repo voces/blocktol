@@ -23,9 +23,8 @@ formatting; one engine, no per-surface divergence.
   notification copy (in-app + server push). ~227 keys.
 - **Formatting gaps closed** — `Intl.DateTimeFormat` for calendar month/weekday
   names; the relative-time / countdown helpers and every plural (`runs`,
-  `players`, `unread`, `best of N`) go through catalog messages
-  (`{n, plural, …}` / `time.*`), so no hand-rolled English plural or month array
-  remains.
+  `players`, `unread`, `best of N`) go through catalog messages (`{n, plural,
+  …}` / `time.*`), so no hand-rolled English plural or month array remains.
 - **The language picker** — `settings.language` (`"system"` default → browser
   locale) + zod; a custom Profile dropdown of locale endonyms; wires
   `uiLocale` + `document.documentElement.lang`; an explicit choice also updates
@@ -40,7 +39,7 @@ formatting; one engine, no per-surface divergence.
 
 ## Remaining polish (optional, non-blocking)
 
-- **JSX-leak lint plugin** — a Deno lint rule flagging hardcoded JSX text /
+- **JSX-leak lint plugin** — a lint rule flagging hardcoded JSX text /
   user-facing props (`aria-label`, `title`, …) outside an allowlist, so a
   _future_ untranslated string is caught mechanically rather than by review.
 - **`en-XA` pseudo-locale** — dev-only mechanical accents + length padding to

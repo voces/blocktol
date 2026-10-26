@@ -1,10 +1,11 @@
-// `deno task i18n:translate` — the auto-fixer. Fills every missing or stale
+// `npm run i18n:translate` — the auto-fixer. Fills every missing or stale
 // target entry and prunes orphans, so the i18n:check gate is cheap to satisfy:
 // edit en.json, run this (or let the GitHub Action), commit. The provider sits
 // behind the one-method `Translator` seam; the default adapter calls the
 // Anthropic Messages API directly. A new provider is a new adapter; the
 // planning and validation below are vendor-agnostic.
 
+import process from "node:process";
 import {
   CATALOGS,
   loadConfig,
@@ -172,9 +173,9 @@ export const makeAnthropicTranslator = (): Translator => ({
   async translate(req) {
     // Lazy import: i18n:check / i18n:unused never load the SDK, and nothing
     // stale never reaches here, so the pipeline no-ops without a key.
-    const { default: Anthropic } = await import("npm:@anthropic-ai/sdk");
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic();
-    const model = Deno.env.get("TRANSLATE_MODEL") ?? "claude-opus-4-8";
+    const model = process.env.TRANSLATE_MODEL ?? "claude-opus-4-8";
     const schema = {
       type: "object",
       additionalProperties: false,

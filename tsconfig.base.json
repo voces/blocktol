@@ -1,7 +1,8 @@
 {
-  // Shared by tsconfig.json (the app) and tsconfig.common.json (common/ alone),
-  // both checked by `deno task typecheck` with TypeScript 7. Nothing is
-  // emitted: Deno runs the source, and esbuild bundles the client.
+  // Shared by tsconfig.json (the app), tsconfig.common.json (common/ alone) and,
+  // through the app's, tsconfig.tools.json (tests and scripts); `npm run
+  // typecheck` checks all three with TypeScript 7. Nothing is emitted: Node
+  // runs the source, and esbuild bundles the client.
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",

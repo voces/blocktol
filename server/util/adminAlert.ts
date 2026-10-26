@@ -8,18 +8,7 @@ import process from "node:process";
 // A plain webhook POST of `{ content }`: no bot token, no discord.js. Never
 // awaited, never throws, and a no-op without DISCORD_ADMIN_WEBHOOK_URL. The
 // env prefix keeps a dev ping from being mistaken for prod.
-//
-// The read is guarded: db/user.ts imports this and nearly everything imports
-// db/user.ts (tests, ops scripts), and under Deno an env read throws wherever
-// --allow-env lacks the var. Catching that makes it a silent no-op in the test
-// task and the scripts; the server, on Node, reads it freely.
-const WEBHOOK = (() => {
-  try {
-    return process.env.DISCORD_ADMIN_WEBHOOK_URL;
-  } catch {
-    return undefined;
-  }
-})();
+const WEBHOOK = process.env.DISCORD_ADMIN_WEBHOOK_URL;
 
 export const alertAdmin = (message: string): void => {
   if (!WEBHOOK) return;

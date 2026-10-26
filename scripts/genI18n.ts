@@ -1,7 +1,7 @@
 // Compiles each message catalog in i18n/ (see CATALOGS in i18nLib.ts) into a
 // generated module: the app's into common/i18n.generated.ts (imported by both
 // server and client), the privacy page's into a server-only one. Both are
-// gitignored; `deno task i18n` runs first in build/dev/test, and in CI before
+// gitignored; `npm run i18n` runs first in build/dev/test, and in CI before
 // the type check. For each catalog it:
 //   - pre-parses every ICU message to an I18nNode[] AST (so no parser ships), and
 //   - derives `MessageKey` + a per-key params type map from its en.json,
@@ -9,7 +9,8 @@
 // en.json defines the key set and param types; every other <locale>.json is a
 // machine-written translation of it.
 
-import { dirname, relative } from "@std/path/posix";
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, relative } from "node:path/posix";
 import { collectParams, parseMessage } from "./i18nParse.ts";
 import { CATALOGS, type CatalogSpec } from "./i18nLib.ts";
 import type { I18nNode } from "../common/i18n.ts";
@@ -26,8 +27,8 @@ const NON_CATALOG = new Set(["glossary.json", "config.json"]);
 const compile = async ({ dir, out }: CatalogSpec) => {
   const catalogDir = new URL(`i18n/${dir}`, ROOT);
   const localeFiles: string[] = [];
-  for await (const e of Deno.readDir(catalogDir)) {
-    if (e.isFile && e.name.endsWith(".json") && !NON_CATALOG.has(e.name)) {
+  for (const e of await readdir(catalogDir, { withFileTypes: true })) {
+    if (e.isFile() && e.name.endsWith(".json") && !NON_CATALOG.has(e.name)) {
       localeFiles.push(e.name.slice(0, -".json".length));
     }
   }
@@ -38,7 +39,7 @@ const compile = async ({ dir, out }: CatalogSpec) => {
   }
 
   const read = async (locale: string): Promise<Catalog> =>
-    JSON.parse(await Deno.readTextFile(new URL(`${locale}.json`, catalogDir)));
+    JSON.parse(await readFile(new URL(`${locale}.json`, catalogDir), "utf8"));
 
   const en = await read("en");
   const keys = Object.keys(en).sort();
@@ -93,7 +94,7 @@ export const catalog: Record<Locale, Record<string, I18nNode[]>> = ${
     };
 `;
 
-  await Deno.writeTextFile(new URL(out, ROOT), body);
+  await writeFile(new URL(out, ROOT), body);
   console.log(
     `i18n: ${keys.length} keys × ${localeFiles.length} locale(s) → ${out}`,
   );

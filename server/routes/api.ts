@@ -125,7 +125,7 @@ export const api: Handler<"method"> = async (req, { method }) => {
   if (!result.success) {
     return Response.json({ error: result.error }, { status: 400 });
   }
-  // deno-lint-ignore no-explicit-any
+  // oxlint-disable-next-line typescript/no-explicit-any
   const output = await handler.handler(result.data as any, req);
   let status = 200;
   if (isStatusObj(output)) status = output.status;

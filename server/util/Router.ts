@@ -37,7 +37,7 @@ type AbstractRouter = Record<
 export class Router implements AbstractRouter {
   #routes: Record<
     Method,
-    // deno-lint-ignore no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any
     { pattern: URLPattern; handler: RouteHandler<any> }[]
   > = {
     delete: [],

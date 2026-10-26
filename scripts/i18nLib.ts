@@ -8,6 +8,7 @@
 //                      pipeline maintains (en is the implicit source). Shared
 //                      by every catalog below, as is i18n/glossary.json.
 
+import { readFile, writeFile } from "node:fs/promises";
 import { collectParams, parseMessage } from "./i18nParse.ts";
 
 const I18N_DIR = new URL("../i18n/", import.meta.url);
@@ -50,17 +51,17 @@ export type TargetCatalog = Record<string, TargetEntry>;
 
 // `name` is relative to i18n/: `${spec.dir}<locale>.json`.
 export const readJson = async <T>(name: string): Promise<T> =>
-  JSON.parse(await Deno.readTextFile(new URL(name, I18N_DIR)));
+  JSON.parse(await readFile(new URL(name, I18N_DIR), "utf8"));
 
 export const writeCatalog = async (
   dir: string,
   locale: string,
   catalog: TargetCatalog,
 ): Promise<void> => {
-  // Sorted keys for stable diffs; trailing newline as deno fmt would add.
+  // Sorted keys for stable diffs; trailing newline as the formatter would add.
   const sorted: TargetCatalog = {};
   for (const k of Object.keys(catalog).sort()) sorted[k] = catalog[k];
-  await Deno.writeTextFile(
+  await writeFile(
     new URL(`${dir}${locale}.json`, I18N_DIR),
     JSON.stringify(sorted, null, 2) + "\n",
   );

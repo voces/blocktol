@@ -5,18 +5,17 @@ what the game is, commands, the import rule, and the domain invariants every
 area relies on.
 
 User-facing copy lives in **ICU MessageFormat catalogs** under `i18n/`, not
-inline in code. `i18n/en.json` is the source of truth
-(`{ key: { message,
-description } }`); it defines the key set and, through the
-ICU args, the params each message takes. `scripts/genI18n.ts` (the `i18n` task,
-run first in `build`/`dev`/`test` and in CI before `deno check`) compiles every
-`i18n/<locale>.json` into **`common/i18n.generated.ts`** — gitignored and
-generated exactly like `common/version.ts`. The generated module pre-parses each
-message to an `I18nNode[]` AST (so **no ICU parser ships in the client bundle**
-— the parser is `scripts/i18nParse.ts`, build-only) and derives `MessageKey` + a
-per-key `MessageParams` type map from `en.json`, so a missing key or wrong
-argument at a `t(...)` call site is a **compile error** (the `BlocktolApi`
-type-derivation move).
+inline in code. `i18n/en.json` is the source of truth (`{ key: { message,
+description } }`); it defines the key set and, through the ICU args, the params
+each message takes. `scripts/genI18n.ts` (the `i18n` task, run first in
+`build`/`dev`/`test`/`typecheck`) compiles every `i18n/<locale>.json` into
+**`common/i18n.generated.ts`** — gitignored and generated exactly like
+`common/version.ts`. The generated module pre-parses each message to an
+`I18nNode[]` AST (so **no ICU parser ships in the client bundle** — the parser
+is `scripts/i18nParse.ts`, build-only) and derives `MessageKey` + a per-key
+`MessageParams` type map from `en.json`, so a missing key or wrong argument at a
+`t(...)` call site is a **compile error** (the `BlocktolApi` type-derivation
+move).
 
 There is a **second catalog**, `i18n/privacy/` (`en.json` + a translation per
 target), for the privacy page's prose. `CATALOGS` in `scripts/i18nLib.ts` lists
@@ -34,9 +33,9 @@ exactly what those buttons say.
 client share it: `t(locale, key, params)` resolves the BCP-47 `locale` to a
 supported catalog locale (exact tag → language prefix → `en`; the full tag still
 drives `Intl` number/plural formatting) and walks the AST — `{arg}`
-substitution, `{count, plural, …}` via `Intl.PluralRules` with `#`,
-`{sel, select, …}`. `locale` is omitted on the client (viewer's own locale) and
-set to the recipient's `user.locale` for server-rendered push copy — the same
+substitution, `{count, plural, …}` via `Intl.PluralRules` with `#`, `{sel,
+select, …}`. `locale` is omitted on the client (viewer's own locale) and set to
+the recipient's `user.locale` for server-rendered push copy — the same
 convention `common/format.ts` already uses. A locale missing a key falls back to
 the English AST. **Conventions:** keys are stable and namespaced by surface
 (`notif.`, …), never encode the English text; **never interpolate a key** — map
@@ -50,7 +49,7 @@ everything else. **User-facing piece names are `block` and `thunder`** — the
 internal `bricks`/`power`/`slow` names never appear in copy (see
 `i18n/glossary.json`, which the translator reads).
 
-Adding/altering copy: edit `i18n/en.json`, run `deno task i18n` (or any
+Adding/altering copy: edit `i18n/en.json`, run `npm run i18n` (or any
 `build`/`dev`/`test`), and call `t(...)`. Remaining migration work is tracked in
 `docs/localization.md`.
 

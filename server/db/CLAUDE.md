@@ -59,11 +59,11 @@ raw user-id credential).
 
 Two tagged-template helpers, and the choice is a correctness concern:
 
-- `sql\`...\`` — retries once on transport failure. Use for reads and
+- `` sql`...` `` — retries once on transport failure. Use for reads and
   **idempotent** writes (upserts, absolute-value UPDATEs).
-- `sqlOnce\`...\`` — no retry. Use for non-idempotent statements (bare INSERTs);
-  a retried INSERT after a lost response silently duplicates a row (a spent
-  daily attempt, a duplicate iteration).
+- `` sqlOnce`...` `` — no retry. Use for non-idempotent statements (bare
+  INSERTs); a retried INSERT after a lost response silently duplicates a row (a
+  spent daily attempt, a duplicate iteration).
 
 Both run under a 3s per-attempt timeout that covers the whole response (the
 proxy's body read included). A third, `sqlMigrate`, has **no retry and no
