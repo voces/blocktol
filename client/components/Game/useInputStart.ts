@@ -1,5 +1,5 @@
 import { useContext, useEffect } from "preact/compat";
-import { offsets } from "../../../common/constants.ts";
+import { pieceOverlaps } from "../../../common/grid.ts";
 import {
   isBorderPoint,
   isInvalidMove,
@@ -158,7 +158,7 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
         (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y)) <= 1;
       if (
         !invalid && !overlap &&
-        (offsets.every(([xd, yd]) => !grid[y + yd]![x + xd]))
+        !pieceOverlaps(grid, { x, y })
       ) {
         invalid = !solvable(blocks, checkpoint, { x, y });
       }
@@ -188,12 +188,13 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     globalThis.addEventListener("mousedown", mousedownCallback);
 
     const touchmoveCallback = (e: TouchEvent) => {
-      const target = e.changedTouches[0]!.target;
+      const target = e.changedTouches.item(0)?.target;
       if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
         return;
       }
       e.preventDefault();
-      const touch = e.touches[0]!;
+      const touch = e.touches.item(0);
+      if (!touch) return;
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;
       callback(touch.clientX, touch.clientY);
     };
@@ -202,11 +203,12 @@ export const useInputStart = (svg: SVGSVGElement | null) => {
     });
 
     const touchstartCallback = (e: TouchEvent) => {
-      const target = e.changedTouches[0]!.target;
+      const target = e.changedTouches.item(0)?.target;
       if (!(target instanceof SVGElement) || target instanceof SVGTextElement) {
         return;
       }
-      const touch = e.touches[0]!;
+      const touch = e.touches.item(0);
+      if (!touch) return;
       // Ignore taps on the border band: it holds the HUD controls (Ready?, best
       // score).
       if (isBorderPoint(svg, touch.clientX, touch.clientY)) return;

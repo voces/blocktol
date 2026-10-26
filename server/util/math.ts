@@ -95,7 +95,7 @@ export const fieldQuantiles = (
       cumulative += count;
       if (cumulative >= target) return time;
     }
-    return timeCounts[timeCounts.length - 1]!.time;
+    throw new RangeError(`quantile ${fraction} is past the field`);
   };
 
   return { p25: at(0.25), median: at(0.5), p75: at(0.75) };

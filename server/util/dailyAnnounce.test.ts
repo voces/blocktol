@@ -1,5 +1,5 @@
 import { test } from "node:test";
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { dailyEmbed, dayTopBuild } from "./dailyAnnounce.ts";
 import { CHARTREUSE, GOLD } from "./discordResults.ts";
 import { pbEmbed } from "./pbBoard.ts";
@@ -98,7 +98,8 @@ test("dayTopBuild: the earliest holder is credited, the rest match", () => {
       200,
     ),
   ];
-  const top = dayTopBuild(bests, new Set(), 42)!;
+  const top = dayTopBuild(bests, new Set(), 42);
+  assertExists(top);
   assertEquals(top.name, "early");
   assertEquals(top.matchers, ["mid", "late"]);
 });
@@ -125,7 +126,8 @@ test("dayTopBuild: a free-play match of the winning time still posts", () => {
     [best("alice", 42.1, 100), best("carol", 42.1, 200)],
     new Set(["alice"]),
     42.1,
-  )!;
+  );
+  assertExists(top);
   assertEquals(top.time, 42.1);
   assertEquals(top.matchers, ["carol"]);
 });

@@ -8,18 +8,19 @@ import { logMap, routeOf } from "./beginLogger.ts";
 // the OTel env); nothing to correlate, so it isn't stamped.
 const INVALID_TRACE_ID = "00000000000000000000000000000000";
 
-const sizes = ["B", "KB", "MB", "GB", "TB"];
+const [BYTES, ...LARGER_UNITS] = ["B", "KB", "MB", "GB", "TB"];
 
 const prettySize = (size: number) => {
   if (Number.isNaN(size)) return "";
 
-  let exp = 0;
-  while (size >= 1024 && exp < sizes.length - 1) {
+  let unit = BYTES;
+  for (const next of LARGER_UNITS) {
+    if (size < 1024) break;
     size /= 1024;
-    exp++;
+    unit = next;
   }
 
-  return Math.round(size) + sizes[exp]!;
+  return Math.round(size) + unit;
 };
 
 export const endLogger: Handler = (req, _, prev) => {

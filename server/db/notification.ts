@@ -89,11 +89,10 @@ export const listNotifications = async (
   ];
   if (lostIterations.length === 0) return notifs;
   const reclaimed = await reclaimedIterations(user, lostIterations);
-  return notifs.map((n) =>
-    n.kind === "lost_top" && reclaimed.has(n.iteration)
-      ? { ...n, reclaimed: reclaimed.get(n.iteration)! }
-      : n
-  );
+  return notifs.map((n) => {
+    const tied = n.kind === "lost_top" ? reclaimed.get(n.iteration) : undefined;
+    return tied === undefined ? n : { ...n, reclaimed: tied };
+  });
 };
 
 // Of the given iterations, those where `user` holds or ties the top of the PB

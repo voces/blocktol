@@ -25,7 +25,9 @@ test("staticServe: a file on disk carries an ETag and no year-long cache", async
 });
 
 test("staticServe: immutable only at the current ?v", async () => {
-  const shell = await (await get("/"))!.text();
+  const res = await get("/");
+  assert(res);
+  const shell = await res.text();
   const v = /href="\/styles\.css\?v=([0-9a-f]+)"/.exec(shell)?.[1];
   assert(v, "the shell stamps styles.css with its hash");
   const current = await get(`/styles.css?v=${v}`);

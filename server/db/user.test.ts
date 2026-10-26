@@ -29,9 +29,9 @@ test("mergeRivals keeps rivals with 5+ meetings on either board, most-met first"
     [row("b", 6, 6), row("d", 2)],
   );
   assertEquals(merged.map((r) => r.name), ["c", "a", "b"]);
-  assertEquals(merged[1]!.daily, { met: 5, won: 3, lost: 2, tied: 0 });
-  assertEquals(merged[1]!.pb, null);
+  assertEquals(merged[1]?.daily, { met: 5, won: 3, lost: 2, tied: 0 });
+  assertEquals(merged[1]?.pb, null);
   // Under the minimum on the daily board, so only its PB record shows.
-  assertEquals(merged[2]!.daily, null);
-  assertEquals(merged[2]!.pb, { met: 6, won: 6, lost: 0, tied: 0 });
+  assertEquals(merged[2]?.daily, null);
+  assertEquals(merged[2]?.pb, { met: 6, won: 6, lost: 0, tied: 0 });
 });

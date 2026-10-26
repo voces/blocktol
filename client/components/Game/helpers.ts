@@ -1,5 +1,9 @@
 import { is } from "../../../common/typeguards.ts";
-import { offsets } from "../../../common/constants.ts";
+import {
+  pieceOverlaps,
+  setCheckpoint,
+  setPiece,
+} from "../../../common/grid.ts";
 import {
   cachedSolver,
   newGrid,
@@ -74,8 +78,8 @@ export const mazeKey = (
 ) =>
   JSON.stringify(
     [...maze]
-      .map((b) => [b.x, b.y, b.thunder ? 1 : 0])
-      .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]! || a[2]! - b[2]!),
+      .map((b): [number, number, number] => [b.x, b.y, b.thunder ? 1 : 0])
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]),
   );
 
 export const isTouchSource = is.object({
@@ -112,10 +116,8 @@ export const rebuildGrid = (
   blocks: ReadonlyArray<Point>,
 ) => {
   grid.splice(0, Infinity, ...newGrid());
-  grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
-  for (const { x, y } of blocks) {
-    offsets.forEach(([xd, yd]) => grid[y + yd]![x + xd] = true);
-  }
+  setCheckpoint(grid, checkpoint, true);
+  for (const block of blocks) setPiece(grid, block, true);
 };
 
 /**
@@ -134,10 +136,10 @@ export const isInvalidMove = (
 ) => {
   if (Math.abs(checkpoint.x - x) + Math.abs(checkpoint.y - y) <= 1) return true;
 
-  offsets.forEach(([xd, yd]) => grid[origin.y + yd]![origin.x + xd] = false);
-  const invalid = offsets.some(([xd, yd]) => grid[y + yd]![x + xd]) ||
+  setPiece(grid, origin, false);
+  const invalid = pieceOverlaps(grid, { x, y }) ||
     !solvable(blocks.filter((b) => b !== origin), checkpoint, { x, y });
-  offsets.forEach(([xd, yd]) => grid[origin.y + yd]![origin.x + xd] = true);
+  setPiece(grid, origin, true);
   return invalid;
 };
 

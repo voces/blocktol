@@ -1,3 +1,6 @@
+import { pairs } from "./arrays.ts";
+import { required } from "./typeguards.ts";
+
 // The percentile ramp (the --pct-0..4 tokens in index.html), low to high:
 // red → magenta → blue → teal → green (best). It goes the long way round the
 // wheel to skip yellow/olive and stay vivid.
@@ -50,6 +53,8 @@ const stopsLCh = STOPS.map((hex): [number, number, number] => {
   );
   return [L, Math.hypot(a, b), Math.atan2(b, a)];
 });
+// Each pair of neighbouring stops the ramp tweens between.
+const bands = [...pairs(stopsLCh)];
 
 /**
  * Supreme (record) sits above the ramp: gold, not the ramp's green top. A fixed
@@ -84,8 +89,10 @@ export const percentileColor = (percent: number): string => {
   const i = Math.min(Math.floor(p * last), last - 1);
   const t = (p - i / last) * last;
 
-  const [L1, C1, H1] = stopsLCh[i]!;
-  const [L2, C2, H2] = stopsLCh[i + 1]!;
+  const [[L1, C1, H1], [L2, C2, H2]] = required(
+    bands[i],
+    "a band for every clamped index",
+  );
   const L = L1 + t * (L2 - L1);
   const C = C1 + t * (C2 - C1);
   // Interpolate hue along the shorter arc (matching CSS `in oklch`).

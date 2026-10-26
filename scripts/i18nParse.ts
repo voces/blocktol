@@ -15,11 +15,11 @@ export const parseMessage = (src: string): I18nNode[] => {
   let i = 0;
 
   const skipWs = () => {
-    while (i < src.length && /\s/.test(src[i]!)) i++;
+    while (i < src.length && /\s/.test(src.charAt(i))) i++;
   };
   const readIdent = (): string => {
     const start = i;
-    while (i < src.length && ident.test(src[i]!)) i++;
+    while (i < src.length && ident.test(src.charAt(i))) i++;
     if (i === start) throw new Error(`expected identifier at ${i} in "${src}"`);
     return src.slice(start, i);
   };
@@ -144,7 +144,8 @@ export const collectParams = (
 ): Record<string, string> => {
   const kinds = new Map<string, ParamKind>();
   const note = (arg: string, kind: ParamKind) => {
-    kinds.set(arg, kinds.has(arg) ? merge(kinds.get(arg)!, kind) : kind);
+    const prev = kinds.get(arg);
+    kinds.set(arg, prev === undefined ? kind : merge(prev, kind));
   };
   const walk = (ns: readonly I18nNode[]) => {
     for (const n of ns) {

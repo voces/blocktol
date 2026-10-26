@@ -9,7 +9,7 @@ import {
   standingColor,
 } from "./percentileColor.ts";
 
-const rgb = (hex: string) => [
+const rgb = (hex: string): [number, number, number] => [
   parseInt(hex.slice(1, 3), 16),
   parseInt(hex.slice(3, 5), 16),
   parseInt(hex.slice(5, 7), 16),
@@ -27,13 +27,15 @@ const STOPS: [number, string][] = [
 
 for (const [p, hex] of STOPS) {
   test(`percentileColor(${p}) ≈ ${hex}`, () => {
-    const got = rgb(percentileColor(p));
-    const want = rgb(hex);
-    for (let c = 0; c < 3; c++) {
-      assert(
-        Math.abs(got[c]! - want[c]!) <= 2,
-        `channel ${c}: got ${got[c]}, want ${want[c]}`,
-      );
+    const [r, g, b] = rgb(percentileColor(p));
+    const [wr, wg, wb] = rgb(hex);
+    const channels: [name: string, got: number, want: number][] = [
+      ["r", r, wr],
+      ["g", g, wg],
+      ["b", b, wb],
+    ];
+    for (const [name, got, want] of channels) {
+      assert(Math.abs(got - want) <= 2, `${name}: got ${got}, want ${want}`);
     }
   });
 }

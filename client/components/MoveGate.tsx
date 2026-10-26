@@ -2,6 +2,7 @@ import { h } from "preact";
 import { useEffect, useState } from "preact/compat";
 import { api } from "../api.ts";
 import { storage } from "../util/storage.ts";
+import { required } from "../../common/typeguards.ts";
 import { avatarColor, avatarInitial } from "../../common/avatar.ts";
 import {
   adoptId,
@@ -183,8 +184,10 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   // getPendingLink: a fork over an existing profile; getCleanLink: a link on a
   // fresh device. Exactly one is non-null when this renders.
   const pending = getPendingLink();
-  const linkId = pending ?? getCleanLink()!;
+  const linkId = required(pending ?? getCleanLink(), "a link to resolve");
   const localId = pending ? getId() : null;
+  // The current profile's own link, saved before switching away from it.
+  const ownLink = localId ? signInLink(localId) : null;
 
   const [mode, setMode] = useState<Mode>("loading");
   const [self, setSelf] = useState<Side>(null);
@@ -305,9 +308,9 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   // printed beside the button for a manual save and locking would strand the
   // player, but claims nothing.
   const copyLink = () => {
-    const url = signInLink(localId!);
+    if (!ownLink) return;
     Promise.resolve()
-      .then(() => navigator.clipboard.writeText(url))
+      .then(() => navigator.clipboard.writeText(ownLink))
       .then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
@@ -575,8 +578,8 @@ export const MoveGate = ({ onResolved }: { onResolved: () => void }) => {
   }
 
   // 2c — switch, gated behind saving the current profile's link.
-  if (mode === "switch" && self && other) {
-    const url = signInLink(localId!);
+  if (mode === "switch" && self && other && ownLink) {
+    const url = ownLink;
     return sheetFrame(
       t("mg.switchToTitle", { name: other.name ?? t("mg.fbIt") }),
       <div class="mg-body">

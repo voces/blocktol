@@ -1,6 +1,4 @@
 import { useCallback, useContext, useEffect } from "preact/compat";
-import { offsets } from "../../../common/constants.ts";
-import { newGrid } from "../../../common/pathing.ts";
 import { api, type MessageMap } from "../../api.ts";
 import { type Point } from "../../../common/types.ts";
 import { standing } from "../../../common/standing.ts";
@@ -147,11 +145,7 @@ export const useInit = () => {
   // and a staged free-play board).
   const layout = useCallback(
     (data: { checkpoint: Point; blocks: Point[] }) => {
-      grid.splice(0, Infinity, ...newGrid());
-      grid[data.checkpoint.y + 0.5]![data.checkpoint.x + 0.5] = true;
-      for (const { x, y } of data.blocks) {
-        offsets.forEach(([xd, yd]) => grid[y + yd]![x + xd] = true);
-      }
+      rebuildGrid(grid, data.checkpoint, data.blocks);
     },
     [],
   );

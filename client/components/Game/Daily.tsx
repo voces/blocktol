@@ -98,11 +98,10 @@ export const Daily = () => {
     ...attempts.map(attemptLine),
   ].join("\n");
 
-  let bestIdx = 0;
-  attempts.forEach((a, i) => {
-    if (a.duration > attempts[bestIdx]!.duration) bestIdx = i;
-  });
-  const best = attempts[bestIdx]!;
+  // The earliest of the longest attempts.
+  const [first, ...rest] = attempts;
+  if (!first) return null;
+  const best = rest.reduce((b, a) => a.duration > b.duration ? a : b, first);
   const isSupreme = best.supreme;
   // Ties the field's top time without taking the record.
   const isPeak = !isSupreme && best.percent === 1;
@@ -161,15 +160,15 @@ export const Daily = () => {
           {attempts.map((attempt, i) => (
             <div
               key={i}
-              class={i === bestIdx
+              class={attempt === best
                 ? "result__row result__row--best band-card" +
                   (isSupreme ? " result__row--glow" : "")
                 : "result__row"}
-              style={i === bestIdx ? { "--accent": accent } : undefined}
+              style={attempt === best ? { "--accent": accent } : undefined}
             >
               <span class="result__label">
                 {t("daily.attempt", { n: i + 1 })}
-                {i === bestIdx && (
+                {attempt === best && (
                   <span class="result__badge" style={{ "--badge": accent }}>
                     {t(
                       BADGE_KEY[
@@ -187,7 +186,7 @@ export const Daily = () => {
                 )}
                 <span
                   class="result__time mono"
-                  style={i === bestIdx ? { color: accent } : undefined}
+                  style={attempt === best ? { color: accent } : undefined}
                 >
                   {/* Two decimals, locale-aware, aligned down the column. */}
                   {formatSeconds(attempt.duration)}s

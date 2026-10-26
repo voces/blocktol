@@ -165,6 +165,6 @@ test("default window: whole small fields, a full sheet on big ones", () => {
     "u149",
   );
   assertEquals(big.rows.length, 25 + 21);
-  assertEquals(big.rows[25]!.rank, 140);
-  assertEquals(big.rows[25]!.gapBefore, 139 - 25);
+  assertEquals(big.rows[25]?.rank, 140);
+  assertEquals(big.rows[25]?.gapBefore, 139 - 25);
 });

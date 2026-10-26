@@ -50,7 +50,8 @@ export class Router implements AbstractRouter {
   use(handler: Handler): void;
   use<Path extends string>(pathname: Path, handler: RouteHandler<Path>): void;
   use(arg1: Handler | string, arg2?: Handler) {
-    const handler = typeof arg1 === "function" ? arg1 : arg2!;
+    const handler = typeof arg1 === "function" ? arg1 : arg2;
+    if (!handler) throw new TypeError("use(pathname) needs a handler");
     const pathname = typeof arg1 === "string" ? arg1 : undefined;
 
     const pattern = new URLPattern(pathname ? { pathname } : {});

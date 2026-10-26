@@ -134,7 +134,7 @@ test("board gate: a future day is locked on every surface, layout-free", {
 
     const runs = await sql<{ n: number }[]>`
         SELECT COUNT(1) n FROM run WHERE user = ${user};`;
-    assertEquals(Number(runs[0]!.n), 0, "nothing was written");
+    assertEquals(Number(runs[0]?.n), 0, "nothing was written");
   } finally {
     await sql`DELETE FROM user WHERE id = ${user};`;
   }

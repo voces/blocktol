@@ -42,7 +42,11 @@ const compile = async ({ dir, out }: CatalogSpec) => {
     JSON.parse(await readFile(new URL(`${locale}.json`, catalogDir), "utf8"));
 
   const en = await read("en");
-  const keys = Object.keys(en).sort();
+  // The key set, each with its compiled English message.
+  const enMessages = Object.entries(en)
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    .map(([key, e]): [string, I18nNode[]] => [key, parseMessage(e.message)]);
+  const keys = enMessages.map(([key]) => key);
 
   // Compile each locale's messages to ASTs, keyed by the en.json key set. A
   // locale missing a key omits it and the runtime falls back to English
@@ -57,12 +61,9 @@ const compile = async ({ dir, out }: CatalogSpec) => {
     }
     catalog[locale] = compiled;
   }
-  const enAst = catalog.en;
-  if (!enAst) throw new Error("no en catalog");
-
-  // Per-key params type, derived from the English message.
-  const paramsType = (key: string): string => {
-    const params = collectParams(enAst[key]!);
+  // A key's params type, derived from its English message.
+  const paramsType = (nodes: I18nNode[]): string => {
+    const params = collectParams(nodes);
     const names = Object.keys(params).sort();
     // `Record<never, never>` lets `t(key)` omit the params arg.
     if (names.length === 0) return "Record<never, never>";
@@ -88,10 +89,19 @@ export type MessageKey =
 ${keys.map((k) => `  | ${JSON.stringify(k)}`).join("\n")};
 
 export type MessageParams = {
-${keys.map((k) => `  ${JSON.stringify(k)}: ${paramsType(k)};`).join("\n")}
+${
+      enMessages.map(([k, nodes]) =>
+        `  ${JSON.stringify(k)}: ${paramsType(nodes)};`
+      )
+        .join("\n")
+    }
 };
 
-export const catalog: Record<Locale, Record<string, I18nNode[]>> = ${
+// English defines the key set, so its catalog is complete; another locale
+// may lack a key, which falls back to English.
+export const catalog:
+  & Record<Locale, Partial<Record<MessageKey, I18nNode[]>>>
+  & { en: Record<MessageKey, I18nNode[]> } = ${
       JSON.stringify(catalog, null, 2)
     };
 `;

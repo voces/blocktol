@@ -202,12 +202,14 @@ const fmt = (
   `(${delta >= 0 ? "+" : ""}${delta.toFixed(2)}s)  ${label}`;
 
 const stats = (deltas: number[]) => {
-  if (!deltas.length) return "n/a";
   const abs = deltas.map(Math.abs).sort((a, b) => a - b);
+  const median = abs[abs.length >> 1];
+  const max = abs.at(-1);
+  if (median === undefined || max === undefined) return "n/a";
   const mean = abs.reduce((s, x) => s + x, 0) / abs.length;
-  return `mean ${mean.toFixed(3)}s · median ${
-    abs[abs.length >> 1]!.toFixed(3)
-  }s · max ${abs[abs.length - 1]!.toFixed(3)}s`;
+  return `mean ${mean.toFixed(3)}s · median ${median.toFixed(3)}s · max ${
+    max.toFixed(3)
+  }s`;
 };
 
 const runSection = (title: string, rows: RunDelta[]) => {

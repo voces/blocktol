@@ -81,9 +81,10 @@ const sendOne = async (sub: PushSubscriptionRow, payload: string) => {
 
 // Run `tasks` with at most `limit` in flight.
 const pool = async (tasks: (() => Promise<void>)[], limit: number) => {
-  let i = 0;
+  // One iterator shared by every worker: each takes the next task left.
+  const queue = tasks.values();
   const worker = async () => {
-    while (i < tasks.length) await tasks[i++]!();
+    for (const task of queue) await task();
   };
   await Promise.all(
     Array.from({ length: Math.min(limit, tasks.length) }, worker),

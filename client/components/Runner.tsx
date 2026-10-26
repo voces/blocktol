@@ -1,5 +1,6 @@
 import { Fragment, h } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
+import { pairs } from "../../common/arrays.ts";
 import { SPEED } from "../../common/pathing.ts";
 import { type Point } from "../../common/types.ts";
 import { useGame } from "../hooks/useGame.ts";
@@ -23,7 +24,7 @@ export const Runner = (
     paused?: boolean | undefined;
   },
 ) => {
-  const [loc, setLoc] = useState(path[0]!);
+  const [loc, setLoc] = useState(path[0]);
   const [slowed, setSlowed] = useState(false);
   const game = useGame();
   const pausedRef = useRef(paused);
@@ -84,23 +85,26 @@ export const Runner = (
         const stepEnd = Math.min(t + MAX_STEP_S, time);
         // Fire every slow that begins before this chunk ends, once each.
         for (
-          ;
-          nextSlow < slows.length && slows[nextSlow]!.time < stepEnd;
-          nextSlow++
+          let slow = slows[nextSlow];
+          slow && slow.time < stepEnd;
+          slow = slows[++nextSlow]
         ) {
-          onSlow(slows[nextSlow]!.thunder);
+          onSlow(slow.thunder);
         }
-        isSlowed = nextSlow > 0 && (slows[nextSlow - 1]!.time) + 6 > stepEnd;
+        const lastSlow = slows[nextSlow - 1];
+        isSlowed = lastSlow !== undefined && lastSlow.time + 6 > stepEnd;
         pathDistance += (stepEnd - t) * (isSlowed ? SPEED / 2 : SPEED);
         t = stepEnd;
       }
       setSlowed(isSlowed);
 
       let distanceRemaining = pathDistance - coveredDistance;
-      while (pathIndex < path.length - 1) {
-        const legDistance =
-          ((path[pathIndex + 1]!.x - path[pathIndex]!.x) ** 2 +
-            (path[pathIndex + 1]!.y - path[pathIndex]!.y) ** 2) ** 0.5;
+      while (true) {
+        const from = path[pathIndex];
+        const to = path[pathIndex + 1];
+        if (!from || !to) break; // at the end of the path
+        const legDistance = ((to.x - from.x) ** 2 + (to.y - from.y) ** 2) **
+          0.5;
 
         if (legDistance < distanceRemaining) {
           coveredDistance += legDistance;
@@ -111,10 +115,8 @@ export const Runner = (
 
         const r = distanceRemaining / legDistance;
         setLoc({
-          x: path[pathIndex]!.x * (1 - r) +
-            (path[pathIndex + 1]?.x ?? path[pathIndex]!.x) * r,
-          y: path[pathIndex]!.y * (1 - r) +
-            (path[pathIndex + 1]?.y ?? path[pathIndex]!.y) * r,
+          x: from.x * (1 - r) + to.x * r,
+          y: from.y * (1 - r) + to.y * r,
         });
         break;
       }
@@ -142,14 +144,16 @@ export const Runner = (
 
   return (
     <>
-      <circle
-        cx={loc.x + 0.5}
-        cy={loc.y + 0.5}
-        r={0.45}
-        fill={slowed ? "var(--slow-runner)" : "var(--runner)"}
-        stroke="var(--maze-stroke)"
-        stroke-width={0.1}
-      />
+      {loc && (
+        <circle
+          cx={loc.x + 0.5}
+          cy={loc.y + 0.5}
+          r={0.45}
+          fill={slowed ? "var(--slow-runner)" : "var(--runner)"}
+          stroke="var(--maze-stroke)"
+          stroke-width={0.1}
+        />
+      )}
       {debug && path.map((loc) => (
         <circle
           key={`${loc.x}-${loc.y}`}
@@ -159,19 +163,17 @@ export const Runner = (
           fill="var(--maze-stroke)"
         />
       ))}
-      {debug && path.map((loc, i) =>
-        i > 0 && (
-          <line
-            key={`${loc.x},${loc.y}-${path[i - 1]!.x},${path[i - 1]!.y}`}
-            x1={loc.x + 0.5}
-            y1={loc.y + 0.5}
-            x2={path[i - 1]!.x + 0.5}
-            y2={path[i - 1]!.y + 0.5}
-            stroke="var(--maze-stroke)"
-            stroke-width={0.02}
-          />
-        )
-      )}
+      {debug && [...pairs(path)].map(([prev, loc]) => (
+        <line
+          key={`${loc.x},${loc.y}-${prev.x},${prev.y}`}
+          x1={loc.x + 0.5}
+          y1={loc.y + 0.5}
+          x2={prev.x + 0.5}
+          y2={prev.y + 0.5}
+          stroke="var(--maze-stroke)"
+          stroke-width={0.02}
+        />
+      ))}
     </>
   );
 };

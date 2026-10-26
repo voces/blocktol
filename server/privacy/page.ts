@@ -73,7 +73,7 @@ const ESCAPES: Record<string, string> = {
   '"': "&quot;",
   "'": "&#39;",
 };
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ESCAPES[c]!);
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
 
 // Markup the page builds itself (a link, an emphasis) to splice into a message
 // arg. Inserted verbatim; every other string is escaped.
@@ -96,7 +96,7 @@ const message = <K extends MessageKey>(
 ): string => {
   const values = (params[0] ?? {}) as Record<string, string | number | Markup>;
   let out = "";
-  for (const node of catalog[locale][key] ?? catalog.en[key]!) {
+  for (const node of catalog[locale][key] ?? catalog.en[key]) {
     if (typeof node === "string") {
       out += esc(node);
     } else if ("plural" in node || "select" in node) {

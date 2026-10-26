@@ -74,11 +74,13 @@ export const dayTopBuild = (
     .filter((b) => round2(b.best) === time)
     .sort((a, b) => a.at - b.at);
   if (time === rankedTop && holders.length === winners.size) return null;
+  const [first, ...matchers] = holders;
+  if (!first) return null;
   return {
-    user: holders[0]!.user,
-    name: holders[0]!.name ?? "anonymous",
+    user: first.user,
+    name: first.name ?? "anonymous",
     time,
-    matchers: holders.slice(1).map((b) => b.name ?? "anonymous"),
+    matchers: matchers.map((b) => b.name ?? "anonymous"),
   };
 };
 
@@ -121,8 +123,9 @@ export const announceDailyResult = async (iteration: number) => {
       getIterationBests(iteration),
       getStandingsMeta(iteration),
     ]);
-    if (rows.length === 0) return; // no ranked field — nothing to announce
-    const top = round2(rows[0]!.time);
+    const [first] = rows;
+    if (!first) return; // no ranked field — nothing to announce
+    const top = round2(first.time);
     const winners = rows.filter((r) => round2(r.time) === top);
     const day: Day = [meta.y, meta.m, meta.d];
 

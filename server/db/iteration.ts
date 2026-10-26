@@ -8,7 +8,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export const getIterationCount = () =>
   sql<{ count: number }[]>`
     SELECT COUNT(*) count FROM iteration;
-  `.then((r) => r[0]!.count);
+  `.then(([r]) => r?.count ?? 0);
 
 export const getIteration = memoize((id: number) =>
   sql<
@@ -128,7 +128,9 @@ export const getEarliestIterationDay = () =>
   sql<{ y: number | null; m: number | null; d: number | null }[]>`
     SELECT YEAR(MIN(created)) y, MONTH(MIN(created)) m, DAY(MIN(created)) d
     FROM iteration`.then(([r]) =>
-    r?.y == null ? null : Date.UTC(r.y, r.m! - 1, r.d!)
+    r?.y == null || r.m == null || r.d == null
+      ? null
+      : Date.UTC(r.y, r.m - 1, r.d)
   );
 
 export const getDailyIteration = (year: number, month: number, day: number) =>
@@ -157,7 +159,7 @@ export const getIterationOtherBest = (
       AND user != ${user}
       AND void = FALSE
       ${daily ? raw`AND daily = true` : raw("")}
-  `.then((r) => r[0]!.otherBest);
+  `.then(([r]) => r?.otherBest ?? null);
 
 // Dailies whose date is fully past for every timezone (so the field is frozen)
 // and that haven't been rated yet. 37h = the UTC-12 close (D+1 12:00 UTC) plus

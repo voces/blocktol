@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { live } from "../../db/liveTests.ts";
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertExists } from "@std/assert";
 import { sql } from "../../db/query.ts";
 import { createOrUpdateUser } from "../../db/user.ts";
 import { extractUserId } from "../../middleware/userid.ts";
@@ -248,8 +248,10 @@ test("standings PB counts a free-play-only day and stays scoped to it", {
     // Lone player holds their own field best → standing 1.
     assertEquals(a.pb.me?.percent, 1);
     assertEquals(a.pb.rows.length, 1);
-    assertEquals(a.pb.rows[0]!.secondary, null);
-    assert(a.pb.rows[0]!.at > 0, "pb row carries the build's timestamp");
+    const [row] = a.pb.rows;
+    assertExists(row);
+    assertEquals(row.secondary, null);
+    assert(row.at > 0, "pb row carries the build's timestamp");
 
     // PB board on B is its own day: 55, oblivious to day A's 20.
     const b = await standings.handler({ iteration: dayB }, authed(user));

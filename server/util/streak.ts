@@ -19,11 +19,13 @@ export const streaks = (dates: readonly string[], today: string) => {
   let best = 0;
   let run = 0;
   let current = 0;
-  for (let i = 0; i < days.length; i++) {
-    run = i > 0 && days[i]! - days[i - 1]! === 1 ? run + 1 : 1;
+  let prev: number | undefined;
+  for (const day of days) {
+    run = prev !== undefined && day - prev === 1 ? run + 1 : 1;
     if (run > best) best = run;
     // A later date overwrites this, so the final assignment wins.
-    if (days[i]! >= now - 1) current = run;
+    if (day >= now - 1) current = run;
+    prev = day;
   }
   return { current, best };
 };

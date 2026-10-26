@@ -25,20 +25,22 @@ let keyCount = 0;
 // Errors name the catalog's directory (`privacy/de/privacy.intro`).
 for (const { dir } of CATALOGS) {
   const en = await readJson<SourceCatalog>(`${dir}en.json`);
-  const enKeys = Object.keys(en);
-  keyCount += enKeys.length;
+  const sources = Object.entries(en);
+  keyCount += sources.length;
 
   // The source must itself be valid ICU.
-  for (const key of enKeys) {
+  for (const [key, { message }] of sources) {
     try {
-      parseMessage(en[key]!.message);
+      parseMessage(message);
     } catch (e) {
       errors.push(`${dir}en/${key}: ICU parse error: ${(e as Error).message}`);
     }
   }
 
   const hashes = new Map<string, string>();
-  for (const key of enKeys) hashes.set(key, await sha256(en[key]!.message));
+  for (const [key, { message }] of sources) {
+    hashes.set(key, await sha256(message));
+  }
 
   for (const locale of targets) {
     let target: TargetCatalog;
@@ -50,7 +52,7 @@ for (const { dir } of CATALOGS) {
       );
       continue;
     }
-    for (const key of enKeys) {
+    for (const [key, source] of sources) {
       const entry = target[key];
       if (!entry) {
         errors.push(`${dir}${locale}/${key}: missing translation`);
@@ -65,7 +67,7 @@ for (const { dir } of CATALOGS) {
       // Validated under the bare locale (it drives the CLDR plural check); the
       // directory is prefixed afterwards.
       errors.push(
-        ...validateTranslation(locale, key, entry.message, en[key]!.message)
+        ...validateTranslation(locale, key, entry.message, source.message)
           .map((e) => `${dir}${e}`),
       );
     }

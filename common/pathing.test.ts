@@ -9,7 +9,8 @@ import {
   PathSolver,
   type Slow,
 } from "./pathing.ts";
-import { offsets } from "./constants.ts";
+import { pairs } from "./arrays.ts";
+import { pieceOverlaps, setCheckpoint, setPiece } from "./grid.ts";
 import type { Point } from "./types.ts";
 
 test("pathDuration", async (t) => {
@@ -194,9 +195,8 @@ test("pathDuration", async (t) => {
 
 const length = (path: ReadonlyArray<Point>) => {
   let total = 0;
-  for (let i = 1; i < path.length; i++) {
-    total += ((path[i]!.x - path[i - 1]!.x) ** 2 +
-      (path[i]!.y - path[i - 1]!.y) ** 2) ** 0.5;
+  for (const [a, b] of pairs(path)) {
+    total += ((b.x - a.x) ** 2 + (b.y - a.y) ** 2) ** 0.5;
   }
   return total;
 };
@@ -210,42 +210,38 @@ const bruteOptimalLength = (
   grid: boolean[][],
 ) => {
   const nodes: Point[] = [start, end];
-  for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y]!.length; x++) {
-      if (grid[y]![x] === false && !(x === start.x && y === start.y)) {
-        nodes.push({ x, y });
-      }
+  for (const [y, row] of grid.entries()) {
+    for (const [x, blocked] of row.entries()) {
+      if (!blocked && !(x === start.x && y === start.y)) nodes.push({ x, y });
     }
   }
-  const n = nodes.length;
-  const dist = Array<number>(n).fill(Infinity);
-  const done = Array<boolean>(n).fill(false);
-  dist[0] = 0;
-  for (let it = 0; it < n; it++) {
-    let u = -1;
-    let best = Infinity;
-    for (const [i, d] of dist.entries()) {
-      if (!done[i] && d < best) {
-        best = d;
-        u = i;
+  // Dijkstra over every pair of nodes in line of sight.
+  const dist = new Map<Point, number>([[start, 0]]);
+  const done = new Set<Point>();
+  while (true) {
+    let u: Point | undefined;
+    let du = Infinity;
+    for (const [node, d] of dist) {
+      if (!done.has(node) && d < du) {
+        u = node;
+        du = d;
       }
     }
-    if (u < 0) break;
-    done[u] = true;
-    for (let v = 0; v < n; v++) {
-      if (done[v] || !lineOfSight(nodes[u]!, nodes[v]!, grid)) continue;
-      const nd = dist[u]! +
-        ((nodes[u]!.x - nodes[v]!.x) ** 2 + (nodes[u]!.y - nodes[v]!.y) ** 2) **
-          0.5;
-      if (nd < dist[v]!) dist[v] = nd;
+    if (!u) break;
+    done.add(u);
+    for (const v of nodes) {
+      if (done.has(v) || !lineOfSight(u, v, grid)) continue;
+      const nd = du + ((u.x - v.x) ** 2 + (u.y - v.y) ** 2) ** 0.5;
+      if (nd < (dist.get(v) ?? Infinity)) dist.set(v, nd);
     }
   }
-  return dist[1] ?? Infinity; // nodes[1] is `end`
+  return dist.get(end) ?? Infinity;
 };
 
 test("PathSolver — any-angle optimality", async (t) => {
   await t.test("unobstructed run is a single straight segment", () => {
-    const path = new PathSolver([], { x: 9.5, y: 18.5 }).solve([])!;
+    const path = new PathSolver([], { x: 9.5, y: 18.5 }).solve([]);
+    assertExists(path);
     // start -> checkpoint cell (10,19) -> end, both straight.
     assertEquals(path.length, 3);
     assert(
@@ -262,10 +258,8 @@ test("PathSolver — any-angle optimality", async (t) => {
       // Two blocks touching only at a corner leave a zero-width gap: the
       // diagonal must not be line-of-sight.
       const grid = newGrid();
-      for (const [xd, yd] of offsets) {
-        grid[8 + yd]![8 + xd] = true; // block at (8,8): cells (8..9, 8..9)
-        grid[10 + yd]![10 + xd] = true; // block at (10,10): cells (10..11, 10..11)
-      }
+      setPiece(grid, { x: 8, y: 8 }, true); // cells (8..9, 8..9)
+      setPiece(grid, { x: 10, y: 10 }, true); // cells (10..11, 10..11)
       assert(!lineOfSight({ x: 9, y: 9 }, { x: 10, y: 10 }, grid));
     },
   );
@@ -282,14 +276,14 @@ test("PathSolver — any-angle optimality", async (t) => {
         x: 1.5 + Math.floor(rng() * 17),
         y: 1.5 + Math.floor(rng() * 17),
       };
-      grid[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
+      setCheckpoint(grid, checkpoint, true);
       const anchors: Point[] = [];
       const blockCount = 3 + Math.floor(rng() * 28);
       for (let b = 0; b < blockCount; b++) {
         const x = 2 + Math.floor(rng() * 17);
         const y = 2 + Math.floor(rng() * 17);
-        if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) continue;
-        offsets.forEach(([xd, yd]) => (grid[y + yd]![x + xd] = true));
+        if (pieceOverlaps(grid, { x, y })) continue;
+        setPiece(grid, { x, y }, true);
         anchors.push({ x, y });
       }
 
@@ -304,7 +298,7 @@ test("PathSolver — any-angle optimality", async (t) => {
 
       // Reproduce the search's internal grid (checkpoint cell walkable).
       const g = structuredClone(grid);
-      g[checkpoint.y + 0.5]![checkpoint.x + 0.5] = false;
+      setCheckpoint(g, checkpoint, false);
       const cell = { x: checkpoint.x + 0.5, y: checkpoint.y + 0.5 };
       const optimum = bruteOptimalLength({ x: 9, y: 19 }, cell, g) +
         bruteOptimalLength(cell, { x: 10, y: 0 }, g);
@@ -355,8 +349,8 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
     for (let i = 0; i < count; i++) {
       const x = 2 + Math.floor(rng() * 16);
       const y = 2 + Math.floor(rng() * 16);
-      if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) continue;
-      offsets.forEach(([xd, yd]) => (grid[y + yd]![x + xd] = true));
+      if (pieceOverlaps(grid, { x, y })) continue;
+      setPiece(grid, { x, y }, true);
       anchors.push({ x, y });
     }
     return anchors;
@@ -373,7 +367,7 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         };
         // Scratch grid only to generate non-overlapping placements.
         const scratch = newGrid();
-        scratch[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
+        setCheckpoint(scratch, checkpoint, true);
         const base = placeRandom(scratch, 2 + Math.floor(rng() * 7));
 
         const solver = new PathSolver(base, checkpoint);
@@ -413,8 +407,8 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
     () => {
       const checkpoint = { x: 9.5, y: 9.5 };
       const solver = new PathSolver([{ x: 4, y: 4 }], checkpoint);
-      const good = solver.solve([{ x: 12, y: 12 }])!;
-      assert(good);
+      const good = solver.solve([{ x: 12, y: 12 }]);
+      assertExists(good);
 
       // Overlapping the base block, the checkpoint cell, and an earlier piece
       // must all throw. The last throws after the first piece is already
@@ -450,7 +444,7 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         y: 1.5 + Math.floor(rng() * 17),
       };
       const scratch = newGrid();
-      scratch[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
+      setCheckpoint(scratch, checkpoint, true);
       const base = placeRandom(scratch, 2 + Math.floor(rng() * 6));
       const pieces = placeRandom(scratch, 4 + Math.floor(rng() * 14));
       // Fresh solvers: a shared one would agree through its memo; this tests
@@ -474,7 +468,7 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
         y: 1.5 + Math.floor(rng() * 17),
       };
       const occupied = newGrid();
-      occupied[checkpoint.y + 0.5]![checkpoint.x + 0.5] = true;
+      setCheckpoint(occupied, checkpoint, true);
       const base: (Point & { thunder?: boolean })[] = placeRandom(
         occupied,
         2 + Math.floor(rng() * 6),
@@ -485,18 +479,18 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
       for (let edit = 0; edit < 14; edit++) {
         const op = rng();
         if (op < 0.55 || pieces.length === 0) {
-          const added = placeRandom(occupied, 1);
-          if (!added.length) continue;
-          pieces.push(added[0]!);
+          const [added] = placeRandom(occupied, 1);
+          if (!added) continue;
+          pieces.push(added);
         } else if (op < 0.8) {
           const [gone] = pieces.splice(Math.floor(rng() * pieces.length), 1);
           assertExists(gone); // pieces is non-empty on this branch
-          offsets.forEach((
-            [xd, yd],
-          ) => (occupied[gone.y + yd]![gone.x + xd] = false));
+          setPiece(occupied, gone, false);
         } else {
           const i = Math.floor(rng() * pieces.length);
-          pieces[i] = { ...pieces[i]!, thunder: !pieces[i]!.thunder };
+          const piece = pieces[i];
+          assertExists(piece);
+          pieces[i] = { ...piece, thunder: !piece.thunder };
         }
 
         const warm = solver.solve(pieces);
@@ -532,8 +526,10 @@ test("PathSolver reuse and edit-stream layer", async (t) => {
 
     // The memoized base result comes back as fresh copies, so a caller can't
     // poison the cache.
-    const p1 = a.solve([])!;
-    const p2 = a.solve([])!;
+    const p1 = a.solve([]);
+    const p2 = a.solve([]);
+    assertExists(p1);
+    assertExists(p2);
     assertEquals(p1, p2);
     assert(p1 !== p2);
     assert(p1[0] !== p2[0]);

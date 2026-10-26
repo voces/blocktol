@@ -149,18 +149,21 @@ const fetchJson = async (
   method: string,
   input: unknown,
 ): Promise<{ resp: Response; data: unknown }> => {
-  const retries = RETRYABLE.has(method as keyof BlocktolApi)
-    ? RETRY_BACKOFF_MS.length
-    : 0;
-  for (let attempt = 0;; attempt++) {
+  const once = async () => {
+    const resp = await doFetch(method, input);
+    return { resp, data: await readJson(resp) };
+  };
+  const backoffs = RETRYABLE.has(method as keyof BlocktolApi)
+    ? RETRY_BACKOFF_MS
+    : [];
+  for (const backoff of backoffs) {
     try {
-      const resp = await doFetch(method, input);
-      return { resp, data: await readJson(resp) };
-    } catch (err) {
-      if (attempt >= retries) throw err;
-      await sleep(RETRY_BACKOFF_MS[attempt]! + Math.random() * 250);
+      return await once();
+    } catch {
+      await sleep(backoff + Math.random() * 250);
     }
   }
+  return once();
 };
 
 export const prime = <Method extends keyof BlocktolApi>(

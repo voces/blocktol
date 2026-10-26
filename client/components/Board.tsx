@@ -260,10 +260,12 @@ export const Board = (
             {...run}
             paused={paused}
             onFinish={onFinish}
-            onSlow={(thunder) =>
-              onSlow(
-                blocks.find((t) => thunder.x === t.x && thunder.y === t.y)!,
-              )}
+            onSlow={(thunder) => {
+              const block = blocks.find((t) =>
+                thunder.x === t.x && thunder.y === t.y
+              );
+              if (block) onSlow(block);
+            }}
           />
         )}
         {debug && grid.flatMap((row, y) =>

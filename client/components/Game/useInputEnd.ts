@@ -1,5 +1,5 @@
 import { useContext, useEffect } from "preact/compat";
-import { offsets } from "../../../common/constants.ts";
+import { pieceOverlaps } from "../../../common/grid.ts";
 import { type Point } from "../../../common/types.ts";
 import { claimBoard } from "../../store/board.ts";
 import {
@@ -158,7 +158,7 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
 
       if (budgetNow().bricks <= 0) return;
 
-      if (offsets.some(([xd, yd]) => grid[y + yd]![x + xd])) return;
+      if (pieceOverlaps(grid, { x, y })) return;
 
       // A placement that walls the runner off entirely is refused.
       if (!solvable(blocks, checkpoint, { x, y })) return;
@@ -191,7 +191,8 @@ export const useInputEnd = (svg: SVGSVGElement | null) => {
     globalThis.addEventListener("mouseup", mouseupCallback);
 
     const touchendCallback = (e: TouchEvent) => {
-      const touch = e.changedTouches[0]!;
+      const touch = e.changedTouches.item(0);
+      if (!touch) return;
       const target = touch.target;
       // Cancel any pending zoom arm: a tap released before the delay must not
       // zoom after the finger is gone.
