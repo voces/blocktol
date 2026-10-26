@@ -19,6 +19,7 @@
     "npm:@opentelemetry/api@^1.9.0": "1.9.1",
     "npm:@preact/signals@^2.5.1": "2.9.2_preact@10.29.3",
     "npm:@types/sqlstring@2.3.2": "2.3.2",
+    "npm:croner@10.0.1": "10.0.1",
     "npm:esbuild@0.25.5": "0.25.5",
     "npm:mysql2@^3.11.0": "3.22.6_@types+node@26.1.1",
     "npm:preact@^10.11.3": "10.29.3",
@@ -351,6 +352,9 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
+    "croner@10.0.1": {
+      "integrity": "sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g=="
+    },
     "denque@2.1.0": {
       "integrity": "sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw=="
     },
@@ -503,6 +507,7 @@
       "npm:@opentelemetry/api@^1.9.0",
       "npm:@preact/signals@^2.5.1",
       "npm:@types/sqlstring@2.3.2",
+      "npm:croner@10.0.1",
       "npm:mysql2@^3.11.0",
       "npm:preact@^10.11.3",
       "npm:qrcode-generator@^1.4.4",

@@ -11,7 +11,7 @@ import { errText, log } from "./logging.ts";
 import { selfExcludedPercentiles } from "./math.ts";
 import { notifyDailyFinals } from "./notify.ts";
 import { computeRatingChange } from "./rating.ts";
-import { tracked } from "./shutdown.ts";
+import { schedule } from "./cron.ts";
 
 // Once a day is rated, tell every ranked player how they finished (the five-way
 // outcome from common/notifications.ts). Swallows its own errors so a
@@ -104,10 +104,10 @@ const rateDailies = async () => {
 // Runs at :30 each hour (offset from the generation cron). Each daily is rated
 // once its date is closed in all timezones.
 //
-// `Deno.cron` is non-overlapping only within ONE instance. DISABLE_CRONS (see
+// `schedule` is non-overlapping only within ONE instance. DISABLE_CRONS (see
 // gen.ts) normally keeps a second instance off, but correctness doesn't rest
 // on it: applyRatings claims each day atomically, so a forgotten flag costs
 // duplicate work, never a double rating or announcement.
 if (!Deno.env.get("DISABLE_CRONS")) {
-  Deno.cron("rate-dailies", "30 * * * *", tracked("rate-dailies", rateDailies));
+  schedule("rate-dailies", "30 * * * *", rateDailies);
 }

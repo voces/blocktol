@@ -130,7 +130,8 @@ fails at transport falls through to a real fetch. `Calendar` (cross-day pick)
 and `Profile` (view-best) call `showDay`; same-day re-stage, deep-links, and
 gameplay stay on `showBoard`.
 
-**Crons (`Deno.cron`, single non-overlapping writer; both skip registration when
+**Crons (`schedule` in `util/cron.ts`: croner on UTC, never overlapping itself,
+each run a traced `cron` span the drain waits for; both skip registration when
 `DISABLE_CRONS` is set, so a second instance sharing the DB doesn't
 double-write):**
 
@@ -356,25 +357,26 @@ the posts no-ops). The task definitions enumerate the exact `--allow-env`
 grants.
 
 **Observability (OpenTelemetry).** Blocktol uses Deno's **built-in** OTel
-(`OTEL_DENO=true`), which auto-instruments `Deno.serve` requests, outbound
-`fetch` (the SQL proxy hop), and crons — so tracing is **env-configured, not
-code**: there is no OTel SDK wiring in the source, and these vars are read by
-the runtime's telemetry subsystem, **not** user code, so they need no
-`--allow-env` grant (and `start`/`dev` already use bare `--allow-net`).
-Telemetry is enabled **only on the EC2 box**, beside VictoriaTraces and
-VictoriaLogs (blocktol.com, and dev.blocktol.com when its `.env` carries the
-OTel vars); a local run is un-instrumented. VictoriaLogs v1.51.0
-(`127.0.0.1:9428`) and VictoriaTraces v0.9.4 (`127.0.0.1:10428`) run as systemd
-services, **bound to localhost only**, data under `/data`, 30-day retention —
-first-party infra (same box as the SQL proxy, not a third-party recipient), so
-ingest is a pure loopback call with **no auth**. blocktol emits **both** traces
-and logs through Deno's built-in OTel straight to those endpoints; the env lives
-in the systemd `EnvironmentFile` at `/home/ubuntu/blocktol/.env`
-(`OTEL_DENO=true`, `OTEL_SERVICE_NAME=blocktol`, `OTEL_METRICS_EXPORTER=none` —
-neither backend ingests metrics, `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`,
-and per-signal endpoints). The per-signal endpoints are required because
-VictoriaTraces/Logs use non-standard ingest paths and Deno otherwise appends the
-standard `/v1/*`:
+(`OTEL_DENO=true`), which auto-instruments `Deno.serve` requests and outbound
+`fetch` (the SQL proxy hop) and exports spans the code opens through
+`@opentelemetry/api` (each cron run, `util/cron.ts`; the DB transport span,
+`db/trace.ts`) — so tracing is **env-configured**: there is no OTel SDK wiring
+in the source, and these vars are read by the runtime's telemetry subsystem,
+**not** user code, so they need no `--allow-env` grant (and `start`/`dev`
+already use bare `--allow-net`). Telemetry is enabled **only on the EC2 box**,
+beside VictoriaTraces and VictoriaLogs (blocktol.com, and dev.blocktol.com when
+its `.env` carries the OTel vars); a local run is un-instrumented. VictoriaLogs
+v1.51.0 (`127.0.0.1:9428`) and VictoriaTraces v0.9.4 (`127.0.0.1:10428`) run as
+systemd services, **bound to localhost only**, data under `/data`, 30-day
+retention — first-party infra (same box as the SQL proxy, not a third-party
+recipient), so ingest is a pure loopback call with **no auth**. blocktol emits
+**both** traces and logs through Deno's built-in OTel straight to those
+endpoints; the env lives in the systemd `EnvironmentFile` at
+`/home/ubuntu/blocktol/.env` (`OTEL_DENO=true`, `OTEL_SERVICE_NAME=blocktol`,
+`OTEL_METRICS_EXPORTER=none` — neither backend ingests metrics,
+`OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`, and per-signal endpoints). The
+per-signal endpoints are required because VictoriaTraces/Logs use non-standard
+ingest paths and Deno otherwise appends the standard `/v1/*`:
 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:10428/insert/opentelemetry/v1/traces`,
 `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:9428/insert/opentelemetry/v1/logs`.
 

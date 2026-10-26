@@ -6,7 +6,7 @@ import { alertAdmin } from "./adminAlert.ts";
 import { errText, log } from "./logging.ts";
 import { newIteration } from "./newIteration.ts";
 import { pruneStaleData } from "./retention.ts";
-import { tracked } from "./shutdown.ts";
+import { schedule } from "./cron.ts";
 
 const ONE_MINUTE = 1_000 * 60;
 const ONE_DAY = ONE_MINUTE * 60 * 24;
@@ -82,11 +82,11 @@ const checkRatingLiveness = async () => {
   }
 };
 
-// Bulk daily generation. `Deno.cron` never overlaps itself, so this is a single
-// writer for the whole 33-day window (31 back, through tomorrow). Hourly is
-// enough: the window reaches tomorrow, so each day exists ~a day before any
-// timezone needs it. It also seeds new envs and heals gaps. Idempotent; must be
-// registered before `Deno.serve`.
+// Bulk daily generation. A scheduled job never overlaps itself (`schedule`), so
+// this is a single writer for the whole 33-day window (31 back, through
+// tomorrow). Hourly is enough: the window reaches tomorrow, so each day exists
+// ~a day before any timezone needs it. It also seeds new envs and heals gaps.
+// Idempotent.
 //
 // It is NOT the only writer: the per-request backfill (`ensureDailyIterationId`
 // in util/newIteration.ts) generates a missing day on demand, covering a fresh
@@ -100,13 +100,9 @@ const checkRatingLiveness = async () => {
 // Each run ends with the rating-liveness check and the retention sweep
 // (util/retention.ts).
 if (!Deno.env.get("DISABLE_CRONS")) {
-  Deno.cron(
-    "ensure-iterations",
-    "0 * * * *",
-    tracked("ensure-iterations", async () => {
-      await ensureIterations(31);
-      await checkRatingLiveness();
-      await pruneStaleData();
-    }),
-  );
+  schedule("ensure-iterations", "0 * * * *", async () => {
+    await ensureIterations(31);
+    await checkRatingLiveness();
+    await pruneStaleData();
+  });
 }
