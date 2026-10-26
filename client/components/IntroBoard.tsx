@@ -431,7 +431,7 @@ export const IntroBoard = (
   useEffect(() => {
     if (step === 0 || step === 1) return;
     const from = BEATS_DONE[step - 1]!, to = BEATS_DONE[step]!;
-    const timers: number[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
     let delay = LEAD_MS;
     for (let i = from; i < to; i++) {
       timers.push(setTimeout(() => settle(i + 1), delay));

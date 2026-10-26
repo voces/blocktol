@@ -58,7 +58,7 @@ export const MoveDevice = (
   const url = signInLink(getId());
   const display = url.replace(/^https?:\/\//, "");
   const [copied, setCopied] = useState(false);
-  const copiedTimeout = useRef(-1);
+  const copiedTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   // "Copied" only once the clipboard took it; a refused clipboard must not
   // claim the sign-in link is saved.

@@ -9,7 +9,9 @@
 //   - marks a correctly-versioned asset immutable for a year, while the shell,
 //     SW and manifest stay no-cache so new hashes propagate.
 
-import { join } from "@std/path/posix";
+import { readFile, stat } from "node:fs/promises";
+import { join } from "node:path/posix";
+import process from "node:process";
 import { getVapidPublicKey } from "./webpush.ts";
 
 // Same-origin assets whose url should carry a content hash. Everything else
@@ -122,13 +124,13 @@ export type Assets = {
   cacheControlFor: (
     pathname: string,
     search: URLSearchParams,
-    mtime: Date | null,
+    mtime: Date,
   ) => string | null;
 };
 
 const buildAssets = async (publicDir: string): Promise<Assets> => {
-  const root = join(Deno.cwd(), publicDir);
-  const readText = (p: string) => Deno.readTextFile(join(root, p));
+  const root = join(process.cwd(), publicDir);
+  const readText = (p: string) => readFile(join(root, p), "utf8");
 
   // A missing asset (e.g. before a client build) stays unversioned.
   const version: VersionMap = {};
@@ -137,8 +139,8 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
   await Promise.all(FINGERPRINTED.map(async (p) => {
     try {
       const path = join(root, p);
-      hashedAt[p] = (await Deno.stat(path)).mtime?.getTime();
-      version[p] = await shortHash(await Deno.readFile(path));
+      hashedAt[p] = (await stat(path)).mtime.getTime();
+      version[p] = await shortHash(await readFile(path));
     } catch { /* leave unversioned */ }
   }));
 
@@ -158,7 +160,7 @@ const buildAssets = async (publicDir: string): Promise<Assets> => {
     cacheControlFor: (pathname, search, mtime) =>
       CONTENT_ADDRESSED_FONT.test(pathname)
         ? IMMUTABLE
-        : mtime?.getTime() === hashedAt[pathname]
+        : mtime.getTime() === hashedAt[pathname]
         ? immutableFor(version, pathname, search)
         : null,
   };

@@ -66,14 +66,16 @@ namespace or constructor parameter property. `tsconfig.common.json` checks
 `common/` with no browser, Deno or Node globals, so using one there is a compile
 error; `tsconfig.json` checks the app (client and server together, since the
 client's API type comes from the server) with Deno's types generated into
-`types/deno.generated.d.ts`, and `types/jsr-std.d.ts` for the JSR imports tsc
-can't resolve. Tests are left to `deno test`.
+`types/deno.generated.d.ts` and `@types/node` for the `node:` modules the server
+imports. Being one program, the client sees Node's globals too, so a browser
+timer handle is typed `ReturnType<typeof setTimeout>`, never `number`. Tests are
+left to `deno test`.
 
 Run a **single test file / filter**:
 
 ```bash
-deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL common/pathing.test.ts
-deno test --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL --filter "line of sight" server/
+deno test --allow-read --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL common/pathing.test.ts
+deno test --allow-read --allow-net=w3x.io --allow-env=APP_ENV,SQL_PASSWORD,SQL_PROXY_URL --filter "line of sight" server/
 ```
 
 Tests use `test` from `node:test` (subtests are `t.test`), never `Deno.test`:

@@ -127,7 +127,7 @@ export const adoptServerSettings = (settings: Settings) => {
 
 // Persist to the server, debounced so a slider drag lands as one write. Sends
 // the full current settings; the `setSettings` route merges.
-let persistTimer = -1;
+let persistTimer: ReturnType<typeof setTimeout> | undefined;
 const schedulePersist = () => {
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => api.setSettings(current), 400);

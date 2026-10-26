@@ -62,7 +62,9 @@ export const Daily = () => {
   const { attempts, clear, iteration, staged } = useContext(GameStateContext);
   const stats = useApiListener("getDailySummary")?.stats ?? null;
   const [copied, setCopied] = useState(false);
-  const [timeout, setTimeoutId] = useState(-1);
+  const [timeout, setTimeoutId] = useState<
+    ReturnType<typeof setTimeout>
+  >();
   const [hideDailyResult, setHideDailyResult] = useState(false);
 
   useEffect(() => () => clearTimeout(timeout), [timeout]);
