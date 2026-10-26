@@ -1,18 +1,16 @@
 {
   // The app: client, server and common/ in one program, because the client's
-  // API type is derived from server code. The server gets Deno's types from
-  // types/deno.generated.d.ts (written by `deno task typecheck`). Tests are
-  // left to `deno test`, which typechecks them.
+  // API type is derived from server code. The server runs on Node, so it sees
+  // Node's types and no Deno globals. Tests are left to `deno test`, which
+  // typechecks them.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "react",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment",
-    // node: modules the server imports (#226); Deno's own types come from
-    // types/deno.generated.d.ts.
     "types": ["node"]
   },
-  "include": ["client/**/*", "common/**/*", "server/**/*", "types/*.d.ts"],
+  "include": ["client/**/*", "common/**/*", "server/**/*"],
   "exclude": ["**/*.test.ts"]
 }

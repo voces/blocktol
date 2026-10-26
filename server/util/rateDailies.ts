@@ -12,6 +12,7 @@ import { selfExcludedPercentiles } from "./math.ts";
 import { notifyDailyFinals } from "./notify.ts";
 import { computeRatingChange } from "./rating.ts";
 import { schedule } from "./cron.ts";
+import process from "node:process";
 
 // Once a day is rated, tell every ranked player how they finished (the five-way
 // outcome from common/notifications.ts). Swallows its own errors so a
@@ -108,6 +109,6 @@ const rateDailies = async () => {
 // gen.ts) normally keeps a second instance off, but correctness doesn't rest
 // on it: applyRatings claims each day atomically, so a forgotten flag costs
 // duplicate work, never a double rating or announcement.
-if (!Deno.env.get("DISABLE_CRONS")) {
+if (!process.env.DISABLE_CRONS) {
   schedule("rate-dailies", "30 * * * *", rateDailies);
 }

@@ -6,7 +6,7 @@
 # after each dev deploy, and boot applies the checkout's pending migrations to
 # blocktol-dev.
 [Unit]
-Description=Blocktol dev (Deno server)
+Description=Blocktol dev (Node server)
 After=network-online.target
 Wants=network-online.target
 
@@ -15,7 +15,8 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/blocktol-dev
 
-# systemd doesn't set HOME; deno needs it for ~/.cache/deno.
+# systemd doesn't set HOME; deno (which runs the task) needs it for
+# ~/.cache/deno.
 Environment=HOME=/home/ubuntu
 
 # PORT=3041, APP_ENV=dev and the rest; see deploy/README.md for the list.

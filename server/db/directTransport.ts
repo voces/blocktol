@@ -2,6 +2,7 @@ import { is } from "../../common/typeguards.ts";
 import { env } from "../util/env.ts";
 import { errText, log } from "../util/logging.ts";
 import type { QueryOptions } from "./query.ts";
+import process from "node:process";
 
 // The only slice of mysql2's pool we touch, declared locally because mysql2
 // defines `query` via a mixin base class that Deno's type-checker doesn't
@@ -47,7 +48,7 @@ export class SQLError extends Error {}
 const isServerError = is.object({ sqlState: is.string });
 
 const requiredEnv = (name: string) => {
-  const value = Deno.env.get(name);
+  const value = process.env[name];
   if (!value) throw new Error(`${name} must be set for the direct connector`);
   return value;
 };
@@ -72,11 +73,11 @@ let poolPromise: Promise<Pool> | null = null;
 const getPool =
   () => (poolPromise ??= import("mysql2/promise").then(({ createPool }) =>
     createPool({
-      host: Deno.env.get("SQL_HOST") ?? "127.0.0.1",
-      port: Number(Deno.env.get("SQL_PORT") ?? "3306"),
-      user: Deno.env.get("SQL_USER") ?? `blocktol-${env}`,
+      host: process.env.SQL_HOST ?? "127.0.0.1",
+      port: Number(process.env.SQL_PORT ?? "3306"),
+      user: process.env.SQL_USER ?? `blocktol-${env}`,
       password: requiredEnv("SQL_PASSWORD"),
-      database: Deno.env.get("SQL_DATABASE") ?? `blocktol-${env}`,
+      database: process.env.SQL_DATABASE ?? `blocktol-${env}`,
       multipleStatements: true,
       dateStrings: true,
       decimalNumbers: true,

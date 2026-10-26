@@ -15,8 +15,8 @@ router.get("/login/:id", loginLink);
 // `/login/:id` and its short alias `/l/:id` are LEGACY, kept for links and QRs
 // already in the wild. New links put the id in the fragment (`/#l=<id>`,
 // `signInLink` in client/util/id.ts) so the credential never reaches the
-// server. Our logs redact these paths (`redactPath` in beginLogger.ts), but
-// Deno's OTel span and nginx's access log still see them.
+// server. Our logs and the request span redact these paths (`redactPath` in
+// beginLogger.ts), but nginx's access log still sees them.
 router.get("/l/:id", loginLink);
 // For the external uptime monitor (routes/health.ts). Before extractUserId:
 // it needs no id.

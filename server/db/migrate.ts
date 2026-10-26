@@ -1,6 +1,7 @@
 import { errText, log } from "../util/logging.ts";
 import { migrations, pendingMigrations } from "./migrations.ts";
 import { type ExecResult, raw, sql, sqlMigrate } from "./query.ts";
+import process from "node:process";
 
 const SCHEMA_MIGRATION = `
   CREATE TABLE IF NOT EXISTS schema_migration (
@@ -151,6 +152,6 @@ if (import.meta.main) {
     await migrate();
   } catch (err) {
     log.error("migration failed", { error: errText(err) });
-    Deno.exit(1);
+    process.exit(1);
   }
 }

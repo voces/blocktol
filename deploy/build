@@ -5,4 +5,6 @@
 # blocktol builds ships in the PR that needs it. A non-zero exit fails the
 # deploy before the restart.
 set -eu
+# The server's npm packages: node resolves them from ./node_modules.
+deno install
 deno task build

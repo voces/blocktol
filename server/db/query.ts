@@ -4,6 +4,7 @@ import { env } from "../util/env.ts";
 import { errText, log } from "../util/logging.ts";
 import { directQuery, SQLError } from "./directTransport.ts";
 import { withDbSpan } from "./trace.ts";
+import process from "node:process";
 
 const isSqlError = is.object({
   code: is.number,
@@ -13,7 +14,7 @@ const isSqlError = is.object({
 // The SQL proxy endpoint. A host co-located with the proxy (the EC2 cohost)
 // sets SQL_PROXY_URL to its localhost address to skip the internet round-trip.
 // The proxy contract is identical either way.
-const SQL_PROXY_URL = Deno.env.get("SQL_PROXY_URL") ?? "https://w3x.io/sql";
+const SQL_PROXY_URL = process.env.SQL_PROXY_URL ?? "https://w3x.io/sql";
 
 // Transport, chosen once at boot:
 //   - "proxy" (default): HTTP to the SQL proxy at SQL_PROXY_URL.
@@ -22,7 +23,7 @@ const SQL_PROXY_URL = Deno.env.get("SQL_PROXY_URL") ?? "https://w3x.io/sql";
 // Both return the same result shape, so nothing downstream of `query` cares.
 // Anything off the box (a local run, CI's integration tests) stays on the
 // proxy; only the co-located box sets SQL_TRANSPORT=direct.
-const useDirect = Deno.env.get("SQL_TRANSPORT") === "direct";
+const useDirect = process.env.SQL_TRANSPORT === "direct";
 
 // How one `query` call behaves on failure: `retries` re-sends after a transport
 // failure (never after a server SQL error), and `timeoutMs` bounds one attempt
@@ -49,7 +50,7 @@ const proxyQuery = async <T = unknown>(
       const ret = await fetch(SQL_PROXY_URL, {
         headers: {
           "x-dbproxy-user": `blocktol-${env}`,
-          "x-dbproxy-password": Deno.env.get("SQL_PASSWORD")!,
+          "x-dbproxy-password": process.env.SQL_PASSWORD!,
           "x-dbproxy-database": `blocktol-${env}`,
         },
         method: "POST",
