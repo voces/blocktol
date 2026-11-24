@@ -46,9 +46,14 @@ jobs:
         if: env.DEPLOY_WEBHOOK_URL
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \
+          auth=()
+          if [ -n "$DEPLOY_TOKEN" ]; then
+            auth=(-H "Authorization: Bearer $DEPLOY_TOKEN")
+          fi
+          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" "${auth[@]}" \
             -H "Content-Type: application/json" \
             -d "{\"app\": \"blocktol-dev\", \"version\": \"$SHA\"}"
 
@@ -85,8 +90,13 @@ jobs:
         if: env.DEPLOY_WEBHOOK_URL && steps.tip.outputs.current == 'true'
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \
+          auth=()
+          if [ -n "$DEPLOY_TOKEN" ]; then
+            auth=(-H "Authorization: Bearer $DEPLOY_TOKEN")
+          fi
+          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" "${auth[@]}" \
             -H "Content-Type: application/json" \
             -d "{\"app\": \"blocktol-dev\", \"version\": \"$SHA\"}"

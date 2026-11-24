@@ -49,10 +49,15 @@ jobs:
         # secret is unset.
         if: env.DEPLOY_WEBHOOK_URL && steps.tip.outputs.current == 'true'
         env:
-          # A secret URL that embeds the deploy token, e.g.
-          # https://dapi.w3x.io/deploy?token=<DEPLOY_SECRET>
+          # The webhook URL (e.g. https://dapi.w3x.io/deploy) and the deploy secret,
+          # sent as a bearer token so it stays out of logged URLs.
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
-          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" \
+          auth=()
+          if [ -n "$DEPLOY_TOKEN" ]; then
+            auth=(-H "Authorization: Bearer $DEPLOY_TOKEN")
+          fi
+          curl -sf -X POST "$DEPLOY_WEBHOOK_URL" "${auth[@]}" \
             -H "Content-Type: application/json" \
             -d '{"app": "blocktol", "version": "${{ github.event.workflow_run.head_sha }}"}'
